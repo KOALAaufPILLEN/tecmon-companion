@@ -1,0 +1,36 @@
+TecMon Companion Setup 0.3.1 · Windows x64
+
+Dieses Setup enthält unveränderte Programmdateien folgender Projekte. Die Original-Lizenzdateien und Hinweise werden mit den Programmen im tools-Ordner installiert. Die Programme werden ausschließlich lokal ausgeführt. Steam und Counter-Strike 2 werden nicht mitgeliefert.
+
+Microsoft Visual C++ Redistributable x64 (nur bei fehlender Laufzeit)
+Offizielles Microsoft-Paket mit interaktivem Lizenzdialog und gegebenenfalls Windows-Adminfreigabe.
+Download: https://aka.ms/vc14/vc_redist.x64.exe
+Lizenzhinweise: https://visualstudio.microsoft.com/license-terms/vs2022-cruntime/
+
+Node.js 26.13.0 LTS
+https://nodejs.org/ · MIT und mitgelieferte Drittanbieter-Lizenzen, siehe runtime/LICENSE.
+Quellcode: https://github.com/nodejs/node/tree/v26.13.0
+
+PostgreSQL 18.6 (EDB Windows-Binärpaket 18.6-5)
+https://www.postgresql.org/ · PostgreSQL License sowie mitgelieferte Drittanbieter-Lizenzen.
+Binärpaket: https://www.enterprisedb.com/download-postgresql-binaries
+Quellcode: https://www.postgresql.org/ftp/source/v18.6/
+
+CS Demo Manager 3.20.1
+https://cs-demo-manager.com/ · MIT, Copyright AkiVer und Beitragende.
+Quellcode und Lizenz: https://github.com/akiver/cs-demo-manager/tree/v3.20.1
+Die Konfigurationsvorlage basiert auf den unveränderten Standardwerten dieser Version.
+
+HLAE 2.193.0 (advancedfx)
+https://www.advancedfx.org/ · GPL und enthaltene Drittanbieter-Lizenzen.
+Quellcode: https://github.com/advancedfx/advancedfx/tree/v2.193.0
+Nur für Demo-Aufnahmen verwenden. Spielupdates können ein HLAE-Update erforderlich machen.
+
+FFmpeg n8.1 · FFmpeg-Builds Windows x64 GPL Build
+https://ffmpeg.org/ · GPL und enthaltene Drittanbieter-Lizenzen.
+Build und Quellcode-Anleitung: https://github.com/FFmpeg-Builds/FFmpeg-Builds
+FFmpeg-Quellcode: https://git.ffmpeg.org/ffmpeg.git
+
+7-Zip wird nur zum Zusammenstellen des Installers verwendet und ist kein Laufzeitbestandteil. Der Installer selbst und der Companion verwenden Windows/.NET und die mitgelieferte Node.js-Laufzeit.
+
+Die Versionen und SHA256-Prüfsummen der bezogenen Originalpakete stehen in dependency-manifest.json. Die lokale Datenbank wird ausschließlich an 127.0.0.1 gebunden. Das frei gewählte Administratorpasswort wird zur Initialisierung verwendet; für CS Demo Manager richtet TecMon ein eigenes lokales Anwendungskonto ein. Die dafür notwendige CS-Demo-Manager-Konfiguration liegt im nur für dein Windows-Konto zugänglichen Datenordner.

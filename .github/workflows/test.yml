@@ -1,0 +1,31 @@
+name: Companion tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - name: Compile native launcher and run self-test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+          $output=Join-Path $env:RUNNER_TEMP 'TecMon Companion.exe'
+          & $compiler /nologo /target:winexe /platform:x64 /optimize+ /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /r:Microsoft.CSharp.dll "/out:$output" tools/cs2-companion/windows/TecMon.cs
+          if($LASTEXITCODE -ne 0) { throw 'Compilation failed' }
+          $test=Start-Process -FilePath $output -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
+          if($test.ExitCode -ne 0) { throw 'Native self-test failed' }
