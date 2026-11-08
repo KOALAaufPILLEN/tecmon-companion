@@ -110,7 +110,9 @@ Beim Update wird zuerst die Bestätigung an die Oberfläche übertragen, dann de
 
 ## Standardansicht und erweiterter Modus (0.7.0)
 
-Der Companion öffnet standardmäßig eine kompakte Ansicht: Webseite öffnen, Browser-Verbindung und lokaler Auftragsstatus. „Erweitert“ rechts oben blendet das bisherige Aufnahme-Studio mit manuellem Import, Sharecodes, Tool-/Datenbank-Einstellungen, Updates und Protokollen ein. Eingaben und laufende Aufträge bleiben beim Umschalten erhalten; beim nächsten Öffnen ist die Standardansicht aktiv.
+Der Companion öffnet standardmäßig eine kompakte Ansicht: Update-Hinweis, TecMon öffnen, Browser-Verbindung (Freigaben direkt in derselben Karte), lokaler Auftragsstatus und die drei neuesten Videos mit „Abspielen“ und „Im Ordner zeigen“. Beim Start prüft der Companion einmal still auf ein neues stabiles Release; installiert wird nur nach Klick. „Erweitert“ blendet das Aufnahme-Studio in Tabs ein: Setup, Demos, Aufträge sowie Updates & Info. „Companion beenden“ steht unten und fragt einmal nach. Eingaben und laufende Aufträge bleiben beim Umschalten erhalten.
+
+Rechtsklick auf die Desktopfigur oder das Tray-Symbol: Statuszeile (verbunden, Verbindung bestätigen, Aufnahme läuft), Einstellungen öffnen, TecMon öffnen, Videos-Ordner öffnen, Nach Updates suchen bzw. Update installieren, Untermenü „Figur“ (Umherfliegen, Animation, Im Vordergrund, ausblenden), „Mehr“ (Studio im Browser, WebView2-Download nur wenn die Runtime fehlt) und Companion beenden.
 
 Im TecMon-Browser einmal „Companion verbinden“ wählen, die Zahlencodes vergleichen und die Anfrage im Companion freigeben. Bereits eingerichtete Verbindungen bleiben über Neustarts erhalten. Danach kann das Fenster minimiert bleiben: Match-Demos herunterladen, mehrere Spieler auswählen, Download + Aufnahme starten und die MP4 übernehmen funktioniert auf der Website. Steam muss lokal angemeldet und CS2 / CS Demo Manager vor dem Start geschlossen sein. Der Companion-Dienst muss weiterlaufen. Manueller Dateiimport und Sonderfälle bleiben unter „Erweitert“ verfügbar.
 
@@ -127,7 +129,7 @@ Das Einstellungsfenster verwendet Microsoft WebView2 für die vorhandene lokale 
 
 WebView2 ist auf die lokale Companion-Adresse beschränkt. Externe zugelassene HTTPS-Links öffnen den Standardbrowser; andere Navigation und Berechtigungsanfragen werden abgelehnt. Es gibt keine WebView-Hostobjekte, kein Chat-LLM, keine Bildschirmaufzeichnung oder globalen Maus-/Tastatur-Hooks. Verschieben wird nur während eines Ziehens der Figur verarbeitet.
 
-„Companion beenden“ wartet auf den Abschluss aktiver Aufträge. Das Schließen des Einstellungsfensters klappt es nur ein. Ein gestoppter lokaler Dienst beendet die Desktopfigur ebenfalls; Updates warten beim Ersetzen noch verwendeter Programmdateien kurz auf dieses Ende.
+Während einer Aufnahme oder eines Downloads bleibt die Figur sichtbar, liegt aber hinter CS2 und bewegt sich nicht; das Tray-Symbol zeigt „Aufnahme läuft“. Die Figur beendet sich nur, wenn der lokale Dienst nicht mehr erreichbar ist, nicht schon, wenn er während der Aufnahme langsam antwortet. „Companion beenden“ wartet auf den Abschluss aktiver Aufträge. Das Schließen des Einstellungsfensters klappt es nur ein. Ein gestoppter lokaler Dienst beendet die Desktopfigur ebenfalls; Updates warten beim Ersetzen noch verwendeter Programmdateien kurz auf dieses Ende.
 
 ## Holo-Sprechblase (0.8.1)
 

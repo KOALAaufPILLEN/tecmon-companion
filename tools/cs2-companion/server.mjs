@@ -82,6 +82,22 @@ async function mp4s(dir, base = dir) {
   return files;
 }
 
+/** Datei mit dem Standardprogramm öffnen oder im Explorer markieren (nur Windows). */
+function openInExplorer(target, select = false) {
+  if (process.platform !== "win32") throw new Error("Nur in der Windows-Version verfügbar.");
+  // Pfade sind vorher gegen den Datenordner geprüft; Windows-Pfade enthalten keine Anführungszeichen.
+  const child = spawn("explorer.exe", [select ? `/select,"${target}"` : `"${target}"`], {
+    windowsVerbatimArguments: true,
+    windowsHide: false,
+    stdio: "ignore",
+    detached: true,
+  });
+  child.on("error", () => {});
+  child.unref();
+}
+
+const JOB_DIR = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function createCompanion({
   dataDir = path.join(local, "TecMon", "Companion"),
   runProcess,
@@ -91,6 +107,7 @@ export async function createCompanion({
   startDatabase = ensureManagedDatabase,
   stopDatabase = stopManagedDatabase,
   runSql = (sql) => runCameraSql(installation, sql, runTool),
+  openPath = openInExplorer,
   onUpdateExit,
 } = {}) {
   if (installation) dataDir = path.join(installation.dataDir, "Jobs");
@@ -100,6 +117,43 @@ export async function createCompanion({
   const downloads = new Map();
   const browserFiles=browserDemos(path.join(dataDir,"Browser-Demos"));
   let active = false;
+  /** Neueste fertige Videos aller Aufträge im Datenordner, auch aus früheren Sitzungen. */
+  async function recentVideos(limit = 3) {
+    const list = [];
+    let entries = [];
+    try {
+      entries = await readdir(dataDir, { withFileTypes: true });
+    } catch {
+      return list;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !JOB_DIR.test(entry.name)) continue;
+      const dir = path.join(dataDir, entry.name);
+      for (const file of await mp4s(dir).catch(() => [])) {
+        const info = await stat(path.join(dir, file)).catch(() => null);
+        if (!info) continue;
+        list.push({
+          key: `${entry.name}/${file.split(path.sep).join("/")}`,
+          name: path.basename(file),
+          size: info.size,
+          time: info.mtimeMs,
+        });
+      }
+    }
+    return list.sort((a, b) => b.time - a.time).slice(0, limit);
+  }
+  async function videoPath(key) {
+    const parts = typeof key === "string" ? key.split("/") : [];
+    if (parts.length < 2 || !JOB_DIR.test(parts[0]) || parts.some((p) => !p || p === "." || p === "..") || !/\.mp4$/i.test(key))
+      throw new Error("Video nicht gefunden.");
+    const base = await realpath(dataDir);
+    const full = await realpath(path.join(dataDir, ...parts)).catch(() => {
+      throw new Error("Video nicht gefunden.");
+    });
+    const relative = path.relative(base, full);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("Video nicht gefunden.");
+    return full;
+  }
   const detected = await detectTools();
   const bridge = await createBrowserBridge(installation?.profileDir || dataDir);
   if (installation) {
@@ -459,6 +513,8 @@ export async function createCompanion({
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
         });
+      if (req.method === "GET" && url.pathname === "/api/videos")
+        return json(res, 200, { videos: await recentVideos(), folder: dataDir });
       if (req.method === "GET" && url.pathname === "/api/video")
         return await video(
           res,
@@ -473,6 +529,18 @@ export async function createCompanion({
         if (body.length > 65536) throw new Error("Auftrag zu groß.");
       }
       const input = JSON.parse(body);
+      if (url.pathname === "/api/videos/open") {
+        openPath(await videoPath(input.key), false);
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/videos/folder") {
+        if (input.key) openPath(await videoPath(input.key), true);
+        else {
+          await mkdir(dataDir, { recursive: true });
+          openPath(await realpath(dataDir), false);
+        }
+        return json(res, 200, { ok: true });
+      }
       if (url.pathname === "/api/bridge/approve") {
         await bridge.approve(input.id);
         return json(res, 200, { ok: true });

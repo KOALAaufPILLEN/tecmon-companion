@@ -1,6 +1,5 @@
 if(new URLSearchParams(location.search).get('desktop')==='1'){
   document.body.classList.add('desktop-panel');
-  document.querySelector('.minimal-hero>img').src='/desktop-avatar.png';
   document.getElementById('minimal-title').textContent='Dein Desktop-Companion';
   document.querySelector('.minimal-hero p').textContent='Hier findest du deine Verbindung und Einstellungen. Ein Klick auf mich klappt das Fenster wieder ein.';
 }
@@ -11,22 +10,25 @@ let signature = '';
 let bridgeSignature = '';
 let downloadSignature = '';
 let populated = false;
-let updateReady = false;
 let restarting = false;
 let latestState;
 function advanced(show) {
   $('advanced-panel').hidden=!show;
   $('advanced-toggle').setAttribute('aria-expanded',String(show));
   $('advanced-toggle').textContent=show?'Erweitert schließen':'Erweitert';
-  if(latestState)overview(latestState);
 }
+function tab(name) {
+  for(const button of document.querySelectorAll('.tab')) button.setAttribute('aria-selected',String(button.dataset.tab===name));
+  for(const panel of document.querySelectorAll('.tab-panel')) panel.hidden=panel.dataset.panel!==name;
+}
+for(const button of document.querySelectorAll('.tab')) button.addEventListener('click',()=>tab(button.dataset.tab));
+function showAdvanced(name){advanced(true);tab(name);$('advanced-panel').scrollIntoView({behavior:'smooth'});}
 $('advanced-toggle').addEventListener('click',()=>advanced($('advanced-panel').hidden));
 function overview(state) {
   const devices=state.bridge?.devices || [];
   const pending=state.bridge?.pending || [];
   $('connection-heading').textContent=pending.length?'Verbindung bestätigen':devices.length?'Browser-Verbindung eingerichtet':'Noch nicht verbunden';
-  $('website-bridge').hidden=devices.length>0 && !pending.length && $('advanced-panel').hidden;
-  $('connection-note').textContent=pending.length?'Vergleiche den Code auf der Webseite und bestätige die Anfrage unten.':devices.length?'Download und Aufnahme startest du auf der Webseite. Du kannst dieses Fenster minimieren; der Companion muss weiterlaufen.':'Öffne TecMon und wähle „Companion verbinden“. Bestätige den angezeigten Code einmal hier.';
+  $('connection-note').textContent=pending.length?'Vergleiche den Code auf der Webseite und bestätige die Anfrage hier.':devices.length?'Download und Aufnahme startest du auf der Webseite. Du kannst dieses Fenster minimieren; der Companion muss weiterlaufen.':'Öffne TecMon und wähle „Companion verbinden“. Bestätige den angezeigten Code einmal hier.';
   document.querySelector('.connection-summary').classList.toggle('is-connected',devices.length>0);
   const jobs=state.jobs || [];
   const downloads=state.downloads || [];
@@ -74,7 +76,6 @@ async function refresh() {
       revoke.addEventListener('click',async()=>{try{await api('/api/bridge/revoke',{id:item.id});await refresh();}catch(error){notice(error);}});card.append(revoke);connections.append(card);
     }
     if(state.bridge?.devices?.length) container.append(connections);
-    if(!container.children.length) container.append(el('p','Die Verbindungsanfrage erscheint hier automatisch. Manueller JSON-Import ist unter „Erweitert“ möglich.'));
   }
   databaseState(state.postgres);
   $('csdm-open').hidden = !state.managed;
@@ -100,7 +101,7 @@ async function refresh() {
     }
   }
   const next = JSON.stringify([state.active,state.jobs.map(j => [j.id, j.status, j.log, j.files]),completed.map(d=>[d.id,d.demo])]);
-  if (signature === next) return; signature = next;
+  if (signature === next) return; signature = next; loadVideos().catch(()=>{});
   if (!state.jobs.length) return;
   const container = $('jobs'); container.replaceChildren();
   for (const job of state.jobs) {
@@ -118,7 +119,7 @@ async function refresh() {
       const browse = el('button', 'Demo wählen …'); browse.className='subtle'; browse.addEventListener('click', async () => { try { const selected=await api('/api/pick',{kind:'demo'}); if(selected.path) { draft.demo=selected.path; input.value=selected.path; } } catch(error) { notice(error); } }); card.append(browse);
       if(job.job.shareCode) {
         const load=el('button','Sharecode für Demo-Download übernehmen'); load.className='subtle';
-        load.addEventListener('click',()=>{ $('share-codes').value=job.job.shareCode; $('demo-download').scrollIntoView({behavior:'smooth'}); $('notice').textContent='Sharecode übernommen. Steam anmelden, CS2 schließen und den lokalen Download unten bestätigen.'; }); card.append(load);
+        load.addEventListener('click',()=>{ $('share-codes').value=job.job.shareCode; showAdvanced('demos'); $('notice').textContent='Sharecode übernommen. Steam anmelden, CS2 schließen und den lokalen Download unten bestätigen.'; }); card.append(load);
       }
       if(completed.length) {
         const selection=el('select'); selection.setAttribute('aria-label','Heruntergeladene Demo für diesen Auftrag wählen');
@@ -154,7 +155,7 @@ async function refresh() {
 }
 $('import').addEventListener('change', async event => {
   try { const file = event.target.files[0]; if (!file) return; if (file.size > 65536) throw new Error('Auftrag zu groß.'); const value=JSON.parse(await file.text());
-    if(value.format==='tecmon-match-download') { advanced(true); if(value.version!==1 || !Array.isArray(value.shareCodes) || !value.shareCodes.length || value.shareCodes.length>10 || value.shareCodes.some(c=>typeof c!=='string')) throw new Error('Ungültige Match-Datei.'); $('share-codes').value=value.shareCodes.join('\n'); $('demo-download').scrollIntoView({behavior:'smooth'}); $('notice').textContent='Sharecodes übernommen. Bitte lokalen Download bestätigen.'; }
+    if(value.format==='tecmon-match-download') { showAdvanced('demos'); if(value.version!==1 || !Array.isArray(value.shareCodes) || !value.shareCodes.length || value.shareCodes.length>10 || value.shareCodes.some(c=>typeof c!=='string')) throw new Error('Ungültige Match-Datei.'); $('share-codes').value=value.shareCodes.join('\n'); $('notice').textContent='Sharecodes übernommen. Bitte lokalen Download bestätigen.'; }
     else { await api('/api/import',value); $('notice').textContent=''; }
     await refresh(); } catch (err) { notice(err); } finally { event.target.value = ''; }
 });
@@ -162,7 +163,10 @@ $('download-start').addEventListener('click',async()=>{
   try { await api('/api/demos/download',{format:'tecmon-match-download',version:1,shareCodes:$('share-codes').value.trim().split(/\s+/),csdm:$('engine').value.trim().replace(/^"|"$/g,''),confirm:$('download-confirm').checked}); $('notice').textContent='Demo-Download läuft direkt auf deinem PC.'; await refresh(); }
   catch(error){notice(error);}
 });
-$('shutdown').addEventListener('click', async () => { try { await api('/api/shutdown', {}); clearInterval(timer); $('notice').textContent = 'Companion beendet. Du kannst dieses Fenster schließen.'; } catch (err) { notice(err); } });
+function askShutdown(show){$('shutdown').hidden=show;$('shutdown-confirm').hidden=!show;}
+$('shutdown').addEventListener('click',()=>askShutdown(true));
+$('shutdown-no').addEventListener('click',()=>askShutdown(false));
+$('shutdown-yes').addEventListener('click', async () => { askShutdown(false); try { await api('/api/shutdown', {}); clearInterval(timer); $('notice').textContent = 'Companion beendet. Du kannst dieses Fenster schließen.'; } catch (err) { notice(err); } });
 $('database-check').addEventListener('click', async () => {
   $('database-check').disabled = true;
   try { databaseState(await api('/api/database/check', { port: Number($('database-port').value) })); $('notice').textContent = ''; }
@@ -177,20 +181,55 @@ $('database-install').addEventListener('click', async () => {
 });
 $('engine-browse').addEventListener('click', async () => { try { const selected=await api('/api/pick',{kind:'engine'}); if(selected.path) $('engine').value=selected.path; } catch(error) { notice(error); } });
 $('csdm-open').addEventListener('click', async () => { try { const result=await api('/api/csdm/open',{}); $('notice').textContent=result.message; } catch(error) { notice(error); } });
-$('update-check').addEventListener('click',async()=>{
-  const button=$('update-check'); button.disabled=true;
+let latestUpdate=null;
+function updateOffer(result){
+  latestUpdate=result.available?result:null;
+  $('update-banner').hidden=!latestUpdate;
+  if(latestUpdate){$('update-banner-title').textContent=`Update ${result.latest} verfügbar`;$('update-check').textContent=`Update ${result.latest} installieren`;}
+  else $('update-check').textContent='Auf Updates prüfen';
+  $('update-status').textContent=latestUpdate?`Version ${result.latest} ist verfügbar. Die Installation ersetzt nur Companion-Dateien und startet den Companion neu. CS Demo Manager vorher schließen.`:`Du hast die aktuelle Version${result.latest?` (${result.latest})`:''}.`;
+}
+async function checkUpdate(silent){
+  try{updateOffer(await api('/api/update/check',{}));if(!silent&&!latestUpdate)$('notice').textContent='Companion ist aktuell.';}
+  catch(error){if(!silent)notice(error);}
+}
+async function installUpdate(){
+  if(!latestUpdate)return;
+  for(const button of [$('update-check'),$('update-banner-install')])button.disabled=true;
   try {
-    if(updateReady) {
-      const result=await api('/api/update/install',{confirm:true});restarting=true;clearInterval(timer);$('notice').textContent=result.message+' Verbindung wird nach dem Neustart wiederhergestellt …';
-      for(let attempt=0;attempt<90;attempt++) {
-        await new Promise(resolve=>setTimeout(resolve,1000));
-        try {const response=await fetch('/api/health',{cache:'no-store',signal:AbortSignal.timeout(2000)});const health=await response.json();if(health.version===result.latest){window.location.reload();return;}} catch { /* Expected while the local service restarts. */ }
-      }
-      throw new Error('Neustart noch nicht abgeschlossen. Companion erneut öffnen oder die Update-EXE aus GitHub Releases verwenden. Ein Update-Ergebnis steht im Programmordner unter update-result.json.');
+    const result=await api('/api/update/install',{confirm:true});restarting=true;clearInterval(timer);$('notice').textContent=result.message+' Verbindung wird nach dem Neustart wiederhergestellt …';
+    $('update-banner-title').textContent=`Update ${result.latest} wird installiert …`;
+    for(let attempt=0;attempt<90;attempt++) {
+      await new Promise(resolve=>setTimeout(resolve,1000));
+      try {const response=await fetch('/api/health',{cache:'no-store',signal:AbortSignal.timeout(2000)});const health=await response.json();if(health.version===result.latest){window.location.reload();return;}} catch { /* Expected while the local service restarts. */ }
     }
-    else {const result=await api('/api/update/check',{});updateReady=result.available;button.textContent=result.available ? `Update ${result.latest} installieren` : 'Auf Updates prüfen';$('notice').textContent=result.available ? 'Update verfügbar. Der nächste Klick installiert nur neue/geänderte Companion-Dateien und startet den Companion neu. CS Demo Manager vorher schließen.' : 'Companion ist aktuell.';}
-  } catch(error){notice(error);updateReady=false;button.textContent='Auf Updates prüfen';restarting=false;clearInterval(timer);timer=setInterval(()=>refresh().catch(notice),2000);}
-  finally{button.disabled=false;}
-});
+    throw new Error('Neustart noch nicht abgeschlossen. Companion erneut öffnen oder die Update-EXE aus GitHub Releases verwenden. Ein Update-Ergebnis steht im Programmordner unter update-result.json.');
+  } catch(error){notice(error);restarting=false;clearInterval(timer);timer=setInterval(()=>refresh().catch(notice),2000);}
+  finally{for(const button of [$('update-check'),$('update-banner-install')])button.disabled=false;}
+}
+$('update-check').addEventListener('click',async()=>{const button=$('update-check');button.disabled=true;try{if(latestUpdate)await installUpdate();else await checkUpdate(false);}finally{button.disabled=false;}});
+$('update-banner-install').addEventListener('click',installUpdate);
+
+/* Letzte Videos */
+let videoSignature='';
+const sizeLabel=bytes=>bytes>=1e9?`${(bytes/1e9).toFixed(1)} GB`:`${Math.max(1,Math.round(bytes/1e6))} MB`;
+const timeLabel=ms=>new Date(ms).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+async function loadVideos(){
+  const {videos}=await api('/api/videos');
+  const next=JSON.stringify(videos);if(next===videoSignature)return;videoSignature=next;
+  const list=$('recent-list');list.replaceChildren();
+  if(!videos.length){list.append(el('li','Noch keine Videos. Fertige Aufnahmen erscheinen hier.','recent-empty'));return;}
+  for(const video of videos){
+    const item=el('li','','recent-item');const text=el('div');text.append(el('b',video.name),el('small',`${timeLabel(video.time)} · ${sizeLabel(video.size)}`));
+    const play=el('button','▶ Abspielen');play.type='button';play.addEventListener('click',()=>api('/api/videos/open',{key:video.key}).catch(notice));
+    const show=el('button','Im Ordner zeigen','subtle');show.type='button';show.addEventListener('click',()=>api('/api/videos/folder',{key:video.key}).catch(notice));
+    const actions=el('div','','actions');actions.append(play,show);item.append(text,actions);list.append(item);
+  }
+}
+const openFolder=event=>{event?.preventDefault();api('/api/videos/folder',{}).catch(notice);};
+$('folder-open').addEventListener('click',openFolder);$('folder-open-side').addEventListener('click',openFolder);
+fetch('/api/health',{cache:'no-store'}).then(r=>r.json()).then(h=>{$('version-label').textContent=h.version;}).catch(()=>{});
+
 let timer = setInterval(() => refresh().catch(notice), 2000);
-refresh().catch(notice);
+refresh().then(()=>{if(latestState?.managed)checkUpdate(true);}).catch(notice);
+loadVideos().catch(()=>{});setInterval(()=>{if(!restarting)loadVideos().catch(()=>{});},10000);
