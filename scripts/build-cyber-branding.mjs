@@ -15,9 +15,9 @@ for(const name of ['cyber-hud','cyber-stinger']){
  const bytes=await sharp(await readFile(path.join(source,'source',name+'.svg'))).png({compressionLevel:9,adaptiveFiltering:false,palette:false}).toBuffer();
  files[name+'.png']=bytes.toString('base64');
 }
-const bytes=Buffer.from(JSON.stringify({format:'tecmon-branding',version:2,files}));
+const bytes=Buffer.from(JSON.stringify({format:'tecmon-branding',version:3,files}));
 await mkdir(output,{recursive:true});
-await writeFile(path.join(output,'TecMon-Branding-v2.json'),bytes);
+await writeFile(path.join(output,'TecMon-Branding-v3.json'),bytes);
 const metadata={size:bytes.length,sha256:hash(bytes),files:Object.fromEntries(Object.entries(files).map(([name,data])=>[name,hash(Buffer.from(data,'base64'))]))};
 await writeFile(path.join(output,'cyber-branding-metadata.json'),JSON.stringify(metadata,null,2));
 console.log(JSON.stringify(metadata,null,2));

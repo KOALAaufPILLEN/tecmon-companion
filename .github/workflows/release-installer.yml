@@ -126,9 +126,9 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.detect.outputs.tag }}
         run: |
-          node ./build-tools/scripts/test-release-installer.mjs "dist/TecMon-Companion-Setup-$($env:RELEASE_TAG.Substring(1)).exe" "$env:RUNNER_TEMP/tecmon-installation-test" $env:RELEASE_TAG.Substring(1) "source/tools/cs2-companion/branding/TecMon-Branding-v2.json"
+          node ./build-tools/scripts/test-release-installer.mjs "dist/TecMon-Companion-Setup-$($env:RELEASE_TAG.Substring(1)).exe" "$env:RUNNER_TEMP/tecmon-installation-test" $env:RELEASE_TAG.Substring(1) "source/tools/cs2-companion/branding/TecMon-Branding-v3.json"
           if($LASTEXITCODE -ne 0){throw 'Installer smoke test failed'}
-          Copy-Item -LiteralPath source/tools/cs2-companion/branding/TecMon-Branding-v2.json -Destination dist/TecMon-Branding-v2.json
+          Copy-Item -LiteralPath source/tools/cs2-companion/branding/TecMon-Branding-v3.json -Destination dist/TecMon-Branding-v3.json
           $name="TecMon-Companion-Setup-$($env:RELEASE_TAG.Substring(1)).exe"
           ((Get-FileHash "dist/$name").Hash.ToLowerInvariant()+'  '+$name)|Set-Content "dist/$name.sha256" -Encoding utf8
           $sums=Get-ChildItem dist -File|Where-Object {$_.Extension -in @('.exe','.json')}|ForEach-Object {(Get-FileHash $_.FullName).Hash.ToLowerInvariant()+'  '+$_.Name}
