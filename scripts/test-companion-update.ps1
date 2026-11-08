@@ -19,7 +19,7 @@ Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/server.mjs') -Desti
 (Get-Item -LiteralPath (Join-Path $target 'server.mjs')).LastWriteTimeUtc=[DateTime]::UtcNow.AddDays(-1)
 $timestamp=(Get-Item -LiteralPath (Join-Path $target 'server.mjs')).LastWriteTimeUtc
 & (Join-Path $PSScriptRoot 'build-companion-update.ps1') -ApplicationDirectory $application -BuildDirectory (Join-Path $workspace 'build') -OutputDirectory (Join-Path $workspace 'out')
-$updater=Join-Path $workspace 'out/TecMon-Companion-Update-0.6.0.exe'
+$updater=Join-Path $workspace 'out/TecMon-Companion-Update-0.6.1.exe'
 $process=Start-Process -FilePath $updater -ArgumentList @('--apply-update-test',('"'+$target+'"')) -WindowStyle Hidden -PassThru
 if(-not $process.WaitForExit(30000)){ $process.Kill(); throw 'Native updater timed out' }
 if($process.ExitCode -ne 0){throw 'Native updater failed'}

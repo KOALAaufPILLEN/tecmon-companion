@@ -10,6 +10,8 @@ import { fileURLToPath } from "node:url";
 import { validateJob, recordingConfig } from "./job.mjs";
 import { matchDownloadRequest } from "./share-code.mjs";
 import { ensureRecordingPlugin, recordingFailure } from "./recording-engine.mjs";
+import { updateHandoff } from "./update-handoff.mjs";
+import { lazyEngine } from "./lazy-engine.mjs";
 import { loadBrandingPack } from "./branding-assets.mjs";
 import { renderBranding } from "./video-branding.mjs";
 import { createBrowserBridge } from "./browser-bridge.mjs";
@@ -84,6 +86,9 @@ export async function createCompanion({
   installation = null,
   detectTools = detect,
   loadAssets = loadBrandingPack,
+  startDatabase = ensureManagedDatabase,
+  stopDatabase = stopManagedDatabase,
+  onUpdateExit,
 } = {}) {
   if (installation) dataDir = path.join(installation.dataDir, "Jobs");
   await mkdir(dataDir, { recursive: true });
@@ -97,13 +102,12 @@ export async function createCompanion({
     detected.csdm = installation.csdmExe;
     detected.cs2 = installation.cs2Exe || detected.cs2;
   }
-  let postgres = await checkPostgres();
-  if (installation)
-    postgres = await checkPostgres({
-      roots: [],
-      searchPath: installation.postgresBin,
-      port: installation.port,
-    });
+  let postgres = installation ? {installed:true,supported:true,ready:false,version:"18",port:installation.port,lazy:true} : await checkPostgres();
+  const prepareEngine=lazyEngine(async()=>{
+    if(!installation)return;
+    await startDatabase(installation);
+    postgres={...postgres,ready:true,lazy:false};
+  });
   let checkingDatabase = false;
   let pickingFile = false;
   let lastInstallerLaunch = 0;
@@ -198,6 +202,7 @@ export async function createCompanion({
     await writeFile(path.join(output, "tecmon-job.json"), JSON.stringify(job.job, null, 2));
     job.status = "analyzing";
     job.output = output;
+    await prepareEngine();
     await run(exe, ["analyze", demo], job);
     job.status = "recording";
     try {
@@ -342,6 +347,7 @@ export async function createCompanion({
       jobs.set(job.id, job);
       void (async () => {
         try {
+          await prepareEngine();
           let demo;
           for (const code of codes) {
             const entry = { id: randomUUID(), code, status: "downloading", log: "", demo: "" };
@@ -461,7 +467,7 @@ export async function createCompanion({
             return json(res, 200, { message: "Companion ist aktuell." });
           }
           const executable = await downloadUpdate(root, update);
-          await stopManagedDatabase(installation);
+          await stopDatabase(installation);
           const child = spawn(executable, ["--apply-update", root, String(process.pid)], {
             stdio: "ignore",
             windowsHide: true,
@@ -471,12 +477,10 @@ export async function createCompanion({
             child.once("error", reject);
           });
           child.unref();
-          res.once("finish", () => {
-            server.close();
-            server.closeIdleConnections();
-          });
+          updateHandoff(server,res,onUpdateExit);
           return json(res, 200, {
             message: "Update geprüft. Companion startet nach der Aktualisierung neu.",
+            latest:update.latest,
           });
         } catch (error) {
           active = false;
@@ -510,6 +514,7 @@ export async function createCompanion({
           for (const entry of entries) downloads.set(entry.id, entry);
           void (async () => {
             try {
+              await prepareEngine();
               for (const entry of entries) {
                 entry.status = "downloading";
                 try {
@@ -564,6 +569,8 @@ export async function createCompanion({
       if (url.pathname === "/api/csdm/open") {
         if (!installation)
           throw new Error("Diese Funktion benötigt die installierte Windows-Version.");
+        if(active)throw new Error("Zuerst den laufenden Download oder die Aufnahme beenden.");
+        await prepareEngine();
         const child = spawn(installation.csdmExe, [], {
           env: managedEnvironment(installation),
           windowsHide: false,
@@ -579,6 +586,7 @@ export async function createCompanion({
         if (checkingDatabase) throw new Error("Datenbankprüfung läuft bereits.");
         checkingDatabase = true;
         try {
+          if(installation)await prepareEngine();
           postgres = await checkPostgres({
             port: input.port ?? 5432,
             ...(installation ? { roots: [], searchPath: installation.postgresBin } : {}),
@@ -654,7 +662,7 @@ export async function createCompanion({
       }
       if (url.pathname === "/api/shutdown") {
         if (active) throw new Error("Zuerst die laufende Aufnahme in CS Demo Manager beenden.");
-        if (installation) await stopManagedDatabase(installation);
+        if (installation) await stopDatabase(installation);
         json(res, 200, { ok: true });
         server.close();
         return;
@@ -670,8 +678,7 @@ export async function createCompanion({
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const installation = await readInstallation(root);
-  if (installation) await ensureManagedDatabase(installation);
-  const { server } = await createCompanion({ installation });
+  const { server } = await createCompanion({ installation,onUpdateExit:()=>process.exit(0) });
   server.listen(31977, "127.0.0.1", () => {
     const url = "http://127.0.0.1:31977";
     console.log(`TecMon Companion: ${url}`);

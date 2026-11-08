@@ -6,6 +6,7 @@ let bridgeSignature = '';
 let downloadSignature = '';
 let populated = false;
 let updateReady = false;
+let restarting = false;
 function databaseState(pg) {
   $('database-install').disabled = pg.supported;
   $('database-status').textContent = pg.installed ? `PostgreSQL-Tools ${pg.version} erkannt${pg.supported ? '' : ' · Version zu alt'}` : 'PostgreSQL nicht automatisch gefunden';
@@ -21,6 +22,7 @@ function notice(error) { $('notice').textContent = error.message || String(error
 function el(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; }
 const statuses = { preparing:'VISUALS WERDEN GEPRÜFT', branding:'VIDEO-BRANDING LÄUFT', ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER', downloading:'DEMO WIRD GELADEN' };
 async function refresh() {
+  if(restarting)return;
   const state = await api('/api/state');
   const bridgeNext=JSON.stringify(state.bridge);
   if(bridgeSignature !== bridgeNext) {
@@ -41,6 +43,7 @@ async function refresh() {
   databaseState(state.postgres);
   $('csdm-open').hidden = !state.managed;
   $('database-port').disabled = state.managed;
+  if(state.managed && state.postgres.lazy) { $('database-status').textContent='PostgreSQL startet erst bei Bedarf';$('database-note').textContent='Die lokale Datenbank wird beim ersten Demo-Download, bei einer Aufnahme oder beim Öffnen von CS Demo Manager gestartet.'; }
   if (state.managed && state.postgres.ready) $('database-note').textContent = `TecMon-Datenbank automatisch eingerichtet und unter 127.0.0.1:${state.postgres.port} erreichbar. Alle Tool-Pfade sind hinterlegt.`;
   $('cs2-status').textContent = state.detected.cs2 ? 'CS2 erkannt' : 'CS2 nicht gefunden';
   $('engine-status').textContent = state.detected.csdm ? 'CS Demo Manager erkannt' : 'CS Demo Manager fehlt';
@@ -141,10 +144,17 @@ $('csdm-open').addEventListener('click', async () => { try { const result=await 
 $('update-check').addEventListener('click',async()=>{
   const button=$('update-check'); button.disabled=true;
   try {
-    if(updateReady) {const result=await api('/api/update/install',{confirm:true});$('notice').textContent=result.message;}
+    if(updateReady) {
+      const result=await api('/api/update/install',{confirm:true});restarting=true;clearInterval(timer);$('notice').textContent=result.message+' Verbindung wird nach dem Neustart wiederhergestellt …';
+      for(let attempt=0;attempt<90;attempt++) {
+        await new Promise(resolve=>setTimeout(resolve,1000));
+        try {const response=await fetch('/api/health',{cache:'no-store',signal:AbortSignal.timeout(2000)});const health=await response.json();if(health.version===result.latest){window.location.reload();return;}} catch { /* Expected while the local service restarts. */ }
+      }
+      throw new Error('Neustart noch nicht abgeschlossen. Companion erneut öffnen oder die Update-EXE aus GitHub Releases verwenden. Ein Update-Ergebnis steht im Programmordner unter update-result.json.');
+    }
     else {const result=await api('/api/update/check',{});updateReady=result.available;button.textContent=result.available ? `Update ${result.latest} installieren` : 'Auf Updates prüfen';$('notice').textContent=result.available ? 'Update verfügbar. Der nächste Klick installiert nur neue/geänderte Companion-Dateien und startet den Companion neu. CS Demo Manager vorher schließen.' : 'Companion ist aktuell.';}
-  } catch(error){notice(error);updateReady=false;button.textContent='Auf Updates prüfen';}
+  } catch(error){notice(error);updateReady=false;button.textContent='Auf Updates prüfen';restarting=false;clearInterval(timer);timer=setInterval(()=>refresh().catch(notice),2000);}
   finally{button.disabled=false;}
 });
-const timer = setInterval(() => refresh().catch(notice), 2000);
+let timer = setInterval(() => refresh().catch(notice), 2000);
 refresh().catch(notice);

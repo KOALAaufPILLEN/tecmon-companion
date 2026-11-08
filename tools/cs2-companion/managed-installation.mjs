@@ -46,7 +46,7 @@ export function runTool(
     child.once("close", (code) => {
       clearTimeout(timer);
       if (code === 0) resolve(stdout);
-      else reject(new Error(`${path.basename(exe)}: ${stderr || stdout || `Code ${code}`}`));
+      else {const error=new Error(`${path.basename(exe)}: ${stderr || stdout || `Code ${code}`}`);error.exitCode=code;reject(error);}
     });
     child.stdin?.on("error", () => {});
     child.stdin?.end(input);
@@ -120,8 +120,10 @@ export async function ensureManagedDatabase(config) {
   );
 }
 
-export async function stopManagedDatabase(config) {
-  await runTool(
+export async function stopManagedDatabase(config, run = runTool) {
+  try {await run(path.join(config.postgresBin,"pg_ctl.exe"),["status","-D",config.clusterDir]);}
+  catch(error) {if(error.exitCode===3)return;throw error;}
+  await run(
     path.join(config.postgresBin, "pg_ctl.exe"),
     ["stop", "-D", config.clusterDir, "-m", "fast", "-w", "-t", "30"],
     { timeout: 35000 },
@@ -159,7 +161,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     );
   const config = previous || {
     format: "tecmon-installation-v1",
-    version: "0.6.0",
+    version: "0.6.1",
     installationId: randomUUID(),
     dataDir: options.dataDir,
     clusterDir: path.join(privateDir, "postgres", "data"),

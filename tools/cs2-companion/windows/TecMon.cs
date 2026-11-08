@@ -96,10 +96,15 @@ static class TecMon {
     target=Path.GetFullPath(target).TrimEnd('\\');
     if(!File.Exists(Path.Combine(target,"tecmon-app.marker")) || !File.Exists(Path.Combine(target,"installation.json")))
       throw new Exception("Bitte den eingerichteten TecMon-Programmordner auswählen. Das Update installiert keine neue Datenbank.");
-    int parentId;
-    if(Int32.TryParse(parent,out parentId)) {
-      try { using(var process=Process.GetProcessById(parentId)) if(!process.WaitForExit(60000)) throw new Exception("Companion konnte für das Update nicht beendet werden."); }
-      catch(ArgumentException) { /* Process already exited. */ }
+    if(!String.IsNullOrEmpty(parent)) {
+      var config=Json.Deserialize<Dictionary<string,object>>(File.ReadAllText(Path.Combine(target,"installation.json")));
+      string expected=Convert.ToString(config["installationId"]);
+      DateTime deadline=DateTime.UtcNow.AddSeconds(60);
+      // The update handoff depends on the service releasing its port, not an OS PID namespace.
+      while(Probe(expected)) {
+        if(DateTime.UtcNow>=deadline) throw new Exception("Companion-Dienst wurde für das Update nicht beendet.");
+        Thread.Sleep(300);
+      }
     }
     PrepareUpdate(target);
     using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("TecMonUpdate")) {
@@ -127,7 +132,20 @@ static class TecMon {
         }
       }
     }
-    if(launch) {Root=target; Launch();}
+    UpdateRegistration(target);
+    WriteUpdateResult(target,"installed","");
+    if(launch) {Root=target; Application.Run(new SplashWindow());}
+  }
+  public static void WriteUpdateResult(string target,string status,string message) {
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.6.1",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+  }
+  public static void UpdateRegistration(string target) {
+    using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
+      if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
+      key.SetValue("DisplayVersion","0.6.1");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+    }
+    foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
+      if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
   }
   public static void Shortcut(string file, string target) {
     Type type = Type.GetTypeFromProgID("WScript.Shell"); dynamic shell = Activator.CreateInstance(type);
@@ -139,7 +157,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.6.0"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.6.1"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -164,13 +182,15 @@ static class TecMon {
     var info=new ProcessStartInfo(installer,"/install /norestart") { UseShellExecute=true,Verb="runas" };
     using(var child=Process.Start(info)) { child.WaitForExit(); if(child.ExitCode!=0 && child.ExitCode!=3010 && child.ExitCode!=1638) throw new Exception("Microsoft Visual C++ Runtime wurde nicht eingerichtet. Setup nach der Korrektur erneut starten."); }
   }
-  public static void Launch() {
+  public static void Launch(Action<string> progress = null) {
+    if(progress!=null)progress("Lokale Verbindung prüfen …");
     var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TecMon", "Logs"); Directory.CreateDirectory(logDir);
     var configFile=Path.Combine(Root,"installation.json");
     if(!File.Exists(configFile)) throw new Exception("Bitte zuerst die Einrichtung im TecMon-Setup abschließen.");
     var config=Json.Deserialize<Dictionary<string,object>>(File.ReadAllText(configFile));
     var expectedId=Convert.ToString(config["installationId"]);
     if(!Probe(expectedId)) {
+      if(progress!=null)progress("Companion-Dienst starten …");
       var info = Info(Path.Combine(Root,"runtime","node.exe"), Path.Combine(Root,"server.mjs"));
       info.RedirectStandardOutput = true; info.RedirectStandardError = true;
       var child = Process.Start(info);
@@ -186,6 +206,7 @@ static class TecMon {
       }
       if(!ready) throw new Exception("Start dauert zu lange. Protokoll: " + log);
     }
+    if(progress!=null)progress("Studio öffnen · Tools starten erst bei Bedarf");
     var edge = new [] { Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Microsoft\Edge\Application\msedge.exe"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Microsoft\Edge\Application\msedge.exe") }.FirstOrDefault(File.Exists);
     if(edge != null) Process.Start(Info(edge,"--app=http://127.0.0.1:31977","--new-window"));
     else Process.Start(new ProcessStartInfo("http://127.0.0.1:31977") { UseShellExecute = true });
@@ -239,7 +260,14 @@ static class TecMon {
       if(args.Length > 0 && args[0] == "--private") { Private(args[1]); return 0; }
       if(args.Length > 0 && args[0] == "--extract-test") { Extract(args[1]); return 0; }
       if(args.Length > 0 && args[0] == "--prepare-update-test") { PrepareUpdate(args[1]); return 0; }
-      if(args.Length > 0 && args[0] == "--apply-update") { ApplyUpdate(args[1],args.Length>2 ? args[2] : ""); return 0; }
+      if(args.Length > 0 && args[0] == "--apply-update") {
+        try {ApplyUpdate(args[1],args.Length>2 ? args[2] : "");return 0;}
+        catch(Exception error) {WriteUpdateResult(args[1],"error",error.Message);throw;}
+      }
+      if(args.Length > 0 && args[0] == "--apply-update-cli") {
+        try {ApplyUpdate(args[1],"",false);return 0;} catch(Exception error) {WriteUpdateResult(args[1],"error",error.Message);Console.Error.WriteLine(error.Message);return 1;}
+      }
+      if(args.Length > 1 && args[0] == "--splash-preview") {using(var form=new SplashWindow(true)) using(var bitmap=new Bitmap(form.ClientSize.Width,form.ClientSize.Height)) {using(var graphics=Graphics.FromImage(bitmap))graphics.Clear(form.BackColor);foreach(Control control in form.Controls)control.DrawToBitmap(bitmap,control.Bounds);bitmap.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);}return 0;}
       if(args.Length > 0 && args[0] == "--apply-update-test") { ApplyUpdate(args[1],"",false); return 0; }
       if(args.Length > 0 && args[0] == "--self-test") {
         if(Q("a b") != "\"a b\"") throw new Exception("Argument quoting failed");
@@ -256,12 +284,39 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.6.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.6.1 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
-      Launch(); return 0;
+      Application.Run(new SplashWindow()); return 0;
     } catch(Exception error) { MessageBox.Show(error.Message,"TecMon",MessageBoxButtons.OK,MessageBoxIcon.Error); return 1; }
+  }
+}
+
+class SplashBar : Control {
+  readonly System.Windows.Forms.Timer timer=new System.Windows.Forms.Timer();int offset=180;
+  public SplashBar() {DoubleBuffered=true;BackColor=Color.FromArgb(31,24,48);AccessibleName="Companion wird geladen";AccessibleRole=AccessibleRole.ProgressBar;timer.Interval=30;timer.Tick+=(s,e)=>{offset=(offset+5)%Math.Max(1,Width+120);Invalidate();};timer.Start();}
+  protected override void OnPaint(PaintEventArgs e) {base.OnPaint(e);using(var brush=new SolidBrush(TecMon.Gold))e.Graphics.FillRectangle(brush,offset-120,0,120,Height);}
+  protected override void Dispose(bool disposing) {if(disposing)timer.Dispose();base.Dispose(disposing);}
+}
+class SplashWindow : Form {
+  readonly Label status=new Label();readonly bool preview;
+  public SplashWindow(bool previewOnly=false) {
+    preview=previewOnly;Text="TecMon Companion · Start";ClientSize=new Size(620,430);FormBorderStyle=FormBorderStyle.FixedDialog;ControlBox=false;ShowInTaskbar=true;StartPosition=FormStartPosition.CenterScreen;BackColor=TecMon.Background;ForeColor=Color.White;AutoScaleMode=AutoScaleMode.Dpi;
+    Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+    var picture=new PictureBox {Left=180,Top=24,Width=260,Height=260,SizeMode=PictureBoxSizeMode.Zoom,BackColor=Color.Transparent};
+    using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("TecMonLogo")) if(stream!=null)using(var image=Image.FromStream(stream))picture.Image=new Bitmap(image);
+    Controls.Add(picture);
+    Controls.Add(new Label {Text="TECMON COMPANION",Left=30,Top=290,Width=560,Height=38,TextAlign=ContentAlignment.MiddleCenter,ForeColor=TecMon.Gold,Font=new Font("Segoe UI",20,FontStyle.Bold)});
+    status.SetBounds(30,337,560,26);status.Text="Lokales Studio wird gestartet …";status.TextAlign=ContentAlignment.MiddleCenter;status.ForeColor=TecMon.Violet;status.Font=new Font("Segoe UI",10);Controls.Add(status);
+    Controls.Add(new SplashBar {Left=70,Top=383,Width=480,Height=6});
+    Shown+=async(s,e)=>{
+      if(preview)return;
+      try {await Task.Run(()=>TecMon.Launch(message=>{if(!IsDisposed)BeginInvoke(new Action(()=>status.Text=message));}));}
+      catch(Exception error) {TecMon.WriteUpdateResult(TecMon.Root,"start-error",error.Message);MessageBox.Show(this,error.Message,"TecMon Start",MessageBoxButtons.OK,MessageBoxIcon.Error);}
+      finally {Close();}
+    };
+    FormClosed+=(s,e)=>{if(picture.Image!=null)picture.Image.Dispose();};
   }
 }
 
