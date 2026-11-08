@@ -1,5 +1,14 @@
 # TecMon Companion · Windows Setup 0.6.1
 
+## X-Ray und feste Freecam-Punkte (Companion mit `camera-points-v1`)
+
+Auf der Webseite läuft die CS2-Aufnahme jetzt in vier Schritten: Szenen, Kamera, Aufnahme, Video & YouTube.
+
+- **X-Ray** ist standardmäßig an. Der Auftrag trägt `xray` (fehlt es, gilt `true`), der Companion setzt daraus `showXRay` je Sequenz.
+- **Kamerapunkte:** In der 3D-Flugkamera „Kamerapunkt setzen“ oder einen Punkt auf Kopfhöhe des gewählten Spielers anlegen. Je Szene wählt man Egoansicht oder einen Punkt, optional nur für die ersten Sekunden, danach Ego. Im Auftrag stehen dafür je Sequenz bis zu 12 `cuts` (`{tick, kind:"free", x, y, z, pitch, yaw}` oder `{tick, kind:"player"}`), ausschließlich als Zahlen.
+- Nach `csdm analyze` legt der Companion die Punkte in der Tabelle `cameras` seiner eigenen CS-Demo-Manager-Datenbank an (Kommentar `tecmon-companion`), CSDM springt in der Aufnahme per `spec_goto` hin. Nach der Aufnahme werden genau diese Einträge wieder gelöscht. Ohne verwaltete Installation werden Aufträge mit Punkten abgelehnt.
+- CSDM kennt nur harte Schnitte zwischen Punkten. Fließende Kamerafahrten sind noch nicht umgesetzt.
+
 ## Video-Branding ab 0.6
 
 Die Webseite exportiert die Optionen für Intro (3 Sekunden), Spielernamen, Wasserzeichen, Freitext und optionales Outro (2 Sekunden). Ein Spieler erhält „Spielername · HIGHLIGHTS“, mehrere Spieler „TEAM-HIGHLIGHTS“. Dekorative Zeichen werden für die Videoschrift bereinigt; originale Namen und Steam-IDs bleiben im Auftrag erhalten. Barlow Condensed unterstützt vor allem lateinische Namen; andere Schriftsysteme können Ersatzglyphen zeigen.

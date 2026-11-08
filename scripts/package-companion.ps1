@@ -16,6 +16,7 @@ Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/browser-bridge.mjs'
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/recording-engine.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/branding-assets.mjs'),(Join-Path $repo 'tools/cs2-companion/video-branding.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/lazy-engine.mjs') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/custom-cameras.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/update-handoff.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/browser-demo.mjs') -Destination $stage
 if ($NodeExe -or $NodeLicense) {
