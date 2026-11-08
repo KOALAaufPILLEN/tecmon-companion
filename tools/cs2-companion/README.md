@@ -1,6 +1,20 @@
-# TecMon Companion · Windows Setup 0.5.0
+# TecMon Companion · Windows Setup 0.6.0
 
-Für eine bestehende Installation die kleine **TecMon-Companion-Update-0.5.0.exe** aus dem GitHub-Release verwenden oder im Companion „Auf Updates prüfen“ wählen. Das Setup für neue Installationen kann mit den öffentlichen Build-Skripten erstellt werden; ein großer Setup-Download ist aktuell nicht im Release verfügbar. Steam und CS2 müssen installiert sein.
+## Video-Branding ab 0.6
+
+Die Webseite exportiert die Optionen für Intro (3 Sekunden), Spielernamen, Wasserzeichen, Freitext und optionales Outro (2 Sekunden). Ein Spieler erhält „Spielername · HIGHLIGHTS“, mehrere Spieler „TEAM-HIGHLIGHTS“. Dekorative Zeichen werden für die Videoschrift bereinigt; originale Namen und Steam-IDs bleiben im Auftrag erhalten. Barlow Condensed unterstützt vor allem lateinische Namen; andere Schriftsysteme können Ersatzglyphen zeigen.
+
+Der installierte Windows-Companion lädt beim ersten Branding-Auftrag das feste `TecMon-Branding-v1.json` aus Release v0.6.0. Es enthält TecMon-Logo, Barlow Condensed Bold und OFL-Lizenz. Paket- und Einzeldatei-SHA256 stehen fest im Code. Geänderte Downloads oder Cache-Dateien werden abgelehnt. URLs und angebliche Soll-Prüfsummen aus Aufträgen werden nicht verwendet. Das Paket liegt zusätzlich unter `branding/` als öffentliche Testfixture; `scripts/build-branding-pack.mjs` dokumentiert Quellen, Revisionen und Prüfsummen.
+
+Ein zufälliger privater Arbeitsordner enthält die benötigten Visuals und Texte. Der native Helfer öffnet vor FFmpeg die Eingabedateien mit `FileShare.Read`, prüft SHA256 über die geöffneten Handles und hält sie während des Renderns offen. Windows blockiert dadurch Schreiben, Löschen und Ersetzen. Steuerparameter kommen über die Standardeingabe aus dem Companion. Texte werden wörtlich als UTF-8 mit `drawtext expansion=none` verwendet. Temporäre Arbeitsdateien werden anschließend entfernt. Rohaufnahmen bleiben lokal erhalten; als Ergebnis wird ausschließlich die erfolgreich gebrandete MP4 angeboten.
+
+Diese Schutzkette verhindert beschädigte Downloads und Dateiaustausch während des Renderns. Sie ist kein Schutz vor jemandem, der den Companion-Code, dessen feste Prüfsummen oder den laufenden Prozess mit ausreichenden Rechten verändern kann.
+
+Die Webseite verlangt für aktiviertes Branding Companion 0.6+. Bei JSON-Import ebenfalls zuerst aktualisieren. Ältere Aufträge erhalten in 0.6 standardmäßig Branding mit Intro; alternativ ist Branding ausdrücklich abschaltbar. Der Quellmodus benötigt für Branding den nativen Windows-Helfer.
+
+Validierung: 25 Companion-Tests einschließlich verändertem Paket/Cache, Titelbildung, Dateireihenfolge, wörtlichen Texten, Cleanup und Abbruch vor CS2 bei Integritätsfehler. Ein Windows-Test blockiert echte Schreib- und Löschversuche und verhindert den Encoderstart nach einer Dateiveränderung. Echte FFmpeg-Tests mit vorher aufgenommenen CS2-Szenen erzeugten Single- und Team-Videos einschließlich Namenswechsel, Intro und optionalem Outro, auch in einem Umlautpfad.
+
+Für eine bestehende Installation die kleine **TecMon-Companion-Update-0.6.0.exe** aus dem GitHub-Release verwenden oder im Companion „Auf Updates prüfen“ wählen. Das Setup für neue Installationen kann mit den öffentlichen Build-Skripten erstellt werden; ein großer Setup-Download ist aktuell nicht im Release verfügbar. Steam und CS2 müssen installiert sein.
 
 ## Einrichten
 
@@ -42,7 +56,7 @@ Beim Update zuerst den laufenden Companion über „Companion beenden“ und die
 
 Im TecMon-Replay unter „In CS2 aufnehmen“ den Auftrag als `.tecmon.json` exportieren. Im Companion öffnen, Originaldemo mit „Demo wählen“ auswählen, CS2-Partie beenden und Aufnahme bestätigen. Danach die MP4 im Replay auswählen und mit Spielername/Freitext und Steam-Link veröffentlichen. Demos und Aufnahme bleiben lokal; der Companion erhält keine YouTube-Secrets.
 
-Version 0.5.0 überträgt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Originaldemo und Tickbereiche müssen zusammengehören. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demos verwenden, nicht mit Matchmaking verbinden; nach CS2-Updates kann eine neue HLAE-Version erforderlich sein.
+Version 0.6.0 überträgt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Originaldemo und Tickbereiche müssen zusammengehören. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demos verwenden, nicht mit Matchmaking verbinden; nach CS2-Updates kann eine neue HLAE-Version erforderlich sein.
 
 ## Entwickler
 
@@ -56,7 +70,7 @@ GitHub-Release: Das Kernpaket enthält Companion, Node.js, PostgreSQL und CS Dem
 
 ## Aktualisieren ohne Neuinstallation
 
-Für eine bestehende 0.3.1-Installation die kleine TecMon-Companion-Update-0.5.0.exe aus dem GitHub-Release verwenden. Vorher Companion und CS Demo Manager schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
+Für eine bestehende 0.3.1-Installation die kleine TecMon-Companion-Update-0.6.0.exe aus dem GitHub-Release verwenden. Vorher Companion und CS Demo Manager schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
 
 Ab 0.4: Im Companion Auf Updates prüfen und anschließend Update installieren wählen. Das Paket wird ausschließlich aus stabilen Releases des offiziellen Repositories bezogen. Größe und SHA256 werden vor dem Start geprüft. Nach dem Beenden des lokalen Servers übernimmt ein separater Update-Prozess und startet den Companion wieder. Änderungen an großen Drittanbieter-Tools können weiterhin einen gesonderten Tool-/Installer-Schritt erfordern.
 

@@ -139,7 +139,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.5.0"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.6.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -200,7 +200,40 @@ static class TecMon {
     string script = "Start-Sleep -Seconds 2; $target='"+literal+"'; $resolved=(Resolve-Path -LiteralPath $target -ErrorAction Stop).Path; if ($resolved -eq $target -and (Test-Path -LiteralPath (Join-Path $target 'tecmon-app.marker'))) { Remove-Item -LiteralPath $target -Recurse -Force }";
     Process.Start(Info("powershell.exe","-NoProfile","-EncodedCommand",Convert.ToBase64String(Encoding.Unicode.GetBytes(script))));
   }
+  public sealed class LockedFile { public string path { get; set; } public string sha256 { get; set; } }
+  public sealed class RenderRequest { public string exe { get; set; } public string cwd { get; set; } public string[] args { get; set; } public LockedFile[] files { get; set; } public int timeout { get; set; } }
+  public static int RenderLocked() {
+    string input; using(var reader=new StreamReader(Console.OpenStandardInput(),new UTF8Encoding(false),true)) input=reader.ReadToEnd();
+    if(input.Length>1048576) throw new Exception("Render request too large");
+    var request=Json.Deserialize<RenderRequest>(input);
+    if(request==null || request.files==null || request.files.Length>160 || request.args==null || request.args.Length>160 || !Path.IsPathRooted(request.exe) || Path.GetFileName(request.exe).ToLowerInvariant()!="ffmpeg.exe" || !Directory.Exists(request.cwd)) throw new Exception("Invalid render request");
+    var locks=new List<FileStream>();
+    try {
+      foreach(var file in request.files) {
+        if(!Path.IsPathRooted(file.path) || file.sha256==null || file.sha256.Length!=64) throw new Exception("Invalid render file");
+        // Deny writes and replacement throughout FFmpeg's use, including through another hard link.
+        var stream=new FileStream(file.path,FileMode.Open,FileAccess.Read,FileShare.Read); locks.Add(stream);
+        using(var hash=System.Security.Cryptography.SHA256.Create()) {
+          var actual=BitConverter.ToString(hash.ComputeHash(stream)).Replace("-","").ToLowerInvariant();
+          if(actual!=file.sha256) throw new Exception("Render file checksum mismatch: "+Path.GetFileName(file.path));
+        }
+        stream.Position=0;
+      }
+      var info=new ProcessStartInfo(request.exe,String.Join(" ",request.args.Select(Q))) { UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=request.cwd,RedirectStandardOutput=true,RedirectStandardError=true };
+      using(var child=Process.Start(info)) {
+        var stdout=child.StandardOutput.ReadToEndAsync(); var stderr=child.StandardError.ReadToEndAsync();
+        int timeout=Math.Max(1000,Math.Min(request.timeout,1800000));
+        if(!child.WaitForExit(timeout)) { child.Kill(); child.WaitForExit(); throw new Exception("Local render timed out"); }
+        Task.WaitAll(stdout,stderr);
+        Console.Out.Write(stdout.Result); Console.Error.Write(stderr.Result);
+        return child.ExitCode;
+      }
+    } finally {foreach(var stream in locks) stream.Dispose();}
+  }
   [STAThread] public static int Main(string[] args) {
+    if(args.Length > 0 && args[0] == "--render-locked") {
+      try { return RenderLocked(); } catch(Exception error) {Console.Error.WriteLine(error.Message); return 1;}
+    }
     Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
     try {
       if(args.Length > 0 && args[0] == "--private") { Private(args[1]); return 0; }
@@ -223,7 +256,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.5.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.6.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }

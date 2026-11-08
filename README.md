@@ -33,9 +33,9 @@ Siehe [BUILDING.md](BUILDING.md). Alle Launcher-, Installer- und Serverquellen s
 
 Siehe [Anleitung](tools/cs2-companion/README.md). Auftrag im TecMon-Replay als `.tecmon.json` exportieren, im Companion importieren, zugehörige Originaldemo auswählen und Aufnahme starten. Die fertige MP4 anschließend auf der Website auswählen.
 
-Version 0.5.0 unterstützt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demo-Aufnahmen einsetzen; Steam und CS2 werden nicht mitgeliefert.
+Version 0.6.0 unterstützt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demo-Aufnahmen einsetzen; Steam und CS2 werden nicht mitgeliefert.
 
-20 automatisierte Companion-Tests sind enthalten. Eine isolierte Windows-Einrichtung wurde mit PostgreSQL-Anmeldung, Sonderzeichen-Passwort, CSDM-Tabellenmigrationen, FFmpeg und nativem Launcher getestet. Diese Tests sind kein Nachweis einer vollständigen Aufnahme jeder Demo oder jeder CS2-Version. Ein realer Test auf CS2 1.41.9.6 erzeugte eine 2-Sekunden-MP4 sowie einen zusammengesetzten Clip aus zwei Spieleransichten mit dem korrigierten offiziellen CS2-Plugin.
+25 automatisierte Companion-Tests sind enthalten. Eine isolierte Windows-Einrichtung wurde mit PostgreSQL-Anmeldung, Sonderzeichen-Passwort, CSDM-Tabellenmigrationen, FFmpeg und nativem Launcher getestet. Diese Tests sind kein Nachweis einer vollständigen Aufnahme jeder Demo oder jeder CS2-Version. Ein realer Test auf CS2 1.41.9.6 erzeugte eine 2-Sekunden-MP4 sowie einen zusammengesetzten Clip aus zwei Spieleransichten mit dem korrigierten offiziellen CS2-Plugin.
 
 ## Lizenzen und Herkunft
 
@@ -53,3 +53,8 @@ Für bestehende Installationen gibt es im Release eine kleine Update-EXE. Sie ak
 
 
 Neu in 0.5: Sharecode-Feld im Website-Auftrag, direkte Verbindung zwischen TecMon und dem lokalen Companion, Download oder Download + CS2-Aufnahme von der Webseite, Rückgabe der MP4 und offizieller Plugin-Fix für neuere CS2-Versionen. [Verbindungsablauf und genaue Grenzen](tools/cs2-companion/README.md).
+
+
+## Video-Branding ab 0.6
+
+Intro, Spielernamen und Wasserzeichen werden lokal mit FFmpeg ergänzt; Freitext und optionales Outro kommen aus dem Website-Auftrag. Das separat geladene Branding-Paket wird gegen feste SHA256-Werte geprüft. Der native Helfer prüft und sperrt die Eingabedateien während des Renderns gegen Schreiben und Ersetzen. Details, Grenzen und Schriftlizenzen stehen in der [Companion-Anleitung](tools/cs2-companion/README.md). Der öffentliche Build enthält zusätzlich einen Windows-Test der tatsächlichen Dateisperren.

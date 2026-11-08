@@ -1,4 +1,7 @@
-TecMon Companion Setup 0.5.0 · Windows x64
+TecMon Companion Setup 0.6.0 · Windows x64
+
+Video-Branding: Barlow Condensed Bold, Copyright 2017 The Barlow Project Authors, SIL Open Font License 1.1. Die unveränderte Schrift und OFL.txt sind im separat geladenen Branding-Paket enthalten.
+Quelle: https://github.com/google/fonts/tree/89f5431ff0db41bd2fe3f7ba21a723a01622428b/ofl/barlowcondensed
 
 Dieses Setup enthält unveränderte Programmdateien folgender Projekte. Die Original-Lizenzdateien und Hinweise werden mit den Programmen im tools-Ordner installiert. Die Programme werden ausschließlich lokal ausgeführt. Steam und Counter-Strike 2 werden nicht mitgeliefert.
 

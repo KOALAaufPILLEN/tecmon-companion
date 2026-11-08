@@ -19,7 +19,7 @@ async function api(url, body) {
 }
 function notice(error) { $('notice').textContent = error.message || String(error); }
 function el(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; }
-const statuses = { ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER', downloading:'DEMO WIRD GELADEN' };
+const statuses = { preparing:'VISUALS WERDEN GEPRÜFT', branding:'VIDEO-BRANDING LÄUFT', ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER', downloading:'DEMO WIRD GELADEN' };
 async function refresh() {
   const state = await api('/api/state');
   const bridgeNext=JSON.stringify(state.bridge);
@@ -67,6 +67,7 @@ async function refresh() {
   for (const job of state.jobs) {
     const card = el('article', '', 'job'); const head = el('div', '', 'jobhead');
     head.append(el('h3', job.job.title), el('span', statuses[job.status], 'badge')); card.append(head);
+    if(job.job.branding?.enabled) card.append(el('p','TecMon-Branding aktiv · geprüfte Visuals · lokale Verarbeitung'));
     card.append(el('p', `${job.job.map} · ${job.job.sequences.length} Szenen · ${Math.round(job.job.sequences.reduce((n,s) => n+s.endTick-s.startTick,0)/job.job.tickRate)} Sekunden`));
     card.append(el('div', [...new Set(job.job.sequences.map(s => s.playerName))].join(' / '), 'sequence'));
     if (job.status === 'ready') {

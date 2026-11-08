@@ -10,6 +10,7 @@ import { createCompanion } from "../server.mjs";
 
 const job = {
   format: "tecmon-cs2-job",
+  branding:{enabled:false},
   version: 1,
   title: "Ace",
   map: "de_nuke",

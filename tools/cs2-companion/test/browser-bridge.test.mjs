@@ -11,6 +11,7 @@ const origin = "https://tecmon.online";
 const code = "CSGO-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA";
 const job = {
   format: "tecmon-cs2-job",
+  branding:{enabled:false},
   version: 1,
   shareCode: code,
   tickRate: 64,

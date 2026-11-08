@@ -10,6 +10,8 @@ import { fileURLToPath } from "node:url";
 import { validateJob, recordingConfig } from "./job.mjs";
 import { matchDownloadRequest } from "./share-code.mjs";
 import { ensureRecordingPlugin, recordingFailure } from "./recording-engine.mjs";
+import { loadBrandingPack } from "./branding-assets.mjs";
+import { renderBranding } from "./video-branding.mjs";
 import { createBrowserBridge } from "./browser-bridge.mjs";
 import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
@@ -81,6 +83,7 @@ export async function createCompanion({
   runProcess,
   installation = null,
   detectTools = detect,
+  loadAssets = loadBrandingPack,
 } = {}) {
   if (installation) dataDir = path.join(installation.dataDir, "Jobs");
   await mkdir(dataDir, { recursive: true });
@@ -147,6 +150,17 @@ export async function createCompanion({
     res.end(JSON.stringify(value));
   };
   async function record(job, input) {
+    const branding = job.job.branding.enabled;
+    let assets;
+    if (branding) {
+      if (!installation)
+        throw new Error(
+          "Video-Branding benötigt den installierten Windows-Companion 0.6 oder neuer. Alternativ Branding im Auftrag deaktivieren.",
+        );
+      job.status = "preparing";
+      job.log += "\nVersionierte TecMon-Visuals laden und feste SHA-256-Prüfsummen prüfen …";
+      assets = await loadAssets(path.join(installation.profileDir, "Branding"));
+    }
     if (installation)
       await ensureRecordingPlugin(installation, (message) => {
         job.log += `\n${message}`;
@@ -173,6 +187,7 @@ export async function createCompanion({
     await mkdir(output, { recursive: true });
     const config = path.join(output, "recording.json");
     const recording = recordingConfig(job.job, demo, output, input.quality);
+    if (branding) recording.concatenateSequences = false; // Keep exact scene boundaries for player labels.
     if (installation)
       recording.ffmpegSettings = {
         ...recording.ffmpegSettings,
@@ -197,7 +212,20 @@ export async function createCompanion({
       }
       throw new Error(recordingFailure(error, pluginLog));
     }
-    job.files = await mp4s(output);
+    if (branding) {
+      job.status = "branding";
+      const final = await renderBranding({
+        job: job.job,
+        directory: output,
+        assets,
+        ffmpeg: installation.ffmpegExe,
+        launcher: path.join(root, "TecMon Companion.exe"),
+        progress: (message) => {
+          job.log += `\n${message}`;
+        },
+      });
+      job.files = [path.relative(output, final)];
+    } else job.files = await mp4s(output);
     if (!job.files.length) throw new Error("Keine MP4 erzeugt. Protokoll im Companion prüfen.");
     job.status = "done";
   }
@@ -268,7 +296,11 @@ export async function createCompanion({
     const owner = bridge.authorize(source, req.headers["x-tecmon-bridge-token"]);
     if (!owner) return json(res, 401, { error: "Webseite zuerst im Companion verbinden." });
     if (req.method === "GET" && url.pathname === "/bridge/state")
-      return json(res, 200, { version: VERSION, active });
+      return json(res, 200, {
+        version: VERSION,
+        active,
+        capabilities: installation ? ["video-branding-v1"] : [],
+      });
     if (req.method === "GET" && ["/bridge/job", "/bridge/video"].includes(url.pathname)) {
       const job = jobs.get(url.searchParams.get("id"));
       if (!job || job.owner !== owner) return json(res, 404, { error: "Auftrag nicht vorhanden." });

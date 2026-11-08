@@ -10,6 +10,16 @@ export function validateJob(value) {
     fail();
   const text = (v, max) =>
     typeof v === "string" ? v.replace(/[\x00-\x1f<>]/g, "").slice(0, max) : "";
+  const style = value.branding ?? {};
+  if (!style || typeof style !== "object" || Array.isArray(style)) fail();
+  for (const field of ["enabled", "intro", "outro"])
+    if (style[field] !== undefined && typeof style[field] !== "boolean") fail();
+  const branding = {
+    enabled: style.enabled !== false,
+    intro: style.intro !== false,
+    outro: style.outro === true,
+    subtitle: text(style.subtitle, 100),
+  };
   let ticks = 0;
   const sequences = value.sequences.map((s) => {
     if (
@@ -42,6 +52,7 @@ export function validateJob(value) {
     tickRate: value.tickRate,
     ...(value.shareCode === undefined ? {} : { shareCode: shareCode(value.shareCode) }),
     sequences,
+    branding,
   };
 }
 

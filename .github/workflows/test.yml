@@ -34,3 +34,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/test-companion-update.ps1
+
+      - name: Verify render file locks and checksum rejection
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/test-companion-render-lock.ps1

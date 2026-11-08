@@ -40,3 +40,8 @@ Die Updateprüfung verwendet ausschließlich stabile Releases von KOALAaufPILLEN
 Fest erlaubte TecMon-Origins, ausdrückliche lokale Freigabe per Zahlencode (fünf Minuten gültig), origin-gebundene Tokens und eigene Auftragsrechte. Browser-Tokens bleiben lokal im Browser; Companion persistiert ausschließlich Hashes und Origin in `bridge-devices.json` im privaten Profil. Verbindungen lassen sich lokal widerrufen. Keine frei wählbaren Pfade, Executables, Datenbankbefehle oder Updates über die Browser-Bridge. Download und Aufnahme teilen eine exklusive Sperre. Kein pauschales CORS für Preview-Domains.
 
 Der verwaltete Recorder lädt für das bekannte originale CSDM-3.20.1-Plugin den offiziellen Upstream-Build mit Fix #1483. Unveränderliche Quellrevision, URL und SHA256 stehen im öffentlich prüfbaren `recording-engine.mjs`; ein unbekanntes vorhandenes Plugin wird nicht überschrieben. Der Dienst führt keine fremden Downloads aus Website-Aufträgen aus.
+
+
+## Branding-Integrität ab 0.6
+
+Feste Paket- und Datei-SHA256-Werte im Programmcode, fester Release-Download und Ablehnung manipulierter Cache-Dateien. Aufträge dürfen keine Asset-URLs, Filter oder Soll-Prüfsummen vorgeben. Private, zufällige Arbeitsordner; UTF-8-Texte mit deaktivierter FFmpeg-Textexpansion. Der native Helfer erhält seine Parameter über stdin, öffnet Eingaben mit FileShare.Read, prüft ihre Hashes und hält die Handles während FFmpeg offen. Windows blockiert dadurch Schreiben, Löschen und Ersetzen. Fehler liefern kein ungebrandetes Video als vermeintlich fertiges Ergebnis aus. Wer den Programmcode oder den Prozess mit ausreichenden Rechten verändert, kann diese Schutzkette umgehen; dies ist kein Schutz vor einem kompromittierten Konto oder Administrator.
