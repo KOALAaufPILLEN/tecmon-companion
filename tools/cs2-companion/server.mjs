@@ -7,7 +7,8 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { validateJob, recordingConfig } from "./job.mjs";
+import { validateJob, recordingConfig, jobCameras } from "./job.mjs";
+import { cameraSql, cleanupSql, runCameraSql } from "./custom-cameras.mjs";
 import { matchDownloadRequest } from "./share-code.mjs";
 import { ensureRecordingPlugin, recordingFailure } from "./recording-engine.mjs";
 import { updateHandoff } from "./update-handoff.mjs";
@@ -89,6 +90,7 @@ export async function createCompanion({
   loadAssets = loadBrandingPack,
   startDatabase = ensureManagedDatabase,
   stopDatabase = stopManagedDatabase,
+  runSql = (sql) => runCameraSql(installation, sql, runTool),
   onUpdateExit,
 } = {}) {
   if (installation) dataDir = path.join(installation.dataDir, "Jobs");
@@ -192,7 +194,10 @@ export async function createCompanion({
     const output = path.join(dataDir, job.id);
     await mkdir(output, { recursive: true });
     const config = path.join(output, "recording.json");
-    const recording = recordingConfig(job.job, demo, output, input.quality);
+    const cameras = jobCameras(job.job, randomUUID);
+    if (cameras.length && !installation)
+      throw new Error("Freecam-Kamerapunkte benötigen den installierten Windows-Companion.");
+    const recording = recordingConfig(job.job, demo, output, input.quality, cameras);
     if (branding) recording.concatenateSequences = false; // Keep exact scene boundaries for player labels.
     if (installation)
       recording.ffmpegSettings = {
@@ -206,6 +211,11 @@ export async function createCompanion({
     job.output = output;
     await prepareEngine();
     await run(exe, ["analyze", demo], job);
+    // Nach der Analyse gibt es die CSDM-Tabellen sicher; die Punkte gelten nur fuer diesen Auftrag.
+    if (cameras.length) {
+      job.log += `\n${cameras.length} Freecam-Kamerapunkt(e) in CS Demo Manager anlegen …`;
+      await runSql(cameraSql(job.job.map, cameras));
+    }
     job.status = "recording";
     try {
       await run(exe, ["video", "--config-file", config], job);
@@ -218,6 +228,8 @@ export async function createCompanion({
         /* optional diagnostics */
       }
       throw new Error(recordingFailure(error, pluginLog));
+    } finally {
+      if (cameras.length) await runSql(cleanupSql()).catch(() => {});
     }
     if (branding) {
       job.status = "branding";
@@ -306,7 +318,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1",...(installation ? ["video-branding-v1"] : [])],
+        capabilities: ["browser-demo-v1","xray-v1",...(installation ? ["video-branding-v1","camera-points-v1"] : [])],
       });
     if(req.method === "POST" && url.pathname === "/bridge/demo/start"){
       if(active || jobs.size>=100)throw new Error("Zuerst den laufenden Auftrag abschließen.");

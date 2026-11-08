@@ -1,18 +1,68 @@
 name: Windows release installer
+# Baut Setup-EXE und Update-EXE und veröffentlicht sie als GitHub-Release.
+# Automatisch: bei jedem Push auf main, wenn package.json eine Version trägt,
+# zu der es noch kein Tag gibt (Version vorher mit `node scripts/version.mjs set x.y.z` erhöhen).
+# Manuell: ein bestehendes Tag neu bauen und dessen Release-Dateien ersetzen.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to build
-        required: true
-        default: v0.10.0
+        description: Bestehendes Tag neu bauen (leer = aktuelle Version von main, falls noch nicht veröffentlicht)
+        required: false
+        default: ''
 permissions:
   contents: read
 concurrency:
   group: companion-release-installer
   cancel-in-progress: false
 jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      tag: ${{ steps.plan.outputs.tag }}
+      ref: ${{ steps.plan.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Decide whether a new release is needed
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          INPUT_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node scripts/version.mjs check)
+          if [[ -n "${INPUT_TAG:-}" ]]; then
+            [[ "$INPUT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Ungültiges Tag $INPUT_TAG"; exit 1; }
+            git ls-remote --exit-code --tags origin "refs/tags/$INPUT_TAG" >/dev/null || { echo "Tag $INPUT_TAG existiert nicht"; exit 1; }
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+            echo "ref=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+            echo "Baue bestehendes Tag $INPUT_TAG neu."
+            exit 0
+          fi
+          tag="v$version"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "$tag ist bereits veröffentlicht, nichts zu tun."
+            exit 0
+          fi
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "ref=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "Neue Version $tag aus $GITHUB_SHA."
   build:
+    needs: detect
+    if: needs.detect.outputs.release == 'true'
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
@@ -23,12 +73,12 @@ jobs:
       - name: Validate release tag
         shell: pwsh
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.detect.outputs.tag }}
         run: |
           if($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$'){throw 'Invalid release tag'}
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.detect.outputs.ref }}
           path: source
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -44,7 +94,7 @@ jobs:
         working-directory: source
         shell: pwsh
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.detect.outputs.tag }}
         run: |
           $package=Get-Content package.json -Raw|ConvertFrom-Json
           if(('v'+$package.version) -ne $env:RELEASE_TAG){throw 'Tag/version mismatch'}
@@ -66,7 +116,7 @@ jobs:
       - name: Build setup and updater from the release source
         shell: pwsh
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.detect.outputs.tag }}
         run: |
           $base=$PWD.Path
           & ./source/scripts/build-companion-installer.ps1 -DependenciesCache "$base/cache" -CsDmSource "$base/csdm-source" -NodeFolder "$base/runtime/node-v26.13.0-win-x64" -BuildDirectory "$base/build" -OutputDirectory "$base/dist" -DownloadVideoTools
@@ -74,7 +124,7 @@ jobs:
       - name: Verify pristine payload and isolated first installation
         shell: pwsh
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.detect.outputs.tag }}
         run: |
           node ./build-tools/scripts/test-release-installer.mjs "dist/TecMon-Companion-Setup-$($env:RELEASE_TAG.Substring(1)).exe" "$env:RUNNER_TEMP/tecmon-installation-test" $env:RELEASE_TAG.Substring(1) "source/tools/cs2-companion/branding/TecMon-Branding-v2.json"
           if($LASTEXITCODE -ne 0){throw 'Installer smoke test failed'}
@@ -89,7 +139,7 @@ jobs:
           path: dist/*
           retention-days: 7
   publish:
-    needs: build
+    needs: [detect, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -98,17 +148,25 @@ jobs:
         with:
           name: verified-installer
           path: dist
-      - name: Add verified installer to the existing public release
+      - name: Publish verified setup and update
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.detect.outputs.tag }}
+          RELEASE_REF: ${{ needs.detect.outputs.ref }}
         shell: bash
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          gh release view "$RELEASE_TAG" --json tagName --jq '.tagName' | grep -Fxq "$RELEASE_TAG"
           (cd dist && sha256sum --check *.sha256)
           (cd dist && sha256sum --check SHA256SUMS.txt)
-          gh release upload "$RELEASE_TAG" dist/*
-          gh release edit "$RELEASE_TAG" --draft=false --latest
+          version="${RELEASE_TAG#v}"
+          for name in "TecMon-Companion-Setup-$version.exe" "TecMon-Companion-Update-$version.exe" TecMon-Companion-Update.json; do
+            [[ -s "dist/$name" ]] || { echo "$name fehlt"; exit 1; }
+          done
+          if ! gh release view "$RELEASE_TAG" --json tagName >/dev/null 2>&1; then
+            # Erst als Entwurf anlegen: Der Companion sieht das Update erst, wenn alle Dateien hochgeladen sind.
+            gh release create "$RELEASE_TAG" --draft --target "$RELEASE_REF" --title "TecMon Companion $version" --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" dist/* --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest

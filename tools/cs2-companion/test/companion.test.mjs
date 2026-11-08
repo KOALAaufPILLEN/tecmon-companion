@@ -33,6 +33,9 @@ test("untrusted jobs cannot set executable paths or game/ffmpeg commands", () =>
   assert.equal(config.sequences[0].playerCameras[0].tick, 128);
   assert.equal(config.sequences[0].playerCameras[0].playerSteamId, job.sequences[0].steamId);
   assert.equal(config.sequences[0].playerVoicesEnabled, false);
+  assert.equal(config.sequences[0].showXRay, true, "X-Ray ist Standard");
+  assert.equal(recordingConfig({ ...job, xray: false }, "d.dem", "o", "720p").sequences[0].showXRay, false);
+  assert.throws(() => validateJob({ ...job, xray: "ja" }));
 });
 test("reject invalid Steam IDs, ticks, excessive duration and schema versions", () => {
   for (const patch of [

@@ -89,7 +89,7 @@ Native Holo-Sprechblase statt Windows-Rahmen: Spitze zur Figur, eigener ziehbare
 Vollständige Browser-Aufnahme mit Sharecode oder direkt übergebener Originaldemo: keine manuelle Pfad-/JSON-Übergabe nötig. Validierte, besitzergebundene Loopback-Übertragung in begrenzten Stücken. Download/Übertragung, Aufnahme, Branding und fertige MP4 werden auf der Webseite gesteuert. Details in der Anleitung.
 
 
-## Neu in 0.9.1
+## Neu in 0.10.0
 
 Vollständiger Windows-Installer und getrenntes Programm-Update im Release. Der FFmpeg-Download verwendet einen festen Upstream-Release mit SHA256 anstelle des täglich ersetzten latest-Links. GitHub prüft eine komplette isolierte Neuinstallation vor dem Upload.
 
