@@ -1,5 +1,7 @@
 # Windows-Build aus Quellcode
 
+Cyberpunk-Grafiken ab 0.10: `npm ci` und `node scripts/build-cyber-branding.mjs dist` erzeugen `TecMon-Branding-v2.json` aus den eigenen SVGs und dem unveränderten, geprüften Logo-/Schriftpaket v1. Sharp 0.35.5 ist ausschließlich eine Build-Abhängigkeit. Das veröffentlichte v2-Paket hat SHA256 `60a13b041dad4d990b38f048c2c9963269b1945d22d594613b49602719753eb2`. Die Runtime benötigt kein Sharp. Der Release-Workflow prüft das mitgelieferte Paket und rendert damit drei synthetische Szenen durch den nativen Dateisperren-Helfer: ein Spielerwechsel, eine wiederholte Perspektive ohne weiteren Stinger, unveränderte Dauer aller Szenen.
+
 Voraussetzungen: Windows x64, PowerShell, Git, Node.js >=24 und der Windows-.NET-Framework-C#-Compiler unter `%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe`.
 
 1. `npm ci` und `npm test` ausführen.
@@ -21,7 +23,7 @@ Der Build lädt fehlende Pakete anhand von `tools/cs2-companion/windows/dependen
 
 Der BuildDirectory darf keine bereits eingerichtete Installation enthalten. Keine eigenen `installation.json`, `settings.json`, Datenbanken oder Kennwörter in den Build kopieren. Laufzeitkonfiguration entsteht erst nach dem Start des Installers beim Benutzer.
 
-Ausgabe: `dist/TecMon-Companion-Setup-0.9.1.exe` und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
+Ausgabe: `dist/TecMon-Companion-Setup-0.10.0.exe` und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
 
 Nur den nativen Launcher zu prüfen erfordert keine Drittanbieter-Downloads: `.github/workflows/test.yml` dokumentiert die Compilerparameter und führt `--self-test` aus. Dieser Selbsttest prüft nicht die vollständige Installation.
 
