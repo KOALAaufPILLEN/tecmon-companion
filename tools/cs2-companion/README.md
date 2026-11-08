@@ -119,7 +119,7 @@ Das Einstellungsfenster verwendet Microsoft WebView2 für die vorhandene lokale 
 
 WebView2 ist auf die lokale Companion-Adresse beschränkt. Externe zugelassene HTTPS-Links öffnen den Standardbrowser; andere Navigation und Berechtigungsanfragen werden abgelehnt. Es gibt keine WebView-Hostobjekte, kein Chat-LLM, keine Bildschirmaufzeichnung oder globalen Maus-/Tastatur-Hooks. Verschieben wird nur während eines Ziehens der Figur verarbeitet.
 
-„Companion beenden“ wartet auf den Abschluss aktiver Aufträge. Das Schließen des Einstellungsfensters klappt es nur ein. Ein gestoppter lokaler Dienst beendet die Desktopfigur ebenfalls; Updates warten beim Ersetzen noch verwendeter Programmdateien kurz auf dieses Ende.
+Während einer Aufnahme oder eines Downloads bleibt die Figur sichtbar, liegt aber hinter CS2 und bewegt sich nicht; das Tray-Symbol zeigt „Aufnahme läuft“. Die Figur beendet sich nur, wenn der lokale Dienst nicht mehr erreichbar ist, nicht schon, wenn er während der Aufnahme langsam antwortet. „Companion beenden“ wartet auf den Abschluss aktiver Aufträge. Das Schließen des Einstellungsfensters klappt es nur ein. Ein gestoppter lokaler Dienst beendet die Desktopfigur ebenfalls; Updates warten beim Ersetzen noch verwendeter Programmdateien kurz auf dieses Ende.
 
 ## Holo-Sprechblase (0.8.1)
 
