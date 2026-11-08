@@ -3,6 +3,7 @@ import net from "node:net";
 import { readFile, writeFile, mkdir, access, unlink, readdir } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { ensureVideoTools } from "./download-tools.mjs";
 
 export async function readInstallation(root) {
   try {
@@ -158,7 +159,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     );
   const config = previous || {
     format: "tecmon-installation-v1",
-    version: "0.3.1",
+    version: "0.4.0",
     installationId: randomUUID(),
     dataDir: options.dataDir,
     clusterDir: path.join(privateDir, "postgres", "data"),
@@ -173,6 +174,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     cs2Exe: options.cs2Exe || "",
   };
   if (!config.installationId) config.installationId = randomUUID();
+  await ensureVideoTools(root, runTool, progress);
   for (const exe of [
     config.csdmExe,
     config.hlaeExe,

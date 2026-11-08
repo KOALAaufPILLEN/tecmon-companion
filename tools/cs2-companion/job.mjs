@@ -1,3 +1,4 @@
+import { shareCode } from "./share-code.mjs";
 /** Versioned, data-only exchange format. Never accept game commands or paths here. */
 export function validateJob(value) {
   const fail = () => {
@@ -39,6 +40,7 @@ export function validateJob(value) {
     title: text(value.title, 100) || "Highlights",
     map: text(value.map, 64),
     tickRate: value.tickRate,
+    ...(value.shareCode === undefined ? {} : { shareCode: shareCode(value.shareCode) }),
     sequences,
   };
 }

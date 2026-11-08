@@ -26,6 +26,10 @@ Der Datenbereich `<gewählter Datenordner>/TecMon-Private` wird über Windows-AC
 
 Die Node-Laufzeit verwendet nur eingebaute Module. Build und Windows-Paket greifen auf externe Tools zu. Paketversionen und Hashes stehen im Manifest; die Build-Anleitung beschreibt zusätzlich Node und 7-Zip. Ein SHA256-Abgleich mit einem im selben Repository gespeicherten Wert schützt nicht vor einem kompromittierten Repository. Installer und EXE sind derzeit nicht digital signiert.
 
-Bekannte Einschränkung von 0.3.1: Nach einer unterbrochenen Installation kann der private TecMon-PostgreSQL-Prozess DLLs sperren. Vor erneutem Entpacken muss genau dieser Prozess über `pg_ctl stop` für den eigenen TecMon-Cluster sauber beendet werden. Keine fremden PostgreSQL-Prozesse pauschal beenden. Der Installer übernimmt das Beenden vor dem Entpacken derzeit nicht automatisch.
+Bekannte Einschränkung von 0.3.1: Nach einer unterbrochenen Installation kann der private TecMon-PostgreSQL-Prozess DLLs sperren. Vor erneutem Entpacken muss genau dieser Prozess über `pg_ctl stop` für den eigenen TecMon-Cluster sauber beendet werden. Keine fremden PostgreSQL-Prozesse pauschal beenden. Seit 0.4 prüft der Installer vor dem Entpacken die verwalteten Datenbankpfade und beendet einen zurückgebliebenen eigenen Cluster sauber. Einen noch geöffneten Companion und CS Demo Manager vorher selbst schließen.
 
 Automatisierte Tests und Secret-Scans sind Prüfungen mit begrenzter Abdeckung. Es wurde kein unabhängiges Sicherheitsaudit durchgeführt und keine Fehlerfreiheit zugesichert.
+
+## Programm-Updates ab 0.4
+
+Die Updateprüfung verwendet ausschließlich stabile Releases von KOALAaufPILLEN/tecmon-companion. Version, Asset-Pfad, Größe (maximal 20 MiB) und SHA256 werden vor dem Start geprüft. Ein zweiter Klick bestätigt die Installation. Der native Helfer wartet auf das Ende des alten Servers und akzeptiert nur Programmdateien: insbesondere keine Runtime-/Tool-Verzeichnisse oder installation.json. Bestehende Verzeichnisverknüpfungen werden abgelehnt; identische Dateien bleiben unverändert. Die Release-Metadaten und das Paket liegen im gleichen GitHub-Konto: der Hash schützt gegen beschädigte Downloads, nicht gegen ein kompromittiertes Maintainer-Konto. Updates sind derzeit nicht zusätzlich digital signiert.

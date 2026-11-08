@@ -63,6 +63,72 @@ static class TecMon {
     }
     File.WriteAllText(Path.Combine(target, "tecmon-app.marker"), "TecMon Companion 0.3\r\n");
   }
+  public static void PrepareUpdate(string target) {
+    target=Path.GetFullPath(target).TrimEnd('\\');
+    if(!File.Exists(Path.Combine(target,"tecmon-app.marker"))) return;
+    var file=Path.Combine(target,"installation.json");
+    if(!File.Exists(file)) file=Path.Combine(target,"installation.pending.json");
+    if(!File.Exists(file)) return;
+    var config=Json.Deserialize<Dictionary<string,object>>(File.ReadAllText(file));
+    if(Convert.ToString(config["format"])!="tecmon-installation-v1") throw new Exception("Unbekannte TecMon-Installation.");
+    var data=Path.GetFullPath(Convert.ToString(config["dataDir"]));
+    var cluster=Path.GetFullPath(Convert.ToString(config["clusterDir"]));
+    var bin=Path.GetFullPath(Convert.ToString(config["postgresBin"]));
+    if(!bin.Equals(Path.Combine(target,@"tools\postgresql\bin"),StringComparison.OrdinalIgnoreCase) ||
+       !cluster.Equals(Path.Combine(data,@"TecMon-Private\postgres\data"),StringComparison.OrdinalIgnoreCase) ||
+       !File.Exists(Path.Combine(data,@"TecMon-Private\tecmon-data.marker")))
+      throw new Exception("Datenbankpfade entsprechen keiner verwalteten TecMon-Installation.");
+    if(!File.Exists(Path.Combine(cluster,"PG_VERSION"))) return;
+    if(Probe(config.ContainsKey("installationId") ? Convert.ToString(config["installationId"]) : ""))
+      throw new Exception("Bitte den laufenden Companion zuerst über 'Companion beenden' schließen. Danach Setup erneut starten.");
+    var status=Info(Path.Combine(bin,"pg_ctl.exe"),"status","-D",cluster); status.WorkingDirectory=target;
+    using(var check=Process.Start(status)) {
+      if(!check.WaitForExit(10000)) throw new Exception("Datenbankstatus konnte nicht geprüft werden.");
+      if(check.ExitCode==3) return;
+      if(check.ExitCode!=0) throw new Exception("Datenbankstatus konnte nicht geprüft werden. CS Demo Manager schließen und erneut versuchen.");
+    }
+    var stop=Info(Path.Combine(bin,"pg_ctl.exe"),"stop","-D",cluster,"-m","fast","-w","-t","30"); stop.WorkingDirectory=target;
+    using(var child=Process.Start(stop)) {
+      if(!child.WaitForExit(40000) || child.ExitCode!=0) throw new Exception("Private TecMon-Datenbank konnte nicht sauber beendet werden. Bitte CS Demo Manager schließen und erneut versuchen.");
+    }
+  }
+  public static void ApplyUpdate(string target, string parent, bool launch=true) {
+    target=Path.GetFullPath(target).TrimEnd('\\');
+    if(!File.Exists(Path.Combine(target,"tecmon-app.marker")) || !File.Exists(Path.Combine(target,"installation.json")))
+      throw new Exception("Bitte den eingerichteten TecMon-Programmordner auswählen. Das Update installiert keine neue Datenbank.");
+    int parentId;
+    if(Int32.TryParse(parent,out parentId)) {
+      try { using(var process=Process.GetProcessById(parentId)) if(!process.WaitForExit(60000)) throw new Exception("Companion konnte für das Update nicht beendet werden."); }
+      catch(ArgumentException) { /* Process already exited. */ }
+    }
+    PrepareUpdate(target);
+    using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("TecMonUpdate")) {
+      if(stream==null) throw new Exception("Update-Paket fehlt.");
+      using(var zip=new ZipArchive(stream,ZipArchiveMode.Read)) {
+        if(zip.Entries.Count>200 || zip.Entries.Sum(e=>e.Length)>20*1024*1024) throw new Exception("Update-Paket zu groß.");
+        foreach(var entry in zip.Entries) {
+          string relative=entry.FullName.Replace('\\','/');
+          bool allowed=relative.StartsWith("public/",StringComparison.Ordinal) || (!relative.Contains("/") &&
+            (relative.EndsWith(".mjs",StringComparison.Ordinal) || new [] {"TecMon Companion.exe","README.md","dependency-manifest.json","csdm-defaults.json","THIRD-PARTY-NOTICES.txt","unpack-tools.ps1"}.Contains(relative)));
+          string full=Path.GetFullPath(Path.Combine(target,relative.Replace('/','\\')));
+          if(!allowed || !full.StartsWith(target+"\\",StringComparison.OrdinalIgnoreCase) || relative.Contains("..")) throw new Exception("Unzulässiger Update-Pfad.");
+          var directory=Path.GetDirectoryName(full);
+          for(var check=directory; check.Length>target.Length; check=Path.GetDirectoryName(check))
+            if(Directory.Exists(check) && (File.GetAttributes(check)&FileAttributes.ReparsePoint)!=0) throw new Exception("Update-Ziel enthält eine Verknüpfung.");
+          if(File.Exists(full) && (File.GetAttributes(full)&FileAttributes.ReparsePoint)!=0) throw new Exception("Update-Ziel enthält eine Verknüpfung.");
+          if(relative.EndsWith("/")) {Directory.CreateDirectory(full);continue;}
+          using(var contents=new MemoryStream()) {
+            using(var input=entry.Open()) input.CopyTo(contents);
+            var bytes=contents.ToArray();
+            if(File.Exists(full)) using(var sha=System.Security.Cryptography.SHA256.Create())
+              if(sha.ComputeHash(File.ReadAllBytes(full)).SequenceEqual(sha.ComputeHash(bytes))) continue;
+            Directory.CreateDirectory(directory); File.WriteAllBytes(full,bytes);
+          }
+        }
+      }
+    }
+    if(launch) {Root=target; Launch();}
+  }
   public static void Shortcut(string file, string target) {
     Type type = Type.GetTypeFromProgID("WScript.Shell"); dynamic shell = Activator.CreateInstance(type);
     dynamic link = shell.CreateShortcut(file); link.TargetPath = target; link.WorkingDirectory = Path.GetDirectoryName(target); link.IconLocation = target + ",0"; link.Save();
@@ -73,7 +139,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.3.1"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.4.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -139,6 +205,9 @@ static class TecMon {
     try {
       if(args.Length > 0 && args[0] == "--private") { Private(args[1]); return 0; }
       if(args.Length > 0 && args[0] == "--extract-test") { Extract(args[1]); return 0; }
+      if(args.Length > 0 && args[0] == "--prepare-update-test") { PrepareUpdate(args[1]); return 0; }
+      if(args.Length > 0 && args[0] == "--apply-update") { ApplyUpdate(args[1],args.Length>2 ? args[2] : ""); return 0; }
+      if(args.Length > 0 && args[0] == "--apply-update-test") { ApplyUpdate(args[1],"",false); return 0; }
       if(args.Length > 0 && args[0] == "--self-test") {
         if(Q("a b") != "\"a b\"") throw new Exception("Argument quoting failed");
         Console.WriteLine("TecMon native launcher OK"); return 0;
@@ -150,6 +219,13 @@ static class TecMon {
         Console.WriteLine(Json.Serialize(new { path=selected })); return 0;
       }
       if(args.Length > 0 && args[0] == "--uninstall") { Uninstall(); return 0; }
+      if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonUpdate")) {
+        string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
+        using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
+        if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
+        if(MessageBox.Show("TecMon Companion auf 0.4.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        return 0;
+      }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
       Launch(); return 0;
     } catch(Exception error) { MessageBox.Show(error.Message,"TecMon",MessageBoxButtons.OK,MessageBoxIcon.Error); return 1; }
@@ -160,10 +236,11 @@ class SetupWindow : Form {
   TextBox app = new TextBox(), data = new TextBox(), demo = new TextBox(), game = new TextBox(), password = new TextBox(), confirm = new TextBox(), log = new TextBox();
   CheckBox accept = new CheckBox(); Button install = new Button(); ProgressBar progress = new ProgressBar(); bool busy=false, complete=false;
   public SetupWindow() {
+    Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
     Text="TecMon Companion · Installation"; Size=new Size(850,780); MinimumSize=new Size(850,780); StartPosition=FormStartPosition.CenterScreen; BackColor=TecMon.Background; ForeColor=Color.White; Font=new Font("Segoe UI",10); AutoScaleMode=AutoScaleMode.Dpi;
     var title=new Label { Text="TECMON  /  COMPANION SETUP", Left=32, Top=24, Width=740, Height=42, ForeColor=TecMon.Gold, Font=new Font("Segoe UI",23,FontStyle.Bold) }; Controls.Add(title);
     Controls.Add(new Label { Text="Ein Installer. Dein lokales CS2-Aufnahme-Studio.", Left=34,Top=75,Width=740,Height=25,ForeColor=TecMon.Violet });
-    Controls.Add(new Label { Text="Enthalten: Companion, PostgreSQL 18, CS Demo Manager, HLAE und FFmpeg.\nSteam und CS2 müssen auf deinem PC installiert sein. Die Einrichtung benötigt ca. 2 GB freien Speicher.", Left=34,Top=111,Width=750,Height=48 });
+    Controls.Add(new Label { Text="Companion, PostgreSQL 18, CS Demo Manager. HLAE / FFmpeg ggf. per geprüftem Download.\nSteam und CS2 müssen auf deinem PC installiert sein. Die Einrichtung benötigt ca. 2 GB freien Speicher.", Left=34,Top=111,Width=750,Height=48 });
     app.Text=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs","TecMon Companion");
     data.Text=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TecMon","Data");
     game.Text=TecMon.DetectGame();
@@ -208,6 +285,7 @@ class SetupWindow : Form {
     try {
       await Task.Run(()=> {
         Action<string> report=message=>BeginInvoke((Action)(()=>log.AppendText(Environment.NewLine+message)));
+        report("Vorhandene TecMon-Installation prüfen und private Datenbank sauber beenden …"); TecMon.PrepareUpdate(target);
         report("Programmdateien und alle Tools entpacken …"); TecMon.Extract(target);
         report("Windows-Laufzeit prüfen …"); TecMon.EnsureRuntime(target);
         var info=TecMon.Info(Path.Combine(target,"runtime","node.exe"),Path.Combine(target,"install-backend.mjs")); info.WorkingDirectory=target;

@@ -8,6 +8,9 @@ import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { validateJob, recordingConfig } from "./job.mjs";
+import { matchDownloadRequest } from "./share-code.mjs";
+import { downloadDemo } from "./demo-download.mjs";
+import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { checkPostgres, postgresEnvironment } from "./postgresql.mjs";
 import {
   readInstallation,
@@ -80,6 +83,7 @@ export async function createCompanion({
   await mkdir(dataDir, { recursive: true });
   const token = randomBytes(32).toString("hex");
   const jobs = new Map();
+  const downloads = new Map();
   let active = false;
   const detected = await detect();
   if (installation) {
@@ -157,7 +161,7 @@ export async function createCompanion({
       if (req.method === "GET" && url.pathname === "/api/health")
         return json(res, 200, {
           app: "tecmon-companion",
-          version: "0.3.1",
+          version: "0.4.0",
           instanceId: installation?.installationId || null,
         });
       const assets = {
@@ -165,6 +169,7 @@ export async function createCompanion({
         "/app.js": ["app.js", "text/javascript; charset=utf-8"],
         "/style.css": ["style.css", "text/css; charset=utf-8"],
         "/logo.webp": ["logo.webp", "image/webp"],
+        "/favicon.ico": ["favicon.ico", "image/x-icon"],
       };
       if (req.method === "GET" && assets[url.pathname]) {
         const [file, mime] = assets[url.pathname];
@@ -181,6 +186,7 @@ export async function createCompanion({
           postgres,
           managed: !!installation,
           active,
+          downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
         });
@@ -209,6 +215,51 @@ export async function createCompanion({
         if (body.length > 65536) throw new Error("Auftrag zu groß.");
       }
       const input = JSON.parse(body);
+      if (url.pathname === "/api/update/check") return json(res, 200, await checkUpdate());
+      if (url.pathname === "/api/update/install") {
+        if(!installation) throw new Error("Updates benötigen eine installierte Windows-Version.");
+        if(active || input.confirm !== true) throw new Error("Zuerst Aufnahme/Download beenden und Update bestätigen.");
+        active=true;
+        try {
+          const update=await checkUpdate(VERSION);
+          if(!update.available) {active=false;return json(res,200,{message:"Companion ist aktuell."});}
+          const executable=await downloadUpdate(root,update);
+          await stopManagedDatabase(installation);
+          const child=spawn(executable,["--apply-update",root,String(process.pid)],{stdio:"ignore",windowsHide:true});
+          await new Promise((resolve,reject)=>{child.once("spawn",resolve);child.once("error",reject);});
+          child.unref();
+          res.once("finish",()=>{server.close();server.closeIdleConnections();});
+          return json(res,200,{message:"Update geprüft. Companion startet nach der Aktualisierung neu."});
+        } catch(error) {active=false;throw error;}
+      }
+      if (url.pathname === "/api/demos/download") {
+        if (active) throw new Error("Zuerst die laufende Aufnahme oder den Download beenden.");
+        if (input.confirm !== true) throw new Error("Lokalen Demo-Download bitte ausdrücklich bestätigen.");
+        const codes = matchDownloadRequest(input);
+        if (downloads.size + codes.length > 100) throw new Error("Downloadliste voll. Companion neu starten.");
+        const exe = typeof input.csdm === "string" ? input.csdm : "";
+        // Reserve before awaits, just like recording: never run multiple CSDM CLI sessions.
+        active = true;
+        try {
+          if (!path.isAbsolute(exe) || !["csdm.exe", "cs-demo-manager.exe"].includes(path.basename(exe).toLowerCase()) || !(await stat(exe)).isFile())
+            throw new Error("Bitte CS Demo Manager auswählen.");
+          const entries = codes.map((code) => ({ id: randomUUID(), code, status: "queued", log: "", demo: "" }));
+          for (const entry of entries) downloads.set(entry.id, entry);
+          void (async () => {
+            try {
+              for (const entry of entries) {
+                entry.status = "downloading";
+                try {
+                  entry.demo = await downloadDemo({ code: entry.code,
+                    directory: path.join(dataDir, "Downloads", entry.id), exe, run, entry });
+                  entry.status = "done";
+                } catch (error) { entry.status = "error"; entry.log += `\n${error.message}`; }
+              }
+            } finally { active = false; }
+          })();
+          return json(res, 202, { ids: entries.map((entry) => entry.id) });
+        } catch (error) { active = false; throw error; }
+      }
       if (url.pathname === "/api/pick") {
         const kinds = {
           demo: "--pick-demo",

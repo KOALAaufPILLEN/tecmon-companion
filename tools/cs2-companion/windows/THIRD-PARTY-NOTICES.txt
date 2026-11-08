@@ -1,4 +1,4 @@
-TecMon Companion Setup 0.3.1 · Windows x64
+TecMon Companion Setup 0.4.0 · Windows x64
 
 Dieses Setup enthält unveränderte Programmdateien folgender Projekte. Die Original-Lizenzdateien und Hinweise werden mit den Programmen im tools-Ordner installiert. Die Programme werden ausschließlich lokal ausgeführt. Steam und Counter-Strike 2 werden nicht mitgeliefert.
 
@@ -34,3 +34,5 @@ FFmpeg-Quellcode: https://git.ffmpeg.org/ffmpeg.git
 7-Zip wird nur zum Zusammenstellen des Installers verwendet und ist kein Laufzeitbestandteil. Der Installer selbst und der Companion verwenden Windows/.NET und die mitgelieferte Node.js-Laufzeit.
 
 Die Versionen und SHA256-Prüfsummen der bezogenen Originalpakete stehen in dependency-manifest.json. Die lokale Datenbank wird ausschließlich an 127.0.0.1 gebunden. Das frei gewählte Administratorpasswort wird zur Initialisierung verwendet; für CS Demo Manager richtet TecMon ein eigenes lokales Anwendungskonto ein. Die dafür notwendige CS-Demo-Manager-Konfiguration liegt im nur für dein Windows-Konto zugänglichen Datenordner.
+
+Beim öffentlichen Download-Installer sind HLAE und FFmpeg nicht im EXE-Payload enthalten: Das Setup lädt die unveränderten Originalpakete bei Bedarf direkt von den oben genannten Anbietern herunter und prüft deren SHA256. Das Kernpaket enthält die übrigen oben aufgeführten Programme mit ihren mitgelieferten Lizenzdateien.

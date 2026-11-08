@@ -21,6 +21,10 @@ Der Build lädt fehlende Pakete anhand von `tools/cs2-companion/windows/dependen
 
 Der BuildDirectory darf keine bereits eingerichtete Installation enthalten. Keine eigenen `installation.json`, `settings.json`, Datenbanken oder Kennwörter in den Build kopieren. Laufzeitkonfiguration entsteht erst nach dem Start des Installers beim Benutzer.
 
-Ausgabe: `dist/TecMon-Companion-Setup-0.3.1.exe` und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
+Ausgabe: `dist/TecMon-Companion-Setup-0.4.0.exe` und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
 
 Nur den nativen Launcher zu prüfen erfordert keine Drittanbieter-Downloads: `.github/workflows/test.yml` dokumentiert die Compilerparameter und führt `--self-test` aus. Dieser Selbsttest prüft nicht die vollständige Installation.
+
+Für den öffentlichen Release den Build mit dem zusätzlichen Schalter -DownloadVideoTools und einem frischen BuildDirectory ausführen. Damit sind HLAE und FFmpeg nicht im Payload enthalten; das Setup lädt fehlende Pakete vom Originalanbieter und prüft deren SHA256. Für den eigenen Offline-Build den Schalter weglassen.
+
+Kleine Updates bauen: scripts/build-companion-update.ps1 mit -ApplicationDirectory (enthält die erzeugte csdm-defaults.json), frischem -BuildDirectory und -OutputDirectory. Ausgabe: Update-EXE und TecMon-Companion-Update.json mit Größe und SHA256. Das Update enthält ausschließlich eigene Programmdateien, keine Runtime, Drittanbieterprogramme, Datenbank oder Nutzerkonfiguration. Die Versionsnummer in Quellen, Paket und Release muss gemeinsam erhöht werden.

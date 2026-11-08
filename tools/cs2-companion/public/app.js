@@ -2,7 +2,9 @@ const token = document.querySelector('meta[name="tecmon-token"]').content;
 const $ = id => document.getElementById(id);
 const drafts = new Map();
 let signature = '';
+let downloadSignature = '';
 let populated = false;
+let updateReady = false;
 function databaseState(pg) {
   $('database-install').disabled = pg.supported;
   $('database-status').textContent = pg.installed ? `PostgreSQL-Tools ${pg.version} erkannt${pg.supported ? '' : ' · Version zu alt'}` : 'PostgreSQL nicht automatisch gefunden';
@@ -26,7 +28,22 @@ async function refresh() {
   $('cs2-status').textContent = state.detected.cs2 ? 'CS2 erkannt' : 'CS2 nicht gefunden';
   $('engine-status').textContent = state.detected.csdm ? 'CS Demo Manager erkannt' : 'CS Demo Manager fehlt';
   if (!populated) { $('engine').value = state.detected.csdm; $('database-port').value = state.postgres.port; populated = true; }
-  const next = JSON.stringify(state.jobs.map(j => [j.id, j.status, j.log, j.files]));
+  const completed = (state.downloads || []).filter(d => d.status === 'done');
+  $('download-start').disabled = state.active;
+  const downloadNext = JSON.stringify(state.downloads || []);
+  if(downloadSignature !== downloadNext) {
+    downloadSignature = downloadNext;
+    const container = $('downloads'); container.replaceChildren();
+    for(const item of state.downloads || []) {
+      const card = el('article', '', 'job');
+      const labels = {queued:'WARTET',downloading:'LÄDT HERUNTER',done:'DEMO BEREIT',error:'FEHLER'};
+      card.append(el('b', item.code), el('p', labels[item.status]));
+      if(item.demo) { const location = el('input'); location.value=item.demo; location.readOnly=true; location.setAttribute('aria-label','Heruntergeladene Demo'); card.append(location); }
+      if(item.log) { const details=el('details'); details.append(el('summary','Download-Protokoll'),el('pre',item.log)); card.append(details); }
+      container.append(card);
+    }
+  }
+  const next = JSON.stringify([state.active,state.jobs.map(j => [j.id, j.status, j.log, j.files]),completed.map(d=>[d.id,d.demo])]);
   if (signature === next) return; signature = next;
   if (!state.jobs.length) return;
   const container = $('jobs'); container.replaceChildren();
@@ -37,9 +54,21 @@ async function refresh() {
     card.append(el('div', [...new Set(job.job.sequences.map(s => s.playerName))].join(' / '), 'sequence'));
     if (job.status === 'ready') {
       const draft = drafts.get(job.id) || { demo: '', confirm: false }; drafts.set(job.id, draft);
+      const matching = completed.find(d=>d.code === job.job.shareCode);
+      if(!draft.demo && matching) draft.demo=matching.demo;
       const label = el('label', 'Originaldemo · vollständiger Dateipfad (.dem)');
       const input = el('input'); input.placeholder = 'C:\\…\\match.dem'; input.value = draft.demo; input.spellcheck = false; input.addEventListener('input', () => { draft.demo = input.value; }); label.append(input); card.append(label);
       const browse = el('button', 'Demo wählen …'); browse.className='subtle'; browse.addEventListener('click', async () => { try { const selected=await api('/api/pick',{kind:'demo'}); if(selected.path) { draft.demo=selected.path; input.value=selected.path; } } catch(error) { notice(error); } }); card.append(browse);
+      if(job.job.shareCode) {
+        const load=el('button','Sharecode für Demo-Download übernehmen'); load.className='subtle';
+        load.addEventListener('click',()=>{ $('share-codes').value=job.job.shareCode; $('demo-download').scrollIntoView({behavior:'smooth'}); $('notice').textContent='Sharecode übernommen. Steam anmelden, CS2 schließen und den lokalen Download unten bestätigen.'; }); card.append(load);
+      }
+      if(completed.length) {
+        const selection=el('select'); selection.setAttribute('aria-label','Heruntergeladene Demo für diesen Auftrag wählen');
+        const empty=el('option','Heruntergeladene Demo auswählen …'); empty.value=''; selection.append(empty);
+        for(const demo of completed) { const option=el('option',demo.code); option.value=demo.id; selection.append(option); }
+        selection.addEventListener('change',()=>{const demo=completed.find(d=>d.id===selection.value);if(demo){draft.demo=demo.demo;input.value=demo.demo;}}); card.append(selection);
+      }
       const confirmLabel = el('label', '', 'confirm'); const confirm = el('input'); confirm.type = 'checkbox'; confirm.checked = draft.confirm; confirm.addEventListener('change', () => { draft.confirm = confirm.checked; });
       confirmLabel.append(confirm, el('span', 'Die Demo gehört zu diesen Szenen. CS2 ist geschlossen. HLAE ist für Demos eingerichtet, ein separater Config-Ordner ist gesetzt. Aufnahme jetzt starten.')); card.append(confirmLabel);
       const start = el('button', '● Lokal in CS2 aufnehmen'); start.disabled = state.active;
@@ -67,7 +96,14 @@ async function refresh() {
   }
 }
 $('import').addEventListener('change', async event => {
-  try { const file = event.target.files[0]; if (!file) return; if (file.size > 65536) throw new Error('Auftrag zu groß.'); await api('/api/import', JSON.parse(await file.text())); $('notice').textContent = ''; await refresh(); } catch (err) { notice(err); } finally { event.target.value = ''; }
+  try { const file = event.target.files[0]; if (!file) return; if (file.size > 65536) throw new Error('Auftrag zu groß.'); const value=JSON.parse(await file.text());
+    if(value.format==='tecmon-match-download') { if(value.version!==1 || !Array.isArray(value.shareCodes) || !value.shareCodes.length || value.shareCodes.length>10 || value.shareCodes.some(c=>typeof c!=='string')) throw new Error('Ungültige Match-Datei.'); $('share-codes').value=value.shareCodes.join('\n'); $('demo-download').scrollIntoView({behavior:'smooth'}); $('notice').textContent='Sharecodes übernommen. Bitte lokalen Download bestätigen.'; }
+    else { await api('/api/import',value); $('notice').textContent=''; }
+    await refresh(); } catch (err) { notice(err); } finally { event.target.value = ''; }
+});
+$('download-start').addEventListener('click',async()=>{
+  try { await api('/api/demos/download',{format:'tecmon-match-download',version:1,shareCodes:$('share-codes').value.trim().split(/\s+/),csdm:$('engine').value.trim().replace(/^"|"$/g,''),confirm:$('download-confirm').checked}); $('notice').textContent='Demo-Download läuft direkt auf deinem PC.'; await refresh(); }
+  catch(error){notice(error);}
 });
 $('shutdown').addEventListener('click', async () => { try { await api('/api/shutdown', {}); clearInterval(timer); $('notice').textContent = 'Companion beendet. Du kannst dieses Fenster schließen.'; } catch (err) { notice(err); } });
 $('database-check').addEventListener('click', async () => {
@@ -84,5 +120,13 @@ $('database-install').addEventListener('click', async () => {
 });
 $('engine-browse').addEventListener('click', async () => { try { const selected=await api('/api/pick',{kind:'engine'}); if(selected.path) $('engine').value=selected.path; } catch(error) { notice(error); } });
 $('csdm-open').addEventListener('click', async () => { try { const result=await api('/api/csdm/open',{}); $('notice').textContent=result.message; } catch(error) { notice(error); } });
+$('update-check').addEventListener('click',async()=>{
+  const button=$('update-check'); button.disabled=true;
+  try {
+    if(updateReady) {const result=await api('/api/update/install',{confirm:true});$('notice').textContent=result.message;}
+    else {const result=await api('/api/update/check',{});updateReady=result.available;button.textContent=result.available ? `Update ${result.latest} installieren` : 'Auf Updates prüfen';$('notice').textContent=result.available ? 'Update verfügbar. Der nächste Klick installiert nur neue/geänderte Companion-Dateien und startet den Companion neu. CS Demo Manager vorher schließen.' : 'Companion ist aktuell.';}
+  } catch(error){notice(error);updateReady=false;button.textContent='Auf Updates prüfen';}
+  finally{button.disabled=false;}
+});
 const timer = setInterval(() => refresh().catch(notice), 2000);
 refresh().catch(notice);
