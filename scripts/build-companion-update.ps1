@@ -2,7 +2,7 @@ param(
   [Parameter(Mandatory=$true)][string]$ApplicationDirectory,
   [Parameter(Mandatory=$true)][string]$BuildDirectory,
   [Parameter(Mandatory=$true)][string]$OutputDirectory,
-  [string]$Version='0.8.1'
+  [string]$Version='0.9.0'
 )
 $ErrorActionPreference='Stop'
 if($Version -notmatch '^\d+\.\d+\.\d+$'){throw 'Invalid version'}

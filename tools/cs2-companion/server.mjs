@@ -15,6 +15,7 @@ import { lazyEngine } from "./lazy-engine.mjs";
 import { loadBrandingPack } from "./branding-assets.mjs";
 import { renderBranding } from "./video-branding.mjs";
 import { createBrowserBridge } from "./browser-bridge.mjs";
+import { browserDemos } from "./browser-demo.mjs";
 import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { checkPostgres, postgresEnvironment } from "./postgresql.mjs";
@@ -95,6 +96,7 @@ export async function createCompanion({
   const token = randomBytes(32).toString("hex");
   const jobs = new Map();
   const downloads = new Map();
+  const browserFiles=browserDemos(path.join(dataDir,"Browser-Demos"));
   let active = false;
   const detected = await detectTools();
   const bridge = await createBrowserBridge(installation?.profileDir || dataDir);
@@ -154,21 +156,6 @@ export async function createCompanion({
     res.end(JSON.stringify(value));
   };
   async function record(job, input) {
-    const branding = job.job.branding.enabled;
-    let assets;
-    if (branding) {
-      if (!installation)
-        throw new Error(
-          "Video-Branding benötigt den installierten Windows-Companion 0.6 oder neuer. Alternativ Branding im Auftrag deaktivieren.",
-        );
-      job.status = "preparing";
-      job.log += "\nVersionierte TecMon-Visuals laden und feste SHA-256-Prüfsummen prüfen …";
-      assets = await loadAssets(path.join(installation.profileDir, "Branding"));
-    }
-    if (installation)
-      await ensureRecordingPlugin(installation, (message) => {
-        job.log += `\n${message}`;
-      });
     const exe = typeof input.csdm === "string" ? input.csdm : "";
     const demo = typeof input.demo === "string" ? input.demo : "";
     if (
@@ -187,6 +174,21 @@ export async function createCompanion({
     } finally {
       await handle.close();
     }
+    const branding = job.job.branding.enabled;
+    let assets;
+    if (branding) {
+      if (!installation)
+        throw new Error(
+          "Video-Branding benötigt den installierten Windows-Companion 0.6 oder neuer. Alternativ Branding im Auftrag deaktivieren.",
+        );
+      job.status = "preparing";
+      job.log += "\nVersionierte TecMon-Visuals laden und feste SHA-256-Prüfsummen prüfen …";
+      assets = await loadAssets(path.join(installation.profileDir, "Branding"));
+    }
+    if (installation)
+      await ensureRecordingPlugin(installation, (message) => {
+        job.log += `\n${message}`;
+      });
     const output = path.join(dataDir, job.id);
     await mkdir(output, { recursive: true });
     const config = path.join(output, "recording.json");
@@ -304,8 +306,19 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: installation ? ["video-branding-v1"] : [],
+        capabilities: ["browser-demo-v1",...(installation ? ["video-branding-v1"] : [])],
       });
+    if(req.method === "POST" && url.pathname === "/bridge/demo/start"){
+      if(active || jobs.size>=100)throw new Error("Zuerst den laufenden Auftrag abschließen.");
+      const input=await readInput(req);return json(res,201,await browserFiles.start(owner,input.size));
+    }
+    if(req.method === "POST" && url.pathname === "/bridge/demo/chunk"){
+      if(active || req.headers["content-type"]!=="application/octet-stream")throw new Error("Demo-Übertragung derzeit nicht möglich.");
+      return json(res,200,await browserFiles.chunk(owner,url.searchParams.get("id"),Number(url.searchParams.get("offset")),req));
+    }
+    if(req.method === "POST" && url.pathname === "/bridge/demo/cancel"){
+      const input=await readInput(req);await browserFiles.cancel(owner,input.id);return json(res,200,{cancelled:true});
+    }
     if (req.method === "GET" && ["/bridge/job", "/bridge/video"].includes(url.pathname)) {
       const job = jobs.get(url.searchParams.get("id"));
       if (!job || job.owner !== owner) return json(res, 404, { error: "Auftrag nicht vorhanden." });
@@ -328,9 +341,9 @@ export async function createCompanion({
     if (jobs.size >= 100) throw new Error("Auftragsliste voll. Companion neu starten.");
     const capture = url.pathname === "/bridge/capture";
     const specification = capture ? validateJob(input.job) : null;
-    if (capture && !specification.shareCode)
-      throw new Error("Für die automatische Aufnahme den Sharecode des Matches ergänzen.");
-    const codes = capture ? [specification.shareCode] : matchDownloadRequest(input);
+    if (capture && !specification.shareCode && typeof input.demoId!=="string")
+      throw new Error("Sharecode oder die Originaldemo aus dem Browser fehlt.");
+    const codes = capture ? (specification.shareCode ? [specification.shareCode] : []) : matchDownloadRequest(input);
     if (downloads.size + codes.length > 100)
       throw new Error("Downloadliste voll. Companion neu starten.");
     const job = {
@@ -344,11 +357,12 @@ export async function createCompanion({
     active = true;
     try {
       const exe = await engine();
+      const browserDemo=capture && !specification.shareCode ? browserFiles.consume(owner,input.demoId) : null;
       jobs.set(job.id, job);
       void (async () => {
         try {
           await prepareEngine();
-          let demo;
+          let demo=browserDemo;
           for (const code of codes) {
             const entry = { id: randomUUID(), code, status: "downloading", log: "", demo: "" };
             downloads.set(entry.id, entry);

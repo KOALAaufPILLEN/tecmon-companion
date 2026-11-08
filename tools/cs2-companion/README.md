@@ -14,7 +14,7 @@ Die Webseite verlangt für aktiviertes Branding Companion 0.6+. Bei JSON-Import 
 
 Validierung: 25 Companion-Tests einschließlich verändertem Paket/Cache, Titelbildung, Dateireihenfolge, wörtlichen Texten, Cleanup und Abbruch vor CS2 bei Integritätsfehler. Ein Windows-Test blockiert echte Schreib- und Löschversuche und verhindert den Encoderstart nach einer Dateiveränderung. Echte FFmpeg-Tests mit vorher aufgenommenen CS2-Szenen erzeugten Single- und Team-Videos einschließlich Namenswechsel, Intro und optionalem Outro, auch in einem Umlautpfad.
 
-Für eine bestehende Installation die kleine **TecMon-Companion-Update-0.8.1.exe** aus dem GitHub-Release verwenden oder im Companion „Auf Updates prüfen“ wählen. Das Setup für neue Installationen kann mit den öffentlichen Build-Skripten erstellt werden; ein großer Setup-Download ist aktuell nicht im Release verfügbar. Steam und CS2 müssen installiert sein.
+Für eine bestehende Installation die kleine **TecMon-Companion-Update-0.9.0.exe** aus dem GitHub-Release verwenden oder im Companion „Auf Updates prüfen“ wählen. Das Setup für neue Installationen kann mit den öffentlichen Build-Skripten erstellt werden; ein großer Setup-Download ist aktuell nicht im Release verfügbar. Steam und CS2 müssen installiert sein.
 
 ## Einrichten
 
@@ -56,7 +56,7 @@ Beim Update zuerst den laufenden Companion über „Companion beenden“ und die
 
 Im TecMon-Replay unter „In CS2 aufnehmen“ den Auftrag als `.tecmon.json` exportieren. Im Companion öffnen, Originaldemo mit „Demo wählen“ auswählen, CS2-Partie beenden und Aufnahme bestätigen. Danach die MP4 im Replay auswählen und mit Spielername/Freitext und Steam-Link veröffentlichen. Demos und Aufnahme bleiben lokal; der Companion erhält keine YouTube-Secrets.
 
-Version 0.8.1 überträgt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Originaldemo und Tickbereiche müssen zusammengehören. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demos verwenden, nicht mit Matchmaking verbinden; nach CS2-Updates kann eine neue HLAE-Version erforderlich sein.
+Version 0.9.0 überträgt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Originaldemo und Tickbereiche müssen zusammengehören. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demos verwenden, nicht mit Matchmaking verbinden; nach CS2-Updates kann eine neue HLAE-Version erforderlich sein.
 
 ## Entwickler
 
@@ -70,7 +70,7 @@ GitHub-Release: Das Kernpaket enthält Companion, Node.js, PostgreSQL und CS Dem
 
 ## Aktualisieren ohne Neuinstallation
 
-Für eine bestehende 0.3.1-Installation die kleine TecMon-Companion-Update-0.8.1.exe aus dem GitHub-Release verwenden. Vorher Companion und CS Demo Manager schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
+Für eine bestehende 0.3.1-Installation die kleine TecMon-Companion-Update-0.9.0.exe aus dem GitHub-Release verwenden. Vorher Companion und CS Demo Manager schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
 
 Ab 0.4: Im Companion Auf Updates prüfen und anschließend Update installieren wählen. Das Paket wird ausschließlich aus stabilen Releases des offiziellen Repositories bezogen. Größe und SHA256 werden vor dem Start geprüft. Nach dem Beenden des lokalen Servers übernimmt ein separater Update-Prozess und startet den Companion wieder. Änderungen an großen Drittanbieter-Tools können weiterhin einen gesonderten Tool-/Installer-Schritt erfordern.
 
@@ -115,3 +115,11 @@ WebView2 ist auf die lokale Companion-Adresse beschränkt. Externe zugelassene H
 ## Holo-Sprechblase (0.8.1)
 
 Das native Desktop-Menü hat eine echte abgerundete Sprechblasenform mit Spitze zur Figur. Der Holo-Look übernimmt Cyan-Kanten, dunkles blaues Glas und Scanlinien vom TecMon-Waffen-Hologramm. Eigene Fensterbuttons ersetzen die Windows-Titelleiste: Minus und X klappen nur die Sprechblase ein, der Bot läuft weiter. Der Kopfbereich lässt sich ziehen. Die Scrollbar, Eingaben, Buttons und der erweiterte Modus verwenden denselben Holo-Stil. Beim Öffnen auf der anderen Seite des Bots wird die Spitze gespiegelt.
+
+## Automatischer Browser-Ablauf (0.9.0)
+
+Nach einmaliger Verbindung: Im Replay Spieler und Szenen wählen, die lokale Aufnahme bestätigen und „In CS2 aufnehmen“ drücken. Ein vorhandener Sharecode lädt die Originaldemo lokal von Valve. Ohne Sharecode übergibt die Webseite ihre bereits geladene, entpackte Demo direkt über Loopback an den Companion (maximal 2 GB, Stücke bis 4 MiB). Keine JSON-Datei und keine lokale Pfadauswahl nötig. Aufnahme, Branding und MP4-Übernahme in die Webseite folgen automatisch. Ein unterbrochener Statusabruf wird wiederholt; das letzte Ergebnis lässt sich im selben Browser-Tab nach Neuladen und erneutem Laden desselben Matches abrufen, solange der Companion-Dienst nicht beendet wurde.
+
+Demo-Übertragungen brauchen die vorhandene Browser-Freigabe und sind an deren Besitzer gebunden. Fremde lokale Pfade oder Programme können nicht vorgegeben werden. Stücke werden auf Größe, Offset, Gesamtlänge und CS2-Dateikopf geprüft. Höchstens vier ausstehende Übertragungen; veraltete Staging-Ordner werden nach 30 Minuten beim nächsten Start einer Übertragung aufgeräumt. Abgebrochene Übertragungen können vom Besitzer verworfen werden. Aufnahmen erfordern weiterhin die ausdrückliche Bestätigung im Browser.
+
+Fertige Videos werden erst nach einem weiteren ausdrücklichen Klick auf YouTube veröffentlicht. Die Webseite bietet Öffentlich (Standard), Nicht gelistet und Privat sowie optionalen Discord-Versand an. Diese Einstellungen ändern keine YouTube-Secrets im Companion; der erhält weiterhin keine Kanal-Zugangsdaten.

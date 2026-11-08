@@ -17,6 +17,7 @@ Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/recording-engine.mj
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/branding-assets.mjs'),(Join-Path $repo 'tools/cs2-companion/video-branding.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/lazy-engine.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/update-handoff.mjs') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/browser-demo.mjs') -Destination $stage
 if ($NodeExe -or $NodeLicense) {
   if (-not ($NodeExe -and $NodeLicense)) { throw 'NodeExe und NodeLicense zusammen angeben.' }
   New-Item -ItemType Directory -Path (Join-Path $stage 'runtime') | Out-Null

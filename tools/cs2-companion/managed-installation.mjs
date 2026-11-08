@@ -46,7 +46,11 @@ export function runTool(
     child.once("close", (code) => {
       clearTimeout(timer);
       if (code === 0) resolve(stdout);
-      else {const error=new Error(`${path.basename(exe)}: ${stderr || stdout || `Code ${code}`}`);error.exitCode=code;reject(error);}
+      else {
+        const error = new Error(`${path.basename(exe)}: ${stderr || stdout || `Code ${code}`}`);
+        error.exitCode = code;
+        reject(error);
+      }
     });
     child.stdin?.on("error", () => {});
     child.stdin?.end(input);
@@ -121,8 +125,12 @@ export async function ensureManagedDatabase(config) {
 }
 
 export async function stopManagedDatabase(config, run = runTool) {
-  try {await run(path.join(config.postgresBin,"pg_ctl.exe"),["status","-D",config.clusterDir]);}
-  catch(error) {if(error.exitCode===3)return;throw error;}
+  try {
+    await run(path.join(config.postgresBin, "pg_ctl.exe"), ["status", "-D", config.clusterDir]);
+  } catch (error) {
+    if (error.exitCode === 3) return;
+    throw error;
+  }
   await run(
     path.join(config.postgresBin, "pg_ctl.exe"),
     ["stop", "-D", config.clusterDir, "-m", "fast", "-w", "-t", "30"],
@@ -161,7 +169,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     );
   const config = previous || {
     format: "tecmon-installation-v1",
-    version: "0.8.1",
+    version: "0.9.0",
     installationId: randomUUID(),
     dataDir: options.dataDir,
     clusterDir: path.join(privateDir, "postgres", "data"),
@@ -280,25 +288,28 @@ export async function setupManagedInstallation(root, options, progress = () => {
       }
       if (!/^[0-9a-f]{64}$/.test(appPassword))
         throw new Error("Ungültiger interner Einrichtungsschlüssel.");
-      progress("TecMon-Anwendungskonto und CS-Demo-Manager-Datenbank anlegen …");
-      const passFile = path.join(privateDir, "admin-auth.tmp");
-      const escapedPassword = options.password.replaceAll("\\", "\\\\").replaceAll(":", "\\:");
-      await writeFile(
-        passFile,
-        `127.0.0.1:${config.port}:postgres:tecmon_admin:${escapedPassword}\n`,
-        { mode: 0o600 },
-      );
-      try {
-        await runTool(psql, args, {
-          env: { ...process.env, PGPASSFILE: passFile, PGPASSWORD: "", PGCONNECT_TIMEOUT: "5" },
-          input: `SELECT 'CREATE ROLE tecmon_csdm LOGIN' WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='tecmon_csdm')\n\\gexec\nALTER ROLE tecmon_csdm PASSWORD '${appPassword}';\nSELECT 'CREATE DATABASE tecmon_csdm OWNER tecmon_csdm ENCODING ''UTF8''' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname='tecmon_csdm')\n\\gexec\n`,
-        });
-      } finally {
-        await unlink(passFile).catch(() => {});
-      }
     } else {
       const existing = JSON.parse(await readFile(settingsFile, "utf8"));
       appPassword = existing.database.password;
+    }
+    if (!/^[0-9a-f]{64}$/.test(appPassword))
+      throw new Error("Ungültiger interner Einrichtungsschlüssel.");
+    // A settings file can survive an interrupted setup while the role/database is missing.
+    progress("TecMon-Anwendungskonto und CS-Demo-Manager-Datenbank anlegen …");
+    const passFile = path.join(privateDir, "admin-auth.tmp");
+    const escapedPassword = options.password.replaceAll("\\", "\\\\").replaceAll(":", "\\:");
+    await writeFile(
+      passFile,
+      `127.0.0.1:${config.port}:postgres:tecmon_admin:${escapedPassword}\n`,
+      { mode: 0o600 },
+    );
+    try {
+      await runTool(psql, args, {
+        env: { ...process.env, PGPASSFILE: passFile, PGPASSWORD: "", PGCONNECT_TIMEOUT: "5" },
+        input: `SELECT 'CREATE ROLE tecmon_csdm LOGIN' WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='tecmon_csdm')\n\\gexec\nALTER ROLE tecmon_csdm PASSWORD '${appPassword}';\nSELECT 'CREATE DATABASE tecmon_csdm OWNER tecmon_csdm ENCODING ''UTF8''' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname='tecmon_csdm')\n\\gexec\n`,
+      });
+    } finally {
+      await unlink(passFile).catch(() => {});
     }
     progress("CS Demo Manager, HLAE und FFmpeg automatisch konfigurieren …");
     const template = JSON.parse(await readFile(path.join(root, "csdm-defaults.json"), "utf8"));

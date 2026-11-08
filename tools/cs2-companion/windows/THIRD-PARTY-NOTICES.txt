@@ -1,4 +1,4 @@
-TecMon Companion Setup 0.8.1 · Windows x64
+TecMon Companion Setup 0.9.0 · Windows x64
 
 Video-Branding: Barlow Condensed Bold, Copyright 2017 The Barlow Project Authors, SIL Open Font License 1.1. Die unveränderte Schrift und OFL.txt sind im separat geladenen Branding-Paket enthalten.
 Quelle: https://github.com/google/fonts/tree/89f5431ff0db41bd2fe3f7ba21a723a01622428b/ofl/barlowcondensed

@@ -148,6 +148,8 @@ test("changed in-memory visuals abort before any encoder runs", async (t) => {
 
 test("asset integrity failure stops the recording pipeline before CS2 and cannot publish raw output", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-brand-api-"));
+  const demo=path.join(dir,"match.dem"),exe=path.join(dir,"csdm.exe");
+  await writeFile(demo,Buffer.from("PBDEMS2\0fixture"));await writeFile(exe,"fixture");
   const installation = {
     dataDir: dir,
     profileDir: path.join(dir, "profile"),
@@ -178,7 +180,7 @@ test("asset integrity failure stops the recording pipeline before CS2 and cannot
   const post = async (route, body) =>
     fetch(base + route, { method: "POST", headers, body: JSON.stringify(body) });
   const imported = await (await post("/api/import", job)).json();
-  assert.equal((await post("/api/start", { id: imported.id, confirm: true })).status, 202);
+  assert.equal((await post("/api/start", { id: imported.id, confirm: true,csdm:exe,demo })).status, 202);
   let state;
   for (let i = 0; i < 50; i++) {
     state = await (await fetch(base + "/api/state", { headers })).json();
