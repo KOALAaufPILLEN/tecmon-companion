@@ -17,6 +17,8 @@ import { loadBrandingPack } from "./branding-assets.mjs";
 import { renderBranding } from "./video-branding.mjs";
 import { createBrowserBridge } from "./browser-bridge.mjs";
 import { browserDemos } from "./browser-demo.mjs";
+import { createGameTips } from "./game-tips.mjs";
+import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { checkPostgres, postgresEnvironment } from "./postgresql.mjs";
@@ -109,6 +111,7 @@ export async function createCompanion({
   runSql = (sql) => runCameraSql(installation, sql, runTool),
   openPath = openInExplorer,
   onUpdateExit,
+  now,
 } = {}) {
   if (installation) dataDir = path.join(installation.dataDir, "Jobs");
   await mkdir(dataDir, { recursive: true });
@@ -159,6 +162,48 @@ export async function createCompanion({
   if (installation) {
     detected.csdm = installation.csdmExe;
     detected.cs2 = installation.cs2Exe || detected.cs2;
+  }
+  // CS2 Game State Integration: offizielle, rein lesende Schnittstelle für Rundentipps.
+  const gsi = await createGsiSettings(installation?.profileDir || dataDir);
+  const tips = createGameTips(now ? { now } : {});
+  let gsiError = "";
+  async function syncGsiConfig() {
+    gsiError = "";
+    try {
+      if (gsi.enabled) await installGsiConfig(detected.cs2, gsi.token);
+      else await removeGsiConfig(detected.cs2);
+    } catch (error) {
+      gsiError = error.message;
+    }
+  }
+  if (gsi.enabled) await syncGsiConfig();
+  function gsiState() {
+    return {
+      enabled: gsi.enabled,
+      available: !!gsiConfigPath(detected.cs2),
+      error: gsiError,
+      ...tips.state(),
+    };
+  }
+  async function gsiRequest(req, res) {
+    // CS2 schickt weder Origin noch Sitzungstoken; Browser-Anfragen tragen immer ein Origin.
+    if (req.method !== "POST" || req.headers.origin)
+      return json(res, 403, { error: "Nur für CS2 vorgesehen." });
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 262144) return json(res, 413, { error: "Zu groß." });
+    }
+    let payload;
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      return json(res, 400, { error: "Ungültige Daten." });
+    }
+    if (!gsi.matches(payload?.auth?.token)) return json(res, 401, { error: "Falsches Token." });
+    // Während einer Demo-Aufnahme sendet CS2 die Daten des aufgenommenen Spielers: ignorieren.
+    if (gsi.enabled && !active) tips.ingest(payload);
+    return json(res, 200, { ok: true });
   }
   let postgres = installation ? {installed:true,supported:true,ready:false,version:"18",port:installation.port,lazy:true} : await checkPostgres();
   const prepareEngine=lazyEngine(async()=>{
@@ -477,6 +522,7 @@ export async function createCompanion({
     const url = new URL(req.url, origin);
     try {
       if (url.pathname.startsWith("/bridge/")) return await bridgeRequest(req, res, url);
+      if (url.pathname === "/gsi") return await gsiRequest(req, res);
       if (req.headers.origin && req.headers.origin !== origin)
         return json(res, 403, { error: "Nur im lokalen Companion verfügbar." });
       if (req.method === "GET" && url.pathname === "/api/health")
@@ -509,6 +555,7 @@ export async function createCompanion({
           managed: !!installation,
           active,
           bridge: bridge.state(),
+          gsi: gsiState(),
           downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
@@ -540,6 +587,22 @@ export async function createCompanion({
           openPath(await realpath(dataDir), false);
         }
         return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/gsi/enable") {
+        if (input.confirm !== true) throw new Error("Rundentipps bitte ausdrücklich einschalten.");
+        if (!gsiConfigPath(detected.cs2)) throw new Error("CS2 wurde auf diesem PC nicht gefunden.");
+        await installGsiConfig(detected.cs2, gsi.token);
+        await gsi.setEnabled(true);
+        gsiError = "";
+        return json(res, 200, {
+          message: "Rundentipps eingeschaltet. Falls CS2 gerade läuft, das Spiel einmal neu starten.",
+          gsi: gsiState(),
+        });
+      }
+      if (url.pathname === "/api/gsi/disable") {
+        await gsi.setEnabled(false);
+        await syncGsiConfig();
+        return json(res, 200, { message: "Rundentipps ausgeschaltet.", gsi: gsiState() });
       }
       if (url.pathname === "/api/bridge/approve") {
         await bridge.approve(input.id);

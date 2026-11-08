@@ -97,3 +97,12 @@ Vollständiger Windows-Installer und getrenntes Programm-Update im Release. Der 
 ## Neu in 0.11.0
 
 Eigenes Cyberpunk-Video-Design: transparente Neon-Konturen am unveränderten CS2-Radar, eine dauerhaft sichtbare schräge Spieleranzeige, Logo und Randakzente in Cyan, Violett und TecMon-Gold. Bei einem Wechsel der Steam-ID fährt ein 1,1 Sekunden langer animierter Stinger mit dem nächsten Spielernamen über das Bild. Mehrere Szenen desselben Spielers bleiben direkt verbunden; keine Szene wird gekürzt. Die neue Grafik wird als festes Branding-v3-Paket geladen, SHA256-geprüft und während des Renderns gesperrt. Die Quellen der eigenen Vektorgrafiken liegen unter tools/cs2-companion/branding/source.
+
+
+## Neu in 0.14.0: CS2-Rundentipps
+
+Der Companion kann während deiner eigenen CS2-Matches Tipps geben. Er nutzt dafür die offizielle [Game State Integration](https://developer.valvesoftware.com/wiki/Counter-Strike:_Global_Offensive_Game_State_Integration) von Valve: CS2 schickt die Daten selbst an `127.0.0.1:31977/gsi`. Es gibt keinen Speicherzugriff, keine Injektion und keine Eingaben an das Spiel. Die Funktion ist standardmäßig aus und wird im Companion oder per Rechtsklick auf die Figur („CS2-Rundentipps“) eingeschaltet. Dabei legt der Companion `gamestate_integration_tecmon.cfg` im CS2-Ordner `game\csgo\cfg` an, mit einem eigenen zufälligen Token. Beim Ausschalten wird die Datei wieder entfernt. Läuft CS2 gerade, muss das Spiel einmal neu gestartet werden.
+
+Angefordert werden nur die eigenen Spielerdaten (Geld, HP, Rüstung, Waffen, Match-Stats, Map, Runde). Daten über Gegner, Bombenzähler oder Zuschauerblöcke werden nicht angefordert. Während einer Demo-Aufnahme werden die Daten ignoriert. Tipps erscheinen in einer kleinen Sprechblase neben der Figur, die CS2 nie den Fokus nimmt: in der Kaufzeit (Wirtschaft, Pistolenrunde, letzte Runde der Halbzeit, Verlängerung, Matchball, Spray-Hinweis zur gekauften Waffe, Map-Tipps), kurz nach der Kaufzeit als Kauf-Check (Helm, Rüstung, Defuse-Kit, Geld übrig), nach dem eigenen Tod (ungeworfene Granaten, Peek mit wenig HP, AWP ohne Kill) sowie zur Halbzeit und am Matchende mit Zusammenfassung. Über das Match werden außerdem Gewohnheiten erkannt: frühes Nachladen, häufiges Geblendetwerden, Feuerschaden und Runden ohne Kill in Folge.
+
+Sichtbar über dem Spiel ist die Sprechblase nur im Anzeigemodus „Vollbild im Fenster“. Bei FACEIT oder in Turnieren können eigene Regeln für Zusatzprogramme gelten.
