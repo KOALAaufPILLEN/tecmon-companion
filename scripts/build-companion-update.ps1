@@ -2,9 +2,10 @@ param(
   [Parameter(Mandatory=$true)][string]$ApplicationDirectory,
   [Parameter(Mandatory=$true)][string]$BuildDirectory,
   [Parameter(Mandatory=$true)][string]$OutputDirectory,
-  [string]$Version='0.10.0'
+  [string]$Version=''
 )
 $ErrorActionPreference='Stop'
+if(!$Version){$Version=(Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'package.json') -Raw|ConvertFrom-Json).version}
 if($Version -notmatch '^\d+\.\d+\.\d+$'){throw 'Invalid version'}
 $repo=Split-Path -Parent $PSScriptRoot
 $source=Join-Path $repo 'tools/cs2-companion'

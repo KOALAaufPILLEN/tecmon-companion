@@ -25,7 +25,14 @@ Ausgabe: `dist/TecMon-Companion-Setup-0.10.0.exe` und SHA256 im Build-Protokoll.
 
 Nur den nativen Launcher zu prüfen erfordert keine Drittanbieter-Downloads: `.github/workflows/test.yml` dokumentiert die Compilerparameter und führt `--self-test` aus. Dieser Selbsttest prüft nicht die vollständige Installation.
 
-Der manuell startbare GitHub-Workflow [Windows release installer](.github/workflows/release-installer.yml) baut ein bestehendes Release-Tag auf einem frischen Windows-Runner. Er prüft die Originalpakete, den unkonfigurierten Payload, eine isolierte Neuinstallation mit Sonderzeichen-Passwort, getrennte Datenbankkonten, die Reparatur einer unterbrochenen Einrichtung und die CSDM-Tabellenmigrationen. Erst danach ergänzt er Setup-EXE und SHA256-Datei im bestehenden Release. Vorhandene Update-Assets werden dabei nicht überschrieben. Dies ersetzt keinen echten CS2-Aufnahmetest.
+## Release veröffentlichen
+
+1. Version erhöhen: `node scripts/version.mjs set 0.11.0`. Das setzt die Nummer in `package.json`, `package-lock.json`, Updater, Oberfläche, Installation und nativem Launcher. `node scripts/version.mjs check` (läuft auch in `npm test`) meldet abweichende Stellen.
+2. Änderung auf `main` mergen.
+
+Der Workflow [Windows release installer](.github/workflows/release-installer.yml) startet bei jedem Push auf `main`. Gibt es zur Version aus `package.json` noch kein Tag, baut er auf einem frischen Windows-Runner Setup-EXE und Update-EXE, führt die Tests aus und prüft die Originalpakete, den unkonfigurierten Payload, eine isolierte Neuinstallation mit Sonderzeichen-Passwort, getrennte Datenbankkonten, die Reparatur einer unterbrochenen Einrichtung und die CSDM-Tabellenmigrationen. Danach legt er das Release `v<Version>` zunächst als Entwurf an, lädt Setup, Update-EXE, `TecMon-Companion-Update.json` und Prüfsummen hoch und veröffentlicht es erst dann als „Latest“. Installierte Companions sehen das Update damit erst, wenn alle Dateien vorhanden sind. Gibt es das Tag schon, tut der Workflow nichts.
+
+Manuell lässt sich der Workflow mit einem bestehenden Tag starten. Er baut dieses Tag neu und ersetzt die Dateien im Release. Der Workflow ersetzt keinen echten CS2-Aufnahmetest.
 
 Für den öffentlichen Release den Build mit dem zusätzlichen Schalter -DownloadVideoTools und einem frischen BuildDirectory ausführen. Damit sind HLAE und FFmpeg nicht im Payload enthalten; das Setup lädt fehlende Pakete vom Originalanbieter und prüft deren SHA256. Für den eigenen Offline-Build den Schalter weglassen.
 
