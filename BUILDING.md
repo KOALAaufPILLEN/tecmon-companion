@@ -1,6 +1,6 @@
 # Windows-Build aus Quellcode
 
-Cyberpunk-Grafiken ab 0.11: `npm ci` und `node scripts/build-cyber-branding.mjs dist` erzeugen `TecMon-Branding-v2.json` aus den eigenen SVGs und dem unveränderten, geprüften Logo-/Schriftpaket v1. Sharp 0.35.5 ist ausschließlich eine Build-Abhängigkeit. Das veröffentlichte v2-Paket hat SHA256 `60a13b041dad4d990b38f048c2c9963269b1945d22d594613b49602719753eb2`. Die Runtime benötigt kein Sharp. Der Release-Workflow prüft das mitgelieferte Paket und rendert damit drei synthetische Szenen durch den nativen Dateisperren-Helfer: ein Spielerwechsel, eine wiederholte Perspektive ohne weiteren Stinger, unveränderte Dauer aller Szenen.
+Cyberpunk-Grafiken ab 0.11: `npm ci` und `node scripts/build-cyber-branding.mjs dist` erzeugen `TecMon-Branding-v3.json` aus den eigenen SVGs und dem unveränderten, geprüften Logo-/Schriftpaket v1. Sharp 0.35.5 ist ausschließlich eine Build-Abhängigkeit. Das veröffentlichte v3-Paket (ab 0.13) hat SHA256 `874da002d77cbbdf09fb48c31b42feb8e175471b57fa84a3317ad6459642b2cf`. Die Runtime benötigt kein Sharp. Der Release-Workflow prüft das mitgelieferte Paket und rendert damit drei synthetische Szenen durch den nativen Dateisperren-Helfer: ein Spielerwechsel, eine wiederholte Perspektive ohne weiteren Stinger, unveränderte Dauer aller Szenen.
 
 Voraussetzungen: Windows x64, PowerShell, Git, Node.js >=24 und der Windows-.NET-Framework-C#-Compiler unter `%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe`.
 

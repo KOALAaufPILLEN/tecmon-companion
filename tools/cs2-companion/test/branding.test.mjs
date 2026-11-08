@@ -19,7 +19,7 @@ import {
   visualPlayerName,
 } from "../video-branding.mjs";
 import { validateJob } from "../job.mjs";
-const packed = await readFile(new URL("../branding/TecMon-Branding-v2.json", import.meta.url));
+const packed = await readFile(new URL("../branding/TecMon-Branding-v3.json", import.meta.url));
 const job = {
   format: "tecmon-cs2-job",
   version: 1,
@@ -49,7 +49,7 @@ test("branding assets use a pinned release/hash; changed downloads or cache fail
   const changed = Buffer.from(packed);
   changed[100] ^= 1;
   assert.throws(() => verifyBrandingPack(changed), /Prüfsumme/);
-  await writeFile(path.join(dir, "TecMon-Branding-v2.json"), changed);
+  await writeFile(path.join(dir, "TecMon-Branding-v3.json"), changed);
   await assert.rejects(
     loadBrandingPack(dir, async () => {
       throw new Error("must not hide changed cache");
