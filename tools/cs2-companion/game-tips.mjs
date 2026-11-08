@@ -10,6 +10,9 @@
  *   direkt nach der Kaufzeit, solange noch gekauft werden kann.
  */
 
+import { SPRAY_PATTERNS } from "./spray-patterns.mjs";
+import { MAP_SPOTS } from "./map-spots.mjs";
+
 /** Spielmodi mit Wirtschaft und festen Halbzeiten. */
 const HALF = { competitive: 12, premier: 12, scrimcomp2v2: 8 };
 const OVERTIME_HALF = 3;
@@ -27,26 +30,47 @@ const GRENADES = {
   weapon_incgrenade: "Brandgranate",
 };
 
+/* Beschreibung passend zum Einschlagmuster aus spray-patterns.mjs: Muster nach links heißt Maus nach rechts. */
 const SPRAY = {
   weapon_ak47:
-    "AK-47: Die ersten 3–4 Kugeln sitzen fast genau, danach kräftig nach unten ziehen und das seitliche Ausschlagen gegensteuern. Auf Distanz lieber Bursts von 3–5 Kugeln.",
+    "AK-47: Schuss 1 bis 9 steigen steil, also Maus kräftig nach unten ziehen. Danach wandert das Muster nach links (Maus nach rechts), ab etwa Schuss 17 nach rechts (Maus nach links). Auf Distanz lieber Bursts von 3 bis 5 Kugeln.",
   weapon_m4a1:
-    "M4A4: Steigt gleichmäßig nach oben, also stetig nach unten ziehen. Bei langen Sprays ab etwa Kugel 15 seitlich nachsteuern.",
+    "M4A4: Die ersten 10 Schuss steigen gleichmäßig, Maus stetig nach unten. Danach zieht es nach links (Maus nach rechts) und ab etwa Schuss 20 wieder nach rechts.",
   weapon_m4a1_silencer:
-    "M4A1-S: Wenig Rückstoß, aber nur 20 Schuss. Ruhig und kontrolliert nach unten ziehen, nicht wild sprayen.",
+    "M4A1-S: Steigt in den ersten 10 Schuss, dann leicht nach links (Maus etwas nach rechts). Nur 20 Schuss, also ruhig und kontrolliert, nicht wild sprayen.",
   weapon_galilar:
-    "Galil AR: Ähnlich wie die AK, aber ungenauer. Kurze Bursts und nach jedem Burst kurz stoppen.",
+    "Galil AR: Steigt bis etwa Schuss 10 leicht nach rechts, dann nach links und ab Schuss 20 wieder nach rechts. Kurze Bursts treffen besser als lange Sprays.",
   weapon_famas:
-    "FAMAS: Spart Geld, streut aber stark. Bursts und kurze Sprays auf mittlere Distanz.",
+    "FAMAS: Steigt bis etwa Schuss 12, danach pendelt es nach rechts. Bursts und kurze Sprays auf mittlere Distanz.",
   weapon_aug:
-    "AUG: Mit Zoom auf Distanz sehr genau. Ohne Zoom wie ein normales Gewehr nach unten ziehen.",
+    "AUG: Mit Zoom auf Distanz sehr genau. Ohne Zoom steigt es wie ein normales Gewehr, Maus nach unten ziehen.",
   weapon_sg556:
-    "SG 553: Mit Zoom auf Distanz sehr genau. Ohne Zoom wie ein normales Gewehr nach unten ziehen.",
+    "SG 553: Mit Zoom auf Distanz sehr genau. Ohne Zoom steigt es wie ein normales Gewehr, Maus nach unten ziehen.",
+  weapon_mac10:
+    "MAC-10: Steigt bis etwa Schuss 13 mit Zug nach rechts (Maus nach links), dann nach links. Auf kurze Distanz im Laufen stark, auf Distanz schwach.",
+  weapon_mp9:
+    "MP9: Zieht in den ersten 13 Schuss deutlich nach rechts oben (Maus nach links unten), danach nach links. Stark auf kurze Distanz.",
+  weapon_ump45:
+    "UMP-45: Steigt bis etwa Schuss 10, danach nach rechts (Maus nach links). Auf mittlere Distanz lieber Bursts.",
   weapon_awp:
     "AWP: Nach dem Schuss nicht stehen bleiben. Position wechseln oder hinter Deckung, bevor du wieder peekst.",
   weapon_deagle:
     "Desert Eagle: Zwischen den Schüssen kurz warten, bis das Fadenkreuz wieder ruhig ist. Spammen trifft selten.",
 };
+
+function sprayText(name) {
+  if (SPRAY[name]) return SPRAY[name];
+  const pattern = SPRAY_PATTERNS[name];
+  return pattern
+    ? `${pattern.label}: So landet ein Spray ohne Ausgleich. Zieh die Maus entgegen dem Muster und stoppe nach 5 bis 10 Schuss.`
+    : "";
+}
+
+function sprayVisual(name) {
+  const pattern = SPRAY_PATTERNS[name];
+  return pattern ? { type: "spray", label: pattern.label, points: pattern.points } : null;
+}
+
 
 const MAP_TIPS = {
   de_mirage: {
@@ -191,12 +215,13 @@ function primaryWeapon(player) {
   );
 }
 
-export function createGameTips({ now = () => Date.now() } = {}) {
+export function createGameTips({ now = () => Date.now(), radarPath = () => "" } = {}) {
   let tipId = 0;
   let current = null;
   const history = [];
   let queue = [];
   let lastShown = 0;
+  let gap = MIN_GAP;
   let lastSeen = 0;
   let sessionStart = 0;
   let longSessionShown = false;
@@ -224,18 +249,24 @@ export function createGameTips({ now = () => Date.now() } = {}) {
       damage: 0,
       rounds: 0,
       sprayShown: new Set(),
+      liveSince: 0,
+      earlyDeaths: 0,
+      mapShown: new Set(),
       mapTip: 0,
       economy: "",
       flags: new Set(),
     };
   }
 
-  function push(text, { priority = 1, category = "info", round = 0 } = {}) {
-    queue.push({ text, priority, category, round, queuedAt: now() });
+  function push(text, { priority = 1, category = "info", round = 0, visual = null } = {}) {
+    queue.push({ text, priority, category, round, visual, queuedAt: now() });
   }
 
   function publish(entry) {
     current = { id: ++tipId, text: entry.text, category: entry.category, at: now() };
+    if (entry.visual) current.visual = entry.visual;
+    /* Bilder brauchen länger zum Lesen als ein Satz. */
+    gap = entry.visual ? MIN_GAP + 5000 : MIN_GAP;
     history.unshift(current);
     history.length = Math.min(history.length, 12);
     lastShown = current.at;
@@ -322,6 +353,37 @@ export function createGameTips({ now = () => Date.now() } = {}) {
     if (notes.length) publish({ text: notes.slice(0, 2).join(" "), category: "buy" });
   }
 
+  /** Radarkarte mit den wichtigsten Spots zu Beginn jeder Halbzeit (nur wenn das Radarbild lokal vorhanden ist). */
+  function mapOverview(mapName, side, round) {
+    const data = MAP_SPOTS[mapName];
+    const key = `${side}-${round}`;
+    if (match.mapShown.has(key)) return false;
+    match.mapShown.add(key);
+    const tipPool = MAP_TIPS[mapName]?.[side] || GENERIC_TIPS[side] || [];
+    const extra = tipPool.length ? ` ${tipPool[match.mapTip++ % tipPool.length].replace(/^[^:]+: /, "")}` : "";
+    if (!data) {
+      if (extra) push(extra.trim(), { priority: 2, category: "map", round });
+      return true;
+    }
+    const hot = data[side] || [];
+    const image = radarPath(mapName);
+    push(`${data.name} als ${side}: Die wichtigsten Spots sind ${list(hot)}.${extra}`, {
+      priority: 3,
+      category: "map",
+      round,
+      visual: image
+        ? {
+            type: "map",
+            map: mapName,
+            image,
+            side,
+            spots: data.spots.map((spot) => ({ ...spot, hot: hot.includes(spot.label) })),
+          }
+        : null,
+    });
+    return true;
+  }
+
   function onDeath(previous, round) {
     match.deadThisRound = true;
     const nades = grenadesOf(previous);
@@ -346,6 +408,17 @@ export function createGameTips({ now = () => Date.now() } = {}) {
         { priority: 2, category: "death", round },
       );
       return;
+    }
+    const alive = match.liveSince ? (now() - match.liveSince) / 1000 : 0;
+    if (alive > 0 && alive <= 20) {
+      match.earlyDeaths++;
+      if (match.earlyDeaths === 1 || match.earlyDeaths % 3 === 0) {
+        push(
+          `Früher Tod nach ${Math.round(alive)} Sekunden${match.earlyDeaths > 1 ? ` (schon ${match.earlyDeaths}× in dieser Partie)` : ""}. Nicht als Erster ohne Flash peeken: Lass dir Infos geben oder geh mit einem Mitspieler, der dich traden kann.`,
+          { priority: 2, category: "death", round },
+        );
+        return;
+      }
     }
     if (match.awpDeaths === 2 && weapon === "weapon_awp")
       push(
@@ -407,6 +480,13 @@ export function createGameTips({ now = () => Date.now() } = {}) {
     match.headshots += number(state.round_killhs);
     match.damage += number(state.round_totaldmg);
     const kills = number(state.round_kills);
+    if (kills >= 3)
+      push(
+        kills >= 5
+          ? "ACE! Alle fünf Gegner in einer Runde. Genau so weiter."
+          : `Starke Runde: ${kills} Kills${number(state.round_killhs) >= 2 ? `, davon ${number(state.round_killhs)} Headshots` : ""}. Merk dir, was hier funktioniert hat.`,
+        { priority: 1, category: "praise", round },
+      );
     if (match.deadThisRound && kills === 0) {
       match.noKillDeaths++;
       if (match.noKillDeaths === 4)
@@ -440,7 +520,7 @@ export function createGameTips({ now = () => Date.now() } = {}) {
   }
 
   function flush(windowOpen) {
-    if (!windowOpen || !queue.length || now() - lastShown < MIN_GAP) return;
+    if (!windowOpen || !queue.length || now() - lastShown < gap) return;
     queue.sort((a, b) => b.priority - a.priority || a.queuedAt - b.queuedAt);
     publish(queue.shift());
   }
@@ -476,6 +556,8 @@ export function createGameTips({ now = () => Date.now() } = {}) {
       match.deadThisRound = false;
       match.lowHpSince = 0;
     }
+    if (roundPhase === "live" && last?.roundPhase !== "live") match.liveSince = time;
+    else if (roundPhase !== "live") match.liveSince = 0;
     if (own) {
       match.ownSeen = true;
       const health = number(own.state?.health);
@@ -524,17 +606,25 @@ export function createGameTips({ now = () => Date.now() } = {}) {
         const tip = economyTip(map, own, round, half);
         const show = tip.text && (!["rich", "eco", "tight"].includes(tip.key) || tip.key !== match.economy);
         match.economy = tip.key;
+        const kind = roundKind(round, half);
+        const firstOfSide = kind === "pistol" || kind === "overtime-start" || !match.mapShown.size;
+        if (firstOfSide) mapOverview(map.name, side, round);
         if (show) push(tip.text, { priority: 2, category: "economy", round });
-        else if (!queue.length && round % 3 === 1) {
+        else if (!firstOfSide && !queue.length && round % 3 === 1) {
           const pool = MAP_TIPS[map.name]?.[side] || GENERIC_TIPS[side];
           if (pool?.length) push(pool[match.mapTip++ % pool.length], { priority: 0, category: "map", round });
         }
       }
       if (roundPhase === "freezetime") {
         const primary = primaryWeapon(own);
-        if (primary && SPRAY[primary.name] && !match.sprayShown.has(primary.name)) {
+        if (primary && sprayText(primary.name) && !match.sprayShown.has(primary.name)) {
           match.sprayShown.add(primary.name);
-          push(SPRAY[primary.name], { priority: 1, category: "weapon", round });
+          push(sprayText(primary.name), {
+            priority: 2,
+            category: "weapon",
+            round,
+            visual: sprayVisual(primary.name),
+          });
         }
       }
       if (roundPhase === "live" && last?.roundPhase === "freezetime" && last?.round === round)

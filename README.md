@@ -106,3 +106,10 @@ Der Companion kann während deiner eigenen CS2-Matches Tipps geben. Er nutzt daf
 Angefordert werden nur die eigenen Spielerdaten (Geld, HP, Rüstung, Waffen, Match-Stats, Map, Runde). Daten über Gegner, Bombenzähler oder Zuschauerblöcke werden nicht angefordert. Während einer Demo-Aufnahme werden die Daten ignoriert. Tipps erscheinen in einer kleinen Sprechblase neben der Figur, die CS2 nie den Fokus nimmt: in der Kaufzeit (Wirtschaft, Pistolenrunde, letzte Runde der Halbzeit, Verlängerung, Matchball, Spray-Hinweis zur gekauften Waffe, Map-Tipps), kurz nach der Kaufzeit als Kauf-Check (Helm, Rüstung, Defuse-Kit, Geld übrig), nach dem eigenen Tod (ungeworfene Granaten, Peek mit wenig HP, AWP ohne Kill) sowie zur Halbzeit und am Matchende mit Zusammenfassung. Über das Match werden außerdem Gewohnheiten erkannt: frühes Nachladen, häufiges Geblendetwerden, Feuerschaden und Runden ohne Kill in Folge.
 
 Sichtbar über dem Spiel ist die Sprechblase nur im Anzeigemodus „Vollbild im Fenster“. Bei FACEIT oder in Turnieren können eigene Regeln für Zusatzprogramme gelten.
+
+
+## Neu in 0.15.0: Rundentipps mit Bildern
+
+- **Spray-Muster beim Waffenkauf:** Kaufst du ein Gewehr oder eine SMG, zeigt die Sprechblase das Einschlagmuster der Waffe (Schuss 1, 10, 20, 30 markiert) und beschreibt, in welche Richtung du die Maus ziehen musst. Die Muster stammen aus dem Recoil Lab der Webseite (`spray-patterns.mjs`).
+- **Map-Übersicht zu Beginn jeder Halbzeit:** Für Mirage, Dust II, Inferno und Ancient gibt es eine Radarkarte mit Bombenplätzen, Spawns und den bekanntesten Callouts. Die für deine Seite wichtigsten Spots sind gold markiert. Das Radarbild liest der Companion lokal aus der mitinstallierten CS-Demo-Manager-Version. Ohne dieses Bild erscheint nur der Text.
+- **Neue Tipps:** früher Tod in den ersten 20 Sekunden, Lob für Runden mit 3 oder mehr Kills, genauere Spray-Beschreibungen.

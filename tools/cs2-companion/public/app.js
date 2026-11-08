@@ -55,7 +55,7 @@ async function api(url, body) {
 function notice(error) { $('notice').textContent = error.message || String(error); }
 function el(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; }
 const statuses = { preparing:'VISUALS WERDEN GEPRÜFT', branding:'VIDEO-BRANDING LÄUFT', ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER', downloading:'DEMO WIRD GELADEN' };
-const tipLabels={economy:'Wirtschaft',buy:'Kauf-Check',death:'Nach dem Tod',habit:'Gewohnheit',mindset:'Kopf',summary:'Zusammenfassung',weapon:'Waffe',map:'Map',warmup:'Aufwärmen'};
+const tipLabels={economy:'Wirtschaft',buy:'Kauf-Check',death:'Nach dem Tod',habit:'Gewohnheit',mindset:'Kopf',summary:'Zusammenfassung',weapon:'Waffe',map:'Map',warmup:'Aufwärmen',praise:'Stark'};
 let tipsSignature='';
 function gameTips(gsi){
   if(!gsi)return;

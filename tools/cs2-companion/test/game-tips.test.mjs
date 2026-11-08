@@ -73,6 +73,11 @@ test("Wirtschaftstipp zu Beginn der Kaufzeit", () => {
   tips.ingest(
     frame({ round: 5, state: { money: 2200 }, map: { team_t: { score: 1, consecutive_round_losses: 2 } } }),
   );
+  assert.equal(tips.state().tip.category, "map", "Zur ersten Kaufzeit kommt zuerst die Map-Übersicht");
+  time.advance(12000);
+  tips.ingest(
+    frame({ round: 5, state: { money: 2200 }, map: { team_t: { score: 1, consecutive_round_losses: 2 } } }),
+  );
   const tip = tips.state().tip;
   assert.match(tip.text, /Eco empfohlen/);
   assert.match(tip.text, /4\.600 \$/);
@@ -206,6 +211,9 @@ test("Companion: Rundentipps einschalten, GSI-Token prüfen, ausschalten", async
   assert.equal((await send(sample(4, { roundPhase: "over" }))).status, 200);
   time.advance(7000);
   assert.equal((await send(sample(5, { state: { money: 2200 } }))).status, 200);
+  assert.equal((await state()).tip.category, "map");
+  time.advance(12000);
+  assert.equal((await send(sample(5, { state: { money: 2200 } }))).status, 200);
   const live = await state();
   assert.equal(live.connected, true);
   assert.equal(live.map, "de_mirage");
@@ -214,4 +222,60 @@ test("Companion: Rundentipps einschalten, GSI-Token prüfen, ausschalten", async
   assert.equal((await post("/api/gsi/disable", {})).status, 200);
   assert.equal(await stat(cfg).catch(() => null), null);
   assert.equal((await state()).enabled, false);
+});
+
+test("Map-Übersicht mit Radar und Spots zu Beginn der Halbzeit, Spray-Muster beim Waffenkauf", () => {
+  const time = clock();
+  const tips = createGameTips({ ...time, radarPath: (map) => `C:/radars/${map}.png` });
+  tips.ingest(frame({ round: 0, roundPhase: "warmup", mapPhase: "warmup" }));
+  time.advance(12000);
+  tips.ingest(frame({ round: 0, team: "CT" }));
+  const overview = tips.state().tip;
+  assert.equal(overview.category, "map");
+  assert.match(overview.text, /^Mirage als CT: Die wichtigsten Spots sind Jungle, Connector, Window und Market\./);
+  assert.equal(overview.visual.type, "map");
+  assert.equal(overview.visual.image, "C:/radars/de_mirage.png");
+  assert.ok(overview.visual.spots.find((spot) => spot.label === "Jungle").hot);
+  assert.ok(overview.visual.spots.every((spot) => spot.x > 0 && spot.x < 1 && spot.y > 0 && spot.y < 1));
+
+  const ak = { weapon_1: { name: "weapon_ak47", type: "Rifle", state: "active", ammo_clip: 30, ammo_clip_max: 30 } };
+  tips.ingest(frame({ round: 3, roundPhase: "over" }));
+  tips.ingest(frame({ round: 4, team: "CT", state: { money: 6000 }, weapons: ak }));
+  for (let i = 0; i < 4 && tips.state().tip.category !== "weapon"; i++) {
+    time.advance(12000);
+    tips.ingest(frame({ round: 4, team: "CT", state: { money: 6000 }, weapons: ak }));
+  }
+  const spray = tips.state().tip;
+  assert.equal(spray.category, "weapon");
+  assert.equal(spray.visual.type, "spray");
+  assert.equal(spray.visual.points.length, 30);
+  assert.match(spray.text, /^AK-47/);
+});
+
+test("Ohne lokales Radarbild bleibt es beim Text", () => {
+  const time = clock();
+  const tips = createGameTips(time);
+  tips.ingest(frame({ round: 0 }));
+  const tip = tips.state().tip;
+  assert.equal(tip.category, "map");
+  assert.equal(tip.visual, undefined);
+});
+
+test("Früher Tod und starke Runde", () => {
+  const time = clock();
+  const tips = createGameTips(time);
+  tips.ingest(frame({ round: 6, roundPhase: "freezetime" }));
+  time.advance(15000);
+  tips.ingest(frame({ round: 6, roundPhase: "live" }));
+  time.advance(8000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", state: { health: 0 } }));
+  time.advance(12000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", steamid: MATE }));
+  assert.match(tips.state().tip.text, /^Früher Tod nach 8 Sekunden/);
+  tips.ingest(frame({ round: 7, roundPhase: "freezetime" }));
+  time.advance(15000);
+  tips.ingest(frame({ round: 7, roundPhase: "live", state: { round_kills: 3, round_killhs: 2 } }));
+  time.advance(60000);
+  tips.ingest(frame({ round: 7, roundPhase: "over", state: { round_kills: 3, round_killhs: 2 } }));
+  assert.match(tips.state().tip.text, /^Starke Runde: 3 Kills, davon 2 Headshots/);
 });

@@ -165,7 +165,13 @@ export async function createCompanion({
   }
   // CS2 Game State Integration: offizielle, rein lesende Schnittstelle für Rundentipps.
   const gsi = await createGsiSettings(installation?.profileDir || dataDir);
-  const tips = createGameTips(now ? { now } : {});
+  /* Radarbilder bringt CS Demo Manager mit (resources/static/images/maps/cs2/radars). Nur lokal lesen. */
+  function radarPath(map) {
+    if (!/^de_[a-z0-9_]+$/.test(map) || !detected.csdm) return "";
+    const file = path.join(path.dirname(detected.csdm), "resources", "static", "images", "maps", "cs2", "radars", `${map}.png`);
+    return existsSync(file) ? file : "";
+  }
+  const tips = createGameTips(now ? { now, radarPath } : { radarPath });
   let gsiError = "";
   async function syncGsiConfig() {
     gsiError = "";
