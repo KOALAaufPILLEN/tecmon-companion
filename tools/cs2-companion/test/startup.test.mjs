@@ -53,3 +53,20 @@ test("update acknowledgement reaches client before service closes and signals pr
   assert.equal(result.latest,"0.6.1");assert.equal(exited,false);
   await once(server,"close");assert.equal(exited,true);
 });
+
+for(const disconnectedBeforeHandoff of [false,true])test(`verified update exits once when client disconnects ${disconnectedBeforeHandoff?'during download':'before acknowledgement'}`,{timeout:3000},async t=>{
+  let exited=0,entered;
+  const ready=new Promise(resolve=>{entered=resolve;});
+  const server=http.createServer(async(_req,res)=>{
+    const closed=once(res,'close');entered();
+    if(disconnectedBeforeHandoff)await closed;
+    updateHandoff(server,res,()=>{exited++;},40);
+  });
+  server.listen(0,'127.0.0.1');await once(server,'listening');
+  const finished=once(server,'close');
+  const client=http.get(`http://127.0.0.1:${server.address().port}`);
+  client.on('error',()=>{});
+  t.after(()=>{client.destroy();server.closeAllConnections();server.close();});
+  await ready;client.destroy();await finished;
+  assert.equal(exited,1);
+});
