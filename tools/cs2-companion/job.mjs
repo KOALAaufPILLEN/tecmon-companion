@@ -20,6 +20,9 @@ export function validateJob(value) {
     outro: style.outro === true,
     subtitle: text(style.subtitle, 100),
   };
+  // X-Ray (Gegner durch Waende) ist Standard; nur ein ausdrueckliches false schaltet es ab.
+  if (value.xray !== undefined && typeof value.xray !== "boolean") fail();
+  const xray = value.xray !== false;
   let ticks = 0;
   const sequences = value.sequences.map((s) => {
     if (
@@ -35,11 +38,13 @@ export function validateJob(value) {
     const account = BigInt(s.steamId) - 76561197960265728n;
     if (account < 1n || account > 4294967295n) fail();
     ticks += s.endTick - s.startTick;
+    const cuts = cameraCuts(s.cuts, s.startTick, s.endTick, fail);
     return {
       startTick: s.startTick,
       endTick: s.endTick,
       steamId: s.steamId,
       playerName: text(s.playerName, 64) || "Spieler",
+      ...(cuts.length ? { cuts } : {}),
     };
   });
   if (ticks / value.tickRate > 1200)
@@ -53,10 +58,53 @@ export function validateJob(value) {
     ...(value.shareCode === undefined ? {} : { shareCode: shareCode(value.shareCode) }),
     sequences,
     branding,
+    xray,
   };
 }
 
-export function recordingConfig(job, demoPath, outputFolderPath, quality) {
+/**
+ * Kameraschnitte innerhalb einer Szene: "free" springt auf einen festen Punkt
+ * (Position in Spieleinheiten, Blick in Grad), "player" zurueck in die
+ * Egoansicht des Szenen-Spielers. Nur Zahlen, keine Befehle.
+ */
+export const MAX_CUTS = 12;
+const COORD = 65536;
+function cameraCuts(value, startTick, endTick, fail) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > MAX_CUTS) fail();
+  const num = (v, max) => (typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= max ? v : fail());
+  let last = -1;
+  return value.map((c) => {
+    if (!c || typeof c !== "object" || !Number.isSafeInteger(c.tick)) fail();
+    if (c.tick < startTick || c.tick >= endTick || c.tick < last) fail();
+    last = c.tick;
+    if (c.kind === "player") return { tick: c.tick, kind: "player" };
+    if (c.kind !== "free") fail();
+    return {
+      tick: c.tick,
+      kind: "free",
+      x: Math.round(num(c.x, COORD) * 100) / 100,
+      y: Math.round(num(c.y, COORD) * 100) / 100,
+      z: Math.round(num(c.z, COORD) * 100) / 100,
+      pitch: Math.round(num(c.pitch, 89) * 100) / 100,
+      yaw: Math.round(num(c.yaw, 360) * 100) / 100,
+    };
+  });
+}
+
+/** Feste Kamerapunkte eines Auftrags mit den IDs, unter denen sie in CS Demo Manager liegen. */
+export function jobCameras(job, newId) {
+  const list = [];
+  job.sequences.forEach((s, i) =>
+    (s.cuts || []).forEach((c, j) => {
+      if (c.kind !== "free") return;
+      list.push({ sequence: i, tick: c.tick, id: newId(), name: `TecMon ${i + 1}.${j + 1}`, x: c.x, y: c.y, z: c.z, pitch: c.pitch, yaw: c.yaw });
+    }),
+  );
+  return list;
+}
+
+export function recordingConfig(job, demoPath, outputFolderPath, quality, cameras = []) {
   job = validateJob(job);
   return {
     demoPath,
@@ -86,11 +134,10 @@ export function recordingConfig(job, demoPath, outputFolderPath, quality) {
       endTick: s.endTick,
       showOnlyDeathNotices: false,
       deathNoticesDuration: 5,
-      showXRay: false,
+      showXRay: job.xray,
       showAssists: true,
       playerVoicesEnabled: false,
       recordAudio: true,
-      cameras: [],
       playersOptions: [
         {
           steamId: s.steamId,
@@ -100,7 +147,18 @@ export function recordingConfig(job, demoPath, outputFolderPath, quality) {
           isVoiceEnabled: false,
         },
       ],
-      playerCameras: [{ tick: s.startTick, playerSteamId: s.steamId, playerName: s.playerName }],
+      playerCameras: [
+        // Beginnt die Szene mit einem festen Punkt, nicht vorher noch auf den Spieler schalten.
+        ...(s.cuts?.[0]?.kind === "free" && s.cuts[0].tick === s.startTick
+          ? []
+          : [{ tick: s.startTick, playerSteamId: s.steamId, playerName: s.playerName }]),
+        ...(s.cuts || [])
+          .filter((c) => c.kind === "player")
+          .map((c) => ({ tick: c.tick, playerSteamId: s.steamId, playerName: s.playerName })),
+      ],
+      cameras: cameras
+        .filter((c) => c.sequence === i)
+        .map((c) => ({ tick: c.tick, id: c.id, name: c.name, color: "#ffd23f" })),
     })),
   };
 }
