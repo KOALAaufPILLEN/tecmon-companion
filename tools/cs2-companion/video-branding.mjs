@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { sha256, BRANDING_FILES } from "./branding-assets.mjs";
 import { validateJob } from "./job.mjs";
 import { runTool } from "./managed-installation.mjs";
+import { cyberHud, playerSwitch, SWITCH_SECONDS } from "./cyber-hud.mjs";
 
 export const visualPlayerName = (value) =>
   String(value)
@@ -149,6 +150,11 @@ export async function renderBranding({
     await artifact("outro.txt", "DEIN MATCH. DEINE MOMENTE.");
     await artifact("website.txt", "Mehr Highlights auf tecmon.online");
     await artifact("channel.txt", "youtube.com/@tecmononline");
+    await artifact("hud-brand.txt", "TECMON");
+    await artifact("hud-mode.txt", "PLAYER POV // HIGHLIGHT");
+    await artifact("hud-site.txt", "tecmon.online");
+    await artifact("switch-label.txt", "POV SWITCH // NEXT PLAYER");
+    await artifact("switch-footer.txt", "TEC / MON     ·     DEIN MATCH. DEINE MOMENTE.");
     const parts = [];
     async function encode(name, inputs, graph, audio, duration, files) {
       const graphName = await artifact(name + ".graph", graph);
@@ -248,45 +254,32 @@ export async function renderBranding({
     for (let i = 0; i < sources.length; i++) {
       const source = sources[i],
         sequence = job.sequences[i];
-      const label = await artifact(`name-${i}.txt`, visualPlayerName(sequence.playerName));
+      const name=visualPlayerName(sequence.playerName);
+      const displayName=name.length>30?name.slice(0,29)+'…':name;
+      const label = await artifact(`name-${i}.txt`, displayName);
       const caption = await artifact(
         `caption-${i}.txt`,
-        clipText(`SPIELERANSICHT · ${mapLabel(job.map)}`, 80),
+        clipText(mapLabel(job.map), 20),
       );
-      const show = i === 0 || job.sequences[i - 1].steamId !== sequence.steamId;
-      const enable = ":enable='lt(t,3)'";
-      let graph = `[0:v]scale=${w}:${h},setsar=1,fps=${fps}[base];[1:v]scale=${n(100)}:${n(100)},format=rgba,colorchannelmixer=aa=0.52[logo];[base][logo]overlay=W-w-${n(35)}:${n(30)}`;
-      if (show)
-        graph +=
-          `,` +
-          [
-            `drawbox=x=${n(38)}:y=ih*0.64:w=${n(430)}:h=${n(130)}:color=0x0d0d16@0.85:t=fill${enable}`,
-            `drawbox=x=${n(38)}:y=ih*0.64:w=${n(5)}:h=${n(130)}:color=0xefc96d:t=fill${enable}`,
-            text(caption, 23, n(62), "h*0.64+" + n(17), "white", enable),
-            text(
-              label,
-              Math.min(
-                52,
-                Math.max(
-                  22,
-                  Math.round(680 / Math.max(visualPlayerName(sequence.playerName).length, 13)),
-                ),
-              ),
-              n(62),
-              "h*0.64+" + n(50),
-              "0xefc96d",
-              enable,
-            ),
-          ].join(",");
-      graph += "[v]";
-      progress(`Wasserzeichen und Spielername: Szene ${i + 1}/${sources.length} …`);
+      const counter=await artifact(`counter-${i}.txt`,`${String(i+1).padStart(2,'0')}/${String(sources.length).padStart(2,'0')}`);
+      if(i>0 && job.sequences[i-1].steamId!==sequence.steamId){
+        progress(`Cyberpunk-Spielerwechsel zu ${displayName} …`);
+        const previous=sources[i-1];
+        const previousFrame=Math.max(0,previous.info.duration-1/fps);
+        await encode(`switch-${i}`,
+          ['-ss',previousFrame.toFixed(6),'-i',previous.file,'-i',source.file,'-loop','1','-i','cyber-stinger.png','-loop','1','-i','logo.webp'],
+          playerSwitch({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}), '4:a:0',SWITCH_SECONDS,
+          [label,'cyber-stinger.png','switch-label.txt','switch-footer.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);
+      }
+      const graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length});
+      progress(`Cyberpunk-HUD mit dauerhaftem Spielername: Szene ${i + 1}/${sources.length} …`);
       await encode(
         `scene-${i}`,
-        ["-i", source.file, "-loop", "1", "-i", "logo.webp"],
+        ["-i", source.file, "-loop", "1", "-i", "logo.webp", "-loop", "1", "-i", "cyber-hud.png"],
         graph,
-        source.info.audio ? "0:a:0" : "2:a:0",
+        source.info.audio ? "0:a:0" : "3:a:0",
         source.info.duration,
-        [label, caption, { path: source.file, sha256: source.sha256 }],
+        [label, caption, counter, "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt", { path: source.file, sha256: source.sha256 }],
       );
     }
     if (job.branding.outro) {

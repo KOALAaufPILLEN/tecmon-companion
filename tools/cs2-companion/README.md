@@ -1,4 +1,12 @@
-# TecMon Companion · Windows Setup 0.6.1
+# TecMon Companion · Windows Setup 0.11.0
+
+## Cyberpunk-Overlay und Spielerwechsel ab 0.11
+
+Das dauerhafte Video-Design verwendet transparente Neon-Konturen in Cyan/Violett, TecMon-Gold, eine schräge Spieleranzeige mit Map und Szenennummer sowie dezente Randakzente. Die originale CS2-Minimap wird nicht verschoben oder ausgeschnitten; der Rahmen ist für den Standard-Radar der 16:9-Aufnahme ausgelegt. Abweichende persönliche HUD-Skalierungen können die Ausrichtung verändern.
+
+Bei einem Wechsel der Steam-ID zwischen Szenen wird automatisch ein 1,1 Sekunden langer animierter Stinger eingefügt. Er zeigt Logo und nächsten Spielernamen, schaltet die eingefrorenen Spielbilder unter einer vollständig deckenden Grafik um und gibt die nächste Szene frei. Die eigentlichen Szenen werden nicht gekürzt. Aufeinanderfolgende Szenen desselben Spielers bekommen keinen Stinger. Der Übergang hat eine stille Tonspur; die Spieltonspuren der Szenen bleiben erhalten.
+
+Das neue Branding-v2-Paket wird einmal von einer festen Release-URL geladen. Paket, PNGs, Logo und Schrift haben feste SHA256-Werte. Der native Renderer prüft und sperrt die Grafiken, Filter, Textdateien und Quellvideos gegen Schreiben/Ersetzen bis FFmpeg fertig ist. Eigene SVG-Quellen und Build-Skript sind öffentlich. Deaktiviertes Video-Branding überspringt auch das HUD und die Stinger. Intro und Outro bleiben unabhängig wählbar.
 
 ## X-Ray und feste Freecam-Punkte (Companion mit `camera-points-v1`)
 

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+ <linearGradient id="neon"><stop stop-color="#62edff"/><stop offset=".45" stop-color="#7587ff"/><stop offset="1" stop-color="#c76bff"/></linearGradient>
+ <linearGradient id="glass"><stop stop-color="#071622" stop-opacity=".96"/><stop offset="1" stop-color="#111426" stop-opacity=".48"/></linearGradient>
+ <linearGradient id="fade"><stop stop-color="#76e8ff" stop-opacity=".6"/><stop offset="1" stop-color="#76e8ff" stop-opacity="0"/></linearGradient>
+ <filter id="glow" x="-50%" y="-100%" width="200%" height="300%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<!-- Transparent radar surround; the original radar is never moved or resized. -->
+<g fill="none" stroke="url(#neon)" opacity=".28" filter="url(#glow)" stroke-width="7"><path d="M6 86V8h80 M224 8h70v80 M294 226v70h-70 M86 296H6v-70"/></g>
+<g fill="none" stroke-width="2"><path stroke="#eac876" d="M6 74V8h68M6 252v44h46"/><path stroke="#64e9ff" d="M238 8h56v56M294 244v52h-56"/><path stroke="#ae77ff" d="M2 102v102M300 96v114"/></g>
+<g fill="#6feaff"><path d="M7 305h40l-7 6H7z"/><path d="M52 305h8l-7 6h-8z"/><path d="M65 305h8l-7 6h-8z"/></g>
+<path d="M82 305h213" stroke="url(#fade)"/>
+<!-- Floating angular player identifier. No opaque minimap dashboard. -->
+<path d="M26 848h389l30 30v80H58l-32-32z" fill="url(#glass)"/>
+<path d="M26 882v-34h116M272 848h143l30 30v23M445 934v24H257M145 958H58l-32-32" fill="none" stroke="url(#neon)" stroke-width="2"/>
+<path d="M26 882v-34h116M272 848h143l30 30v23" fill="none" stroke="url(#neon)" stroke-width="8" opacity=".2" filter="url(#glow)"/>
+<path d="M30 888v32l23 23h8l-23-26v-29z" fill="#eac876"/>
+<path d="M377 852h30l33 32v13h-4v-12l-31-29h-28z" fill="#bd79ff"/>
+<path d="M54 875h337M54 938h199" stroke="#6ceaff" opacity=".22"/>
+<g stroke="#93b8d2" opacity=".3"><path d="M63 949h1m5 0h3m5 0h1m5 0h2m5 0h1m5 0h4m5 0h2m5 0h1m5 0h3m5 0h2"/></g>
+<g fill="#eac876"><path d="M184 952h40l-6 6h-40z"/><path d="M230 952h9l-6 6h-9z"/></g>
+<!-- Small broadcast logo tab, above the normal kill feed. -->
+<path d="M1638 24h254v57l-16 16h-177l-61-38z" fill="url(#glass)"/>
+<path d="M1640 24h252v38M1704 97h172l16-16" fill="none" stroke="url(#neon)" stroke-width="2"/>
+<path d="M1640 24h65" stroke="#eac876" stroke-width="3"/>
+<!-- Edge details stay away from score, crosshair and native health/ammo. -->
+<path d="M5 490v62l9 9v69M5 656v41l9 9v34" fill="none" stroke="#6eeaff" opacity=".36"/>
+<path d="M1915 450v71l-9 9v42M1915 593v75l-9 9v33" fill="none" stroke="#b87bff" opacity=".36"/>
+<path d="M18 1066h394l12-12h130M1366 1054h136l12 12h388" fill="none" stroke="url(#neon)" stroke-width="2"/>
+<path d="M18 1066h129M1778 1066h124" stroke="#eac876" stroke-width="3"/>
+<g fill="#75eaff" opacity=".55"><path d="M154 1063h14l-4 6h-14zM175 1063h14l-4 6h-14zM196 1063h14l-4 6h-14z"/></g>
+</svg>

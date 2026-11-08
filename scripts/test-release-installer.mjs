@@ -1,6 +1,6 @@
 // Runs only against a fresh, isolated test directory, never a user's installation.
 import path from 'node:path';
-import {access, readFile, readdir, writeFile, unlink} from 'node:fs/promises';
+import {access, readFile, readdir, writeFile, unlink, mkdir, copyFile} from 'node:fs/promises';
 import {randomBytes} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
@@ -46,6 +46,23 @@ try{
   const count=await api.runTool(psql,[...sqlArgs,'-U','tecmon_csdm','-d','tecmon_csdm','-tAc','SELECT count(*) FROM migrations'],{env:appEnv});
   if(Number(count.trim())<1)throw Error('CSDM migrations missing');
   await api.runTool(config.ffmpegExe,['-version']);
+  if(process.argv[5]){
+    const {verifyBrandingPack}=await import(pathToFileURL(path.join(root,'branding-assets.mjs')));
+    const {renderBranding,sequenceFile,probeVideo}=await import(pathToFileURL(path.join(root,'video-branding.mjs')));
+    const assets=verifyBrandingPack(await readFile(path.resolve(process.argv[5])));
+    const directory=path.join(base,'synthetic-recording');await mkdir(directory);
+    const first={startTick:64,endTick:96,steamId:'76561198000000000',playerName:'Alpha'};
+    const second={startTick:128,endTick:160,steamId:'76561198000000001',playerName:'Beta'};
+    const third={...second,startTick:192,endTick:224};
+    const job={format:'tecmon-cs2-job',version:1,map:'de_dust2',tickRate:64,sequences:[first,second,third],branding:{enabled:true,intro:false,outro:false}};
+    const fixture=path.join(directory,'synthetic.mp4');
+    await api.runTool(config.ffmpegExe,['-hide_banner','-loglevel','error','-y','-f','lavfi','-i','testsrc2=size=1280x720:rate=30','-t','0.6','-c:v','libx264','-preset','ultrafast',fixture]);
+    for(let i=0;i<job.sequences.length;i++)await copyFile(fixture,path.join(directory,sequenceFile(job.sequences[i],i)));
+    const video=await renderBranding({job,directory,assets,ffmpeg:config.ffmpegExe,launcher:path.join(root,'TecMon Companion.exe')});
+    const info=await probeVideo(config.ffmpegExe,video);
+    if(Math.abs(info.duration-2.9)>0.12)throw Error('Stinger did not preserve full scenes or appeared on repeated POV');
+    console.log('PASS: real native-locked FFmpeg render, persistent cyber HUD, one animated player switch, repeated POV without extra stinger, complete scene durations.');
+  }
   console.log('PASS: pristine installer, fresh setup, separate accounts, special-character password, interrupted-setup repair, CSDM migrations and FFmpeg. No game recording performed.');
 }catch(error){
   console.error(String(error.message).replaceAll(password,'[test password]'));

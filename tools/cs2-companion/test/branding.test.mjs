@@ -19,7 +19,7 @@ import {
   visualPlayerName,
 } from "../video-branding.mjs";
 import { validateJob } from "../job.mjs";
-const packed = await readFile(new URL("../branding/TecMon-Branding-v1.json", import.meta.url));
+const packed = await readFile(new URL("../branding/TecMon-Branding-v2.json", import.meta.url));
 const job = {
   format: "tecmon-cs2-job",
   version: 1,
@@ -49,7 +49,7 @@ test("branding assets use a pinned release/hash; changed downloads or cache fail
   const changed = Buffer.from(packed);
   changed[100] ^= 1;
   assert.throws(() => verifyBrandingPack(changed), /Prüfsumme/);
-  await writeFile(path.join(dir, "TecMon-Branding-v1.json"), changed);
+  await writeFile(path.join(dir, "TecMon-Branding-v2.json"), changed);
   await assert.rejects(
     loadBrandingPack(dir, async () => {
       throw new Error("must not hide changed cache");
@@ -111,18 +111,24 @@ test("renderer locks/hash-checks assets, literal text, graphs and scene inputs; 
         const graph = await readFile(path.join(request.cwd, request.args[index + 1]), "utf8");
         assert.ok(graph.includes("expansion=none"));
         assert.ok(!graph.includes("movie=private"));
+        if(path.basename(request.args.at(-1)).startsWith('scene-')){
+          assert.ok(graph.includes('[2:v]scale='));
+          assert.ok(!graph.includes('crop='),'Native radar must stay untouched');
+          assert.ok(!graph.includes("enable="),'HUD must remain visible for the entire scene, including repeated POVs');
+          for(const prefix of ['name-','caption-','counter-'])assert.ok(request.files.some(file=>path.basename(file.path).startsWith(prefix)));
+        }
         seen.push(path.basename(request.args.at(-1)));
       } else {
         const list = await readFile(path.join(request.cwd, "parts.txt"), "utf8");
         assert.equal(
           list,
-          "file 'intro.mp4'\nfile 'scene-0.mp4'\nfile 'scene-1.mp4'\nfile 'outro.mp4'",
+          "file 'intro.mp4'\nfile 'scene-0.mp4'\nfile 'switch-1.mp4'\nfile 'scene-1.mp4'\nfile 'outro.mp4'",
         );
       }
       await writeFile(request.args.at(-1), "encoded fixture");
     },
   });
-  assert.deepEqual(seen, ["intro.mp4", "scene-0.mp4", "scene-1.mp4", "outro.mp4"]);
+  assert.deepEqual(seen, ["intro.mp4", "scene-0.mp4", "switch-1.mp4", "scene-1.mp4", "outro.mp4"]);
   assert.equal(await readFile(result, "utf8"), "encoded fixture");
   assert.deepEqual(await readdir(path.join(dir, "branding-work")), []);
 });
