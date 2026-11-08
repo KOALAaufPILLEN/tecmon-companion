@@ -411,6 +411,7 @@ export async function createCompanion({
         "/style.css": ["style.css", "text/css; charset=utf-8"],
         "/logo.webp": ["logo.webp", "image/webp"],
         "/favicon.ico": ["favicon.ico", "image/x-icon"],
+          "/desktop-avatar.png": ["desktop-avatar.png", "image/png"],
       };
       if (req.method === "GET" && assets[url.pathname]) {
         const [file, mime] = assets[url.pathname];

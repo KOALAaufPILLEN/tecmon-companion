@@ -1,4 +1,4 @@
-TecMon Companion Setup 0.7.0 · Windows x64
+TecMon Companion Setup 0.8.0 · Windows x64
 
 Video-Branding: Barlow Condensed Bold, Copyright 2017 The Barlow Project Authors, SIL Open Font License 1.1. Die unveränderte Schrift und OFL.txt sind im separat geladenen Branding-Paket enthalten.
 Quelle: https://github.com/google/fonts/tree/89f5431ff0db41bd2fe3f7ba21a723a01622428b/ofl/barlowcondensed
@@ -43,3 +43,5 @@ Beim öffentlichen Download-Installer sind HLAE und FFmpeg nicht im EXE-Payload 
 CS2-Aufnahme-Plugin: offizieller Upstream-Build mit Fix #1483, bei der ersten Aufnahme separat geladen und SHA256-geprüft. MIT und enthaltene Drittanbieter-Hinweise.
 Quelle und Binärdatei: https://github.com/akiver/cs-demo-manager/tree/01f655f20141d366e07a5869f84554df3a61c64a
 SHA256 server.dll: 1ad610f84577d4e9ef22e2757858049420f86649cd89a1afcd4738358d054086
+
+Desktop UI: Microsoft.Web.WebView2 SDK 1.0.4314.35, original NuGet package SHA256 90778deb1b77e36292828b4b5833c9255c27533f40e0ddd55891ae718944edc4. Microsoft.Web.WebView2.Core.dll, WinForms.dll and x64 WebView2Loader.dll are redistributed with WebView2-LICENSE.txt and WebView2-NOTICE.txt. The separately installed Evergreen WebView2 Runtime is maintained by Microsoft. No Runtime binaries are bundled.

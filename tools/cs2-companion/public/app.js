@@ -1,3 +1,9 @@
+if(new URLSearchParams(location.search).get('desktop')==='1'){
+  document.body.classList.add('desktop-panel');
+  document.querySelector('.minimal-hero>img').src='/desktop-avatar.png';
+  document.getElementById('minimal-title').textContent='Dein Desktop-Companion';
+  document.querySelector('.minimal-hero p').textContent='Hier findest du deine Verbindung und Einstellungen. Ein Klick auf mich klappt das Fenster wieder ein.';
+}
 const token = document.querySelector('meta[name="tecmon-token"]').content;
 const $ = id => document.getElementById(id);
 const drafts = new Map();

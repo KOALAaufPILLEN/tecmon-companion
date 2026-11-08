@@ -2,7 +2,7 @@ param(
   [Parameter(Mandatory=$true)][string]$ApplicationDirectory,
   [Parameter(Mandatory=$true)][string]$BuildDirectory,
   [Parameter(Mandatory=$true)][string]$OutputDirectory,
-  [string]$Version='0.7.0'
+  [string]$Version='0.8.0'
 )
 $ErrorActionPreference='Stop'
 if($Version -notmatch '^\d+\.\d+\.\d+$'){throw 'Invalid version'}
@@ -16,10 +16,12 @@ Copy-Item -LiteralPath (Join-Path $source 'public') -Destination $stage -Recurse
 foreach($name in @('README.md','unpack-tools.ps1')) {Copy-Item -LiteralPath (Join-Path $source $name) -Destination $stage}
 foreach($name in @('dependency-manifest.json','THIRD-PARTY-NOTICES.txt')) {Copy-Item -LiteralPath (Join-Path $source ('windows/'+$name)) -Destination $stage}
 Copy-Item -LiteralPath (Join-Path $ApplicationDirectory 'csdm-defaults.json') -Destination $stage
+& (Join-Path $PSScriptRoot 'prepare-companion-desktop.ps1') -Stage $stage -Cache (Join-Path $BuildDirectory 'desktop-cache')
 $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 $native=Join-Path $source 'windows/TecMon.cs'
 $refs=@('/nologo','/target:winexe','/platform:x64','/optimize+','/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:System.Web.Extensions.dll','/r:Microsoft.CSharp.dll',('/win32icon:'+(Join-Path $source 'windows/tecmon.ico')))
 $refs+=('/resource:'+(Join-Path $source 'public/splash-logo.png')+',TecMonLogo')
+$refs+=('/resource:'+(Join-Path $source 'public/desktop-bot.png')+',TecMonBot')
 & $compiler @refs ('/out:'+(Join-Path $stage 'TecMon Companion.exe')) $native
 if($LASTEXITCODE -ne 0){throw 'Launcher build failed'}
 Add-Type -AssemblyName System.IO.Compression.FileSystem

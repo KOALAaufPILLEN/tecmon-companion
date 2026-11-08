@@ -21,7 +21,7 @@ Der Build lädt fehlende Pakete anhand von `tools/cs2-companion/windows/dependen
 
 Der BuildDirectory darf keine bereits eingerichtete Installation enthalten. Keine eigenen `installation.json`, `settings.json`, Datenbanken oder Kennwörter in den Build kopieren. Laufzeitkonfiguration entsteht erst nach dem Start des Installers beim Benutzer.
 
-Ausgabe: `dist/TecMon-Companion-Setup-0.7.0.exe` und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
+Ausgabe: `dist/TecMon-Companion-Setup-0.8.0.exe` und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
 
 Nur den nativen Launcher zu prüfen erfordert keine Drittanbieter-Downloads: `.github/workflows/test.yml` dokumentiert die Compilerparameter und führt `--self-test` aus. Dieser Selbsttest prüft nicht die vollständige Installation.
 
@@ -31,3 +31,5 @@ Kleine Updates bauen: scripts/build-companion-update.ps1 mit -ApplicationDirecto
 
 
 Branding-Paket reproduzieren: `node scripts/build-branding-pack.mjs dist`. Die feste Google-Fonts-Revision und alle Quellprüfsummen stehen im Skript. Das Ergebnis muss SHA256 `aebe71cd08594e66cd2b6afea6da70859857f2ce83201295f152bcaf8c9ab155` haben. Das Paket wird separat als Release-Asset veröffentlicht; es gehört nicht in den kleinen Programm-Updater.
+
+Desktop ab 0.8: `scripts/prepare-companion-desktop.ps1` lädt ausschließlich Microsoft.Web.WebView2 1.0.4314.35 aus NuGet, prüft SHA256 und entnimmt die drei originalen x64/NET462-DLLs sowie LICENSE/NOTICE. Die nativen Build-Skripte rufen dies automatisch auf. Die Desktop-PNGs stammen unverändert aus dem TecMon-Webseiten-Sprite; `--desktop-preview <png>` rendert den nativen Bot ohne Start von Datenbank, Desktopfigur oder Aufnahme. `--desktop-self-test` prüft die Begrenzung auf Monitor-Arbeitsbereiche einschließlich negativer Koordinaten. WebView2 Evergreen Runtime muss vorhanden sein; sie wird separat von Microsoft gepflegt und nicht gebündelt.

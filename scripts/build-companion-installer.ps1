@@ -58,11 +58,13 @@ Copy-Item -LiteralPath (Join-Path $ffmpeg.FullName 'bin/ffmpeg.exe'),(Join-Path 
 Get-ChildItem -LiteralPath $ffmpeg.FullName -File | Copy-Item -Destination $ffTarget -Force
 Copy-Item -LiteralPath (Join-Path $source 'windows/THIRD-PARTY-NOTICES.txt') -Destination (Join-Path $stage 'tools/ffmpeg/TECMON-SOURCE-NOTICE.txt') -Force
 }
+& (Join-Path $PSScriptRoot 'prepare-companion-desktop.ps1') -Stage $stage -Cache (Join-Path $BuildDirectory 'desktop-cache')
 $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 $native=Join-Path $source 'windows/TecMon.cs'
 $refs=@('/nologo','/target:winexe','/platform:x64','/optimize+','/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:System.Web.Extensions.dll','/r:Microsoft.CSharp.dll')
 $refs+=('/win32icon:'+(Join-Path $source 'windows/tecmon.ico'))
 $refs+=('/resource:'+(Join-Path $source 'public/splash-logo.png')+',TecMonLogo')
+$refs+=('/resource:'+(Join-Path $source 'public/desktop-bot.png')+',TecMonBot')
 & $compiler @refs ('/out:'+(Join-Path $stage 'TecMon Companion.exe')) $native
 if($LASTEXITCODE -ne 0) { throw 'Native launcher build failed.' }
 Set-Content -LiteralPath (Join-Path $stage 'tecmon-app.marker') -Value 'TecMon Companion 0.3' -Encoding utf8
@@ -70,7 +72,7 @@ $payload=Join-Path $BuildDirectory 'payload.zip'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 if(Test-Path -LiteralPath $payload) { Remove-Item -LiteralPath $payload }
 [IO.Compression.ZipFile]::CreateFromDirectory($stage,$payload,[IO.Compression.CompressionLevel]::Optimal,$false)
-$setup=Join-Path $OutputDirectory 'TecMon-Companion-Setup-0.7.0.exe'
+$setup=Join-Path $OutputDirectory 'TecMon-Companion-Setup-0.8.0.exe'
 $temporarySetup=Join-Path $OutputDirectory ('TecMon-Setup-'+[guid]::NewGuid().ToString('N')+'.exe')
 & $compiler @refs ('/out:'+$temporarySetup) ('/resource:'+$payload+',TecMonPayload') ('/resource:'+(Join-Path $source 'windows/THIRD-PARTY-NOTICES.txt')+',TecMonNotices') $native
 if($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
