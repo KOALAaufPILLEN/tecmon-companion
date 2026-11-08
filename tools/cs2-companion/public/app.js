@@ -7,6 +7,32 @@ let downloadSignature = '';
 let populated = false;
 let updateReady = false;
 let restarting = false;
+let latestState;
+function advanced(show) {
+  $('advanced-panel').hidden=!show;
+  $('advanced-toggle').setAttribute('aria-expanded',String(show));
+  $('advanced-toggle').textContent=show?'Erweitert schließen':'Erweitert';
+  if(latestState)overview(latestState);
+}
+$('advanced-toggle').addEventListener('click',()=>advanced($('advanced-panel').hidden));
+function overview(state) {
+  const devices=state.bridge?.devices || [];
+  const pending=state.bridge?.pending || [];
+  $('connection-heading').textContent=pending.length?'Verbindung bestätigen':devices.length?'Browser-Verbindung eingerichtet':'Noch nicht verbunden';
+  $('website-bridge').hidden=devices.length>0 && !pending.length && $('advanced-panel').hidden;
+  $('connection-note').textContent=pending.length?'Vergleiche den Code auf der Webseite und bestätige die Anfrage unten.':devices.length?'Download und Aufnahme startest du auf der Webseite. Du kannst dieses Fenster minimieren; der Companion muss weiterlaufen.':'Öffne TecMon und wähle „Companion verbinden“. Bestätige den angezeigten Code einmal hier.';
+  document.querySelector('.connection-summary').classList.toggle('is-connected',devices.length>0);
+  const jobs=state.jobs || [];
+  const downloads=state.downloads || [];
+  const running=jobs.find(j=>['preparing','downloading','analyzing','recording','branding'].includes(j.status));
+  const loading=downloads.find(d=>['queued','downloading'].includes(d.status));
+  const latest=jobs.at(-1);
+  const lastDownload=downloads.at(-1);
+  $('activity-progress').hidden=!state.active;
+  $('activity-count').textContent=`${jobs.filter(j=>j.status==='done' && j.files.length).length} Videos · ${downloads.filter(d=>d.status==='done').length} Demos`;
+  $('activity-heading').textContent=state.active?(statuses[running?.status] || (loading?'DEMO WIRD GELADEN':'Auftrag läuft …')):latest?.status==='error'||lastDownload?.status==='error'?'Auftrag fehlgeschlagen':latest?.status==='done'?'Auftrag fertig':latest?.status==='ready'?'Manueller Auftrag importiert':'Bereit für den nächsten Auftrag';
+  $('activity-note').textContent=state.active?(running?.job.title || 'Der Companion arbeitet lokal. Den Fortschritt siehst du auch auf der Webseite.'):latest?.status==='error'||lastDownload?.status==='error'?'Die Details findest du unter „Erweitert“ im Aufnahme- oder Download-Protokoll.':latest?.status==='done'?'Das Ergebnis steht bereit. Auf der Webseite gestartete Videos werden dort automatisch übernommen; lokale Aufträge findest du unter „Erweitert“.':latest?.status==='ready'?'Öffne „Erweitert“, um die Originaldemo zu wählen und den importierten Auftrag zu starten.':'Datenbank und Aufnahme-Tools starten erst bei Bedarf. Wähle deine Highlights auf TecMon.';
+}
 function databaseState(pg) {
   $('database-install').disabled = pg.supported;
   $('database-status').textContent = pg.installed ? `PostgreSQL-Tools ${pg.version} erkannt${pg.supported ? '' : ' · Version zu alt'}` : 'PostgreSQL nicht automatisch gefunden';
@@ -24,6 +50,8 @@ const statuses = { preparing:'VISUALS WERDEN GEPRÜFT', branding:'VIDEO-BRANDING
 async function refresh() {
   if(restarting)return;
   const state = await api('/api/state');
+  latestState=state;
+  overview(state);
   const bridgeNext=JSON.stringify(state.bridge);
   if(bridgeSignature !== bridgeNext) {
     bridgeSignature=bridgeNext;
@@ -34,11 +62,13 @@ async function refresh() {
       approve.addEventListener('click',async()=>{approve.disabled=true;try{await api('/api/bridge/approve',{id:item.id});await refresh();}catch(error){notice(error);approve.disabled=false;}});
       card.append(approve);container.append(card);
     }
+    const connections=el('details','','bridge-devices');connections.append(el('summary',`Verbindungen verwalten (${state.bridge?.devices?.length || 0})`));
     for(const item of state.bridge?.devices || []) {
       const card=el('article','','job');card.append(el('b',item.origin));const revoke=el('button','Verbindung widerrufen');revoke.className='subtle';
-      revoke.addEventListener('click',async()=>{try{await api('/api/bridge/revoke',{id:item.id});await refresh();}catch(error){notice(error);}});card.append(revoke);container.append(card);
+      revoke.addEventListener('click',async()=>{try{await api('/api/bridge/revoke',{id:item.id});await refresh();}catch(error){notice(error);}});card.append(revoke);connections.append(card);
     }
-    if(!container.children.length) container.append(el('p','Noch keine Webseite verbunden. JSON-Dateien können weiterhin ohne Verbindung importiert werden.'));
+    if(state.bridge?.devices?.length) container.append(connections);
+    if(!container.children.length) container.append(el('p','Die Verbindungsanfrage erscheint hier automatisch. Manueller JSON-Import ist unter „Erweitert“ möglich.'));
   }
   databaseState(state.postgres);
   $('csdm-open').hidden = !state.managed;
@@ -118,7 +148,7 @@ async function refresh() {
 }
 $('import').addEventListener('change', async event => {
   try { const file = event.target.files[0]; if (!file) return; if (file.size > 65536) throw new Error('Auftrag zu groß.'); const value=JSON.parse(await file.text());
-    if(value.format==='tecmon-match-download') { if(value.version!==1 || !Array.isArray(value.shareCodes) || !value.shareCodes.length || value.shareCodes.length>10 || value.shareCodes.some(c=>typeof c!=='string')) throw new Error('Ungültige Match-Datei.'); $('share-codes').value=value.shareCodes.join('\n'); $('demo-download').scrollIntoView({behavior:'smooth'}); $('notice').textContent='Sharecodes übernommen. Bitte lokalen Download bestätigen.'; }
+    if(value.format==='tecmon-match-download') { advanced(true); if(value.version!==1 || !Array.isArray(value.shareCodes) || !value.shareCodes.length || value.shareCodes.length>10 || value.shareCodes.some(c=>typeof c!=='string')) throw new Error('Ungültige Match-Datei.'); $('share-codes').value=value.shareCodes.join('\n'); $('demo-download').scrollIntoView({behavior:'smooth'}); $('notice').textContent='Sharecodes übernommen. Bitte lokalen Download bestätigen.'; }
     else { await api('/api/import',value); $('notice').textContent=''; }
     await refresh(); } catch (err) { notice(err); } finally { event.target.value = ''; }
 });

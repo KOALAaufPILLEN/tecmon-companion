@@ -14,7 +14,7 @@ Die Webseite verlangt für aktiviertes Branding Companion 0.6+. Bei JSON-Import 
 
 Validierung: 25 Companion-Tests einschließlich verändertem Paket/Cache, Titelbildung, Dateireihenfolge, wörtlichen Texten, Cleanup und Abbruch vor CS2 bei Integritätsfehler. Ein Windows-Test blockiert echte Schreib- und Löschversuche und verhindert den Encoderstart nach einer Dateiveränderung. Echte FFmpeg-Tests mit vorher aufgenommenen CS2-Szenen erzeugten Single- und Team-Videos einschließlich Namenswechsel, Intro und optionalem Outro, auch in einem Umlautpfad.
 
-Für eine bestehende Installation die kleine **TecMon-Companion-Update-0.6.1.exe** aus dem GitHub-Release verwenden oder im Companion „Auf Updates prüfen“ wählen. Das Setup für neue Installationen kann mit den öffentlichen Build-Skripten erstellt werden; ein großer Setup-Download ist aktuell nicht im Release verfügbar. Steam und CS2 müssen installiert sein.
+Für eine bestehende Installation die kleine **TecMon-Companion-Update-0.7.0.exe** aus dem GitHub-Release verwenden oder im Companion „Auf Updates prüfen“ wählen. Das Setup für neue Installationen kann mit den öffentlichen Build-Skripten erstellt werden; ein großer Setup-Download ist aktuell nicht im Release verfügbar. Steam und CS2 müssen installiert sein.
 
 ## Einrichten
 
@@ -56,7 +56,7 @@ Beim Update zuerst den laufenden Companion über „Companion beenden“ und die
 
 Im TecMon-Replay unter „In CS2 aufnehmen“ den Auftrag als `.tecmon.json` exportieren. Im Companion öffnen, Originaldemo mit „Demo wählen“ auswählen, CS2-Partie beenden und Aufnahme bestätigen. Danach die MP4 im Replay auswählen und mit Spielername/Freitext und Steam-Link veröffentlichen. Demos und Aufnahme bleiben lokal; der Companion erhält keine YouTube-Secrets.
 
-Version 0.6.1 überträgt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Originaldemo und Tickbereiche müssen zusammengehören. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demos verwenden, nicht mit Matchmaking verbinden; nach CS2-Updates kann eine neue HLAE-Version erforderlich sein.
+Version 0.7.0 überträgt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Originaldemo und Tickbereiche müssen zusammengehören. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demos verwenden, nicht mit Matchmaking verbinden; nach CS2-Updates kann eine neue HLAE-Version erforderlich sein.
 
 ## Entwickler
 
@@ -70,7 +70,7 @@ GitHub-Release: Das Kernpaket enthält Companion, Node.js, PostgreSQL und CS Dem
 
 ## Aktualisieren ohne Neuinstallation
 
-Für eine bestehende 0.3.1-Installation die kleine TecMon-Companion-Update-0.6.1.exe aus dem GitHub-Release verwenden. Vorher Companion und CS Demo Manager schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
+Für eine bestehende 0.3.1-Installation die kleine TecMon-Companion-Update-0.7.0.exe aus dem GitHub-Release verwenden. Vorher Companion und CS Demo Manager schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
 
 Ab 0.4: Im Companion Auf Updates prüfen und anschließend Update installieren wählen. Das Paket wird ausschließlich aus stabilen Releases des offiziellen Repositories bezogen. Größe und SHA256 werden vor dem Start geprüft. Nach dem Beenden des lokalen Servers übernimmt ein separater Update-Prozess und startet den Companion wieder. Änderungen an großen Drittanbieter-Tools können weiterhin einen gesonderten Tool-/Installer-Schritt erfordern.
 
@@ -89,3 +89,12 @@ Chrome/Edge können eine Berechtigung für lokalen/Loopback-Zugriff verlangen. B
 Das originale TecMon-Logo erscheint im Windows-Icon und beim Start mit animiertem Ladebalken. Der lokale Dienst startet ohne PostgreSQL. Die private Datenbank startet erst für Download, Aufnahme, den ausdrücklichen Datenbanktest oder das Öffnen des CS Demo Managers. Die CSDM-Oberfläche wird nur auf Wunsch geöffnet.
 
 Beim Update wird zuerst die Bestätigung an die Oberfläche übertragen, dann der lokale Dienst beendet. Der Updater wartet auf die Freigabe des Dienstes statt auf eine möglicherweise weiter belegte Prozess-ID. Die Oberfläche verbindet sich nach dem Neustart neu. Bei Problemen die kleine Update-EXE aus dem offiziellen Release verwenden; das Ergebnis steht im Programmordner unter `update-result.json`.
+
+
+## Standardansicht und erweiterter Modus (0.7.0)
+
+Der Companion öffnet standardmäßig eine kompakte Ansicht: Webseite öffnen, Browser-Verbindung und lokaler Auftragsstatus. „Erweitert“ rechts oben blendet das bisherige Aufnahme-Studio mit manuellem Import, Sharecodes, Tool-/Datenbank-Einstellungen, Updates und Protokollen ein. Eingaben und laufende Aufträge bleiben beim Umschalten erhalten; beim nächsten Öffnen ist die Standardansicht aktiv.
+
+Im TecMon-Browser einmal „Companion verbinden“ wählen, die Zahlencodes vergleichen und die Anfrage im Companion freigeben. Bereits eingerichtete Verbindungen bleiben über Neustarts erhalten. Danach kann das Fenster minimiert bleiben: Match-Demos herunterladen, mehrere Spieler auswählen, Download + Aufnahme starten und die MP4 übernehmen funktioniert auf der Website. Steam muss lokal angemeldet und CS2 / CS Demo Manager vor dem Start geschlossen sein. Der Companion-Dienst muss weiterlaufen. Manueller Dateiimport und Sonderfälle bleiben unter „Erweitert“ verfügbar.
+
+Verbindungsanfragen erscheinen automatisch auch in der Standardansicht. Nach dem Verbinden verschwindet der Einrichtungsbereich; Verbindungen lassen sich unter „Erweitert“ verwalten und widerrufen. Die Anzeige „Browser-Verbindung eingerichtet“ bedeutet eine gespeicherte Freigabe, nicht, dass gerade ein Browserfenster geöffnet ist.
