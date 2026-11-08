@@ -1,6 +1,6 @@
 // Runs only against a fresh, isolated test directory, never a user's installation.
 import path from 'node:path';
-import {access, readFile, readdir, writeFile} from 'node:fs/promises';
+import {access, readFile, readdir, writeFile, unlink} from 'node:fs/promises';
 import {randomBytes} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
@@ -32,7 +32,12 @@ try{
   const appEnv={...process.env,PGPASSWORD:settings.database.password,PGCONNECT_TIMEOUT:'5'};
   await api.runTool(psql,[...sqlArgs,'-U','tecmon_csdm','-d','tecmon_csdm','-tAc','SELECT 1'],{env:appEnv});
   // Emulate an interrupted setup: settings remain but app role/database are missing.
-  await api.runTool(psql,[...sqlArgs,'-U','tecmon_admin','-d','postgres'],{env:{...process.env,PGPASSWORD:password},input:'DROP DATABASE tecmon_csdm;\nDROP ROLE tecmon_csdm;\n'});
+  // Use the same UTF-8 pgpass transport as setup: Windows libpq's environment
+  // password transport does not reliably preserve non-ASCII characters.
+  const passFile=path.join(base,'test-admin.pgpass');
+  await writeFile(passFile,`127.0.0.1:${config.port}:postgres:tecmon_admin:${password.replaceAll('\\','\\\\').replaceAll(':','\\:')}\n`,{mode:0o600});
+  try{await api.runTool(psql,[...sqlArgs,'-U','tecmon_admin','-d','postgres'],{env:{...process.env,PGPASSWORD:'',PGPASSFILE:passFile},input:'DROP DATABASE tecmon_csdm;\nDROP ROLE tecmon_csdm;\n'});}
+  finally{await unlink(passFile);}
   config=await api.setupManagedInstallation(root,{password,dataDir:config.dataDir,acceptLicenses:true},()=>{});
   await api.runTool(psql,[...sqlArgs,'-U','tecmon_csdm','-d','tecmon_csdm','-tAc','SELECT 1'],{env:appEnv});
   const fixture=path.join(base,'invalid-demo.dem');await writeFile(fixture,Buffer.from('PBDEMS2\0test'));
