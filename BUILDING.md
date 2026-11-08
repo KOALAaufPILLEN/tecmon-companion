@@ -25,6 +25,8 @@ Ausgabe: `dist/TecMon-Companion-Setup-0.9.0.exe` und SHA256 im Build-Protokoll. 
 
 Nur den nativen Launcher zu prüfen erfordert keine Drittanbieter-Downloads: `.github/workflows/test.yml` dokumentiert die Compilerparameter und führt `--self-test` aus. Dieser Selbsttest prüft nicht die vollständige Installation.
 
+Der manuell startbare GitHub-Workflow [Windows release installer](.github/workflows/release-installer.yml) baut ein bestehendes Release-Tag auf einem frischen Windows-Runner. Er prüft die Originalpakete, den unkonfigurierten Payload, eine isolierte Neuinstallation mit Sonderzeichen-Passwort, getrennte Datenbankkonten, die Reparatur einer unterbrochenen Einrichtung und die CSDM-Tabellenmigrationen. Erst danach ergänzt er Setup-EXE und SHA256-Datei im bestehenden Release. Vorhandene Update-Assets werden dabei nicht überschrieben. Dies ersetzt keinen echten CS2-Aufnahmetest.
+
 Für den öffentlichen Release den Build mit dem zusätzlichen Schalter -DownloadVideoTools und einem frischen BuildDirectory ausführen. Damit sind HLAE und FFmpeg nicht im Payload enthalten; das Setup lädt fehlende Pakete vom Originalanbieter und prüft deren SHA256. Für den eigenen Offline-Build den Schalter weglassen.
 
 Kleine Updates bauen: scripts/build-companion-update.ps1 mit -ApplicationDirectory (enthält die erzeugte csdm-defaults.json), frischem -BuildDirectory und -OutputDirectory. Ausgabe: Update-EXE und TecMon-Companion-Update.json mit Größe und SHA256. Das Update enthält ausschließlich eigene Programmdateien, keine Runtime, Drittanbieterprogramme, Datenbank oder Nutzerkonfiguration. Die Versionsnummer in Quellen, Paket und Release muss gemeinsam erhöht werden.

@@ -1,0 +1,109 @@
+name: Windows release installer
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build
+        required: true
+        default: v0.9.0
+permissions:
+  contents: read
+concurrency:
+  group: companion-release-installer
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: build-tools
+          persist-credentials: false
+      - name: Validate release tag
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          if($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$'){throw 'Invalid release tag'}
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: akiver/cs-demo-manager
+          ref: v3.20.1
+          path: csdm-source
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify source and tests
+        working-directory: source
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $package=Get-Content package.json -Raw|ConvertFrom-Json
+          if(('v'+$package.version) -ne $env:RELEASE_TAG){throw 'Tag/version mismatch'}
+          npm ci --ignore-scripts
+          if($LASTEXITCODE -ne 0){throw 'npm ci failed'}
+          npm test
+          if($LASTEXITCODE -ne 0){throw 'Tests failed'}
+      - name: Prepare original Node runtime and build-only 7-Zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory cache,runtime -Force|Out-Null
+          Copy-Item -LiteralPath 'C:/Program Files/7-Zip' -Destination cache/7zip -Recurse
+          $name='node-v26.13.0-win-x64.zip'
+          Invoke-WebRequest "https://nodejs.org/dist/v26.13.0/$name" -OutFile "runtime/$name"
+          $sums=(Invoke-WebRequest 'https://nodejs.org/dist/v26.13.0/SHASUMS256.txt').Content
+          $expected=($sums -split "`n"|Where-Object {$_ -match ('\s+'+[regex]::Escape($name)+'\s*$')}) -split '\s+'|Select-Object -First 1
+          if(!$expected -or (Get-FileHash "runtime/$name").Hash -ine $expected){throw 'Node runtime checksum mismatch'}
+          Expand-Archive -LiteralPath "runtime/$name" -DestinationPath runtime
+      - name: Build setup and updater from the release source
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $base=$PWD.Path
+          & ./source/scripts/build-companion-installer.ps1 -DependenciesCache "$base/cache" -CsDmSource "$base/csdm-source" -NodeFolder "$base/runtime/node-v26.13.0-win-x64" -BuildDirectory "$base/build" -OutputDirectory "$base/dist" -DownloadVideoTools
+          & ./source/scripts/build-companion-update.ps1 -ApplicationDirectory "$base/build/app" -BuildDirectory "$base/update-build" -OutputDirectory "$base/update-check" -Version $env:RELEASE_TAG.Substring(1)
+      - name: Verify pristine payload and isolated first installation
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          node ./build-tools/scripts/test-release-installer.mjs "dist/TecMon-Companion-Setup-$($env:RELEASE_TAG.Substring(1)).exe" "$env:RUNNER_TEMP/tecmon-installation-test" $env:RELEASE_TAG.Substring(1)
+          if($LASTEXITCODE -ne 0){throw 'Installer smoke test failed'}
+          $name="TecMon-Companion-Setup-$($env:RELEASE_TAG.Substring(1)).exe"
+          ((Get-FileHash "dist/$name").Hash.ToLowerInvariant()+'  '+$name)|Set-Content "dist/$name.sha256" -Encoding utf8
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-installer
+          path: dist/*
+          retention-days: 7
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-installer
+          path: dist
+      - name: Add verified installer to the existing public release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft == false' | grep -qx true
+          (cd dist && sha256sum --check *.sha256)
+          gh release upload "$RELEASE_TAG" dist/*

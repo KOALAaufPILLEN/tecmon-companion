@@ -13,6 +13,15 @@ Der Quellcode steht unter der MIT-Lizenz. Beiträge, Fehlerberichte und Sicherhe
 
 Details, Grenzen und Hinweise für Reviewer: [SECURITY.md](SECURITY.md). Offener Code und bestandene Tests ersetzen kein unabhängiges Sicherheitsaudit.
 
+## Windows herunterladen
+
+Im [aktuellen GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest) gibt es zwei getrennte EXE-Dateien:
+
+- **TecMon-Companion-Setup-0.9.0.exe**: für neue Nutzer ohne vorhandene Installation. Enthält Companion, Node.js, PostgreSQL und CS Demo Manager. Das Setup lädt HLAE und FFmpeg vom Originalanbieter mit SHA256-Prüfung nach, richtet eine private Datenbank ein und fragt nach einem frei wählbaren Administratorpasswort. Steam und CS2 müssen bereits installiert sein. Internetverbindung erforderlich.
+- **TecMon-Companion-Update-0.9.0.exe**: für bereits eingerichtete Installationen. Ersetzt nur Companion-Programmdateien und erhält Datenbank, Kennwörter, Tools, Demos und Videos.
+
+Vor Installation oder Update den Companion und CS Demo Manager schließen. Die Prüfsumme des Installers steht neben der EXE als `.sha256`; das Update hat ein eigenes JSON-Manifest und `SHA256SUMS.txt`. WebView2 Evergreen Runtime muss vorhanden sein; siehe [Build- und Laufzeitvoraussetzungen](BUILDING.md).
+
 ## Aus Quellcode starten
 
 Node.js ab Version 24; Steam und CS2 für echte Aufnahmen. Die Laufzeit selbst hat keine npm-Abhängigkeiten. Die Entwicklungsabhängigkeit TypeScript wird nur zum Erzeugen der CSDM-Konfigurationsvorlage benötigt.
@@ -31,7 +40,7 @@ Siehe [BUILDING.md](BUILDING.md). Alle Launcher-, Installer- und Serverquellen s
 
 ## Verwendung und aktueller Stand
 
-Siehe [Anleitung](tools/cs2-companion/README.md). Auftrag im TecMon-Replay als `.tecmon.json` exportieren, im Companion importieren, zugehörige Originaldemo auswählen und Aufnahme starten. Die fertige MP4 anschließend auf der Website auswählen.
+Siehe [Anleitung](tools/cs2-companion/README.md). Companion starten, einmal mit dem TecMon-Replay im Browser verbinden und dort „In CS2 aufnehmen“ wählen. Download oder Demo-Übergabe, Aufnahme und MP4-Rückgabe laufen automatisch. JSON-Import und manuelle Dateiauswahl bleiben als Alternative verfügbar.
 
 Version 0.9.0 unterstützt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demo-Aufnahmen einsetzen; Steam und CS2 werden nicht mitgeliefert.
 
@@ -47,7 +56,7 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Sharecodes oder Match-Dateien lokal herunterladen; mehrere Spielerperspektiven in einem gemeinsamen Highlight-Auftrag; TecMon-Icon in EXE/Installer/Oberfläche; sicherer Umgang mit einer zurückgebliebenen privaten Datenbank beim Update. Die neue Team-Auswahl erfordert den entsprechenden Website-Stand. Siehe Anleitung unter tools/cs2-companion/README.md.
 
-Updates: [GitHub Releases](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest). Der große Installer ist aktuell nicht hochgeladen. Neue Installationen können mit den öffentlichen Build-Skripten erstellt werden.
+Downloads: [GitHub Releases](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest). Für neue Installationen die Setup-EXE, für bestehende Installationen die kleine Update-EXE verwenden. Beide lassen sich mit den öffentlichen Build-Skripten selbst bauen.
 
 Für bestehende Installationen gibt es im Release eine kleine Update-EXE. Sie aktualisiert nur Companion-Dateien; Datenbank und große Tools bleiben erhalten. Ab 0.4 ist die Updateprüfung direkt im Companion verfügbar.
 
