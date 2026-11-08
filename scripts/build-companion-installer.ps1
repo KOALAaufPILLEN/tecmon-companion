@@ -69,7 +69,7 @@ $payload=Join-Path $BuildDirectory 'payload.zip'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 if(Test-Path -LiteralPath $payload) { Remove-Item -LiteralPath $payload }
 [IO.Compression.ZipFile]::CreateFromDirectory($stage,$payload,[IO.Compression.CompressionLevel]::Optimal,$false)
-$setup=Join-Path $OutputDirectory 'TecMon-Companion-Setup-0.4.0.exe'
+$setup=Join-Path $OutputDirectory 'TecMon-Companion-Setup-0.5.0.exe'
 $temporarySetup=Join-Path $OutputDirectory ('TecMon-Setup-'+[guid]::NewGuid().ToString('N')+'.exe')
 & $compiler @refs ('/out:'+$temporarySetup) ('/resource:'+$payload+',TecMonPayload') ('/resource:'+(Join-Path $source 'windows/THIRD-PARTY-NOTICES.txt')+',TecMonNotices') $native
 if($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }

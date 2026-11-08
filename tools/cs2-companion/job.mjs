@@ -83,7 +83,7 @@ export function recordingConfig(job, demoPath, outputFolderPath, quality) {
       playersOptions: [
         {
           steamId: s.steamId,
-          playerName: s.playerName,
+          playerName: s.playerName.replace(/[";\\]/g, ""),
           showKill: true,
           highlightKill: false,
           isVoiceEnabled: false,

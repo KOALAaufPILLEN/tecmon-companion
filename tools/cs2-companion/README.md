@@ -1,6 +1,6 @@
-# TecMon Companion · Windows Setup 0.4.0
+# TecMon Companion · Windows Setup 0.5.0
 
-Die empfohlene Ausgabe ist **TecMon-Companion-Setup-0.4.0.exe**. Das vollständige Offline-Paket enthält die Companion-EXE, Node.js, PostgreSQL 18, CS Demo Manager, HLAE, FFmpeg und bei Bedarf die Microsoft Visual C++ Laufzeit. Steam und CS2 müssen installiert sein.
+Für eine bestehende Installation die kleine **TecMon-Companion-Update-0.5.0.exe** aus dem GitHub-Release verwenden oder im Companion „Auf Updates prüfen“ wählen. Das Setup für neue Installationen kann mit den öffentlichen Build-Skripten erstellt werden; ein großer Setup-Download ist aktuell nicht im Release verfügbar. Steam und CS2 müssen installiert sein.
 
 ## Einrichten
 
@@ -17,7 +17,20 @@ CS Demo Manager erzeugt seine Tabellen beim ersten Start bzw. der ersten Analyse
 
 ## Highlights aufnehmen
 
-### Neu in 0.4: Sharecodes und Team-Videos
+### Neu in 0.5: Webseite direkt verbinden und CS2-Plugin reparieren
+
+1. Companion starten, auf **https://tecmon.online** „Companion verbinden“ anklicken. Falls der Browser fragt, lokalen Zugriff erlauben.
+2. Den Zahlencode vergleichen und im Companion unter „Webseite verbinden“ diese Webseite freigeben. Die Verbindung gilt nur für genau diese TecMon-Adresse und diesen Browser und lässt sich im Companion widerrufen.
+3. Danach den Companion im Hintergrund laufen lassen. Im Steam-Bereich der Webseite Demos direkt herunterladen. Bei Highlights den Sharecode des passenden Matches eintragen, Spieler/Szenen wählen und „Demo herunterladen & in CS2 aufnehmen“ starten.
+4. Steam muss angemeldet und CS2 / CS Demo Manager vor dem Start geschlossen sein. Download, Entpacken, Analyse, CS2-Aufnahme und Konvertierung laufen auf dem PC. Die fertige MP4 erscheint auf der geöffneten Webseite und bleibt im lokalen Auftragsordner. Ein Seitenwechsel unterbricht nur die Statusanzeige, nicht den lokalen Auftrag; das Ergebnis ist dann im Companion zugänglich.
+
+Die JSON-Übergabe bleibt möglich. Der sichtbare Sharecode wird mit exportiert. Keine Steam-API-Schlüssel, Passwörter oder YouTube-Tokens gehören in diese Datei.
+
+**Aufnahmefix:** Das unveränderte CSDM-3.20.1-Plugin kann unter neueren CS2-Versionen die komplette Demo abspielen, ohne Sprünge oder Aufnahme. Vor einer Aufnahme aktualisiert die verwaltete Installation ausschließlich das bekannte Original-Plugin auf den offiziellen Upstream-Build `01f655f20141d366e07a5869f84554df3a61c64a` mit Fix #1483. URL und SHA-256 sind in `recording-engine.mjs` festgelegt; ein unbekanntes Plugin wird nicht überschrieben. Das bisherige Plugin bleibt als `.3.20.1-backup` erhalten. Dafür ist beim ersten Mal Internet nötig. Die kleine Update-EXE enthält weiterhin keine großen Tool-Pakete.
+
+Ein echter kurzer Test auf CS2 1.41.9.6 mit dem korrigierten Plugin erzeugte am 08.11.2026 eine 2-Sekunden-MP4 (720p, H.264/AAC) mit der ausgewählten Spieleransicht. Das ist kein Nachweis für jede Map, Demo oder längere Team-Aufnahme.
+
+### Sharecodes und Team-Videos
 
 Im Steam-Match-Bereich der Webseite „Für Companion exportieren“ wählen: Die Datei enthält ausschließlich bis zu zehn Sharecodes, keine API-Schlüssel oder Steam-Anmeldecodes. Im Companion über „Auftrag / Matches öffnen“ importieren, Steam lokal anmelden und den Download bestätigen. Alternativ Sharecodes direkt einfügen. CS2 und die CS-Demo-Manager-Oberfläche vorher schließen. Der Companion verwendet `csdm dl-valve`, lädt und entpackt lokal in einen eigenen Download-Ordner. Abgelaufene Valve-Demos werden als Fehler angezeigt. Download und Aufnahme laufen nacheinander; kein Spiele- oder Demo-Upload auf den Webserver.
 
@@ -29,13 +42,13 @@ Beim Update zuerst den laufenden Companion über „Companion beenden“ und die
 
 Im TecMon-Replay unter „In CS2 aufnehmen“ den Auftrag als `.tecmon.json` exportieren. Im Companion öffnen, Originaldemo mit „Demo wählen“ auswählen, CS2-Partie beenden und Aufnahme bestätigen. Danach die MP4 im Replay auswählen und mit Spielername/Freitext und Steam-Link veröffentlichen. Demos und Aufnahme bleiben lokal; der Companion erhält keine YouTube-Secrets.
 
-Version 0.4.0 überträgt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Originaldemo und Tickbereiche müssen zusammengehören. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demos verwenden, nicht mit Matchmaking verbinden; nach CS2-Updates kann eine neue HLAE-Version erforderlich sein.
+Version 0.5.0 überträgt Spieler-Egoansichten bei normalem Tempo und Spielton ohne Voicechat. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Originaldemo und Tickbereiche müssen zusammengehören. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demos verwenden, nicht mit Matchmaking verbinden; nach CS2-Updates kann eine neue HLAE-Version erforderlich sein.
 
 ## Entwickler
 
 Das kleine ZIP auf dem Website-Branch ist ein Quellpaket. Für den vollständigen Installer `scripts/build-companion-installer.ps1` verwenden. Der Build prüft `windows/dependency-manifest.json`, extrahiert unveränderte Originalpakete und kompiliert Launcher/Setup mit dem vorhandenen Windows-.NET-Framework-Compiler. Der Quellcode von CS Demo Manager muss auf Tag `v3.20.1` stehen. Die Binärpakete sind separat; keine Laufzeit-Binaries gehören ins Git-Repository.
 
-Tests: `node --test "tools/cs2-companion/test/*.test.mjs"`. Der reale Einrichtungstest verwendet einen eigenen Test-Datenordner und ein generiertes Testpasswort; keine fremden Datenbanken. Ein erfolgreicher echter CS2-Aufnahmetest wird dadurch nicht behauptet.
+Tests: `node --test "tools/cs2-companion/test/*.test.mjs"`. Der reale Einrichtungstest verwendet einen eigenen Test-Datenordner und ein generiertes Testpasswort; keine fremden Datenbanken. Automatisierte Tests ersetzen den oben beschriebenen gesonderten realen Aufnahmetest nicht.
 
 Paketversionen und Lizenzhinweise: `windows/THIRD-PARTY-NOTICES.txt`, `windows/dependency-manifest.json`. Engine-Dokumentation: https://cs-demo-manager.com/docs/cli
 
@@ -43,6 +56,15 @@ GitHub-Release: Das Kernpaket enthält Companion, Node.js, PostgreSQL und CS Dem
 
 ## Aktualisieren ohne Neuinstallation
 
-Für eine bestehende 0.3.1-Installation die kleine TecMon-Companion-Update-0.4.0.exe aus dem GitHub-Release verwenden. Vorher Companion und CS Demo Manager schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
+Für eine bestehende 0.3.1-Installation die kleine TecMon-Companion-Update-0.5.0.exe aus dem GitHub-Release verwenden. Vorher Companion und CS Demo Manager schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
 
 Ab 0.4: Im Companion Auf Updates prüfen und anschließend Update installieren wählen. Das Paket wird ausschließlich aus stabilen Releases des offiziellen Repositories bezogen. Größe und SHA256 werden vor dem Start geprüft. Nach dem Beenden des lokalen Servers übernimmt ein separater Update-Prozess und startet den Companion wieder. Änderungen an großen Drittanbieter-Tools können weiterhin einen gesonderten Tool-/Installer-Schritt erfordern.
+
+
+## Lokale Browser-Verbindung und Sicherheit
+
+Der HTTP-Dienst bindet nur an `127.0.0.1:31977`. CORS ist auf `https://tecmon.online`, `https://app.tecmon.app` und `https://tecmon-app.vercel.app` begrenzt; Preview-Domains sind nicht pauschal freigegeben. Jede Verbindung braucht einen fünf Minuten gültigen Code und die ausdrückliche Freigabe im lokalen, sitzungsgeschützten Companion. Es gibt maximal 16 gespeicherte Verbindungen. Der Browser speichert sein zufälliges Zugriffstoken ausschließlich lokal; Companion speichert dessen SHA-256 und die genaue Website-Adresse unter `bridge-devices.json` im privaten Profil. Diese Datei gehört niemals ins Repository.
+
+Freigegebene Webseiten dürfen nur Sharecodes herunterladen, validierte Szenen mit diesen Demos aufnehmen, ihren Auftragsstatus und ihre fertigen Videos abrufen. Sie dürfen keine lokalen Dateipfade, Programme, Spielbefehle, Datenbankoptionen oder Updates vorgeben. Es läuft höchstens ein Download-/Aufnahmeauftrag gleichzeitig. Andere verbundene Browser können fremde Aufträge nicht abrufen. „Verbindung vergessen“ entfernt nur das Token im Browser; „Verbindung widerrufen“ im Companion sperrt es dauerhaft.
+
+Chrome/Edge können eine Berechtigung für lokalen/Loopback-Zugriff verlangen. Bei Ablehnung oder nicht unterstütztem Browser bleibt die JSON-/MP4-Dateiübergabe nutzbar. Das Companion-Fenster darf minimiert sein; „Companion beenden“ stoppt den Dienst.

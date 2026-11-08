@@ -33,3 +33,10 @@ Automatisierte Tests und Secret-Scans sind Prüfungen mit begrenzter Abdeckung. 
 ## Programm-Updates ab 0.4
 
 Die Updateprüfung verwendet ausschließlich stabile Releases von KOALAaufPILLEN/tecmon-companion. Version, Asset-Pfad, Größe (maximal 20 MiB) und SHA256 werden vor dem Start geprüft. Ein zweiter Klick bestätigt die Installation. Der native Helfer wartet auf das Ende des alten Servers und akzeptiert nur Programmdateien: insbesondere keine Runtime-/Tool-Verzeichnisse oder installation.json. Bestehende Verzeichnisverknüpfungen werden abgelehnt; identische Dateien bleiben unverändert. Die Release-Metadaten und das Paket liegen im gleichen GitHub-Konto: der Hash schützt gegen beschädigte Downloads, nicht gegen ein kompromittiertes Maintainer-Konto. Updates sind derzeit nicht zusätzlich digital signiert.
+
+
+## Browser-Verbindung ab 0.5
+
+Fest erlaubte TecMon-Origins, ausdrückliche lokale Freigabe per Zahlencode (fünf Minuten gültig), origin-gebundene Tokens und eigene Auftragsrechte. Browser-Tokens bleiben lokal im Browser; Companion persistiert ausschließlich Hashes und Origin in `bridge-devices.json` im privaten Profil. Verbindungen lassen sich lokal widerrufen. Keine frei wählbaren Pfade, Executables, Datenbankbefehle oder Updates über die Browser-Bridge. Download und Aufnahme teilen eine exklusive Sperre. Kein pauschales CORS für Preview-Domains.
+
+Der verwaltete Recorder lädt für das bekannte originale CSDM-3.20.1-Plugin den offiziellen Upstream-Build mit Fix #1483. Unveränderliche Quellrevision, URL und SHA256 stehen im öffentlich prüfbaren `recording-engine.mjs`; ein unbekanntes vorhandenes Plugin wird nicht überschrieben. Der Dienst führt keine fremden Downloads aus Website-Aufträgen aus.

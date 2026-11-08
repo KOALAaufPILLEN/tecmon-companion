@@ -1,4 +1,4 @@
-TecMon Companion Setup 0.4.0 · Windows x64
+TecMon Companion Setup 0.5.0 · Windows x64
 
 Dieses Setup enthält unveränderte Programmdateien folgender Projekte. Die Original-Lizenzdateien und Hinweise werden mit den Programmen im tools-Ordner installiert. Die Programme werden ausschließlich lokal ausgeführt. Steam und Counter-Strike 2 werden nicht mitgeliefert.
 
@@ -36,3 +36,7 @@ FFmpeg-Quellcode: https://git.ffmpeg.org/ffmpeg.git
 Die Versionen und SHA256-Prüfsummen der bezogenen Originalpakete stehen in dependency-manifest.json. Die lokale Datenbank wird ausschließlich an 127.0.0.1 gebunden. Das frei gewählte Administratorpasswort wird zur Initialisierung verwendet; für CS Demo Manager richtet TecMon ein eigenes lokales Anwendungskonto ein. Die dafür notwendige CS-Demo-Manager-Konfiguration liegt im nur für dein Windows-Konto zugänglichen Datenordner.
 
 Beim öffentlichen Download-Installer sind HLAE und FFmpeg nicht im EXE-Payload enthalten: Das Setup lädt die unveränderten Originalpakete bei Bedarf direkt von den oben genannten Anbietern herunter und prüft deren SHA256. Das Kernpaket enthält die übrigen oben aufgeführten Programme mit ihren mitgelieferten Lizenzdateien.
+
+CS2-Aufnahme-Plugin: offizieller Upstream-Build mit Fix #1483, bei der ersten Aufnahme separat geladen und SHA256-geprüft. MIT und enthaltene Drittanbieter-Hinweise.
+Quelle und Binärdatei: https://github.com/akiver/cs-demo-manager/tree/01f655f20141d366e07a5869f84554df3a61c64a
+SHA256 server.dll: 1ad610f84577d4e9ef22e2757858049420f86649cd89a1afcd4738358d054086

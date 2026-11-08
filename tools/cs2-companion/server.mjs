@@ -9,6 +9,8 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { validateJob, recordingConfig } from "./job.mjs";
 import { matchDownloadRequest } from "./share-code.mjs";
+import { ensureRecordingPlugin, recordingFailure } from "./recording-engine.mjs";
+import { createBrowserBridge } from "./browser-bridge.mjs";
 import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { checkPostgres, postgresEnvironment } from "./postgresql.mjs";
@@ -78,6 +80,7 @@ export async function createCompanion({
   dataDir = path.join(local, "TecMon", "Companion"),
   runProcess,
   installation = null,
+  detectTools = detect,
 } = {}) {
   if (installation) dataDir = path.join(installation.dataDir, "Jobs");
   await mkdir(dataDir, { recursive: true });
@@ -85,7 +88,8 @@ export async function createCompanion({
   const jobs = new Map();
   const downloads = new Map();
   let active = false;
-  const detected = await detect();
+  const detected = await detectTools();
+  const bridge = await createBrowserBridge(installation?.profileDir || dataDir);
   if (installation) {
     detected.csdm = installation.csdmExe;
     detected.cs2 = installation.cs2Exe || detected.cs2;
@@ -142,6 +146,205 @@ export async function createCompanion({
     res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify(value));
   };
+  async function record(job, input) {
+    if (installation)
+      await ensureRecordingPlugin(installation, (message) => {
+        job.log += `\n${message}`;
+      });
+    const exe = typeof input.csdm === "string" ? input.csdm : "";
+    const demo = typeof input.demo === "string" ? input.demo : "";
+    if (
+      !path.isAbsolute(exe) ||
+      !["csdm.exe", "cs-demo-manager.exe"].includes(path.basename(exe).toLowerCase()) ||
+      !(await stat(exe)).isFile()
+    )
+      throw new Error("Bitte den vollständigen Pfad zur csdm.exe eintragen.");
+    if (!path.isAbsolute(demo) || !/\.dem$/i.test(demo) || !(await stat(demo)).isFile())
+      throw new Error("Bitte eine entpackte CS2-Demo (.dem) angeben.");
+    const handle = await open(demo, "r");
+    try {
+      const header = Buffer.alloc(8);
+      await handle.read(header, 0, 8, 0);
+      if (header.toString() !== "PBDEMS2\0") throw new Error("Keine CS2-Demo.");
+    } finally {
+      await handle.close();
+    }
+    const output = path.join(dataDir, job.id);
+    await mkdir(output, { recursive: true });
+    const config = path.join(output, "recording.json");
+    const recording = recordingConfig(job.job, demo, output, input.quality);
+    if (installation)
+      recording.ffmpegSettings = {
+        ...recording.ffmpegSettings,
+        customLocationEnabled: true,
+        customExecutableLocation: installation.ffmpegExe,
+      };
+    await writeFile(config, JSON.stringify(recording, null, 2));
+    await writeFile(path.join(output, "tecmon-job.json"), JSON.stringify(job.job, null, 2));
+    job.status = "analyzing";
+    job.output = output;
+    await run(exe, ["analyze", demo], job);
+    job.status = "recording";
+    try {
+      await run(exe, ["video", "--config-file", config], job);
+    } catch (error) {
+      let pluginLog = "";
+      try {
+        if (detected.cs2)
+          pluginLog = await readFile(path.join(path.dirname(detected.cs2), "csdm.log"), "utf8");
+      } catch {
+        /* optional diagnostics */
+      }
+      throw new Error(recordingFailure(error, pluginLog));
+    }
+    job.files = await mp4s(output);
+    if (!job.files.length) throw new Error("Keine MP4 erzeugt. Protokoll im Companion prüfen.");
+    job.status = "done";
+  }
+  async function engine() {
+    const exe = detected.csdm;
+    if (
+      !path.isAbsolute(exe) ||
+      !["csdm.exe", "cs-demo-manager.exe"].includes(path.basename(exe).toLowerCase()) ||
+      !(await stat(exe)).isFile()
+    )
+      throw new Error("CS Demo Manager fehlt. Einrichtung im Companion prüfen.");
+    return exe;
+  }
+  async function readInput(req) {
+    if (req.method !== "POST" || req.headers["content-type"] !== "application/json")
+      throw new Error("JSON-Auftrag erwartet.");
+    let body = "";
+    for await (const b of req) {
+      body += b;
+      if (body.length > 65536) throw new Error("Auftrag zu groß.");
+    }
+    return JSON.parse(body);
+  }
+  async function video(res, job, index) {
+    const file = job?.files?.[Number(index)];
+    if (!file || job.status !== "done") return json(res, 404, { error: "Video nicht vorhanden." });
+    const full = await realpath(path.join(job.output, file));
+    const relative = path.relative(await realpath(job.output), full);
+    if (relative.startsWith("..") || path.isAbsolute(relative))
+      throw new Error("Ungültiger Videopfad.");
+    res.writeHead(200, {
+      "Content-Type": "video/mp4",
+      "Content-Disposition": 'attachment; filename="tecmon-highlight.mp4"',
+    });
+    return createReadStream(full)
+      .on("error", () => res.destroy())
+      .pipe(res);
+  }
+  async function bridgeRequest(req, res, url) {
+    const source = req.headers.origin;
+    if (!bridge.allowed(source)) return json(res, 403, { error: "Webseite nicht freigegeben." });
+    res.setHeader("Access-Control-Allow-Origin", source);
+    res.setHeader("Vary", "Origin");
+    if (req.method === "OPTIONS") {
+      if (!["GET", "POST"].includes(req.headers["access-control-request-method"]))
+        return json(res, 403, { error: "Methode nicht erlaubt." });
+      const headers = (req.headers["access-control-request-headers"] || "")
+        .toLowerCase()
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (headers.some((h) => !["content-type", "x-tecmon-bridge-token"].includes(h)))
+        return json(res, 403, { error: "Header nicht erlaubt." });
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST");
+      res.setHeader("Access-Control-Allow-Headers", "content-type, x-tecmon-bridge-token");
+      res.setHeader("Access-Control-Allow-Private-Network", "true");
+      res.writeHead(204);
+      return res.end();
+    }
+    if (req.method === "POST" && url.pathname === "/bridge/pair") {
+      await readInput(req);
+      return json(res, 201, bridge.pair(source));
+    }
+    if (req.method === "POST" && url.pathname === "/bridge/pair/poll") {
+      const input = await readInput(req);
+      return json(res, 200, bridge.poll(source, input.request));
+    }
+    const owner = bridge.authorize(source, req.headers["x-tecmon-bridge-token"]);
+    if (!owner) return json(res, 401, { error: "Webseite zuerst im Companion verbinden." });
+    if (req.method === "GET" && url.pathname === "/bridge/state")
+      return json(res, 200, { version: VERSION, active });
+    if (req.method === "GET" && ["/bridge/job", "/bridge/video"].includes(url.pathname)) {
+      const job = jobs.get(url.searchParams.get("id"));
+      if (!job || job.owner !== owner) return json(res, 404, { error: "Auftrag nicht vorhanden." });
+      if (url.pathname === "/bridge/video") return video(res, job, url.searchParams.get("file"));
+      return json(res, 200, {
+        id: job.id,
+        status: job.status,
+        files: job.files.length,
+        error:
+          job.status === "error"
+            ? "Lokaler Auftrag fehlgeschlagen. Protokoll im Companion prüfen (z. B. abgelaufene Demo oder Steam nicht angemeldet)."
+            : undefined,
+      });
+    }
+    if (req.method !== "POST" || !["/bridge/download", "/bridge/capture"].includes(url.pathname))
+      return json(res, 404, { error: "Nicht gefunden." });
+    const input = await readInput(req);
+    if (active) throw new Error("Auf deinem PC läuft bereits eine Aufnahme oder ein Download.");
+    if (input.confirm !== true) throw new Error("Lokalen Download / Aufnahme bitte bestätigen.");
+    if (jobs.size >= 100) throw new Error("Auftragsliste voll. Companion neu starten.");
+    const capture = url.pathname === "/bridge/capture";
+    const specification = capture ? validateJob(input.job) : null;
+    if (capture && !specification.shareCode)
+      throw new Error("Für die automatische Aufnahme den Sharecode des Matches ergänzen.");
+    const codes = capture ? [specification.shareCode] : matchDownloadRequest(input);
+    if (downloads.size + codes.length > 100)
+      throw new Error("Downloadliste voll. Companion neu starten.");
+    const job = {
+      id: randomUUID(),
+      owner,
+      job: specification || { title: "Match-Download", map: "", tickRate: 64, sequences: [] },
+      status: "downloading",
+      log: "",
+      files: [],
+    };
+    active = true;
+    try {
+      const exe = await engine();
+      jobs.set(job.id, job);
+      void (async () => {
+        try {
+          let demo;
+          for (const code of codes) {
+            const entry = { id: randomUUID(), code, status: "downloading", log: "", demo: "" };
+            downloads.set(entry.id, entry);
+            try {
+              demo = await downloadDemo({
+                code,
+                directory: path.join(dataDir, "Downloads", entry.id),
+                exe,
+                run,
+                entry,
+              });
+              entry.demo = demo;
+              entry.status = "done";
+            } catch (error) {
+              entry.status = "error";
+              entry.log += `\n${error.message}`;
+              throw error;
+            }
+          }
+          if (capture) await record(job, { csdm: exe, demo, quality: input.quality });
+          else job.status = "done";
+        } catch (error) {
+          job.status = "error";
+          job.log += `\n${error.message}`;
+        } finally {
+          active = false;
+        }
+      })();
+      return json(res, 202, { id: job.id });
+    } catch (error) {
+      active = false;
+      throw error;
+    }
+  }
   const server = http.createServer(async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -151,17 +354,17 @@ export async function createCompanion({
       "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
     );
     const origin = `http://127.0.0.1:${server.address()?.port}`;
-    if (
-      req.headers.host !== `127.0.0.1:${server.address()?.port}` ||
-      (req.headers.origin && req.headers.origin !== origin)
-    )
+    if (req.headers.host !== `127.0.0.1:${server.address()?.port}`)
       return json(res, 403, { error: "Nur im lokalen Companion verfügbar." });
     const url = new URL(req.url, origin);
     try {
+      if (url.pathname.startsWith("/bridge/")) return await bridgeRequest(req, res, url);
+      if (req.headers.origin && req.headers.origin !== origin)
+        return json(res, 403, { error: "Nur im lokalen Companion verfügbar." });
       if (req.method === "GET" && url.pathname === "/api/health")
         return json(res, 200, {
           app: "tecmon-companion",
-          version: "0.4.0",
+          version: VERSION,
           instanceId: installation?.installationId || null,
         });
       const assets = {
@@ -186,27 +389,17 @@ export async function createCompanion({
           postgres,
           managed: !!installation,
           active,
+          bridge: bridge.state(),
           downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
         });
-      if (req.method === "GET" && url.pathname === "/api/video") {
-        const job = jobs.get(url.searchParams.get("job"));
-        const file = job?.files?.[Number(url.searchParams.get("file"))];
-        if (!file || job.status !== "done")
-          return json(res, 404, { error: "Video nicht vorhanden." });
-        const full = await realpath(path.join(job.output, file));
-        const relative = path.relative(await realpath(job.output), full);
-        if (relative.startsWith("..") || path.isAbsolute(relative))
-          throw new Error("Ungültiger Videopfad.");
-        res.writeHead(200, {
-          "Content-Type": "video/mp4",
-          "Content-Disposition": 'attachment; filename="tecmon-highlight.mp4"',
-        });
-        return createReadStream(full)
-          .on("error", () => res.destroy())
-          .pipe(res);
-      }
+      if (req.method === "GET" && url.pathname === "/api/video")
+        return await video(
+          res,
+          jobs.get(url.searchParams.get("job")),
+          url.searchParams.get("file"),
+        );
       if (req.method !== "POST" || req.headers["content-type"] !== "application/json")
         return json(res, 404, { error: "Nicht gefunden." });
       let body = "";
@@ -215,50 +408,101 @@ export async function createCompanion({
         if (body.length > 65536) throw new Error("Auftrag zu groß.");
       }
       const input = JSON.parse(body);
+      if (url.pathname === "/api/bridge/approve") {
+        await bridge.approve(input.id);
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/bridge/revoke") {
+        await bridge.revoke(input.id);
+        return json(res, 200, { ok: true });
+      }
       if (url.pathname === "/api/update/check") return json(res, 200, await checkUpdate());
       if (url.pathname === "/api/update/install") {
-        if(!installation) throw new Error("Updates benötigen eine installierte Windows-Version.");
-        if(active || input.confirm !== true) throw new Error("Zuerst Aufnahme/Download beenden und Update bestätigen.");
-        active=true;
+        if (!installation) throw new Error("Updates benötigen eine installierte Windows-Version.");
+        if (active || input.confirm !== true)
+          throw new Error("Zuerst Aufnahme/Download beenden und Update bestätigen.");
+        active = true;
         try {
-          const update=await checkUpdate(VERSION);
-          if(!update.available) {active=false;return json(res,200,{message:"Companion ist aktuell."});}
-          const executable=await downloadUpdate(root,update);
+          const update = await checkUpdate(VERSION);
+          if (!update.available) {
+            active = false;
+            return json(res, 200, { message: "Companion ist aktuell." });
+          }
+          const executable = await downloadUpdate(root, update);
           await stopManagedDatabase(installation);
-          const child=spawn(executable,["--apply-update",root,String(process.pid)],{stdio:"ignore",windowsHide:true});
-          await new Promise((resolve,reject)=>{child.once("spawn",resolve);child.once("error",reject);});
+          const child = spawn(executable, ["--apply-update", root, String(process.pid)], {
+            stdio: "ignore",
+            windowsHide: true,
+          });
+          await new Promise((resolve, reject) => {
+            child.once("spawn", resolve);
+            child.once("error", reject);
+          });
           child.unref();
-          res.once("finish",()=>{server.close();server.closeIdleConnections();});
-          return json(res,200,{message:"Update geprüft. Companion startet nach der Aktualisierung neu."});
-        } catch(error) {active=false;throw error;}
+          res.once("finish", () => {
+            server.close();
+            server.closeIdleConnections();
+          });
+          return json(res, 200, {
+            message: "Update geprüft. Companion startet nach der Aktualisierung neu.",
+          });
+        } catch (error) {
+          active = false;
+          throw error;
+        }
       }
       if (url.pathname === "/api/demos/download") {
         if (active) throw new Error("Zuerst die laufende Aufnahme oder den Download beenden.");
-        if (input.confirm !== true) throw new Error("Lokalen Demo-Download bitte ausdrücklich bestätigen.");
+        if (input.confirm !== true)
+          throw new Error("Lokalen Demo-Download bitte ausdrücklich bestätigen.");
         const codes = matchDownloadRequest(input);
-        if (downloads.size + codes.length > 100) throw new Error("Downloadliste voll. Companion neu starten.");
+        if (downloads.size + codes.length > 100)
+          throw new Error("Downloadliste voll. Companion neu starten.");
         const exe = typeof input.csdm === "string" ? input.csdm : "";
         // Reserve before awaits, just like recording: never run multiple CSDM CLI sessions.
         active = true;
         try {
-          if (!path.isAbsolute(exe) || !["csdm.exe", "cs-demo-manager.exe"].includes(path.basename(exe).toLowerCase()) || !(await stat(exe)).isFile())
+          if (
+            !path.isAbsolute(exe) ||
+            !["csdm.exe", "cs-demo-manager.exe"].includes(path.basename(exe).toLowerCase()) ||
+            !(await stat(exe)).isFile()
+          )
             throw new Error("Bitte CS Demo Manager auswählen.");
-          const entries = codes.map((code) => ({ id: randomUUID(), code, status: "queued", log: "", demo: "" }));
+          const entries = codes.map((code) => ({
+            id: randomUUID(),
+            code,
+            status: "queued",
+            log: "",
+            demo: "",
+          }));
           for (const entry of entries) downloads.set(entry.id, entry);
           void (async () => {
             try {
               for (const entry of entries) {
                 entry.status = "downloading";
                 try {
-                  entry.demo = await downloadDemo({ code: entry.code,
-                    directory: path.join(dataDir, "Downloads", entry.id), exe, run, entry });
+                  entry.demo = await downloadDemo({
+                    code: entry.code,
+                    directory: path.join(dataDir, "Downloads", entry.id),
+                    exe,
+                    run,
+                    entry,
+                  });
                   entry.status = "done";
-                } catch (error) { entry.status = "error"; entry.log += `\n${error.message}`; }
+                } catch (error) {
+                  entry.status = "error";
+                  entry.log += `\n${error.message}`;
+                }
               }
-            } finally { active = false; }
+            } finally {
+              active = false;
+            }
           })();
           return json(res, 202, { ids: entries.map((entry) => entry.id) });
-        } catch (error) { active = false; throw error; }
+        } catch (error) {
+          active = false;
+          throw error;
+        }
       }
       if (url.pathname === "/api/pick") {
         const kinds = {
@@ -362,56 +606,14 @@ export async function createCompanion({
         // Reserve before filesystem awaits, so two clicks cannot launch concurrent games.
         active = true;
         try {
-          const exe = typeof input.csdm === "string" ? input.csdm : "";
-          const demo = typeof input.demo === "string" ? input.demo : "";
-          if (
-            !path.isAbsolute(exe) ||
-            !["csdm.exe", "cs-demo-manager.exe"].includes(path.basename(exe).toLowerCase()) ||
-            !(await stat(exe)).isFile()
-          )
-            throw new Error("Bitte den vollständigen Pfad zur csdm.exe eintragen.");
-          if (!path.isAbsolute(demo) || !/\.dem$/i.test(demo) || !(await stat(demo)).isFile())
-            throw new Error("Bitte eine entpackte CS2-Demo (.dem) angeben.");
-          const handle = await open(demo, "r");
-          try {
-            const header = Buffer.alloc(8);
-            await handle.read(header, 0, 8, 0);
-            if (header.toString() !== "PBDEMS2\0") throw new Error("Keine CS2-Demo.");
-          } finally {
-            await handle.close();
-          }
-          const output = path.join(dataDir, job.id);
-          await mkdir(output, { recursive: true });
-          const config = path.join(output, "recording.json");
-          const recording = recordingConfig(job.job, demo, output, input.quality);
-          if (installation)
-            recording.ffmpegSettings = {
-              ...recording.ffmpegSettings,
-              customLocationEnabled: true,
-              customExecutableLocation: installation.ffmpegExe,
-            };
-          await writeFile(config, JSON.stringify(recording, null, 2));
-          await writeFile(path.join(output, "tecmon-job.json"), JSON.stringify(job.job, null, 2));
-          job.status = "analyzing";
-          job.output = output;
-          void (async () => {
-            try {
-              await run(exe, ["analyze", demo], job);
-              job.status = "recording";
-              await run(exe, ["video", "--config-file", config], job);
-              job.files = await mp4s(output);
-              if (!job.files.length)
-                throw new Error(
-                  "CS Demo Manager hat keine MP4 erzeugt. Prüfe Video-Einstellungen und Protokoll.",
-                );
-              job.status = "done";
-            } catch (err) {
+          void record(job, input)
+            .catch((error) => {
               job.status = "error";
-              job.log += `\n${err.message}`;
-            } finally {
+              job.log += `\n${error.message}`;
+            })
+            .finally(() => {
               active = false;
-            }
-          })();
+            });
           return json(res, 202, { id: job.id });
         } catch (error) {
           active = false;

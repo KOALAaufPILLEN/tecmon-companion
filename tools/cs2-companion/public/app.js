@@ -2,6 +2,7 @@ const token = document.querySelector('meta[name="tecmon-token"]').content;
 const $ = id => document.getElementById(id);
 const drafts = new Map();
 let signature = '';
+let bridgeSignature = '';
 let downloadSignature = '';
 let populated = false;
 let updateReady = false;
@@ -18,9 +19,25 @@ async function api(url, body) {
 }
 function notice(error) { $('notice').textContent = error.message || String(error); }
 function el(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; }
-const statuses = { ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER' };
+const statuses = { ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER', downloading:'DEMO WIRD GELADEN' };
 async function refresh() {
   const state = await api('/api/state');
+  const bridgeNext=JSON.stringify(state.bridge);
+  if(bridgeSignature !== bridgeNext) {
+    bridgeSignature=bridgeNext;
+    const container=$('bridge-connections');container.replaceChildren();
+    for(const item of state.bridge?.pending || []) {
+      const card=el('article','','job');card.append(el('b',item.origin),el('h3',`Verbindungscode: ${item.code}`));
+      const approve=el('button','Diese Webseite verbinden');
+      approve.addEventListener('click',async()=>{approve.disabled=true;try{await api('/api/bridge/approve',{id:item.id});await refresh();}catch(error){notice(error);approve.disabled=false;}});
+      card.append(approve);container.append(card);
+    }
+    for(const item of state.bridge?.devices || []) {
+      const card=el('article','','job');card.append(el('b',item.origin));const revoke=el('button','Verbindung widerrufen');revoke.className='subtle';
+      revoke.addEventListener('click',async()=>{try{await api('/api/bridge/revoke',{id:item.id});await refresh();}catch(error){notice(error);}});card.append(revoke);container.append(card);
+    }
+    if(!container.children.length) container.append(el('p','Noch keine Webseite verbunden. JSON-Dateien können weiterhin ohne Verbindung importiert werden.'));
+  }
   databaseState(state.postgres);
   $('csdm-open').hidden = !state.managed;
   $('database-port').disabled = state.managed;

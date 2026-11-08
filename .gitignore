@@ -27,3 +27,6 @@ client_secret*.json
 *credentials*.json
 *.pem
 *.key
+
+**/bridge-devices.json
+**/bridge-devices.json.*.tmp
