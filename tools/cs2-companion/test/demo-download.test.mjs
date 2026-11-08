@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, realpath } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { once } from "node:events";
@@ -32,7 +32,7 @@ test("download resolves through fixed CLI arguments and rejects success without 
     assert.deepEqual(args,['dl-valve',code,'--output',dir]);
     await writeFile(path.join(dir,'match.dem'),Buffer.from('PBDEMS2\0fixture'));
   }});
-  assert.equal(demo,path.join(dir,'match.dem'));
+  assert.equal(demo,await realpath(path.join(dir,'match.dem')));
 });
 test("local download requires session, origin and explicit confirmation; recording shares its busy lock",async(t)=>{
   const dir=await mkdtemp(path.join(os.tmpdir(),'tecmon-download-api-'));
