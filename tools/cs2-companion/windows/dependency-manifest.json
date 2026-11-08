@@ -24,9 +24,9 @@
     "sha256": "ac1f6740551cba7a72ba8437b84097d6f9a95d922ae05f333417bac6d1b746c2"
   },
   "ffmpeg": {
-    "version": "n8.1",
+    "version": "n8.1.3-34-ga35157abb9 (2026-11-08)",
     "file": "ffmpeg.zip",
-    "url": "https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-win64-gpl-8.1.zip",
-    "sha256": "7536f8e880282fda7ed067bf8cbf891fd23470ed199ec457f94c4c09968435be"
+    "url": "https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/autobuild-2026-11-08-12-35/ffmpeg-n8.1.3-34-ga35157abb9-win64-gpl-8.1.zip",
+    "sha256": "c556d28593dda276963665e4e5254a4a3e5f28bec30410d33072400ddd583185"
   }
 }

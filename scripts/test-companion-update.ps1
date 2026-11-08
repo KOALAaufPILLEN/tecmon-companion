@@ -19,7 +19,7 @@ Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/server.mjs') -Desti
 (Get-Item -LiteralPath (Join-Path $target 'server.mjs')).LastWriteTimeUtc=[DateTime]::UtcNow.AddDays(-1)
 $timestamp=(Get-Item -LiteralPath (Join-Path $target 'server.mjs')).LastWriteTimeUtc
 & (Join-Path $PSScriptRoot 'build-companion-update.ps1') -ApplicationDirectory $application -BuildDirectory (Join-Path $workspace 'build') -OutputDirectory (Join-Path $workspace 'out')
-$updater=Join-Path $workspace 'out/TecMon-Companion-Update-0.9.0.exe'
+$updater=Join-Path $workspace 'out/TecMon-Companion-Update-0.9.1.exe'
 $lockedFile=Join-Path $target 'TecMon Companion.exe'
 [IO.File]::WriteAllText($lockedFile,'previous desktop host')
 $held=[IO.File]::Open($lockedFile,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
