@@ -139,12 +139,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.8.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.8.1",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.8.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.8.1");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -159,7 +159,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.8.0"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.8.1"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -286,7 +286,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.8.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.8.1 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -401,14 +401,36 @@ class SetupWindow : Form {
 // Native Windows desktop host. Only the authenticated loopback UI is embedded.
 class DesktopPanel : Form {
   Control web;Label fallback=new Label();bool initialized;
+  readonly Panel surface=new Panel(),chrome=new Panel();bool tailLeft;Point headerDrag,windowDrag;bool moving;
+  public bool TailLeft {get{return tailLeft;}set{tailLeft=value;Shape();}}
+  static readonly Color Cyan=Color.FromArgb(103,232,249);
+  public static System.Drawing.Drawing2D.GraphicsPath Bubble(Size size,bool left) {
+    float x=left?19:1,y=1,w=size.Width-21,h=size.Height-2,r=22;
+    var path=new System.Drawing.Drawing2D.GraphicsPath();
+    path.AddArc(x,y,r*2,r*2,180,90);path.AddArc(x+w-r*2,y,r*2,r*2,270,90);
+    if(!left){path.AddLine(x+w,y+r,x+w,y+h-94);path.AddLine(x+w,y+h-94,size.Width-1,y+h-60);path.AddLine(size.Width-1,y+h-60,x+w,y+h-68);}
+    path.AddArc(x+w-r*2,y+h-r*2,r*2,r*2,0,90);path.AddArc(x,y+h-r*2,r*2,r*2,90,90);
+    if(left){path.AddLine(x,y+h-r,x,y+h-68);path.AddLine(x,y+h-68,1,y+h-60);path.AddLine(1,y+h-60,x,y+h-94);}
+    path.CloseFigure();return path;
+  }
+  void Shape(){if(ClientSize.Width<100)return;using(var path=Bubble(ClientSize,tailLeft)){var previous=Region;Region=new Region(path);if(previous!=null)previous.Dispose();}int x=tailLeft?32:14;chrome.SetBounds(x,12,ClientSize.Width-48,42);surface.SetBounds(x,61,ClientSize.Width-48,ClientSize.Height-83);Invalidate();}
+  Button ChromeButton(string label,string accessible,Color color,Action action){var b=new Button{Text=label,AccessibleName=accessible,FlatStyle=FlatStyle.Flat,ForeColor=color,BackColor=Color.FromArgb(9,35,48),Font=new Font("Segoe UI",13),Size=new Size(34,30),Cursor=Cursors.Hand,TabStop=true};b.FlatAppearance.BorderColor=color;b.FlatAppearance.MouseOverBackColor=Color.FromArgb(24,65,78);b.Click+=(s,e)=>action();return b;}
+  protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);e.Graphics.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;using(var path=Bubble(ClientSize,tailLeft))using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Color.FromArgb(8,47,65),Color.FromArgb(4,20,32),45))using(var pen=new Pen(Cyan,1.5f)){e.Graphics.FillPath(fill,path);e.Graphics.DrawPath(pen,path);}using(var line=new Pen(Color.FromArgb(16,165,243,252)))for(int y=5;y<Height;y+=4)e.Graphics.DrawLine(line,24,y,Width-24,y);}
+
   public DesktopPanel() {
-    Text="TecMon · Verbindung & Einstellungen";ClientSize=new Size(520,640);MinimumSize=new Size(440,450);StartPosition=FormStartPosition.Manual;BackColor=TecMon.Background;ForeColor=Color.White;ShowInTaskbar=true;FormBorderStyle=FormBorderStyle.Sizable;Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-    fallback.Dock=DockStyle.Fill;fallback.Padding=new Padding(24);fallback.ForeColor=TecMon.Gold;fallback.Font=new Font("Segoe UI",11);fallback.Text="Dein Companion-Fenster wird geöffnet …";Controls.Add(fallback);
+    Text="TecMon · Verbindung & Einstellungen";ClientSize=new Size(520,640);MinimumSize=new Size(440,450);StartPosition=FormStartPosition.Manual;BackColor=TecMon.Background;ForeColor=Color.White;ShowInTaskbar=true;FormBorderStyle=FormBorderStyle.None;DoubleBuffered=true;KeyPreview=true;Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+    surface.BackColor=Color.FromArgb(4,20,32);Controls.Add(surface);chrome.BackColor=Color.FromArgb(7,29,42);Controls.Add(chrome);
+    var title=new Label{Text="TECMON // HOLOLINK",AutoSize=false,ForeColor=Cyan,Font=new Font("Segoe UI",10,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft,Dock=DockStyle.Fill,Cursor=Cursors.SizeAll};chrome.Controls.Add(title);
+    var close=ChromeButton("×","Sprechblase schließen",Color.FromArgb(251,113,133),()=>Hide());var collapse=ChromeButton("−","Sprechblase einklappen",Cyan,()=>Hide());chrome.Controls.Add(close);chrome.Controls.Add(collapse);
+    chrome.Resize+=(sender,args)=>{close.Location=new Point(chrome.Width-36,5);collapse.Location=new Point(chrome.Width-76,5);title.Width=Math.Max(100,chrome.Width-90);close.BringToFront();collapse.BringToFront();};
+    title.MouseDown+=(sender,args)=>{if(args.Button!=MouseButtons.Left)return;moving=true;headerDrag=Cursor.Position;windowDrag=Location;title.Capture=true;};title.MouseMove+=(sender,args)=>{if(!moving)return;var point=new Point(windowDrag.X+Cursor.Position.X-headerDrag.X,windowDrag.Y+Cursor.Position.Y-headerDrag.Y);Location=DesktopPet.Fit(point,Screen.FromPoint(Cursor.Position).WorkingArea,Size);};title.MouseUp+=(sender,args)=>{moving=false;title.Capture=false;};
+    KeyDown+=(sender,args)=>{if(args.KeyCode==Keys.Escape)Hide();};Resize+=(sender,args)=>Shape();Shape();
+    fallback.Dock=DockStyle.Fill;fallback.Padding=new Padding(24);fallback.ForeColor=TecMon.Gold;fallback.Font=new Font("Segoe UI",11);fallback.Text="Dein Companion-Fenster wird geöffnet …";surface.Controls.Add(fallback);
     FormClosing+=(s,e)=>{if(e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Hide();}};
     Shown+=async(s,e)=>{if(initialized)return;initialized=true;try{
       Assembly.LoadFrom(Path.Combine(TecMon.Root,"Microsoft.Web.WebView2.Core.dll"));
       var assembly=Assembly.LoadFrom(Path.Combine(TecMon.Root,"Microsoft.Web.WebView2.WinForms.dll"));
-      dynamic view=Activator.CreateInstance(assembly.GetType("Microsoft.Web.WebView2.WinForms.WebView2",true));web=(Control)view;web.Dock=DockStyle.Fill;Controls.Add(web);web.BringToFront();
+      dynamic view=Activator.CreateInstance(assembly.GetType("Microsoft.Web.WebView2.WinForms.WebView2",true));web=(Control)view;web.Dock=DockStyle.Fill;surface.Controls.Add(web);web.BringToFront();
       dynamic properties=Activator.CreateInstance(assembly.GetType("Microsoft.Web.WebView2.WinForms.CoreWebView2CreationProperties",true));
       properties.UserDataFolder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TecMon","Desktop-WebView2");view.CreationProperties=properties;
       await (Task)view.EnsureCoreWebView2Async(null);
@@ -470,7 +492,7 @@ class DesktopPet : Form {
   bool wasBusy;
   protected override void WndProc(ref Message message){if(message.Msg==0x8001){Show();Toggle();return;}base.WndProc(ref message);}
   public static Point Fit(Point point,Rectangle area,Size size){return new Point(Math.Max(area.Left,Math.Min(area.Right-size.Width,point.X)),Math.Max(area.Top,Math.Min(area.Bottom-size.Height,point.Y)));}
-  void AnchorPanel(){var area=Screen.FromRectangle(Bounds).WorkingArea;var preferred=new Point(Left-panel.Width-12,Top-panel.Height+Height);if(preferred.X<area.Left)preferred.X=Right+12;panel.Location=Fit(preferred,area,panel.Size);}
+  void AnchorPanel(){var area=Screen.FromRectangle(Bounds).WorkingArea;var preferred=new Point(Left-panel.Width-12,Top-panel.Height+Height);bool onRight=preferred.X<area.Left;if(onRight)preferred.X=Right+12;panel.TailLeft=onRight;panel.Location=Fit(preferred,area,panel.Size);}
   public void Toggle(){if(panel==null||panel.IsDisposed)panel=new DesktopPanel();if(panel.Visible){panel.Hide();return;}AnchorPanel();panel.TopMost=foreground&&!busy;panel.Show(this);panel.Activate();}
   public Bitmap Frame(){var bitmap=new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format32bppArgb);using(var g=Graphics.FromImage(bitmap)){g.Clear(Color.Transparent);g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;int emotion=busy?3:new[]{0,1,2,0,6,9}[(int)(phase/12)%6];int row=emotion/3;var heights=new[]{390,340,324,411};var tops=new[]{0,390,730,1040};var target=new Rectangle(5,8+(animate?(int)(Math.Sin(phase)*5):0),134,145);if(sheet!=null)g.DrawImage(sheet,target,new Rectangle((emotion%3)*361,tops[row],361,heights[row]),GraphicsUnit.Pixel);}return bitmap;}
   void Render(){if(!IsHandleCreated||!Visible)return;using(var bitmap=Frame()){IntPtr screen=GetDC(IntPtr.Zero),memory=CreateCompatibleDC(screen),image=bitmap.GetHbitmap(Color.FromArgb(0)),previous=SelectObject(memory,image);try{Point position=Location,origin=Point.Empty;Size size=Size;var blend=new Blend{alpha=255,format=1};UpdateLayeredWindow(Handle,screen,ref position,ref size,memory,ref origin,0,ref blend,2);}finally{SelectObject(memory,previous);DeleteObject(image);DeleteDC(memory);ReleaseDC(IntPtr.Zero,screen);}}}

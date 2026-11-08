@@ -21,7 +21,7 @@ Der Build lädt fehlende Pakete anhand von `tools/cs2-companion/windows/dependen
 
 Der BuildDirectory darf keine bereits eingerichtete Installation enthalten. Keine eigenen `installation.json`, `settings.json`, Datenbanken oder Kennwörter in den Build kopieren. Laufzeitkonfiguration entsteht erst nach dem Start des Installers beim Benutzer.
 
-Ausgabe: `dist/TecMon-Companion-Setup-0.8.0.exe` und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
+Ausgabe: `dist/TecMon-Companion-Setup-0.8.1.exe` und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
 
 Nur den nativen Launcher zu prüfen erfordert keine Drittanbieter-Downloads: `.github/workflows/test.yml` dokumentiert die Compilerparameter und führt `--self-test` aus. Dieser Selbsttest prüft nicht die vollständige Installation.
 
