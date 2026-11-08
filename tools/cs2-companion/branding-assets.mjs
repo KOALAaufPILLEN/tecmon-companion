@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 
 export const BRANDING_URL =
-  "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.10.0/TecMon-Branding-v2.json";
+  "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.11.0/TecMon-Branding-v2.json";
 export const BRANDING_SHA256 = "60a13b041dad4d990b38f048c2c9963269b1945d22d594613b49602719753eb2";
 export const BRANDING_FILES = Object.freeze({
   "logo.webp": "7e5598ef67d2d73994387e5dcda3e794fe1b353eb1ce78e887cb8f0de74725b1",

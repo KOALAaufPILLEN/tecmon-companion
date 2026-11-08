@@ -1,6 +1,6 @@
-# TecMon Companion · Windows Setup 0.10.0
+# TecMon Companion · Windows Setup 0.11.0
 
-## Cyberpunk-Overlay und Spielerwechsel ab 0.10
+## Cyberpunk-Overlay und Spielerwechsel ab 0.11
 
 Das dauerhafte Video-Design verwendet transparente Neon-Konturen in Cyan/Violett, TecMon-Gold, eine schräge Spieleranzeige mit Map und Szenennummer sowie dezente Randakzente. Die originale CS2-Minimap wird nicht verschoben oder ausgeschnitten; der Rahmen ist für den Standard-Radar der 16:9-Aufnahme ausgelegt. Abweichende persönliche HUD-Skalierungen können die Ausrichtung verändern.
 
