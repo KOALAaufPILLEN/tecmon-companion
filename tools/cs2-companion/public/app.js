@@ -55,6 +55,20 @@ async function api(url, body) {
 function notice(error) { $('notice').textContent = error.message || String(error); }
 function el(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; }
 const statuses = { preparing:'VISUALS WERDEN GEPRÜFT', branding:'VIDEO-BRANDING LÄUFT', ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER', downloading:'DEMO WIRD GELADEN' };
+const tipLabels={economy:'Wirtschaft',buy:'Kauf-Check',death:'Nach dem Tod',habit:'Gewohnheit',mindset:'Kopf',summary:'Zusammenfassung',weapon:'Waffe',map:'Map',warmup:'Aufwärmen'};
+let tipsSignature='';
+function gameTips(gsi){
+  if(!gsi)return;
+  $('tips-heading').textContent=!gsi.enabled?'Rundentipps sind aus':gsi.connected?`Live: ${gsi.map||'Hauptmenü'}${gsi.side?` · ${gsi.side}`:''}`:'Eingeschaltet · wartet auf CS2';
+  const toggle=$('tips-toggle');toggle.textContent=gsi.enabled?'Ausschalten':'Einschalten';toggle.className=gsi.enabled?'subtle':'';toggle.disabled=!gsi.enabled&&!gsi.available;
+  if(gsi.error)$('tips-note').textContent=`Konfiguration konnte nicht geschrieben werden: ${gsi.error}`;
+  else if(!gsi.available&&!gsi.enabled)$('tips-note').textContent='CS2 wurde auf diesem PC nicht gefunden.';
+  const next=JSON.stringify((gsi.history||[]).map(t=>t.id));
+  if(next===tipsSignature)return;tipsSignature=next;
+  const items=(gsi.history||[]).slice(0,5).map(t=>{const li=el('li','','tip-item');li.append(el('small',tipLabels[t.category]||'Tipp'),document.createTextNode(t.text));return li;});
+  $('tips-list').replaceChildren(...items);
+}
+$('tips-toggle').addEventListener('click',async()=>{const button=$('tips-toggle');button.disabled=true;try{const on=latestState?.gsi?.enabled;const result=await api(on?'/api/gsi/disable':'/api/gsi/enable',on?{}:{confirm:true});notice({message:result.message});await refresh();}catch(error){notice(error);}finally{button.disabled=false;}});
 async function refresh() {
   if(restarting)return;
   const state = await api('/api/state');
@@ -77,6 +91,7 @@ async function refresh() {
     }
     if(state.bridge?.devices?.length) container.append(connections);
   }
+  gameTips(state.gsi);
   databaseState(state.postgres);
   $('csdm-open').hidden = !state.managed;
   $('database-port').disabled = state.managed;
