@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { once } from "node:events";
 import { createGameTips, nextLossBonus, roundKind } from "../game-tips.mjs";
+import { cleanInsights, createInsightsStore } from "../insights.mjs";
 import { gsiConfigText, gsiConfigPath } from "../gsi-config.mjs";
 import { createCompanion } from "../server.mjs";
 
@@ -73,6 +74,11 @@ test("Wirtschaftstipp zu Beginn der Kaufzeit", () => {
   tips.ingest(
     frame({ round: 5, state: { money: 2200 }, map: { team_t: { score: 1, consecutive_round_losses: 2 } } }),
   );
+  assert.equal(tips.state().tip.category, "map", "Zur ersten Kaufzeit kommt zuerst die Map-Übersicht");
+  time.advance(12000);
+  tips.ingest(
+    frame({ round: 5, state: { money: 2200 }, map: { team_t: { score: 1, consecutive_round_losses: 2 } } }),
+  );
   const tip = tips.state().tip;
   assert.match(tip.text, /Eco empfohlen/);
   assert.match(tip.text, /4\.600 \$/);
@@ -108,16 +114,88 @@ test("Tod mit ungeworfenen Granaten wird erst nach dem Tod gemeldet", () => {
   assert.match(tip.text, /2 × Flash und Smoke gestorben/);
 });
 
-test("Kauf-Check nach der Kaufzeit: Helm und Defuse-Kit", () => {
+test("Kauf-Check kurz vor Ende der Kaufzeit: Helm und Defuse-Kit", () => {
   const time = clock();
   const tips = createGameTips(time);
-  tips.ingest(frame({ team: "CT", round: 7, state: { money: 1500, helmet: false } }));
-  time.advance(15000);
-  tips.ingest(frame({ team: "CT", round: 7, roundPhase: "live", state: { money: 1500, helmet: false } }));
+  const buy = (endsIn) => ({
+    ...frame({ team: "CT", round: 7, state: { money: 1500, helmet: false } }),
+    phase_countdowns: { phase: "freezetime", phase_ends_in: String(endsIn) },
+  });
+  tips.ingest(buy(19));
+  time.advance(10000);
+  tips.ingest(buy(9));
+  assert.notEqual(tips.state().tip?.category, "buy");
+  time.advance(5000);
+  tips.ingest(buy(4.5));
   const tip = tips.state().tip;
   assert.equal(tip.category, "buy");
   assert.match(tip.text, /Kein Helm/);
   assert.match(tip.text, /Defuse-Kit/);
+});
+
+test("Ab Rundenstart still: keine neuen Tipps, solange du lebst", () => {
+  const time = clock();
+  const tips = createGameTips(time);
+  tips.ingest(frame({ round: 4, roundPhase: "over" }));
+  time.advance(7000);
+  tips.ingest(frame({ round: 5, state: { money: 2200 } }));
+  const first = tips.state().tip.id;
+  time.advance(16000);
+  tips.ingest(frame({ round: 5, roundPhase: "live", state: { money: 300 } }));
+  assert.equal(tips.state().quiet, true);
+  time.advance(30000);
+  tips.ingest(frame({ round: 5, roundPhase: "live", state: { money: 300 } }));
+  const during = tips.state().tip.id;
+  assert.ok(during - first <= 1, "höchstens ein weiterer Tipp noch aus der Kaufzeit");
+  tips.ingest(frame({ round: 5, roundPhase: "live", steamid: MATE }));
+  assert.equal(tips.state().quiet, false, "nach dem Tod darf die Sprechblase wieder erscheinen");
+});
+
+test("Höchstens drei Tipps pro Kaufzeit", () => {
+  const time = clock();
+  const tips = createGameTips({ ...time, radarPath: () => "C:/r.png" });
+  const ak = { weapon_1: { name: "weapon_ak47", type: "Rifle", state: "active", ammo_clip: 30, ammo_clip_max: 30 } };
+  let shown = 0;
+  let last = 0;
+  for (let i = 0; i < 20; i++) {
+    tips.ingest(frame({ round: 0, state: { money: 800 }, weapons: ak }));
+    const id = tips.state().tip?.id || 0;
+    if (id !== last) shown++;
+    last = id;
+    time.advance(2000);
+  }
+  assert.ok(shown <= 3, `gezeigt: ${shown}`);
+});
+
+test("Funktionen lassen sich einzeln abschalten", () => {
+  const time = clock();
+  const off = new Set(["map", "economy"]);
+  const tips = createGameTips({ ...time, enabled: (id) => !off.has(id) });
+  tips.ingest(frame({ round: 0 }));
+  assert.equal(tips.state().tip, null);
+});
+
+test("Gegnerserie: Timeout-Hinweis", () => {
+  const time = clock();
+  const tips = createGameTips({ ...time, enabled: (id) => id === "team" });
+  const round_wins = { 1: "ct_win_elimination", 2: "t_win_elimination", 3: "t_win_bomb", 4: "t_win_elimination", 5: "t_win_elimination" };
+  tips.ingest(frame({ round: 4, roundPhase: "over", team: "CT" }));
+  tips.ingest(frame({ round: 5, team: "CT", map: { round_wins, team_ct: { score: 1, timeouts_remaining: 2 } } }));
+  assert.match(tips.state().tip.text, /4 Runden in Folge geholt\. Ein taktisches Timeout \(noch 2 übrig\)/);
+});
+
+test("Tipps aus TecMon-Matches: oft am selben Spot gestorben", () => {
+  const time = clock();
+  /* Long A auf Dust2: Radar (880, 420) → Spielkoordinaten x = -2476 + 880·4,4, y = 3239 − 420·4,4. */
+  const longA = [-2476 + 880 * 4.4, 3239 - 420 * 4.4];
+  const deaths = [...Array(8)].map((_, i) => [longA[0] + i * 5, longA[1], 0]).concat([[0, 0, 0], [-500, 1500, 0]]);
+  const insights = { maps: { de_dust2: { matches: 6, deaths, tRounds: 60, tWon: 30 } } };
+  const tips = createGameTips({ ...time, enabled: (id) => id === "history", insights: (id) => (id === ME ? insights : null), radarPath: () => "C:/d2.png" });
+  tips.ingest(frame({ name: "de_dust2", round: 0, team: "T" }));
+  const tip = tips.state().tip;
+  assert.equal(tip.category, "history");
+  assert.match(tip.text, /^In deinen letzten 6 Matches auf Dust II bist du als T 8× bei Long A gestorben \(80 % deiner Tode\)\. Probier mal eine andere Route, zum Beispiel Short\./);
+  assert.equal(tip.visual.marks.length, 10);
 });
 
 test("Frühes Nachladen wird gezählt und nach dem dritten Mal gemeldet", () => {
@@ -153,7 +231,8 @@ test("GSI-Konfiguration nutzt nur eigene Spielerblöcke", () => {
   const text = gsiConfigText("a".repeat(64));
   assert.match(text, /"uri" "http:\/\/127\.0\.0\.1:31977\/gsi"/);
   assert.match(text, /"player_state" "1"/);
-  assert.doesNotMatch(text, /allplayers|bomb|phase_countdowns|grenades/);
+  assert.match(text, /"phase_countdowns" "1"/);
+  assert.doesNotMatch(text, /allplayers|"bomb"|grenades|player_position/);
   assert.throws(() => gsiConfigText("evil\"\n"));
   assert.equal(
     gsiConfigPath(path.join("C:", "CS2", "game", "bin", "win64", "cs2.exe")),
@@ -206,12 +285,99 @@ test("Companion: Rundentipps einschalten, GSI-Token prüfen, ausschalten", async
   assert.equal((await send(sample(4, { roundPhase: "over" }))).status, 200);
   time.advance(7000);
   assert.equal((await send(sample(5, { state: { money: 2200 } }))).status, 200);
+  assert.equal((await state()).tip.category, "map");
+  time.advance(12000);
+  assert.equal((await send(sample(5, { state: { money: 2200 } }))).status, 200);
   const live = await state();
   assert.equal(live.connected, true);
   assert.equal(live.map, "de_mirage");
   assert.match(live.tip.text, /Eco empfohlen|Knapp bei Kasse/);
 
+  const toggled = await (await post("/api/gsi/features", { features: { map: false, evil: false, spray: "nein" } })).json();
+  assert.equal(toggled.gsi.features.find((f) => f.id === "map").enabled, false);
+  assert.equal(toggled.gsi.features.find((f) => f.id === "spray").enabled, true);
+  assert.equal(toggled.gsi.features.some((f) => f.id === "evil"), false);
+  assert.match(await readFile(path.join(dir, "data", "gsi.json"), "utf8"), /"map":false/);
   assert.equal((await post("/api/gsi/disable", {})).status, 200);
   assert.equal(await stat(cfg).catch(() => null), null);
   assert.equal((await state()).enabled, false);
+});
+
+test("Map-Übersicht mit Radar und Spots zu Beginn der Halbzeit, Spray-Muster beim Waffenkauf", () => {
+  const time = clock();
+  const tips = createGameTips({ ...time, radarPath: (map) => `C:/radars/${map}.png` });
+  tips.ingest(frame({ round: 0, roundPhase: "warmup", mapPhase: "warmup" }));
+  time.advance(12000);
+  tips.ingest(frame({ round: 0, team: "CT" }));
+  const overview = tips.state().tip;
+  assert.equal(overview.category, "map");
+  assert.match(overview.text, /^Mirage als CT: Die wichtigsten Spots sind Jungle, Connector, Window und Market\./);
+  assert.equal(overview.visual.type, "map");
+  assert.equal(overview.visual.image, "C:/radars/de_mirage.png");
+  assert.ok(overview.visual.spots.find((spot) => spot.label === "Jungle").hot);
+  assert.ok(overview.visual.spots.every((spot) => spot.x > 0 && spot.x < 1 && spot.y > 0 && spot.y < 1));
+
+  const ak = { weapon_1: { name: "weapon_ak47", type: "Rifle", state: "active", ammo_clip: 30, ammo_clip_max: 30 } };
+  tips.ingest(frame({ round: 3, roundPhase: "over" }));
+  tips.ingest(frame({ round: 4, team: "CT", state: { money: 6000 }, weapons: ak }));
+  for (let i = 0; i < 4 && tips.state().tip.category !== "weapon"; i++) {
+    time.advance(12000);
+    tips.ingest(frame({ round: 4, team: "CT", state: { money: 6000 }, weapons: ak }));
+  }
+  const spray = tips.state().tip;
+  assert.equal(spray.category, "weapon");
+  assert.equal(spray.visual.type, "spray");
+  assert.equal(spray.visual.points.length, 30);
+  assert.match(spray.text, /^AK-47/);
+});
+
+test("Ohne lokales Radarbild bleibt es beim Text", () => {
+  const time = clock();
+  const tips = createGameTips(time);
+  tips.ingest(frame({ round: 0 }));
+  const tip = tips.state().tip;
+  assert.equal(tip.category, "map");
+  assert.equal(tip.visual, undefined);
+});
+
+test("Früher Tod und starke Runde", () => {
+  const time = clock();
+  const tips = createGameTips(time);
+  tips.ingest(frame({ round: 6, roundPhase: "freezetime" }));
+  time.advance(15000);
+  tips.ingest(frame({ round: 6, roundPhase: "live" }));
+  time.advance(8000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", state: { health: 0 } }));
+  time.advance(12000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", steamid: MATE }));
+  assert.match(tips.state().tip.text, /^Früher Tod nach 8 Sekunden/);
+  tips.ingest(frame({ round: 7, roundPhase: "freezetime" }));
+  time.advance(15000);
+  tips.ingest(frame({ round: 7, roundPhase: "live", state: { round_kills: 3, round_killhs: 2 } }));
+  time.advance(60000);
+  tips.ingest(frame({ round: 7, roundPhase: "over", state: { round_kills: 3, round_killhs: 2 } }));
+  assert.match(tips.state().tip.text, /^Starke Runde: 3 Kills, davon 2 Headshots/);
+});
+
+test("Match-Auswertung der Webseite wird geprüft, gekürzt und lokal gespeichert", async (t) => {
+  assert.throws(() => cleanInsights({ version: 1, steamId: "abc" }));
+  const clean = cleanInsights({
+    version: 1,
+    steamId: ME,
+    matches: 3,
+    maps: {
+      de_dust2: { matches: 3, tRounds: 36, tWon: 12, deaths: [[100.4, -20, 0], ["x", 1, 0], [5, 5, 7], ...Array(500).fill([1, 2, 1])] },
+      "../evil": { matches: 1 },
+    },
+  });
+  assert.deepEqual(Object.keys(clean.maps), ["de_dust2"]);
+  assert.equal(clean.maps.de_dust2.deaths.length, 400);
+  assert.equal(clean.maps.de_dust2.tWon, 12);
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-insights-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = await createInsightsStore(dir);
+  await store.put({ version: 1, steamId: ME, matches: 3, maps: { de_dust2: { matches: 3, deaths: [[100, -20, 0]] } } });
+  const again = await createInsightsStore(dir);
+  assert.deepEqual(again.get(ME).maps.de_dust2.deaths, [[100, -20, 0]]);
+  assert.equal(again.summary()[0].matches, 3);
 });
