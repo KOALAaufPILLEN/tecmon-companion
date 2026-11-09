@@ -32,3 +32,4 @@ html:has(.holo){background:#041420;scrollbar-color:#22b8ce #082c3c;scrollbar-wid
 
 .holo aside{background:#06202e;border-color:#226576}.holo .brand{color:#a5f3fc}.holo .local i{background:#22d3ee}.holo .version{border-color:#226576;color:#9dbdca}.holo .stats{background:#082638;border-color:#226576}.holo .stats div+div{border-color:#226576}
 .game-tips .section-head{align-items:flex-start}.tip-item{border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13px}.tip-item small{display:block;color:var(--muted);font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
+.tips-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 16px;margin:10px 0}.tips-features label{display:flex;gap:8px;align-items:center;font-size:12px;color:#e6f9fc}.tips-features input{width:auto;margin:0}.tips-insights{font-size:12px}

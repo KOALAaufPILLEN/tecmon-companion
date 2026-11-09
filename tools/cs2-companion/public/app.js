@@ -55,19 +55,29 @@ async function api(url, body) {
 function notice(error) { $('notice').textContent = error.message || String(error); }
 function el(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; }
 const statuses = { preparing:'VISUALS WERDEN GEPRÜFT', branding:'VIDEO-BRANDING LÄUFT', ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER', downloading:'DEMO WIRD GELADEN' };
-const tipLabels={economy:'Wirtschaft',buy:'Kauf-Check',death:'Nach dem Tod',habit:'Gewohnheit',mindset:'Kopf',summary:'Zusammenfassung',weapon:'Waffe',map:'Map',warmup:'Aufwärmen',praise:'Stark'};
-let tipsSignature='';
+const tipLabels={economy:'Wirtschaft',buy:'Kauf-Check',death:'Nach dem Tod',habit:'Gewohnheit',mindset:'Kopf',summary:'Zusammenfassung',weapon:'Waffe',map:'Map',warmup:'Aufwärmen',praise:'Stark',history:'Deine Matches',team:'Team'};
+let tipsSignature='';let featuresSignature='';
 function gameTips(gsi){
   if(!gsi)return;
   $('tips-heading').textContent=!gsi.enabled?'Rundentipps sind aus':gsi.connected?`Live: ${gsi.map||'Hauptmenü'}${gsi.side?` · ${gsi.side}`:''}`:'Eingeschaltet · wartet auf CS2';
   const toggle=$('tips-toggle');toggle.textContent=gsi.enabled?'Ausschalten':'Einschalten';toggle.className=gsi.enabled?'subtle':'';toggle.disabled=!gsi.enabled&&!gsi.available;
   if(gsi.error)$('tips-note').textContent=`Konfiguration konnte nicht geschrieben werden: ${gsi.error}`;
   else if(!gsi.available&&!gsi.enabled)$('tips-note').textContent='CS2 wurde auf diesem PC nicht gefunden.';
+  const featureNext=JSON.stringify(gsi.features||[]);
+  if(featureNext!==featuresSignature){
+    featuresSignature=featureNext;
+    const boxes=(gsi.features||[]).map(f=>{const label=el('label');const box=document.createElement('input');box.type='checkbox';box.checked=f.enabled;box.addEventListener('change',async()=>{box.disabled=true;try{await api('/api/gsi/features',{features:{[f.id]:box.checked}});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});label.append(box,document.createTextNode(f.label));return label;});
+    $('tips-features').replaceChildren(...boxes);
+  }
+  const account=(gsi.insights||[])[0];
+  $('tips-insights').textContent=account?`Match-Auswertung von TecMon: ${account.matches} Matches auf ${account.maps} Maps, übertragen am ${new Date(account.updatedAt).toLocaleString('de-DE')}. Öffne „Meine Stats“ auf TecMon, um sie zu aktualisieren.`:'Noch keine Match-Auswertung von TecMon. Öffne bei verbundenem Companion „Meine Stats“ auf TecMon, dann kommen Tipps aus deinen bisherigen Matches dazu.';
+  $('tips-insights-clear').hidden=!account;
   const next=JSON.stringify((gsi.history||[]).map(t=>t.id));
   if(next===tipsSignature)return;tipsSignature=next;
   const items=(gsi.history||[]).slice(0,5).map(t=>{const li=el('li','','tip-item');li.append(el('small',tipLabels[t.category]||'Tipp'),document.createTextNode(t.text));return li;});
   $('tips-list').replaceChildren(...items);
 }
+$('tips-insights-clear').addEventListener('click',async()=>{const button=$('tips-insights-clear');button.disabled=true;try{await api('/api/gsi/insights/clear',{});await refresh();}catch(error){notice(error);}finally{button.disabled=false;}});
 $('tips-toggle').addEventListener('click',async()=>{const button=$('tips-toggle');button.disabled=true;try{const on=latestState?.gsi?.enabled;const result=await api(on?'/api/gsi/disable':'/api/gsi/enable',on?{}:{confirm:true});notice({message:result.message});await refresh();}catch(error){notice(error);}finally{button.disabled=false;}});
 async function refresh() {
   if(restarting)return;

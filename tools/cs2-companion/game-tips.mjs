@@ -5,20 +5,46 @@
  * - Ausgewertet werden nur die eigenen Daten des Spielers, die CS2 ohnehin schickt.
  *   Zuschauer-, GOTV- und Demo-Daten anderer Spieler werden ignoriert.
  * - Kein Bomben-Countdown, keine Gegnerinfos, keine Eingaben an das Spiel.
- * - Tipps erscheinen nur in ruhigen Momenten: Kaufzeit, Rundenende, nach dem eigenen Tod,
- *   Aufwärmphase, Halbzeit und Matchende. Einzige Ausnahme ist der kurze Kauf-Check
- *   direkt nach der Kaufzeit, solange noch gekauft werden kann.
+ * - Tipps erscheinen nur in ruhigen Momenten: vor allem in der Kaufzeit zu Rundenbeginn,
+ *   außerdem am Rundenende, nach dem eigenen Tod, in der Aufwärmphase, zur Halbzeit und
+ *   am Matchende. Sobald die Runde läuft und du lebst, ist der Companion still.
  */
 
 import { SPRAY_PATTERNS } from "./spray-patterns.mjs";
-import { MAP_SPOTS } from "./map-spots.mjs";
+import { MAP_SPOTS, radarPoint, nearestSpot } from "./map-spots.mjs";
+
+/** Einzeln abschaltbare Funktionen (Optionen im Companion). */
+export const FEATURES = [
+  { id: "economy", label: "Wirtschaft und Kaufempfehlung", categories: ["economy"] },
+  { id: "buy", label: "Kauf-Check (Helm, Rüstung, Kit, Geld übrig)", categories: ["buy"] },
+  { id: "map", label: "Map-Karte mit Callouts", categories: ["map"] },
+  { id: "spray", label: "Spray-Muster beim Waffenkauf", categories: ["weapon"] },
+  { id: "history", label: "Tipps aus deinen TecMon-Matches", categories: ["history"] },
+  { id: "team", label: "Spielstand und Momentum (Serien, Timeout, Rundenenden)", categories: ["team"] },
+  { id: "death", label: "Tipps nach deinem Tod", categories: ["death"] },
+  { id: "habits", label: "Gewohnheiten (Nachladen, Flashes, Feuer, Schaden)", categories: ["habit"] },
+  { id: "mindset", label: "Kopf und Lob (Tilt, Pausen, starke Runden)", categories: ["mindset", "praise"] },
+  { id: "summary", label: "Aufwärmen, Halbzeit- und Match-Bilanz", categories: ["summary", "warmup"] },
+];
+const FEATURE_OF = Object.fromEntries(FEATURES.flatMap((f) => f.categories.map((c) => [c, f.id])));
+
+/** Alternative Routen, wenn du an einem Spot oft stirbst. */
+const ALTERNATIVES = {
+  de_dust2: { "Long A": "Short", "Long Doors": "Short oder Mid", "Outside Long": "Mid zu Short", "Upper Tunnels": "Mid zu B", "Lower Tunnels": "Long A", Mid: "Long A oder Tunnels", Short: "Long A" },
+  de_mirage: { "A-Ramp": "Palace", Palace: "A-Ramp oder Mid zu Connector", "Top-Mid": "Apartments zu B", Apartments: "Mid zu Short", Underpass: "Apartments", Short: "Apartments" },
+  de_inferno: { Banana: "Apartments zu A", Apartments: "Mid zu Short", Mid: "Banana", Short: "Apartments" },
+  de_ancient: { "A Main": "Mid zu Donut", Mid: "A Main", "B Ramp": "Mid zu Cave", Cave: "B Ramp" },
+};
 
 /** Spielmodi mit Wirtschaft und festen Halbzeiten. */
 const HALF = { competitive: 12, premier: 12, scrimcomp2v2: 8 };
 const OVERTIME_HALF = 3;
 const OVERTIME_MONEY = 12500;
 const FULL_BUY = { T: 4300, CT: 4800 };
-const MIN_GAP = 6000;
+/* Abstand zwischen zwei Tipps; Bilder brauchen länger. Die Kaufzeit dauert etwa 15 bis 20 Sekunden. */
+const MIN_GAP = 4500;
+const VISUAL_GAP = 8000;
+const BRIEFING_LIMIT = 3;
 const SESSION_GAP = 30 * 60 * 1000;
 const LONG_SESSION = 2 * 60 * 60 * 1000;
 
@@ -215,7 +241,16 @@ function primaryWeapon(player) {
   );
 }
 
-export function createGameTips({ now = () => Date.now(), radarPath = () => "" } = {}) {
+function halfIndex(round, half) {
+  return round < half * 2 ? Math.floor(round / half) : 2 + Math.floor((round - half * 2) / OVERTIME_HALF);
+}
+
+export function createGameTips({
+  now = () => Date.now(),
+  radarPath = () => "",
+  enabled = () => true,
+  insights = () => null,
+} = {}) {
   let tipId = 0;
   let current = null;
   const history = [];
@@ -227,6 +262,7 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
   let longSessionShown = false;
   let match = null;
   let last = null;
+  let quiet = false;
 
   function newMatch(map) {
     return {
@@ -252,13 +288,22 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
       liveSince: 0,
       earlyDeaths: 0,
       mapShown: new Set(),
+      briefed: 0,
+      freezeSince: 0,
+      buyChecked: -1,
+      mvps: 0,
+      streakShown: "",
+      endShown: new Set(),
       mapTip: 0,
       economy: "",
       flags: new Set(),
     };
   }
 
+  const allowed = (category) => enabled(FEATURE_OF[category] || category) !== false;
+
   function push(text, { priority = 1, category = "info", round = 0, visual = null } = {}) {
+    if (!text || !allowed(category)) return;
     queue.push({ text, priority, category, round, visual, queuedAt: now() });
   }
 
@@ -266,7 +311,7 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
     current = { id: ++tipId, text: entry.text, category: entry.category, at: now() };
     if (entry.visual) current.visual = entry.visual;
     /* Bilder brauchen länger zum Lesen als ein Satz. */
-    gap = entry.visual ? MIN_GAP + 5000 : MIN_GAP;
+    gap = entry.visual ? VISUAL_GAP : MIN_GAP;
     history.unshift(current);
     history.length = Math.min(history.length, 12);
     lastShown = current.at;
@@ -342,15 +387,18 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
     const equipment = number(state.equip_value);
     if (equipment < 3000) return;
     const notes = [];
+    if (!allowed("buy")) return;
     if (number(state.armor) === 0 && money >= 650)
       notes.push(`Ohne Rüstung unterwegs, obwohl du ${dollars(money)} hast.`);
+    else if (number(state.armor) < 70 && money >= 650)
+      notes.push(`Deine Weste hat nur noch ${number(state.armor)}. Eine neue kostet 650 $ und lohnt sich.`);
     else if (number(state.armor) > 0 && !state.helmet && money >= 350)
       notes.push("Kein Helm gekauft. Ohne Helm ist ein Kopftreffer mit dem Gewehr fast immer tödlich.");
     if (own.team === "CT" && !state.defusekit && money >= 400)
       notes.push("Kein Defuse-Kit (400 $). Mit Kit dauert das Entschärfen 5 statt 10 Sekunden.");
     if (money >= 5000)
       notes.push(`Noch ${dollars(money)} übrig. Wirf einem Mitspieler eine Waffe, solange die Kaufzeit läuft.`);
-    if (notes.length) publish({ text: notes.slice(0, 2).join(" "), category: "buy" });
+    if (notes.length) publish({ text: notes.slice(0, 2).join(" "), category: "buy", round });
   }
 
   /** Radarkarte mit den wichtigsten Spots zu Beginn jeder Halbzeit (nur wenn das Radarbild lokal vorhanden ist). */
@@ -382,6 +430,115 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
         : null,
     });
     return true;
+  }
+
+  /** Tipps aus den auf TecMon ausgewerteten Matches (vom Browser an den Companion übertragen). */
+  function historyTips(mapName, side, round, steamId) {
+    const data = insights(steamId);
+    const stats = data?.maps?.[mapName];
+    const spots = MAP_SPOTS[mapName];
+    if (!stats || !stats.matches) return;
+    const name = spots?.name || mapName.replace(/^de_/, "");
+    const recent = `In deinen letzten ${stats.matches} ${stats.matches === 1 ? "Match" : "Matches"} auf ${name}`;
+    const sideKey = side === "CT" ? 1 : 0;
+    const deaths = (stats.deaths || []).filter((d) => d[2] === sideKey || d[2] === -1);
+    if (spots?.radar && deaths.length >= 6) {
+      const zones = new Map();
+      const marks = [];
+      for (const [x, y] of deaths) {
+        const point = radarPoint(spots.radar, x, y);
+        if (!point) continue;
+        marks.push(point);
+        const spot = nearestSpot(spots.spots, point);
+        if (spot) zones.set(spot.label, (zones.get(spot.label) || 0) + 1);
+      }
+      const [label, count] = [...zones].sort((a, b) => b[1] - a[1])[0] || [];
+      if (label && count >= 5 && count / deaths.length >= 0.2) {
+        const share = Math.round((count / deaths.length) * 100);
+        const other = ALTERNATIVES[mapName]?.[label];
+        const advice =
+          side === "T"
+            ? other
+              ? ` Probier mal eine andere Route, zum Beispiel ${other}.`
+              : " Probier mal eine andere Route oder komm dort mit Flash und einem Mitspieler."
+            : " Spiel dort mal einen anderen Winkel, wechsle nach einem Kill die Position oder lass dich zurückfallen.";
+        const image = radarPath(mapName);
+        push(`${recent} bist du als ${side} ${count}× bei ${label} gestorben (${share} % deiner Tode).${advice}`, {
+          priority: 3,
+          category: "history",
+          round,
+          visual: image
+            ? {
+                type: "map",
+                map: mapName,
+                image,
+                side,
+                marks: marks.slice(0, 300),
+                spots: spots.spots.map((spot) => ({ ...spot, hot: spot.label === label })),
+              }
+            : null,
+        });
+        return;
+      }
+    }
+    const rounds = number(stats[side === "CT" ? "ctRounds" : "tRounds"]);
+    const won = number(stats[side === "CT" ? "ctWon" : "tWon"]);
+    if (rounds >= 30) {
+      const rate = Math.round((won / rounds) * 100);
+      if (rate < 45)
+        push(`${recent} gewinnst du als ${side} nur ${rate} % der Runden. Spiel diese Hälfte bewusst mit deinem Team und nimm dir keine Solo-Peeks.`, { priority: 2, category: "history", round });
+      else if (rate >= 58)
+        push(`${recent} gewinnst du als ${side} ${rate} % der Runden. Das ist deine starke Seite, spiel sie selbstbewusst.`, { priority: 1, category: "history", round });
+    }
+  }
+
+  /** Serien und Rundenenden aus round_wins: Momentum, Timeout, typische Niederlagen. */
+  function teamTips(map, side, round, half) {
+    const wins = map.round_wins;
+    if (!wins || typeof wins !== "object") return;
+    const results = Object.keys(wins)
+      .map(Number)
+      .filter((key) => Number.isFinite(key) && key >= 1 && key <= round)
+      .sort((a, b) => a - b)
+      .map((key) => {
+        const value = String(wins[key]);
+        const played = key - 1;
+        const same = (halfIndex(played, half) - halfIndex(round, half)) % 2 === 0;
+        const ownSide = same ? side : side === "CT" ? "T" : "CT";
+        return { value, ownSide, won: value.startsWith(ownSide === "CT" ? "ct_" : "t_") };
+      });
+    if (!results.length) return;
+    let streak = 0;
+    const lastWon = results.at(-1).won;
+    for (let i = results.length - 1; i >= 0 && results[i].won === lastWon; i--) streak++;
+    const key = `${lastWon ? "w" : "l"}${streak}`;
+    if (streak >= 4 && match.streakShown !== key && (streak === 4 || streak % 3 === 1)) {
+      match.streakShown = key;
+      const team = map[side === "CT" ? "team_ct" : "team_t"];
+      const timeouts = number(team?.timeouts_remaining);
+      push(
+        lastWon
+          ? `${streak} Runden in Folge gewonnen. Tempo halten, aber nicht übermütig werden: Der Gegner hat bald genug Geld für einen Full Buy.`
+          : `Der Gegner hat ${streak} Runden in Folge geholt.${timeouts > 0 ? ` Ein taktisches Timeout (noch ${timeouts} übrig) kann den Lauf brechen.` : ""} Kurz neu sortieren und als Team einen klaren Plan spielen.`,
+        { priority: 3, category: "team", round },
+      );
+      return;
+    }
+    const lost = results.filter((r) => !r.won && r.ownSide === side);
+    const count = (type) => lost.filter((r) => r.value.endsWith(type)).length;
+    const checks =
+      side === "CT"
+        ? [["bomb", 3, "Ihr verliert als CT oft nach dem Plant. Defuse-Kit kaufen, früher rotieren und den Retake gemeinsam mit Utility starten."]]
+        : [
+            ["time", 2, "Als T ist euch schon zweimal die Zeit ausgegangen. Früher entscheiden: spätestens bei 40 Sekunden auf einen Platz gehen."],
+            ["defuse", 2, "Nach eurem Plant wurde schon zweimal entschärft. Post-Plant-Positionen mit Crossfire halten und eine Molotov für die Bombe aufheben."],
+          ];
+    for (const [type, limit, text] of checks)
+      if (count(type) >= limit && !match.endShown.has(`${side}-${type}`)) {
+        match.endShown.add(`${side}-${type}`);
+        push(text, { priority: 2, category: "team", round });
+        return;
+      }
   }
 
   function onDeath(previous, round) {
@@ -480,6 +637,15 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
     match.headshots += number(state.round_killhs);
     match.damage += number(state.round_totaldmg);
     const kills = number(state.round_kills);
+    const damage = number(state.round_totaldmg);
+    if (kills === 0 && damage >= 100)
+      push(
+        `${damage} Schaden, aber kein Kill. Setz nach, wenn ein Gegner angeschlagen ist, oder gib die Info sofort weiter (zum Beispiel „einer hat 20 HP“).`,
+        { priority: 1, category: "habit", round },
+      );
+    const mvps = number(own.match_stats?.mvps);
+    if (mvps > match.mvps && kills < 3) push("MVP dieser Runde. Stark gespielt!", { priority: 0, category: "praise", round });
+    match.mvps = mvps;
     if (kills >= 3)
       push(
         kills >= 5
@@ -519,10 +685,12 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
     return " Training auf TecMon: Im Recoil Lab die Spray-Kontrolle weiter schärfen.";
   }
 
-  function flush(windowOpen) {
+  function flush(windowOpen, freezetime) {
     if (!windowOpen || !queue.length || now() - lastShown < gap) return;
+    if (freezetime && match && match.briefed >= BRIEFING_LIMIT) return;
     queue.sort((a, b) => b.priority - a.priority || a.queuedAt - b.queuedAt);
     publish(queue.shift());
+    if (freezetime && match) match.briefed++;
   }
 
   function ingest(payload) {
@@ -538,6 +706,7 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
     if (!map || typeof map !== "object" || !map.name) {
       match = null;
       last = null;
+      quiet = false;
       return;
     }
     const half = HALF[map.mode];
@@ -603,14 +772,22 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
 
     if (half && mapPhase === "live" && own) {
       if (roundPhase === "freezetime" && last?.roundPhase !== "freezetime") {
+        /* Rundenbeginn: das Briefing für diese Kaufzeit zusammenstellen. Alte Tipps verfallen. */
+        queue = queue.filter((entry) => ["summary", "mindset"].includes(entry.category));
+        match.briefed = 0;
+        match.freezeSince = time;
         const tip = economyTip(map, own, round, half);
         const show = tip.text && (!["rich", "eco", "tight"].includes(tip.key) || tip.key !== match.economy);
         match.economy = tip.key;
         const kind = roundKind(round, half);
         const firstOfSide = kind === "pistol" || kind === "overtime-start" || !match.mapShown.size;
-        if (firstOfSide) mapOverview(map.name, side, round);
+        if (firstOfSide) {
+          mapOverview(map.name, side, round);
+          historyTips(map.name, side, round, own.steamid);
+        }
         if (show) push(tip.text, { priority: 2, category: "economy", round });
-        else if (!firstOfSide && !queue.length && round % 3 === 1) {
+        teamTips(map, side, round, half);
+        if (!firstOfSide && !show && round % 3 === 1) {
           const pool = MAP_TIPS[map.name]?.[side] || GENERIC_TIPS[side];
           if (pool?.length) push(pool[match.mapTip++ % pool.length], { priority: 0, category: "map", round });
         }
@@ -626,9 +803,18 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
             visual: sprayVisual(primary.name),
           });
         }
+        /* Kauf-Check kurz vor Ende der Kaufzeit, solange noch gekauft werden kann. */
+        const countdown = payload.phase_countdowns;
+        const endsIn = countdown?.phase === "freezetime" ? Number(countdown.phase_ends_in) : NaN;
+        const late = Number.isFinite(endsIn) ? endsIn <= 5 : time - match.freezeSince >= 12000;
+        if (late && match.buyChecked !== round) {
+          match.buyChecked = round;
+          buyCheck(own, round, half);
+        }
       }
-      if (roundPhase === "live" && last?.roundPhase === "freezetime" && last?.round === round)
-        buyCheck(own, round, half);
+      /* Runde läuft: alles, was nicht zum eigenen Tod gehört, verfällt. */
+      if (roundPhase === "live" && last?.roundPhase !== "live")
+        queue = queue.filter((entry) => entry.category === "summary" || entry.category === "death");
     }
     if (roundPhase === "over" && last?.roundPhase === "live") roundOver(round);
     if (mapPhase === "intermission" && last?.mapPhase !== "intermission" && half)
@@ -653,7 +839,8 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
       roundPhase === "freezetime" ||
       roundPhase === "over" ||
       (roundPhase === "live" && dead);
-    flush(windowOpen);
+    flush(windowOpen, roundPhase === "freezetime" && mapPhase === "live");
+    quiet = mapPhase === "live" && roundPhase === "live" && !dead;
     last = { round, roundPhase, mapPhase };
   }
 
@@ -666,6 +853,8 @@ export function createGameTips({ now = () => Date.now(), radarPath = () => "" } 
       map: match?.name || null,
       mode: match?.mode || null,
       side: own?.team || null,
+      /* Runde läuft und du lebst: Sprechblase ausblenden. */
+      quiet: quiet && !!lastSeen && time - lastSeen < 20000,
       tip: current ? { ...current, age: time - current.at } : null,
       history: history.map((entry) => ({ ...entry, age: time - entry.at })),
     };

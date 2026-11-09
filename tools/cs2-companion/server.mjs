@@ -17,7 +17,8 @@ import { loadBrandingPack } from "./branding-assets.mjs";
 import { renderBranding } from "./video-branding.mjs";
 import { createBrowserBridge } from "./browser-bridge.mjs";
 import { browserDemos } from "./browser-demo.mjs";
-import { createGameTips } from "./game-tips.mjs";
+import { createGameTips, FEATURES } from "./game-tips.mjs";
+import { createInsightsStore } from "./insights.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
@@ -171,7 +172,13 @@ export async function createCompanion({
     const file = path.join(path.dirname(detected.csdm), "resources", "static", "images", "maps", "cs2", "radars", `${map}.png`);
     return existsSync(file) ? file : "";
   }
-  const tips = createGameTips(now ? { now, radarPath } : { radarPath });
+  const insights = await createInsightsStore(installation?.profileDir || dataDir);
+  const tips = createGameTips({
+    ...(now ? { now } : {}),
+    radarPath,
+    enabled: (id) => gsi.feature(id),
+    insights: (steamId) => insights.get(steamId),
+  });
   let gsiError = "";
   async function syncGsiConfig() {
     gsiError = "";
@@ -188,6 +195,8 @@ export async function createCompanion({
       enabled: gsi.enabled,
       available: !!gsiConfigPath(detected.cs2),
       error: gsiError,
+      features: FEATURES.map(({ id, label }) => ({ id, label, enabled: gsi.feature(id) })),
+      insights: insights.summary(),
       ...tips.state(),
     };
   }
@@ -363,13 +372,13 @@ export async function createCompanion({
       throw new Error("CS Demo Manager fehlt. Einrichtung im Companion prüfen.");
     return exe;
   }
-  async function readInput(req) {
+  async function readInput(req, limit = 65536) {
     if (req.method !== "POST" || req.headers["content-type"] !== "application/json")
       throw new Error("JSON-Auftrag erwartet.");
     let body = "";
     for await (const b of req) {
       body += b;
-      if (body.length > 65536) throw new Error("Auftrag zu groß.");
+      if (body.length > limit) throw new Error("Auftrag zu groß.");
     }
     return JSON.parse(body);
   }
@@ -423,8 +432,12 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1",...(installation ? ["video-branding-v1","camera-points-v1"] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1",...(installation ? ["video-branding-v1","camera-points-v1"] : [])],
       });
+    if (req.method === "POST" && url.pathname === "/bridge/insights") {
+      const input = await readInput(req, 262144);
+      return json(res, 200, await insights.put(input));
+    }
     if(req.method === "POST" && url.pathname === "/bridge/demo/start"){
       if(active || jobs.size>=100)throw new Error("Zuerst den laufenden Auftrag abschließen.");
       const input=await readInput(req);return json(res,201,await browserFiles.start(owner,input.size));
@@ -604,6 +617,18 @@ export async function createCompanion({
           message: "Rundentipps eingeschaltet. Falls CS2 gerade läuft, das Spiel einmal neu starten.",
           gsi: gsiState(),
         });
+      }
+      if (url.pathname === "/api/gsi/features") {
+        const known = new Set(FEATURES.map((f) => f.id));
+        const update = Object.fromEntries(
+          Object.entries(input.features || {}).filter(([id, on]) => known.has(id) && typeof on === "boolean"),
+        );
+        await gsi.setFeatures(update);
+        return json(res, 200, { gsi: gsiState() });
+      }
+      if (url.pathname === "/api/gsi/insights/clear") {
+        await insights.clear();
+        return json(res, 200, { message: "Übertragene Match-Auswertung gelöscht.", gsi: gsiState() });
       }
       if (url.pathname === "/api/gsi/disable") {
         await gsi.setEnabled(false);

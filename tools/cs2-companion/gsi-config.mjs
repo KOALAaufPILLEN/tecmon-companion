@@ -5,7 +5,11 @@ import path from "node:path";
 export const GSI_FILE = "gamestate_integration_tecmon.cfg";
 export const GSI_PORT = 31977;
 
-/** Offizielle CS2-GSI-Konfiguration: nur eigene Spielerdaten, kein Zuschauer-/Bombenblock. */
+/**
+ * Offizielle CS2-GSI-Konfiguration: nur eigene Spielerdaten, kein Zuschauer-/Bombenblock.
+ * phase_countdowns dient nur dazu, den Kauf-Check vor Ende der Kaufzeit zu zeigen; andere
+ * Countdowns (zum Beispiel der Bombe) wertet der Companion nicht aus.
+ */
 export function gsiConfigText(token, port = GSI_PORT) {
   if (!/^[a-f0-9]{64}$/.test(token)) throw new Error("Ungültiges GSI-Token.");
   return `"TecMon Companion Rundentipps"
@@ -28,6 +32,7 @@ export function gsiConfigText(token, port = GSI_PORT) {
     "player_state" "1"
     "player_weapons" "1"
     "player_match_stats" "1"
+    "phase_countdowns" "1"
   }
 }
 `;
@@ -45,15 +50,28 @@ async function writeAtomic(file, text, mode) {
   await rename(temporary, file);
 }
 
+function cleanFeatures(value) {
+  const result = {};
+  if (!value || typeof value !== "object") return result;
+  for (const [key, on] of Object.entries(value))
+    if (/^[a-z]{2,20}$/.test(key) && typeof on === "boolean") result[key] = on;
+  return result;
+}
+
 /** Einstellungen (Token, an/aus) bleiben über Neustarts erhalten, damit CS2 nicht neu gestartet werden muss. */
 export async function createGsiSettings(directory) {
   await mkdir(directory, { recursive: true });
   const file = path.join(directory, "gsi.json");
-  let settings = { version: 1, enabled: false, token: randomBytes(32).toString("hex") };
+  let settings = { version: 1, enabled: false, token: randomBytes(32).toString("hex"), features: {} };
   try {
     const saved = JSON.parse(await readFile(file, "utf8"));
     if (saved.version === 1 && /^[a-f0-9]{64}$/.test(saved.token))
-      settings = { version: 1, enabled: saved.enabled === true, token: saved.token };
+      settings = {
+        version: 1,
+        enabled: saved.enabled === true,
+        token: saved.token,
+        features: cleanFeatures(saved.features),
+      };
   } catch (error) {
     if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
   }
@@ -72,6 +90,17 @@ export async function createGsiSettings(directory) {
     },
     async setEnabled(value) {
       settings.enabled = value === true;
+      await save();
+    },
+    /** Abgeschaltete Funktionen sind false; alles andere gilt als eingeschaltet. */
+    feature(id) {
+      return settings.features[id] !== false;
+    },
+    get features() {
+      return { ...settings.features };
+    },
+    async setFeatures(features) {
+      settings.features = { ...settings.features, ...cleanFeatures(features) };
       await save();
     },
   };

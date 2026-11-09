@@ -475,6 +475,8 @@ class TipBubble : Form {
     if(radar!=null){radar.Dispose();radar=null;}radarFile="";
     try{if(string.IsNullOrEmpty(file)||!file.EndsWith(".png",StringComparison.OrdinalIgnoreCase)||!File.Exists(file))return false;using(var stream=new MemoryStream(File.ReadAllBytes(file)))using(var image=Image.FromStream(stream))radar=new Bitmap(image);radarFile=file;return true;}catch{return false;}
   }
+  /* Runde läuft und du lebst: sofort ausblenden, damit nichts beim Spielen stört. */
+  public void Quiet(){if(Visible){hide.Stop();Hide();}}
   public void Present(string heading,string text,Rectangle anchor,Dictionary<string,object> picture){
     title=heading;message=text;visual=picture;string kind=Kind(picture);
     if(kind=="map"&&!LoadRadar(Convert.ToString(picture["image"])))kind="";
@@ -509,6 +511,9 @@ class TipBubble : Form {
   void DrawMap(Graphics g,Rectangle box){
     if(radar==null)return;g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;g.DrawImage(radar,box);
     using(var pen=new Pen(Color.FromArgb(120,103,232,249)))g.DrawRectangle(pen,box);
+    /* Eigene Tode aus den TecMon-Matches als rote Punkte. */
+    var marks=Items(visual,"marks");
+    if(marks!=null)using(var red=new SolidBrush(Color.FromArgb(150,248,113,113)))foreach(var raw in marks){var mark=raw as Dictionary<string,object>;if(mark==null)continue;g.FillEllipse(red,box.Left+Num(mark["x"])*box.Width-3,box.Top+Num(mark["y"])*box.Height-3,6,6);}
     var spots=Items(visual,"spots");if(spots==null)return;
     foreach(var raw in spots){var spot=raw as Dictionary<string,object>;if(spot==null)continue;
       float x=box.Left+Num(spot["x"])*box.Width,y=box.Top+Num(spot["y"])*box.Height;string kind=Convert.ToString(spot["kind"]),label=Convert.ToString(spot["label"]);bool hot=spot.ContainsKey("hot")&&Convert.ToBoolean(spot["hot"]);
@@ -557,7 +562,7 @@ class DesktopPet : Form {
     menu.Items.Add("TecMon öffnen",null,(s,e)=>DesktopPanel.OpenExternal("https://tecmon.online"));
     menu.Items.Add("Videos-Ordner öffnen",null,async(s,e)=>{try{await Request("/api/videos/folder",true);}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}});
     updateItem=new ToolStripMenuItem("Nach Updates suchen",null,async(s,e)=>await CheckUpdate(false));menu.Items.Add(updateItem);
-    tipsItem=new ToolStripMenuItem("CS2-Rundentipps",null,async(s,e)=>await ToggleTips());menu.Items.Add(tipsItem);
+    tipsItem=new ToolStripMenuItem("CS2-Rundentipps");tipsOn=new ToolStripMenuItem("Eingeschaltet",null,async(s,e)=>await ToggleTips());tipsItem.DropDownItems.Add(tipsOn);tipsItem.DropDownItems.Add(new ToolStripSeparator());menu.Items.Add(tipsItem);
     var figure=new ToolStripMenuItem("Figur");
     var fly=new ToolStripMenuItem("Umherfliegen"){Checked=true,CheckOnClick=true};fly.CheckedChanged+=(s,e)=>wandering=fly.Checked;figure.DropDownItems.Add(fly);
     var motion=new ToolStripMenuItem("Animation"){Checked=true,CheckOnClick=true};motion.CheckedChanged+=(s,e)=>{animate=motion.Checked;Render();};figure.DropDownItems.Add(motion);
@@ -578,12 +583,14 @@ class DesktopPet : Form {
     Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
     FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
-  bool wasBusy,updateChecked,tipsEnabled;ToolStripMenuItem statusItem,updateItem,tipsItem;string offeredUpdate="";TipBubble tip;long lastTip=-1;
-  static string TipTitle(string category){switch(category){case "economy":return "Wirtschaft";case "buy":return "Kauf-Check";case "death":return "Nach dem Tod";case "habit":return "Gewohnheit";case "mindset":return "Kopf frei";case "summary":return "Zusammenfassung";case "weapon":return "Waffe";case "map":return "Map";case "warmup":return "Aufwärmen";case "praise":return "Stark";default:return "Rundentipp";}}
+  bool wasBusy,updateChecked,tipsEnabled;ToolStripMenuItem statusItem,updateItem,tipsItem,tipsOn;string featureSignature="";string offeredUpdate="";TipBubble tip;long lastTip=-1;
+  static string TipTitle(string category){switch(category){case "economy":return "Wirtschaft";case "buy":return "Kauf-Check";case "death":return "Nach dem Tod";case "habit":return "Gewohnheit";case "mindset":return "Kopf frei";case "summary":return "Zusammenfassung";case "weapon":return "Waffe";case "map":return "Map";case "warmup":return "Aufwärmen";case "praise":return "Stark";case "history":return "Deine Matches";case "team":return "Team";default:return "Rundentipp";}}
   /* Neue Tipps aus der CS2 Game State Integration neben der Figur zeigen, nie während einer Demo-Aufnahme. */
   void ShowTip(Dictionary<string,object> state){
     object raw;var gsi=state.TryGetValue("gsi",out raw)?raw as Dictionary<string,object>:null;if(gsi==null)return;
-    tipsEnabled=gsi.ContainsKey("enabled")&&Convert.ToBoolean(gsi["enabled"]);if(tipsItem!=null)tipsItem.Checked=tipsEnabled;
+    tipsEnabled=gsi.ContainsKey("enabled")&&Convert.ToBoolean(gsi["enabled"]);if(tipsOn!=null)tipsOn.Checked=tipsEnabled;
+    SyncFeatures(gsi);
+    if(gsi.ContainsKey("quiet")&&Convert.ToBoolean(gsi["quiet"])&&tip!=null&&!tip.IsDisposed)tip.Quiet();
     object tipRaw;var current=gsi.TryGetValue("tip",out tipRaw)?tipRaw as Dictionary<string,object>:null;if(current==null)return;
     long id=Convert.ToInt64(current["id"]);if(id==lastTip)return;lastTip=id;
     if(busy||!tipsEnabled||Convert.ToInt64(current["age"])>20000)return;
@@ -592,10 +599,20 @@ class DesktopPet : Form {
     object picture;current.TryGetValue("visual",out picture);
     tip.Present(TipTitle(current.ContainsKey("category")?Convert.ToString(current["category"]):""),Convert.ToString(current["text"]),Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),picture as Dictionary<string,object>);
   }
+  /* Optionen: jede Tipp-Art einzeln im Rechtsklick-Menü der Figur. */
+  void SyncFeatures(Dictionary<string,object> gsi){
+    object raw;var list=gsi.TryGetValue("features",out raw)?raw as System.Collections.IList:null;if(list==null||tipsItem==null)return;
+    var signature=TecMon.Json.Serialize(list);if(signature==featureSignature)return;featureSignature=signature;
+    while(tipsItem.DropDownItems.Count>2)tipsItem.DropDownItems.RemoveAt(2);
+    foreach(var entry in list){var feature=entry as Dictionary<string,object>;if(feature==null)continue;string id=Convert.ToString(feature["id"]);bool on=Convert.ToBoolean(feature["enabled"]);
+      var item=new ToolStripMenuItem(Convert.ToString(feature["label"])){Checked=on};
+      item.Click+=async(s,e)=>{try{await Request("/api/gsi/features",true,"{\"features\":{\""+id+"\":"+(on?"false":"true")+"}}");}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}};
+      tipsItem.DropDownItems.Add(item);}
+  }
   async Task ToggleTips(){
     try{
       var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request(tipsEnabled?"/api/gsi/disable":"/api/gsi/enable",true,tipsEnabled?"{}":"{\"confirm\":true}"));
-      tipsEnabled=!tipsEnabled;tipsItem.Checked=tipsEnabled;
+      tipsEnabled=!tipsEnabled;tipsOn.Checked=tipsEnabled;
       if(tray!=null)tray.ShowBalloonTip(5000,"TecMon Companion",Convert.ToString(result["message"]),ToolTipIcon.Info);
     }catch(Exception error){MessageBox.Show("Rundentipps konnten nicht umgeschaltet werden. Wird CS2 auf diesem PC gefunden?\n\n"+error.Message,"TecMon");}
   }
