@@ -41,7 +41,9 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
 
 - Jede Tipp-Kategorie gehört zu genau einer Funktion in `FEATURES`
   (`game-tips.mjs`). Eine neue Kategorie braucht einen Eintrag dort, sonst lässt
-  sie sich nicht abschalten.
+  sie sich nicht abschalten. Reine Anzeige-Optionen ohne Kategorie (etwa
+  `stack`, große Sprechblase) stehen ebenfalls dort; `TecMon.cs` liest sie aus
+  `gsi.features`.
 - Funktionen sind einzeln abschaltbar, auf der Companion-Seite
   (`/api/gsi/features`) und im Figurmenü „CS2-Rundentipps“ (`TecMon.cs`).
   Gespeichert in `gsi.json`; nicht gespeicherte Funktionen gelten als an.
@@ -57,12 +59,15 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   verlassen den PC nie. Sie lassen sich in der Oberfläche löschen.
 - `insights-v2` (`version: 2`) ergänzt je Map optional `habits`: nur Summen des
   eigenen Spielers (`HABIT_KEYS` in `insights.mjs` und `game-tips.mjs`), etwa
-  Eröffnungsduelle, getradete Tode, Laufschüsse, Kopftreffer, ungenutzte Granaten,
-  Flashes, Clutches, Kills nach Sieg/Niederlage. `habits.matches` zählt nur
+  Eröffnungsduelle, getradete Tode, K/D und Allein-Zeit je Seite, Bombe,
+  Laufschüsse, Kopftreffer, Granaten, Flashes, Teamschaden, Clutches, Kills nach
+  Sieg/Niederlage, dazu `weapons` (max. 8, `[Kills, Headshots, Schüsse,
+  Treffer]`). `habits.matches` zählt nur
   Matches mit vollständigen Zählern. Daten anderer Spieler kommen nie hinein.
   `insights-v1` bleibt angeboten; v1-Übertragungen haben keine `habits`.
-- Tipps daraus (`habitAdvice()`) kommen höchstens einmal je Seitenstart, jeder
-  Tipp nur einmal pro Match, und brauchen Mindestmengen an Daten.
+- Tipps daraus (`habitAdvice()`) kommen zum Seitenstart und in Runden mit
+  `round % 4 === 2` (dann mit niedriger Priorität), jeder Tipp nur einmal pro
+  Match, und brauchen Mindestmengen an Daten. Das `BRIEFING_LIMIT` gilt weiter.
 - Änderungen am Aufbau nur abwärtskompatibel oder mit neuer Capability
   (`insights-v3`) und gleichzeitiger Anpassung der Webseite
   (`lib/demoReplay/companionInsights.ts` im Repo `tecmon`).

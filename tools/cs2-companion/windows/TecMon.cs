@@ -461,7 +461,8 @@ class DesktopPanel : Form {
 class TipBubble : Form {
   readonly System.Windows.Forms.Timer hide=new System.Windows.Forms.Timer();
   readonly Font titleFont=new Font("Segoe UI",9,FontStyle.Bold),bodyFont=new Font("Segoe UI",11),smallFont=new Font("Segoe UI",8,FontStyle.Bold);
-  string title="",message="";int textHeight;Dictionary<string,object> visual;Bitmap radar;string radarFile="";
+  /* Mehrere Tipps derselben Runde stapeln sich in einer größeren Sprechblase, der neueste oben. */
+  readonly List<string[]> entries=new List<string[]>();readonly List<int> heights=new List<int>();long group=long.MinValue;int textHeight;Dictionary<string,object> visual;Bitmap radar;string radarFile="";
   const int Visual=364;
   static readonly Color Cyan=Color.FromArgb(103,232,249),Orange=Color.FromArgb(251,146,60),Green=Color.FromArgb(74,222,128);
   protected override bool ShowWithoutActivation {get{return true;}}
@@ -477,19 +478,24 @@ class TipBubble : Form {
   }
   /* Runde läuft und du lebst: sofort ausblenden, damit nichts beim Spielen stört. */
   public void Quiet(){if(Visible){hide.Stop();Hide();}}
-  public void Present(string heading,string text,Rectangle anchor,Dictionary<string,object> picture){
-    title=heading;message=text;visual=picture;string kind=Kind(picture);
+  public void Present(string heading,string text,Rectangle anchor,Dictionary<string,object> picture,long round,bool stack){
+    bool append=stack&&Visible&&round==group&&entries.Count>0;
+    if(!append){entries.Clear();visual=null;}
+    group=round;entries.Add(new string[]{heading,(text??"").Replace(" %","\u00A0%").Replace(" $","\u00A0$")});while(entries.Count>4)entries.RemoveAt(0);
+    string kind=Kind(picture);
     if(kind=="map"&&!LoadRadar(Convert.ToString(picture["image"])))kind="";
-    if(kind!="map"&&kind!="spray")visual=null;
-    int width=visual!=null?Visual+36:380;
-    using(var g=CreateGraphics()){var size=g.MeasureString(text,bodyFont,width-36);textHeight=(int)Math.Ceiling(size.Height);}
+    if(kind=="map"||kind=="spray")visual=picture;
+    kind=Kind(visual);
+    int width=visual!=null?Visual+36:entries.Count>1?460:380;
+    heights.Clear();textHeight=0;int letters=0;
+    using(var g=CreateGraphics())for(int i=entries.Count-1;i>=0;i--){var size=g.MeasureString(entries[i][1],bodyFont,width-36);int h=(int)Math.Ceiling(size.Height);heights.Add(h);textHeight+=h+30;letters+=entries[i][1].Length;}
     int extra=kind=="map"?Visual+14:kind=="spray"?250:0;
-    ClientSize=new Size(width,textHeight+56+extra);
+    ClientSize=new Size(width,textHeight+20+extra);
     var area=Screen.FromRectangle(anchor).WorkingArea;var point=new Point(anchor.Left-Width-10,anchor.Top+anchor.Height/2-Height/2);if(point.X<area.Left)point.X=anchor.Right+10;
     Location=DesktopPet.Fit(point,area,Size);
     using(var path=Rounded(ClientSize)){var previous=Region;Region=new Region(path);if(previous!=null)previous.Dispose();}
     Invalidate();if(!Visible)Show();
-    hide.Stop();hide.Interval=Math.Max(7000,Math.Min(visual!=null?20000:16000,4000+text.Length*55+(visual!=null?6000:0)));hide.Start();
+    hide.Stop();hide.Interval=Math.Max(7000,Math.Min(visual!=null||entries.Count>1?25000:16000,4000+letters*55+(visual!=null?6000:0)));hide.Start();
   }
   static System.Drawing.Drawing2D.GraphicsPath Rounded(Size size){const float r=16;float w=size.Width-1,h=size.Height-1;var path=new System.Drawing.Drawing2D.GraphicsPath();path.AddArc(0,0,r*2,r*2,180,90);path.AddArc(w-r*2,0,r*2,r*2,270,90);path.AddArc(w-r*2,h-r*2,r*2,r*2,0,90);path.AddArc(0,h-r*2,r*2,r*2,90,90);path.CloseFigure();return path;}
   static float Num(object value){return Convert.ToSingle(value,System.Globalization.CultureInfo.InvariantCulture);}
@@ -525,10 +531,14 @@ class TipBubble : Form {
   protected override void OnPaint(PaintEventArgs e){
     base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;g.TextRenderingHint=System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
     using(var path=Rounded(ClientSize))using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Color.FromArgb(8,47,65),Color.FromArgb(4,20,32),45))using(var pen=new Pen(Cyan,1.5f)){g.FillPath(fill,path);g.DrawPath(pen,path);}
-    using(var brush=new SolidBrush(Cyan))g.DrawString("TECMON // "+title.ToUpperInvariant(),titleFont,brush,18,12);
-    g.DrawString(message,bodyFont,Brushes.White,new RectangleF(18,34,Width-36,textHeight+4));
-    var kind=Kind(visual);var box=new Rectangle(18,40+textHeight,Width-36,Height-56-textHeight);
-    if(kind=="spray")DrawSpray(g,box);else if(kind=="map")DrawMap(g,new Rectangle(18,40+textHeight,Visual,Visual));
+    int y=12;
+    for(int n=0;n<heights.Count;n++){var entry=entries[entries.Count-1-n];bool newest=n==0;
+      if(n>0)using(var line=new Pen(Color.FromArgb(60,103,232,249)))g.DrawLine(line,18,y-6,Width-18,y-6);
+      using(var brush=new SolidBrush(newest?Cyan:Color.FromArgb(150,103,232,249)))g.DrawString("TECMON // "+entry[0].ToUpperInvariant(),titleFont,brush,18,y);
+      using(var text=new SolidBrush(newest?Color.White:Color.FromArgb(200,226,232,240)))g.DrawString(entry[1],bodyFont,text,new RectangleF(18,y+22,Width-36,heights[n]+4));
+      y+=heights[n]+30;}
+    var kind=Kind(visual);var box=new Rectangle(18,y,Width-36,Height-y-16);
+    if(kind=="spray")DrawSpray(g,box);else if(kind=="map")DrawMap(g,new Rectangle(18,y,Visual,Visual));
   }
   protected override void Dispose(bool disposing){if(disposing){hide.Dispose();titleFont.Dispose();bodyFont.Dispose();smallFont.Dispose();if(radar!=null)radar.Dispose();}base.Dispose(disposing);}
 }
@@ -597,8 +607,11 @@ class DesktopPet : Form {
     if(tip==null||tip.IsDisposed)tip=new TipBubble();
     var area=Screen.PrimaryScreen.WorkingArea;
     object picture;current.TryGetValue("visual",out picture);
-    tip.Present(TipTitle(current.ContainsKey("category")?Convert.ToString(current["category"]):""),Convert.ToString(current["text"]),Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),picture as Dictionary<string,object>);
+    long round=current.ContainsKey("round")?Convert.ToInt64(current["round"]):-1;
+    tip.Present(TipTitle(current.ContainsKey("category")?Convert.ToString(current["category"]):""),Convert.ToString(current["text"]),Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),picture as Dictionary<string,object>,round,FeatureOn(gsi,"stack"));
   }
+  /* Nicht gelieferte Funktionen gelten als an, wie im Companion. */
+  static bool FeatureOn(Dictionary<string,object> gsi,string id){object raw;var list=gsi.TryGetValue("features",out raw)?raw as System.Collections.IList:null;if(list==null)return true;foreach(var entry in list){var feature=entry as Dictionary<string,object>;if(feature!=null&&Convert.ToString(feature["id"])==id)return Convert.ToBoolean(feature["enabled"]);}return true;}
   /* Optionen: jede Tipp-Art einzeln im Rechtsklick-Menü der Figur. */
   void SyncFeatures(Dictionary<string,object> gsi){
     object raw;var list=gsi.TryGetValue("features",out raw)?raw as System.Collections.IList:null;if(list==null||tipsItem==null)return;

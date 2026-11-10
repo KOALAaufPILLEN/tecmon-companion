@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, stat } from "node:fs/promises"
 import path from "node:path";
 import os from "node:os";
 import { once } from "node:events";
-import { createGameTips, nextLossBonus, roundKind, habitAdvice } from "../game-tips.mjs";
+import { createGameTips, nextLossBonus, roundKind, habitAdvice, FEATURES } from "../game-tips.mjs";
 import { cleanInsights, createInsightsStore } from "../insights.mjs";
 import { gsiConfigText, gsiConfigPath } from "../gsi-config.mjs";
 import { createCompanion } from "../server.mjs";
@@ -429,4 +429,37 @@ test("insights-v2 behält Gewohnheiten, v1 ignoriert sie", async (t) => {
   await store.put({ version: 2, steamId: ME, maps: { de_dust2: { matches: 4, habits: HABITS } } });
   const again = await createInsightsStore(dir);
   assert.equal(again.get(ME).maps.de_dust2.habits.clutchWon, 4);
+});
+
+const MORE = {
+  ...HABITS, damage: 9000, utilityDamage: 300, teamDamage: 50, grenades: 200, selfFlashed: 2, flashAssists: 3,
+  bombRounds: 20, bombLost: 8, plants: 10, soloPlants: 6, multi3: 2,
+  tKills: 20, tDeaths: 35, ctKills: 40, ctDeaths: 35, tAlive: 5000, tAlone: 2500, ctAlive: 5000, ctAlone: 2000,
+};
+
+test("Gewohnheiten: Seite, Bombe und Waffen kommen passend zur Hälfte", () => {
+  const weapons = { m4a1: [10, 3, 400, 70], m4a1_silencer: [20, 9, 400, 120], awp: [5, 0, 60, 12] };
+  const t = habitAdvice(MORE, "X", "T", weapons).map((e) => e.key);
+  assert.deepEqual(t.slice(0, 4), ["side-T", "lurk", "bomb", "soloplant"]);
+  assert.ok(!t.includes("m4"));
+  assert.ok(t.includes("awp"));
+  const ct = habitAdvice(MORE, "X", "CT", weapons);
+  assert.equal(ct[0].key, "m4");
+  assert.match(ct[0].text, /mit der M4A1-S 30 % deiner Schüsse, mit der M4A4 nur 18 %/);
+  assert.match(habitAdvice(MORE, "X", "T", weapons).find((e) => e.key === "awp").text, /nur jeder 5\. AWP-Schuss/);
+});
+
+test("Spray-Tipp nennt die eigene Trefferquote und Tipps tragen die Runde", () => {
+  const time = clock();
+  const insights = { maps: { de_mirage: { matches: 4, weapons: { ak47: [30, 15, 600, 132] } } } };
+  const tips = createGameTips({ ...time, enabled: (id) => id === "spray", insights: (id) => (id === ME ? insights : null) });
+  const ak = { weapon_1: { name: "weapon_ak47", type: "Rifle", state: "active", ammo_clip: 30, ammo_clip_max: 30 } };
+  tips.ingest(frame({ round: 4, weapons: ak }));
+  const tip = tips.state().tip;
+  assert.match(tip.text, /Deine Trefferquote damit auf dieser Map: 22 %, 50 % deiner Kills damit sind Headshots\./);
+  assert.equal(tip.round, 4);
+});
+
+test("Anzeige-Option für die große Sprechblase", () => {
+  assert.ok(FEATURES.some((f) => f.id === "stack" && f.categories.length === 0));
 });

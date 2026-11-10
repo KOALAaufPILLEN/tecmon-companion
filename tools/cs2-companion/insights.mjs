@@ -17,7 +17,9 @@ const HABIT_KEYS = [
   "matches", "rounds", "kills", "deaths", "openingKills", "openingDeaths", "tradedDeaths",
   "shots", "hits", "shotsMoving", "headHits", "unusedNades", "flashes", "enemiesFlashed",
   "teamFlashed", "clutchPlayed", "clutchWon", "roundsAfterLoss", "killsAfterLoss",
-  "roundsAfterWin", "killsAfterWin",
+  "roundsAfterWin", "killsAfterWin", "damage", "utilityDamage", "teamDamage", "grenades",
+  "selfFlashed", "flashAssists", "bombRounds", "bombLost", "plants", "soloPlants", "multi3",
+  "tKills", "tDeaths", "ctKills", "ctDeaths", "tAlive", "tAlone", "ctAlive", "ctAlone",
 ];
 
 /** Eigene Gewohnheiten (insights-v2): nur bekannte Summen, sonst gar nichts. */
@@ -25,6 +27,17 @@ function cleanHabits(raw) {
   if (!raw || typeof raw !== "object") return undefined;
   const habits = Object.fromEntries(HABIT_KEYS.map((k) => [k, count(raw[k], 1e7)]));
   return habits.matches > 0 && habits.matches <= 1000 ? habits : undefined;
+}
+
+/** Eigene Waffen (insights-v2): Name → [Kills, Headshots, Schüsse, Treffer], max. 8. */
+function cleanWeapons(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out = {};
+  for (const [name, value] of Object.entries(raw).slice(0, 8)) {
+    if (!/^[a-z0-9_]{2,30}$/.test(name) || !Array.isArray(value)) continue;
+    out[name] = [0, 1, 2, 3].map((i) => count(value[i], 1e7));
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 const coordinate = (value) => (Number.isFinite(value) && Math.abs(value) < 20000 ? Math.round(value) : null);
@@ -55,6 +68,8 @@ export function cleanInsights(input) {
     };
     const habits = input.version === 2 ? cleanHabits(raw.habits) : undefined;
     if (habits) maps[name].habits = habits;
+    const weapons = input.version === 2 ? cleanWeapons(raw.weapons) : undefined;
+    if (weapons) maps[name].weapons = weapons;
   }
   return {
     version: input.version,
