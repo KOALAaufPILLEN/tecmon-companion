@@ -241,6 +241,54 @@ function primaryWeapon(player) {
   );
 }
 
+export const HABIT_KEYS = [
+  "matches", "rounds", "kills", "deaths", "openingKills", "openingDeaths", "tradedDeaths",
+  "shots", "hits", "shotsMoving", "headHits", "unusedNades", "flashes", "enemiesFlashed",
+  "teamFlashed", "clutchPlayed", "clutchWon", "roundsAfterLoss", "killsAfterLoss",
+  "roundsAfterWin", "killsAfterWin",
+];
+
+function sumHabits(list) {
+  const valid = list.filter((h) => h && h.matches > 0);
+  if (!valid.length) return null;
+  return Object.fromEntries(HABIT_KEYS.map((k) => [k, valid.reduce((s, h) => s + number(h[k]), 0)]));
+}
+
+const share = (part, total) => Math.round((part / total) * 100);
+const decimal = (value) => value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/**
+ * Tipps aus eigenen, gemessenen Summen. Schwächen zuerst, danach Lob. Jede Regel braucht
+ * genug Daten, damit ein einzelnes schlechtes Match keinen Tipp auslöst.
+ */
+export function habitAdvice(h, scope) {
+  const tips = [];
+  const openings = h.openingKills + h.openingDeaths;
+  if (openings >= 10 && h.openingDeaths / openings >= 0.6)
+    tips.push({ key: "opening", text: `${scope} hast du ${h.openingDeaths} von ${openings} Eröffnungsduellen verloren. Geh zum Rundenstart nicht allein als Erster rein, sondern mit Flash oder zu zweit.` });
+  if (h.deaths >= 30 && h.tradedDeaths / h.deaths < 0.2)
+    tips.push({ key: "trade", text: `${scope} wurden nur ${share(h.tradedDeaths, h.deaths)} % deiner Tode getradet. Bleib näher an deinem Team, damit ein Mitspieler sofort nachziehen kann.` });
+  if (h.shots >= 300 && h.shotsMoving / h.shots >= 0.3)
+    tips.push({ key: "moving", text: `${scope} kamen ${share(h.shotsMoving, h.shots)} % deiner Schüsse aus der Bewegung. Vor dem Schuss kurz stoppen (Counter-Strafe), dann treffen Gewehre deutlich besser.` });
+  if (h.hits >= 200 && h.headHits / h.hits < 0.15)
+    tips.push({ key: "head", text: `${scope} gingen nur ${share(h.headHits, h.hits)} % deiner Treffer an den Kopf. Halte das Fadenkreuz auf Kopfhöhe an den Ecken, wo Gegner auftauchen.` });
+  if (h.deaths >= 20 && h.unusedNades / h.deaths >= 0.6)
+    tips.push({ key: "nades", text: `${scope} hattest du beim Tod im Schnitt ${decimal(h.unusedNades / h.deaths)} ungenutzte Granaten dabei. Wirf sie, bevor du in einen Kampf gehst.` });
+  if (h.flashes >= 10 && h.teamFlashed > h.enemiesFlashed)
+    tips.push({ key: "teamflash", text: `${scope} haben deine Flashes öfter Mitspieler (${h.teamFlashed}) als Gegner (${h.enemiesFlashed}) geblendet. Sag sie vorher an und wirf sie so, dass dein Team nicht hineinschaut.` });
+  if (h.roundsAfterLoss >= 20 && h.roundsAfterWin >= 20) {
+    const afterLoss = h.killsAfterLoss / h.roundsAfterLoss;
+    const afterWin = h.killsAfterWin / h.roundsAfterWin;
+    if (afterWin >= 0.5 && afterLoss < afterWin * 0.7)
+      tips.push({ key: "tilt", text: `${scope} machst du nach verlorenen Runden weniger Kills (${decimal(afterLoss)} statt ${decimal(afterWin)} pro Runde). Nach einer Niederlage kurz durchatmen und die nächste Runde ruhig angehen.` });
+  }
+  if (h.clutchPlayed >= 8 && h.clutchWon / h.clutchPlayed >= 0.35)
+    tips.push({ key: "clutch", text: `${scope} hast du ${h.clutchWon} von ${h.clutchPlayed} Clutches gewonnen. Wenn du als Letzter übrig bist, bleib ruhig. Das kannst du.` });
+  if (openings >= 10 && h.openingKills / openings >= 0.6)
+    tips.push({ key: "entry", text: `${scope} hast du ${h.openingKills} von ${openings} Eröffnungsduellen gewonnen. Als Entry bist du stark, nimm die ersten Duelle mit Selbstvertrauen.` });
+  return tips;
+}
+
 function halfIndex(round, half) {
   return round < half * 2 ? Math.floor(round / half) : 2 + Math.floor((round - half * 2) / OVERTIME_HALF);
 }
@@ -490,6 +538,27 @@ export function createGameTips({
       else if (rate >= 58)
         push(`${recent} gewinnst du als ${side} ${rate} % der Runden. Das ist deine starke Seite, spiel sie selbstbewusst.`, { priority: 1, category: "history", round });
     }
+  }
+
+  /**
+   * Gewohnheiten aus den TecMon-Matches (insights-v2): je Seitenstart höchstens ein Tipp,
+   * immer ein anderer. Reicht die Map nicht für eine Aussage, zählen alle Maps zusammen.
+   */
+  function habitTips(mapName, round, steamId) {
+    const data = insights(steamId);
+    if (!data?.maps) return;
+    const name = MAP_SPOTS[mapName]?.name || mapName.replace(/^de_/, "");
+    let habits = data.maps[mapName]?.habits;
+    let scope = habits && habits.matches >= 3 ? `In deinen letzten ${habits.matches} Matches auf ${name}` : "";
+    if (!scope) {
+      habits = sumHabits(Object.values(data.maps).map((m) => m.habits));
+      if (!habits || habits.matches < 3) return;
+      scope = `In deinen letzten ${habits.matches} ausgewerteten Matches`;
+    }
+    const tip = habitAdvice(habits, scope).find((entry) => !match.flags.has(`habit-${entry.key}`));
+    if (!tip) return;
+    match.flags.add(`habit-${tip.key}`);
+    push(tip.text, { priority: 2, category: "history", round });
   }
 
   /** Serien und Rundenenden aus round_wins: Momentum, Timeout, typische Niederlagen. */
@@ -784,6 +853,7 @@ export function createGameTips({
         if (firstOfSide) {
           mapOverview(map.name, side, round);
           historyTips(map.name, side, round, own.steamid);
+          habitTips(map.name, round, own.steamid);
         }
         if (show) push(tip.text, { priority: 2, category: "economy", round });
         teamTips(map, side, round, half);

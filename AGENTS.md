@@ -55,8 +55,16 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   `cleanInsights()` prüft und kürzt alles.
 - Die Daten bleiben lokal in `insights.json` (Modus 600, max. 4 Konten) und
   verlassen den PC nie. Sie lassen sich in der Oberfläche löschen.
+- `insights-v2` (`version: 2`) ergänzt je Map optional `habits`: nur Summen des
+  eigenen Spielers (`HABIT_KEYS` in `insights.mjs` und `game-tips.mjs`), etwa
+  Eröffnungsduelle, getradete Tode, Laufschüsse, Kopftreffer, ungenutzte Granaten,
+  Flashes, Clutches, Kills nach Sieg/Niederlage. `habits.matches` zählt nur
+  Matches mit vollständigen Zählern. Daten anderer Spieler kommen nie hinein.
+  `insights-v1` bleibt angeboten; v1-Übertragungen haben keine `habits`.
+- Tipps daraus (`habitAdvice()`) kommen höchstens einmal je Seitenstart, jeder
+  Tipp nur einmal pro Match, und brauchen Mindestmengen an Daten.
 - Änderungen am Aufbau nur abwärtskompatibel oder mit neuer Capability
-  (`insights-v2`) und gleichzeitiger Anpassung der Webseite
+  (`insights-v3`) und gleichzeitiger Anpassung der Webseite
   (`lib/demoReplay/companionInsights.ts` im Repo `tecmon`).
 
 ### Karten und Bilder

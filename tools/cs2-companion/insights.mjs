@@ -13,11 +13,25 @@ const MAX_DEATHS = 400;
 
 const count = (value, max = 1e6) =>
   Number.isInteger(value) && value >= 0 && value <= max ? value : 0;
+const HABIT_KEYS = [
+  "matches", "rounds", "kills", "deaths", "openingKills", "openingDeaths", "tradedDeaths",
+  "shots", "hits", "shotsMoving", "headHits", "unusedNades", "flashes", "enemiesFlashed",
+  "teamFlashed", "clutchPlayed", "clutchWon", "roundsAfterLoss", "killsAfterLoss",
+  "roundsAfterWin", "killsAfterWin",
+];
+
+/** Eigene Gewohnheiten (insights-v2): nur bekannte Summen, sonst gar nichts. */
+function cleanHabits(raw) {
+  if (!raw || typeof raw !== "object") return undefined;
+  const habits = Object.fromEntries(HABIT_KEYS.map((k) => [k, count(raw[k], 1e7)]));
+  return habits.matches > 0 && habits.matches <= 1000 ? habits : undefined;
+}
+
 const coordinate = (value) => (Number.isFinite(value) && Math.abs(value) < 20000 ? Math.round(value) : null);
 
 /** Prüft und kürzt eine Übertragung der Webseite; wirft bei ungültigem Aufbau. */
 export function cleanInsights(input) {
-  if (!input || input.version !== 1 || !/^\d{17}$/.test(String(input.steamId)))
+  if (!input || (input.version !== 1 && input.version !== 2) || !/^\d{17}$/.test(String(input.steamId)))
     throw new Error("Ungültige Match-Auswertung.");
   const maps = {};
   for (const [name, raw] of Object.entries(input.maps || {}).slice(0, MAX_MAPS)) {
@@ -39,9 +53,11 @@ export function cleanInsights(input) {
       ctWon: count(raw.ctWon),
       deaths,
     };
+    const habits = input.version === 2 ? cleanHabits(raw.habits) : undefined;
+    if (habits) maps[name].habits = habits;
   }
   return {
-    version: 1,
+    version: input.version,
     steamId: String(input.steamId),
     matches: count(input.matches, 1000),
     updatedAt: Date.now(),
