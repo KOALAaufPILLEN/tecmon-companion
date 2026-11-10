@@ -125,3 +125,9 @@ Sichtbar über dem Spiel ist die Sprechblase nur im Anzeigemodus „Vollbild im 
 - **Spray-Tipp mit deiner Trefferquote:** Beim Waffenkauf steht unter dem Spray-Muster jetzt auch, wie oft du mit dieser Waffe triffst und wie viele deiner Kills damit Headshots sind.
 - **Große Sprechblase:** Tipps derselben Runde sammeln sich in einer breiteren Sprechblase (bis zu 4, der neueste oben, ältere etwas gedimmt) statt sich gegenseitig zu ersetzen. Abschaltbar unter „Mehrere Tipps zusammen in einer großen Sprechblase“.
 - Abschaltbar wie bisher über „Tipps aus deinen TecMon-Matches“. Ältere Webseiten schicken weiter `insights-v1`, das funktioniert unverändert.
+
+## Neu in 0.16.1: Sprechblase im TecMon-Gold-Stil
+
+- Die Sprechblase hat jetzt einen goldenen Rahmen mit abgeschrägten Ecken und einer Spitze zur Figur, eine dunkle Fläche, oben „TecMon“ in Gold mit Schließen-Kreuz und darunter die Tipp-Art mit farbigem Punkt.
+- Ein lila Lichtstreifen läuft etwa alle drei Sekunden einmal um den Rahmen, solange die Sprechblase sichtbar ist. Außen liegt ein leichter lila Schein.
+- Gestapelte Tipps derselben Runde stehen darunter, kleiner und mit eigener Überschrift.

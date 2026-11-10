@@ -139,12 +139,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.16.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.16.1",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.16.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.16.1");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -159,7 +159,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.16.0"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.16.1"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -286,7 +286,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.16.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.16.1 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -459,16 +459,23 @@ class DesktopPanel : Form {
 
 // Kurzer CS2-Rundentipp neben der Figur. Wird nie aktiviert, damit CS2 den Fokus behält.
 class TipBubble : Form {
-  readonly System.Windows.Forms.Timer hide=new System.Windows.Forms.Timer();
-  readonly Font titleFont=new Font("Segoe UI",9,FontStyle.Bold),bodyFont=new Font("Segoe UI",11),smallFont=new Font("Segoe UI",8,FontStyle.Bold);
+  readonly System.Windows.Forms.Timer hide=new System.Windows.Forms.Timer(),runner=new System.Windows.Forms.Timer();
+  readonly Font titleFont=new Font("Segoe UI",9,FontStyle.Bold),bodyFont=new Font("Segoe UI",12),olderFont=new Font("Segoe UI",10.5f),smallFont=new Font("Segoe UI",8,FontStyle.Bold),brandFont=new Font("Segoe UI",17,FontStyle.Bold),statusFont=new Font("Segoe UI",10.5f),closeFont=new Font("Segoe UI",15);
   /* Mehrere Tipps derselben Runde stapeln sich in einer größeren Sprechblase, der neueste oben. */
-  readonly List<string[]> entries=new List<string[]>();readonly List<int> heights=new List<int>();long group=long.MinValue;int textHeight;Dictionary<string,object> visual;Bitmap radar;string radarFile="";
-  const int Visual=364;
-  static readonly Color Cyan=Color.FromArgb(103,232,249),Orange=Color.FromArgb(251,146,60),Green=Color.FromArgb(74,222,128);
+  readonly List<string[]> entries=new List<string[]>();readonly List<int> heights=new List<int>();long group=long.MinValue;Dictionary<string,object> visual;Bitmap radar;string radarFile="";
+  const int Visual=364,Edge=10,Tail=16,Pad=24,Cut=16,Header=92;
+  bool tailLeft;int tailY=60;float phase;
+  static readonly Color Cyan=Color.FromArgb(103,232,249),Orange=Color.FromArgb(251,146,60),Green=Color.FromArgb(74,222,128),Violet=Color.FromArgb(167,139,250),VioletLight=Color.FromArgb(216,203,255);
   protected override bool ShowWithoutActivation {get{return true;}}
   /* WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST */
   protected override CreateParams CreateParams {get{var p=base.CreateParams;p.ExStyle|=0x08000000|0x80|0x8;return p;}}
-  public TipBubble(){Text="TecMon Rundentipp";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;BackColor=Color.FromArgb(4,20,32);DoubleBuffered=true;Cursor=Cursors.Hand;AccessibleName="TecMon Rundentipp";hide.Tick+=(s,e)=>{hide.Stop();Hide();};Click+=(s,e)=>{hide.Stop();Hide();};}
+  public TipBubble(){
+    Text="TecMon Rundentipp";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;BackColor=Color.FromArgb(9,8,14);DoubleBuffered=true;Cursor=Cursors.Hand;AccessibleName="TecMon Rundentipp";
+    hide.Tick+=(s,e)=>{hide.Stop();Hide();};Click+=(s,e)=>{hide.Stop();Hide();};
+    /* Lila Licht, das einmal in etwa drei Sekunden um den Rahmen läuft. */
+    runner.Interval=33;runner.Tick+=(s,e)=>{phase=(phase+0.011f)%1f;Invalidate();};
+    VisibleChanged+=(s,e)=>{if(Visible)runner.Start();else runner.Stop();};
+  }
   static string Kind(Dictionary<string,object> data){object value;return data!=null&&data.TryGetValue("type",out value)?Convert.ToString(value):"";}
   /* Radarbild aus dem lokalen CS-Demo-Manager-Ordner; ohne Datei bleibt es beim Text. */
   bool LoadRadar(string file){
@@ -478,26 +485,61 @@ class TipBubble : Form {
   }
   /* Runde läuft und du lebst: sofort ausblenden, damit nichts beim Spielen stört. */
   public void Quiet(){if(Visible){hide.Stop();Hide();}}
+  Rectangle Frame(){return new Rectangle(Edge+(tailLeft?Tail:0),Edge,ClientSize.Width-2*Edge-Tail,ClientSize.Height-2*Edge);}
+  int ContentLeft(){return Frame().Left+Pad;}
+  int ContentWidth(){return Frame().Width-2*Pad;}
+  static Color Dot(string title){switch(title){case "Stark":case "Zusammenfassung":case "Aufwärmen":return Color.FromArgb(74,222,128);case "Nach dem Tod":case "Kopf frei":return Color.FromArgb(251,113,133);case "Deine Matches":case "Map":case "Team":return Color.FromArgb(167,139,250);default:return TecMon.Gold;}}
   public void Present(string heading,string text,Rectangle anchor,Dictionary<string,object> picture,long round,bool stack){
     bool append=stack&&Visible&&round==group&&entries.Count>0;
     if(!append){entries.Clear();visual=null;}
-    group=round;entries.Add(new string[]{heading,(text??"").Replace(" %","\u00A0%").Replace(" $","\u00A0$")});while(entries.Count>4)entries.RemoveAt(0);
+    group=round;entries.Add(new string[]{heading,(text??"").Replace(" %"," %").Replace(" $"," $")});while(entries.Count>4)entries.RemoveAt(0);
     string kind=Kind(picture);
     if(kind=="map"&&!LoadRadar(Convert.ToString(picture["image"])))kind="";
     if(kind=="map"||kind=="spray")visual=picture;
     kind=Kind(visual);
-    int width=visual!=null?Visual+36:entries.Count>1?460:380;
-    heights.Clear();textHeight=0;int letters=0;
-    using(var g=CreateGraphics())for(int i=entries.Count-1;i>=0;i--){var size=g.MeasureString(entries[i][1],bodyFont,width-36);int h=(int)Math.Ceiling(size.Height);heights.Add(h);textHeight+=h+30;letters+=entries[i][1].Length;}
-    int extra=kind=="map"?Visual+14:kind=="spray"?250:0;
-    ClientSize=new Size(width,textHeight+20+extra);
-    var area=Screen.FromRectangle(anchor).WorkingArea;var point=new Point(anchor.Left-Width-10,anchor.Top+anchor.Height/2-Height/2);if(point.X<area.Left)point.X=anchor.Right+10;
+    int inner=visual!=null?Visual:entries.Count>1?430:360;
+    int width=inner+2*Pad+2*Edge+Tail;
+    heights.Clear();int body=0,letters=0;
+    using(var g=CreateGraphics())for(int i=entries.Count-1;i>=0;i--){bool newest=i==entries.Count-1;var size=g.MeasureString(entries[i][1],newest?bodyFont:olderFont,inner);int h=(int)Math.Ceiling(size.Height);heights.Add(h);body+=newest?h+16:h+42;letters+=entries[i][1].Length;}
+    int extra=kind=="map"?Visual+16:kind=="spray"?250:0;
+    ClientSize=new Size(width,2*Edge+Header+body+extra+24);
+    var area=Screen.FromRectangle(anchor).WorkingArea;var point=new Point(anchor.Left-Width+2,anchor.Top+anchor.Height/2-Height/2);tailLeft=false;
+    if(point.X<area.Left){point.X=anchor.Right-2;tailLeft=true;}
     Location=DesktopPet.Fit(point,area,Size);
-    using(var path=Rounded(ClientSize)){var previous=Region;Region=new Region(path);if(previous!=null)previous.Dispose();}
+    var frame=Frame();tailY=Math.Max(frame.Top+Cut+18,Math.Min(frame.Bottom-Cut-18,anchor.Top+anchor.Height/2-Top));
+    /* Fensterform etwas größer als der Rahmen, damit der lila Schein außen sichtbar bleibt. */
+    using(var path=Outline(Edge-1)){var previous=Region;Region=new Region(path);if(previous!=null)previous.Dispose();}
     Invalidate();if(!Visible)Show();
     hide.Stop();hide.Interval=Math.Max(7000,Math.Min(visual!=null||entries.Count>1?25000:16000,4000+letters*55+(visual!=null?6000:0)));hide.Start();
   }
-  static System.Drawing.Drawing2D.GraphicsPath Rounded(Size size){const float r=16;float w=size.Width-1,h=size.Height-1;var path=new System.Drawing.Drawing2D.GraphicsPath();path.AddArc(0,0,r*2,r*2,180,90);path.AddArc(w-r*2,0,r*2,r*2,270,90);path.AddArc(w-r*2,h-r*2,r*2,r*2,0,90);path.AddArc(0,h-r*2,r*2,r*2,90,90);path.CloseFigure();return path;}
+  /* Rahmen mit abgeschrägten Ecken und Spitze zur Figur, wie die TecMon-Karten. */
+  System.Drawing.Drawing2D.GraphicsPath Outline(){return Outline(0);}
+  System.Drawing.Drawing2D.GraphicsPath Outline(int grow){
+    var f=Frame();float l=f.Left-grow,t=f.Top-grow,r=f.Right-1+grow,b=f.Bottom-1+grow,c=Cut+grow*0.42f,tip=Tail-2+grow,half=12+grow;var p=new List<PointF>();
+    p.Add(new PointF(l+c,t));p.Add(new PointF(r-c,t));p.Add(new PointF(r,t+c));
+    if(!tailLeft){p.Add(new PointF(r,tailY-half));p.Add(new PointF(r+tip,tailY));p.Add(new PointF(r,tailY+half));}
+    p.Add(new PointF(r,b-c));p.Add(new PointF(r-c,b));p.Add(new PointF(l+c,b));p.Add(new PointF(l,b-c));
+    if(tailLeft){p.Add(new PointF(l,tailY+half));p.Add(new PointF(l-tip,tailY));p.Add(new PointF(l,tailY-half));}
+    p.Add(new PointF(l,t+c));
+    var path=new System.Drawing.Drawing2D.GraphicsPath();path.AddPolygon(p.ToArray());return path;
+  }
+  static PointF Along(PointF[] pts,float[] at,float d){
+    for(int i=1;i<pts.Length;i++)if(at[i]>=d){float seg=at[i]-at[i-1];float k=seg>0?(d-at[i-1])/seg:0;return new PointF(pts[i-1].X+(pts[i].X-pts[i-1].X)*k,pts[i-1].Y+(pts[i].Y-pts[i-1].Y)*k);}
+    return pts[pts.Length-1];
+  }
+  /* Ein lila Lichtstreifen mit Schweif läuft am goldenen Rahmen entlang. */
+  void DrawRunner(Graphics g,System.Drawing.Drawing2D.GraphicsPath outline){
+    var raw=outline.PathPoints;if(raw.Length<2)return;var pts=new PointF[raw.Length+1];Array.Copy(raw,pts,raw.Length);pts[raw.Length]=raw[0];
+    var at=new float[pts.Length];for(int i=1;i<pts.Length;i++){float dx=pts[i].X-pts[i-1].X,dy=pts[i].Y-pts[i-1].Y;at[i]=at[i-1]+(float)Math.Sqrt(dx*dx+dy*dy);}
+    float total=at[at.Length-1];if(total<=0)return;float head=phase*total,length=Math.Min(260f,total*0.3f);const int steps=60;
+    for(int k=steps;k>=1;k--){
+      float d1=head-length*(k-1)/steps,d0=head-length*k/steps;var a=Along(pts,at,(d0%total+total)%total);var bpt=Along(pts,at,(d1%total+total)%total);
+      if(Math.Abs(((d1%total+total)%total)-((d0%total+total)%total))>length)continue;
+      float fade=1f-(float)(k-1)/steps;
+      using(var wide=new Pen(Color.FromArgb((int)(55*fade),Violet),9f){StartCap=System.Drawing.Drawing2D.LineCap.Round,EndCap=System.Drawing.Drawing2D.LineCap.Round})g.DrawLine(wide,a,bpt);
+      using(var core=new Pen(Color.FromArgb((int)(255*fade),k<4?VioletLight:Violet),3f){StartCap=System.Drawing.Drawing2D.LineCap.Round,EndCap=System.Drawing.Drawing2D.LineCap.Round})g.DrawLine(core,a,bpt);
+    }
+  }
   static float Num(object value){return Convert.ToSingle(value,System.Globalization.CultureInfo.InvariantCulture);}
   static System.Collections.IList Items(Dictionary<string,object> data,string key){object value;return data!=null&&data.TryGetValue(key,out value)?value as System.Collections.IList:null;}
   void Label(Graphics g,string text,float x,float y,Color color){var size=g.MeasureString(text,smallFont);var box=new RectangleF(x-size.Width/2,y-size.Height/2,size.Width,size.Height);using(var back=new SolidBrush(Color.FromArgb(200,4,20,32)))g.FillRectangle(back,box);using(var brush=new SolidBrush(color))g.DrawString(text,smallFont,brush,box.X,box.Y);}
@@ -530,17 +572,35 @@ class TipBubble : Form {
   }
   protected override void OnPaint(PaintEventArgs e){
     base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;g.TextRenderingHint=System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-    using(var path=Rounded(ClientSize))using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Color.FromArgb(8,47,65),Color.FromArgb(4,20,32),45))using(var pen=new Pen(Cyan,1.5f)){g.FillPath(fill,path);g.DrawPath(pen,path);}
-    int y=12;
-    for(int n=0;n<heights.Count;n++){var entry=entries[entries.Count-1-n];bool newest=n==0;
-      if(n>0)using(var line=new Pen(Color.FromArgb(60,103,232,249)))g.DrawLine(line,18,y-6,Width-18,y-6);
-      using(var brush=new SolidBrush(newest?Cyan:Color.FromArgb(150,103,232,249)))g.DrawString("TECMON // "+entry[0].ToUpperInvariant(),titleFont,brush,18,y);
-      using(var text=new SolidBrush(newest?Color.White:Color.FromArgb(200,226,232,240)))g.DrawString(entry[1],bodyFont,text,new RectangleF(18,y+22,Width-36,heights[n]+4));
-      y+=heights[n]+30;}
-    var kind=Kind(visual);var box=new Rectangle(18,y,Width-36,Height-y-16);
-    if(kind=="spray")DrawSpray(g,box);else if(kind=="map")DrawMap(g,new Rectangle(18,y,Visual,Visual));
+    var frame=Frame();
+    using(var path=Outline()){
+      /* Weicher lila Schein außen, dunkle Fläche innen, goldener Rahmen. */
+      using(var glow=new Pen(Color.FromArgb(28,Violet),Edge*2-2))g.DrawPath(glow,path);
+      using(var glow=new Pen(Color.FromArgb(45,Violet),10))g.DrawPath(glow,path);
+      using(var glow=new Pen(Color.FromArgb(80,Violet),4))g.DrawPath(glow,path);
+      using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(frame,Color.FromArgb(27,22,38),Color.FromArgb(11,10,17),70))g.FillPath(fill,path);
+      using(var pen=new Pen(TecMon.Gold,1.8f))g.DrawPath(pen,path);
+      DrawRunner(g,path);
+    }
+    int x=ContentLeft(),w=ContentWidth(),y=frame.Top+14;
+    using(var gold=new SolidBrush(TecMon.Gold)){g.DrawString("TecMon",brandFont,gold,x-3,y);g.DrawString("×",closeFont,gold,frame.Right-Pad-14,y-2);}
+    var newestTitle=entries.Count>0?entries[entries.Count-1][0]:"Rundentipp";
+    using(var dot=new SolidBrush(Dot(newestTitle)))g.FillEllipse(dot,x,y+40,11,11);
+    using(var gray=new SolidBrush(Color.FromArgb(214,212,226)))g.DrawString(newestTitle,statusFont,gray,x+16,y+35);
+    using(var line=new Pen(Color.FromArgb(90,232,197,115)))g.DrawLine(line,x,frame.Top+Header-14,x+w,frame.Top+Header-14);
+    y=frame.Top+Header;
+    using(var center=new StringFormat{Alignment=StringAlignment.Center})
+    for(int n=0;n<heights.Count;n++){var entry=entries[entries.Count-1-n];
+      if(n==0){g.DrawString(entry[1],bodyFont,Brushes.White,new RectangleF(x,y,w,heights[n]+4),heights[n]<30?center:StringFormat.GenericDefault);y+=heights[n]+16;continue;}
+      using(var line=new Pen(Color.FromArgb(45,232,197,115)))g.DrawLine(line,x+w/4,y,x+w*3/4,y);
+      using(var dot=new SolidBrush(Color.FromArgb(170,Dot(entry[0]))))g.FillEllipse(dot,x,y+13,8,8);
+      using(var label=new SolidBrush(Color.FromArgb(190,232,197,115)))g.DrawString(entry[0].ToUpperInvariant(),smallFont,label,x+13,y+9);
+      using(var text=new SolidBrush(Color.FromArgb(190,214,212,226)))g.DrawString(entry[1],olderFont,text,new RectangleF(x,y+28,w,heights[n]+4));
+      y+=heights[n]+42;}
+    var kind=Kind(visual);var box=new Rectangle(x,y,w,frame.Bottom-y-20);
+    if(kind=="spray")DrawSpray(g,box);else if(kind=="map")DrawMap(g,new Rectangle(x,y,Visual,Visual));
   }
-  protected override void Dispose(bool disposing){if(disposing){hide.Dispose();titleFont.Dispose();bodyFont.Dispose();smallFont.Dispose();if(radar!=null)radar.Dispose();}base.Dispose(disposing);}
+  protected override void Dispose(bool disposing){if(disposing){hide.Dispose();runner.Dispose();titleFont.Dispose();bodyFont.Dispose();olderFont.Dispose();smallFont.Dispose();brandFont.Dispose();statusFont.Dispose();closeFont.Dispose();if(radar!=null)radar.Dispose();}base.Dispose(disposing);}
 }
 
 class DesktopPet : Form {
