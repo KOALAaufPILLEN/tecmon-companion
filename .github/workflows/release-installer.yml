@@ -164,6 +164,11 @@ jobs:
           for name in "TecMon-Companion-Setup-$version.exe" "TecMon-Companion-Update-$version.exe" TecMon-Companion-Update.json; do
             [[ -s "dist/$name" ]] || { echo "$name fehlt"; exit 1; }
           done
+          # Kopien mit festem Namen: releases/latest/download/TecMon-Companion-Setup.exe
+          # fuehrt so immer zur neuesten Version (Download-Seite auf tecmon.online).
+          # Nicht in den Pruefsummen-Dateien, damit Updater und Manifest unveraendert bleiben.
+          cp "dist/TecMon-Companion-Setup-$version.exe" dist/TecMon-Companion-Setup.exe
+          cp "dist/TecMon-Companion-Update-$version.exe" dist/TecMon-Companion-Update.exe
           if ! gh release view "$RELEASE_TAG" --json tagName >/dev/null 2>&1; then
             # Erst als Entwurf anlegen: Der Companion sieht das Update erst, wenn alle Dateien hochgeladen sind.
             gh release create "$RELEASE_TAG" --draft --target "$RELEASE_REF" --title "TecMon Companion $version" --generate-notes
