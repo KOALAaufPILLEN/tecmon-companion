@@ -20,6 +20,8 @@ Im [aktuellen GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion
 - **TecMon-Companion-Setup-0.11.0.exe**: für neue Nutzer ohne vorhandene Installation. Enthält Companion, Node.js, PostgreSQL und CS Demo Manager. Das Setup lädt HLAE und FFmpeg vom Originalanbieter mit SHA256-Prüfung nach, richtet eine private Datenbank ein und fragt nach einem frei wählbaren Administratorpasswort. Steam und CS2 müssen bereits installiert sein. Internetverbindung erforderlich.
 - **TecMon-Companion-Update-0.11.0.exe**: für bereits eingerichtete Installationen. Ersetzt nur Companion-Programmdateien und erhält Datenbank, Kennwörter, Tools, Demos und Videos.
 
+Feste Links auf die jeweils neueste Version (ab dem ersten Release nach 0.15.0): [Setup](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Setup.exe) und [Update](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Update.exe). Der Release-Workflow lädt dafür zusätzlich Kopien ohne Versionsnummer hoch; Prüfsummen und Update-Manifest beziehen sich weiter auf die Dateien mit Versionsnummer. Erklärung und Download gibt es auch auf [tecmon.online/companion](https://tecmon.online/companion).
+
 Vor Installation oder Update den Companion und CS Demo Manager schließen. Die Prüfsumme des Installers steht neben der EXE als `.sha256`; das Update hat ein eigenes JSON-Manifest und `SHA256SUMS.txt`. WebView2 Evergreen Runtime muss vorhanden sein; siehe [Build- und Laufzeitvoraussetzungen](BUILDING.md).
 
 ## Aus Quellcode starten
