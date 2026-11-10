@@ -16,7 +16,7 @@ foreach($entry in $manifest.PSObject.Properties) {
   $dependency=$entry.Value
   $file=Join-Path $DependenciesCache $dependency.file
   if(-not(Test-Path -LiteralPath $file)) { Invoke-WebRequest $dependency.url -OutFile $file }
-  if((Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash -ine $dependency.sha256) { throw ('Checksum mismatch: '+$entry.Name) }
+  if((Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash -ine $dependency.sha256) { throw ('Checksum mismatch: '+$entry.Name+' (erwartet '+$dependency.sha256+', erhalten '+(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()+')') }
 }
 $seven=Join-Path $DependenciesCache '7zip/7z.exe'
 if(-not(Test-Path -LiteralPath $seven)) { throw '7-Zip CLI aus der offiziellen Distribution im Cache unter 7zip/7z.exe bereitstellen.' }
