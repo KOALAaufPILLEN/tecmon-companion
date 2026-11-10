@@ -25,6 +25,8 @@ export const FEATURES = [
   { id: "habits", label: "Gewohnheiten (Nachladen, Flashes, Feuer, Schaden)", categories: ["habit"] },
   { id: "mindset", label: "Kopf und Lob (Tilt, Pausen, starke Runden)", categories: ["mindset", "praise"] },
   { id: "summary", label: "Aufwärmen, Halbzeit- und Match-Bilanz", categories: ["summary", "warmup"] },
+  /* Anzeige statt Tipp-Art: Tipps derselben Runde in einer größeren Sprechblase sammeln. */
+  { id: "stack", label: "Mehrere Tipps zusammen in einer großen Sprechblase", categories: [] },
 ];
 const FEATURE_OF = Object.fromEntries(FEATURES.flatMap((f) => f.categories.map((c) => [c, f.id])));
 
@@ -241,6 +243,124 @@ function primaryWeapon(player) {
   );
 }
 
+export const HABIT_KEYS = [
+  "matches", "rounds", "kills", "deaths", "openingKills", "openingDeaths", "tradedDeaths",
+  "shots", "hits", "shotsMoving", "headHits", "unusedNades", "flashes", "enemiesFlashed",
+  "teamFlashed", "clutchPlayed", "clutchWon", "roundsAfterLoss", "killsAfterLoss",
+  "roundsAfterWin", "killsAfterWin", "damage", "utilityDamage", "teamDamage", "grenades",
+  "selfFlashed", "flashAssists", "bombRounds", "bombLost", "plants", "soloPlants", "multi3",
+  "tKills", "tDeaths", "ctKills", "ctDeaths", "tAlive", "tAlone", "ctAlive", "ctAlone",
+];
+
+function sumHabits(list) {
+  const valid = list.filter((h) => h && h.matches > 0);
+  if (!valid.length) return null;
+  return Object.fromEntries(HABIT_KEYS.map((k) => [k, valid.reduce((s, h) => s + number(h[k]), 0)]));
+}
+
+const WEAPON_LABELS = {
+  ak47: "AK-47", m4a1: "M4A4", m4a1_silencer: "M4A1-S", awp: "AWP", galilar: "Galil AR", famas: "FAMAS",
+  aug: "AUG", sg556: "SG 553", ssg08: "SSG 08", deagle: "Desert Eagle", usp_silencer: "USP-S",
+  glock: "Glock-18", mac10: "MAC-10", mp9: "MP9", ump45: "UMP-45", p250: "P250", mp7: "MP7", p90: "P90",
+};
+const weaponLabel = (name) => WEAPON_LABELS[name] || name.toUpperCase();
+
+function sumWeapons(list) {
+  const out = {};
+  for (const weapons of list) {
+    if (!weapons) continue;
+    for (const [name, w] of Object.entries(weapons)) {
+      const sum = (out[name] ??= [0, 0, 0, 0]);
+      for (let i = 0; i < 4; i++) sum[i] += number(w?.[i]);
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+const share = (part, total) => Math.round((part / total) * 100);
+const decimal = (value) => value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/**
+ * Tipps aus eigenen, gemessenen Summen. Schwächen zuerst, danach Lob. Jede Regel braucht
+ * genug Daten, damit ein einzelnes schlechtes Match keinen Tipp auslöst.
+ */
+export function habitAdvice(h, scope, side = "", weapons = null) {
+  const tips = [];
+  const openings = h.openingKills + h.openingDeaths;
+  const rounds = Math.max(1, h.rounds);
+  const kd = (kills, deaths) => (deaths ? kills / deaths : kills);
+  const sideKd = { T: kd(h.tKills, h.tDeaths), CT: kd(h.ctKills, h.ctDeaths) };
+  const other = side === "CT" ? "T" : "CT";
+  const fmt = (v) => v.toFixed(2).replace(".", ",");
+  /* Seitenbezogen zuerst, weil sie genau zur gerade beginnenden Hälfte passen. */
+  if ((side === "T" || side === "CT") && h[`${side.toLowerCase()}Deaths`] >= 20 && h[`${other.toLowerCase()}Deaths`] >= 20) {
+    if (sideKd[side] < 0.8 && sideKd[other] >= 1)
+      tips.push({ key: `side-${side}`, text: `${scope} liegt deine K/D als ${side} bei ${fmt(sideKd[side])}, als ${other} bei ${fmt(sideKd[other])}. Spiel diese Hälfte mehr mit deinem Team und such dir Positionen, in denen du getradet wirst.` });
+    else if (sideKd[side] >= 1.2 && sideKd[side] > sideKd[other])
+      tips.push({ key: `side-${side}`, text: `${scope} ist ${side} deine stärkere Seite (K/D ${fmt(sideKd[side])}). Übernimm Verantwortung und fordere die wichtigen Positionen.` });
+  }
+  if (side === "T" && h.tAlive >= 2000 && h.tAlone / h.tAlive >= 0.4 && h.deaths >= 20 && h.tradedDeaths / h.deaths < 0.3)
+    tips.push({ key: "lurk", text: `${scope} warst du als T ${share(h.tAlone, h.tAlive)} % deiner Zeit ohne Mitspieler in der Nähe und wurdest selten getradet. Als Lurker gezielt Infos holen und Timings mit dem Team absprechen, sonst lieber beim Team bleiben.` });
+  if (side === "T" && h.bombRounds >= 10 && h.bombLost / h.bombRounds >= 0.3)
+    tips.push({ key: "bomb", text: `${scope} bist du in ${h.bombLost} von ${h.bombRounds} Runden mit der Bombe gestorben, ohne zu planten. Mit der Bombe nicht als Erster peeken, sondern hinter dem Team bleiben.` });
+  if (side === "T" && h.plants >= 8 && h.soloPlants / h.plants >= 0.5)
+    tips.push({ key: "soloplant", text: `${scope} hast du ${h.soloPlants} von ${h.plants} Bomben ohne Mitspieler in der Nähe gelegt. Warte kurz auf Deckung, bevor du plantest.` });
+  if (side === "CT" && weapons) {
+    const acc = (w) => (w && w[2] >= 150 ? w[3] / w[2] : null);
+    const m4 = acc(weapons.m4a1);
+    const m4s = acc(weapons.m4a1_silencer);
+    if (m4 !== null && m4s !== null && Math.abs(m4 - m4s) >= 0.05) {
+      const [best, worse, a, b] = m4s > m4 ? ["M4A1-S", "M4A4", m4s, m4] : ["M4A4", "M4A1-S", m4, m4s];
+      tips.push({ key: "m4", text: `${scope} triffst du mit der ${best} ${Math.round(a * 100)} % deiner Schüsse, mit der ${worse} nur ${Math.round(b * 100)} %. Kauf dir lieber die ${best}.` });
+    }
+  }
+  if (openings >= 10 && h.openingDeaths / openings >= 0.6)
+    tips.push({ key: "opening", text: `${scope} hast du ${h.openingDeaths} von ${openings} Eröffnungsduellen verloren. Geh zum Rundenstart nicht allein als Erster rein, sondern mit Flash oder zu zweit.` });
+  if (h.deaths >= 30 && h.tradedDeaths / h.deaths < 0.2)
+    tips.push({ key: "trade", text: `${scope} wurden nur ${share(h.tradedDeaths, h.deaths)} % deiner Tode getradet. Bleib näher an deinem Team, damit ein Mitspieler sofort nachziehen kann.` });
+  if (h.shots >= 300 && h.shotsMoving / h.shots >= 0.3)
+    tips.push({ key: "moving", text: `${scope} kamen ${share(h.shotsMoving, h.shots)} % deiner Schüsse aus der Bewegung. Vor dem Schuss kurz stoppen (Counter-Strafe), dann treffen Gewehre deutlich besser.` });
+  if (h.hits >= 200 && h.headHits / h.hits < 0.15)
+    tips.push({ key: "head", text: `${scope} gingen nur ${share(h.headHits, h.hits)} % deiner Treffer an den Kopf. Halte das Fadenkreuz auf Kopfhöhe an den Ecken, wo Gegner auftauchen.` });
+  if (weapons?.awp && weapons.awp[2] >= 40 && weapons.awp[3] / weapons.awp[2] < 0.3)
+    tips.push({ key: "awp", text: `${scope} trifft nur jeder ${Math.max(2, Math.round(weapons.awp[2] / Math.max(1, weapons.awp[3])))}. AWP-Schuss. Lass den Gegner in dein Fadenkreuz laufen, statt hinterherzuflicken, und schieß erst, wenn das Visier ruhig ist.` });
+  if (h.deaths >= 20 && h.unusedNades / h.deaths >= 0.6)
+    tips.push({ key: "nades", text: `${scope} hattest du beim Tod im Schnitt ${decimal(h.unusedNades / h.deaths)} ungenutzte Granaten dabei. Wirf sie, bevor du in einen Kampf gehst.` });
+  if (h.rounds >= 60 && h.grenades / rounds < 0.8)
+    tips.push({ key: "utility", text: `${scope} hast du im Schnitt nur ${decimal(h.grenades / rounds)} Granaten pro Runde geworfen. Kauf in jeder Full-Buy-Runde Flash und Smoke und setz sie für dein Team ein.` });
+  if (h.flashes >= 10 && h.teamFlashed > h.enemiesFlashed)
+    tips.push({ key: "teamflash", text: `${scope} haben deine Flashes öfter Mitspieler (${h.teamFlashed}) als Gegner (${h.enemiesFlashed}) geblendet. Sag sie vorher an und wirf sie so, dass dein Team nicht hineinschaut.` });
+  if (h.flashes >= 15 && h.selfFlashed / h.flashes >= 0.3)
+    tips.push({ key: "selfflash", text: `${scope} hast du dich ${h.selfFlashed}× mit deinen eigenen Flashes geblendet. Wirf sie über eine Kante oder dreh dich kurz weg, bevor sie zündet.` });
+  if (h.rounds >= 40 && h.teamDamage / rounds >= 5)
+    tips.push({ key: "teamdamage", text: `${scope} hast du im Schnitt ${Math.round(h.teamDamage / rounds)} Schaden pro Runde an Mitspielern gemacht. Achte auf deine Schusslinie und wirf Molotovs nicht in Positionen deines Teams.` });
+  if (h.roundsAfterLoss >= 20 && h.roundsAfterWin >= 20) {
+    const afterLoss = h.killsAfterLoss / h.roundsAfterLoss;
+    const afterWin = h.killsAfterWin / h.roundsAfterWin;
+    if (afterWin >= 0.5 && afterLoss < afterWin * 0.7)
+      tips.push({ key: "tilt", text: `${scope} machst du nach verlorenen Runden weniger Kills (${decimal(afterLoss)} statt ${decimal(afterWin)} pro Runde). Nach einer Niederlage kurz durchatmen und die nächste Runde ruhig angehen.` });
+  }
+  /* Lob zum Schluss. */
+  if (h.clutchPlayed >= 8 && h.clutchWon / h.clutchPlayed >= 0.35)
+    tips.push({ key: "clutch", text: `${scope} hast du ${h.clutchWon} von ${h.clutchPlayed} Clutches gewonnen. Wenn du als Letzter übrig bist, bleib ruhig. Das kannst du.` });
+  if (openings >= 10 && h.openingKills / openings >= 0.6)
+    tips.push({ key: "entry", text: `${scope} hast du ${h.openingKills} von ${openings} Eröffnungsduellen gewonnen. Als Entry bist du stark, nimm die ersten Duelle mit Selbstvertrauen.` });
+  if (h.flashes >= 15 && h.flashAssists >= 8)
+    tips.push({ key: "flashassist", text: `${scope} haben deine Flashes ${h.flashAssists} Kills vorbereitet. Gute Support-Arbeit, sag deine Flashes weiter an.` });
+  if (h.rounds >= 60 && h.damage / rounds >= 90)
+    tips.push({ key: "adr", text: `${scope} machst du ${Math.round(h.damage / rounds)} Schaden pro Runde. Das ist stark, bleib bei deinem Spiel.` });
+  if (h.multi3 >= 6)
+    tips.push({ key: "multi", text: `${scope} hattest du ${h.multi3} Runden mit drei oder mehr Kills. Du kannst Runden allein drehen, such dir dafür aber gute Trades.` });
+  if (weapons) {
+    const best = Object.entries(weapons)
+      .filter(([, w]) => w[0] >= 20 && w[1] / w[0] >= 0.55)
+      .sort((a, b) => b[1][0] - a[1][0])[0];
+    if (best)
+      tips.push({ key: "weaponpraise", text: `${scope} sind ${share(best[1][1], best[1][0])} % deiner Kills mit der ${weaponLabel(best[0])} Headshots. Deine Zielhöhe passt.` });
+  }
+  return tips;
+}
+
 function halfIndex(round, half) {
   return round < half * 2 ? Math.floor(round / half) : 2 + Math.floor((round - half * 2) / OVERTIME_HALF);
 }
@@ -308,7 +428,7 @@ export function createGameTips({
   }
 
   function publish(entry) {
-    current = { id: ++tipId, text: entry.text, category: entry.category, at: now() };
+    current = { id: ++tipId, text: entry.text, category: entry.category, round: entry.round, at: now() };
     if (entry.visual) current.visual = entry.visual;
     /* Bilder brauchen länger zum Lesen als ein Satz. */
     gap = entry.visual ? VISUAL_GAP : MIN_GAP;
@@ -491,6 +611,45 @@ export function createGameTips({
         push(`${recent} gewinnst du als ${side} ${rate} % der Runden. Das ist deine starke Seite, spiel sie selbstbewusst.`, { priority: 1, category: "history", round });
     }
   }
+
+  /**
+   * Gewohnheiten aus den TecMon-Matches (insights-v2): je Seitenstart höchstens ein Tipp,
+   * immer ein anderer. Reicht die Map nicht für eine Aussage, zählen alle Maps zusammen.
+   */
+  function habitTips(mapName, side, round, steamId, priority = 2) {
+    const data = insights(steamId);
+    if (!data?.maps) return false;
+    const name = MAP_SPOTS[mapName]?.name || mapName.replace(/^de_/, "");
+    const here = data.maps[mapName];
+    let habits = here?.habits;
+    let weapons = here?.weapons || null;
+    let scope = habits && habits.matches >= 3 ? `In deinen letzten ${habits.matches} Matches auf ${name}` : "";
+    if (!scope) {
+      habits = sumHabits(Object.values(data.maps).map((m) => m.habits));
+      if (!habits || habits.matches < 3) return false;
+      weapons = sumWeapons(Object.values(data.maps).map((m) => m.weapons));
+      scope = `In deinen letzten ${habits.matches} ausgewerteten Matches`;
+    }
+    const tip = habitAdvice(habits, scope, side, weapons).find((entry) => !match.flags.has(`habit-${entry.key}`));
+    if (!tip) return false;
+    match.flags.add(`habit-${tip.key}`);
+    push(tip.text, { priority, category: "history", round });
+    return true;
+  }
+
+  /** Eigene Trefferquote mit der gerade gekauften Waffe, falls genug Schüsse ausgewertet sind. */
+  function weaponNote(mapName, steamId, weaponName) {
+    const data = insights(steamId);
+    const key = String(weaponName || "").replace(/^weapon_/, "");
+    if (!data?.maps) return "";
+    const here = data.maps[mapName]?.weapons?.[key];
+    const all = sumWeapons(Object.values(data.maps).map((m) => m.weapons))?.[key];
+    const [w, where] = here && here[2] >= 150 ? [here, "auf dieser Map"] : all && all[2] >= 150 ? [all, "in deinen Matches"] : [];
+    if (!w) return "";
+    const hs = w[0] >= 10 ? `, ${share(w[1], w[0])} % deiner Kills damit sind Headshots` : "";
+    return ` Deine Trefferquote damit ${where}: ${share(w[3], w[2])} %${hs}.`;
+  }
+
 
   /** Serien und Rundenenden aus round_wins: Momentum, Timeout, typische Niederlagen. */
   function teamTips(map, side, round, half) {
@@ -784,9 +943,12 @@ export function createGameTips({
         if (firstOfSide) {
           mapOverview(map.name, side, round);
           historyTips(map.name, side, round, own.steamid);
+          habitTips(map.name, side, round, own.steamid);
         }
         if (show) push(tip.text, { priority: 2, category: "economy", round });
         teamTips(map, side, round, half);
+        /* Zwischendurch eine weitere Erinnerung aus deinen Matches, jede nur einmal pro Match. */
+        if (!firstOfSide && round % 4 === 2) habitTips(map.name, side, round, own.steamid, 1);
         if (!firstOfSide && !show && round % 3 === 1) {
           const pool = MAP_TIPS[map.name]?.[side] || GENERIC_TIPS[side];
           if (pool?.length) push(pool[match.mapTip++ % pool.length], { priority: 0, category: "map", round });
@@ -796,7 +958,7 @@ export function createGameTips({
         const primary = primaryWeapon(own);
         if (primary && sprayText(primary.name) && !match.sprayShown.has(primary.name)) {
           match.sprayShown.add(primary.name);
-          push(sprayText(primary.name), {
+          push(sprayText(primary.name) + weaponNote(map.name, own.steamid, primary.name), {
             priority: 2,
             category: "weapon",
             round,
