@@ -107,6 +107,10 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   (siehe [BUILDING.md](BUILDING.md)); installierte Companions bekommen es als
   Update. Darum nur mit Freigabe mergen.
 - Neue Funktionen im README unter „Neu in X.Y.Z“ beschreiben.
+- Automatische Updates (`autoUpdateTick()` in `server.mjs`) nutzen dieselbe
+  Prüfung wie der Knopf (`checkUpdate()`/`downloadUpdate()`), laufen nie bei
+  aktivem Download oder aktiver Aufnahme und sind über `/api/update/auto`
+  abschaltbar.
 
 ## Eigene TecMon-Engine (`internal-recorder.mjs`, `valve-download.mjs`)
 

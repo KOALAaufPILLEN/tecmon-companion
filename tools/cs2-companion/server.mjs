@@ -118,6 +118,11 @@ export async function createCompanion({
   onUpdateExit,
   now,
   engineSystem = {},
+  /** Automatische Updates: Wartezeit bis zur ersten Prüfung und Abstand danach (ms); 0 = aus (Tests). */
+  autoUpdate = { first: 0, every: 0 },
+  findUpdate = checkUpdate,
+  fetchUpdate = downloadUpdate,
+  launchUpdate = (file) => spawn(file, ["--apply-update", root, String(process.pid)], { stdio: "ignore", windowsHide: true }),
 } = {}) {
   if (installation) dataDir = path.join(installation.dataDir, "Jobs");
   await mkdir(dataDir, { recursive: true });
@@ -243,6 +248,14 @@ export async function createCompanion({
     ownEngine = JSON.parse(await readFile(engineFile, "utf8")).internal !== false;
   } catch {
     /* Standard: eigene Engine */
+  }
+  /** Updates ohne Klick installieren, sobald nichts läuft. Standardmäßig an, unter „Updates & Info“ abschaltbar. */
+  const updatesFile = path.join(installation?.profileDir || dataDir, "updates.json");
+  let autoInstall = true;
+  try {
+    autoInstall = JSON.parse(await readFile(updatesFile, "utf8")).auto !== false;
+  } catch {
+    /* Standard: automatisch */
   }
   const ownDownload = () => ownEngine && !!installation && (process.platform === "win32" || !!engineSystem.download);
   const ownRecording = async (spec) =>
@@ -752,6 +765,7 @@ export async function createCompanion({
           postgres,
           managed: !!installation,
           engine: { internal: ownEngine, available: !!installation },
+          updates: { auto: autoInstall, available: !!installation },
           active,
           bridge: bridge.state(),
           gsi: gsiState(),
@@ -830,22 +844,12 @@ export async function createCompanion({
           throw new Error("Zuerst Aufnahme/Download beenden und Update bestätigen.");
         active = true;
         try {
-          const update = await checkUpdate(VERSION);
+          const update = await findUpdate(VERSION);
           if (!update.available) {
             active = false;
             return json(res, 200, { message: "Companion ist aktuell." });
           }
-          const executable = await downloadUpdate(root, update);
-          await stopDatabase(installation);
-          const child = spawn(executable, ["--apply-update", root, String(process.pid)], {
-            stdio: "ignore",
-            windowsHide: true,
-          });
-          await new Promise((resolve, reject) => {
-            child.once("spawn", resolve);
-            child.once("error", reject);
-          });
-          child.unref();
+          await startUpdate(update);
           updateHandoff(server,res,onUpdateExit);
           return json(res, 200, {
             message: "Update geprüft. Companion startet nach der Aktualisierung neu.",
@@ -994,6 +998,12 @@ export async function createCompanion({
             "Installationsfenster geöffnet. Danach erneut prüfen und das Datenbankpasswort direkt in CS Demo Manager eintragen.",
         });
       }
+      if (url.pathname === "/api/update/auto") {
+        if (typeof input.auto !== "boolean") throw new Error("Ungültige Einstellung.");
+        autoInstall = input.auto;
+        await writeFile(updatesFile, JSON.stringify({ auto: autoInstall }));
+        return json(res, 200, { auto: autoInstall });
+      }
       if (url.pathname === "/api/engine") {
         if (active) throw new Error("Zuerst die laufende Aufnahme oder den Download beenden.");
         if (typeof input.internal !== "boolean") throw new Error("Ungültige Einstellung.");
@@ -1048,12 +1058,70 @@ export async function createCompanion({
     }
   });
   server.requestTimeout = 15000;
-  return { server, token };
+
+  /** Geprüftes Update herunterladen und den Updater starten; danach muss dieser Dienst enden. */
+  async function startUpdate(update) {
+    const executable = await fetchUpdate(root, update);
+    await stopDatabase(installation);
+    const child = launchUpdate(executable);
+    await new Promise((resolve, reject) => {
+      child.once("spawn", resolve);
+      child.once("error", reject);
+    });
+    child.unref();
+  }
+  /**
+   * Automatische Updates: gleiche Prüfung wie der Knopf (stabiles Release,
+   * Manifest, Größe, SHA-256). Nie während Download, Aufnahme oder Kamera-Sitzung;
+   * dann beim nächsten Durchgang erneut.
+   */
+  let updateTimer = null;
+  async function autoUpdateTick() {
+    updateTimer = null;
+    let restarting = false;
+    try {
+      if (installation && autoInstall && !active) {
+        const update = await findUpdate(VERSION);
+        if (update.available && !active) {
+          active = true;
+          try {
+            console.log(`Automatisches Update auf ${update.latest} …`);
+            await startUpdate(update);
+            restarting = true;
+            server.closeAllConnections();
+            server.close();
+            onUpdateExit?.();
+          } finally {
+            if (!restarting) active = false;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Automatisches Update:", error instanceof Error ? error.message : error);
+    }
+    if (!restarting && autoUpdate.every > 0) {
+      updateTimer = setTimeout(autoUpdateTick, autoUpdate.every);
+      updateTimer.unref?.();
+    }
+  }
+  if (installation && autoUpdate.first > 0) {
+    updateTimer = setTimeout(autoUpdateTick, autoUpdate.first);
+    updateTimer.unref?.();
+  }
+  server.on("close", () => {
+    if (updateTimer) clearTimeout(updateTimer);
+  });
+  return { server, token, autoUpdateTick };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const installation = await readInstallation(root);
-  const { server } = await createCompanion({ installation,onUpdateExit:()=>process.exit(0) });
+  const { server } = await createCompanion({
+    installation,
+    onUpdateExit: () => process.exit(0),
+    // Zwei Minuten nach dem Start, danach alle sechs Stunden.
+    autoUpdate: { first: 2 * 60_000, every: 6 * 60 * 60_000 },
+  });
   server.listen(31977, "127.0.0.1", () => {
     const url = "http://127.0.0.1:31977";
     console.log(`TecMon Companion: ${url}`);
