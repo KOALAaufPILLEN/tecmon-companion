@@ -143,6 +143,19 @@ test("Skript fährt weich zwischen den Punkten und folgt dem Spieler", () => {
   assert.equal(Math.round(marks[0].x), 400);
 });
 
+test("Verfolger mit Startwinkel 180 steht vor dem Spieler (Spieler-Intro)", () => {
+  const spec = job([{ tick: 1000, kind: "follow", distance: 90, height: 0, orbit: 0, angle: 180 }]);
+  assert.equal(spec.sequences[0].cuts[0].angle, 180);
+  assert.equal(job([{ tick: 1000, kind: "follow", distance: 90, height: 0, orbit: 0 }]).sequences[0].cuts[0].angle, 0);
+  assert.throws(() => job([{ tick: 1000, kind: "follow", distance: 90, height: 0, orbit: 0, angle: 400 }]));
+  const pawn = { getRenderEyeOrigin: () => [500, 0, 64], getRenderEyeAngles: () => [0, 0, 0] };
+  const world = { tick: 1100, entities: { 3: { getPlayerPawnHandle: () => 7 }, 7: pawn } };
+  const { frame } = runScript(scriptPlan(spec), world);
+  const front = frame();
+  assert.deepEqual([Math.round(front.x), Math.round(front.y) + 0], [590, 0], "vor dem Spieler in Blickrichtung");
+  assert.equal(Math.round(Math.abs(front.rY)), 180, "schaut zurück auf das Gesicht");
+});
+
 test("Gemerkte Punkte werden geprüft und begrenzt", () => {
   const text = [
     'TECMON_MARK {"tick":5,"x":1.234,"y":2,"z":3,"pitch":100,"yaw":270}',

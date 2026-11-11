@@ -13,7 +13,7 @@ import { matchDownloadRequest, shareCode } from "./share-code.mjs";
 import { ensureRecordingPlugin, recordingFailure } from "./recording-engine.mjs";
 import { recordInternal, internalReady, cameraSession, ENGINE_CAPABILITY } from "./internal-recorder.mjs";
 import { downloadValveDemo, decodeShareCode } from "./valve-download.mjs";
-import { SCRIPT_CAPABILITY, SESSION_CAPABILITY } from "./camera-script.mjs";
+import { ANGLE_CAPABILITY, SCRIPT_CAPABILITY, SESSION_CAPABILITY } from "./camera-script.mjs";
 import { needsScript } from "./job.mjs";
 import { updateHandoff } from "./update-handoff.mjs";
 import { lazyEngine } from "./lazy-engine.mjs";
@@ -543,7 +543,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? ["video-branding-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? ["video-branding-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
       });
     if (req.method === "POST" && url.pathname === "/bridge/insights") {
       const input = await readInput(req, 262144);

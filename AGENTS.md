@@ -126,4 +126,5 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   Offline-Demo-Wiedergabe, nie im Live-Match. „Kamera im Spiel setzen“ ändert
   nur den eigenen CS2-Konfigurationsordner (`hlae-config`) und liest
   `console.log`, ohne sie zu löschen. Capabilities: `camera-script-v1`
-  (Schnitte `path`/`follow`), `camera-session-v1` (`POST /bridge/camera`).
+  (Schnitte `path`/`follow`), `camera-session-v1` (`POST /bridge/camera`), `camera-angle-v1` (optionaler
+  Startwinkel `angle` bei `follow`, ohne Angabe 0).

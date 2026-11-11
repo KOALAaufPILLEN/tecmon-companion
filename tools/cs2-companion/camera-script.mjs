@@ -15,6 +15,8 @@ import { scriptedCut } from "./job.mjs";
 
 export const SCRIPT_CAPABILITY = "camera-script-v1";
 export const SESSION_CAPABILITY = "camera-session-v1";
+/** Verfolger-Kamera mit Startwinkel `angle` (etwa 180 = Spieler-Intro von vorn). */
+export const ANGLE_CAPABILITY = "camera-angle-v1";
 export const MARK_COMMAND = "tecmon_mark";
 export const MAX_MARKS = 24;
 const COORD = 65536;
@@ -36,7 +38,7 @@ export function scriptPlan(job) {
         });
       else {
         if (!Number.isSafeInteger(s.slot)) throw new Error("Spieler-Slot fehlt für die Verfolger-Kamera.");
-        segments.push({ from: c.tick, to, kind: "follow", slot: s.slot, distance: c.distance, height: c.height, orbit: c.orbit });
+        segments.push({ from: c.tick, to, kind: "follow", slot: s.slot, distance: c.distance, height: c.height, orbit: c.orbit, angle: c.angle ?? 0 });
       }
     });
   }
@@ -52,7 +54,7 @@ function checkPlan(plan) {
     if (s.kind === "path") {
       if (!Array.isArray(s.keys) || s.keys.some((k) => !Array.isArray(k) || k.length !== 6 || !k.every(ok)))
         throw new Error("Ungültiger Kameraplan.");
-    } else if (s.kind !== "follow" || ![s.slot, s.distance, s.height, s.orbit].every(ok))
+    } else if (s.kind !== "follow" || ![s.slot, s.distance, s.height, s.orbit, s.angle ?? 0].every(ok))
       throw new Error("Ungültiger Kameraplan.");
   }
 }
@@ -165,7 +167,7 @@ export const RUNTIME = String.raw`(function () {
     if (!pawn) return undefined;
     var eye = pawn.getRenderEyeOrigin();
     var look = pawn.getRenderEyeAngles();
-    var target = look[1] + (s.orbit * (t - s.from)) / plan.tickRate;
+    var target = look[1] + (s.angle || 0) + (s.orbit * (t - s.from)) / plan.tickRate;
     // Blick des Spielers gedämpft folgen, damit die Kamera nicht mit jedem Mauszucken springt.
     followYaw = followYaw === null ? target : angle(followYaw, target, 0.12);
     var r = followYaw * DEG;

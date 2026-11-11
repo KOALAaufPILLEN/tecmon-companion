@@ -91,6 +91,8 @@ function cameraCuts(value, startTick, endTick, fail) {
         distance: range(c.distance, FOLLOW.distance[0], FOLLOW.distance[1]),
         height: range(c.height, FOLLOW.height[0], FOLLOW.height[1]),
         orbit: range(c.orbit, FOLLOW.orbit[0], FOLLOW.orbit[1]),
+        // Startwinkel um den Spieler (180 = von vorn, Spieler-Intro); fehlt bei älteren Webseiten.
+        angle: c.angle === undefined ? 0 : range(c.angle, FOLLOW.angle[0], FOLLOW.angle[1]),
       };
     }
     if (c.kind !== "path" || !Array.isArray(c.keys) || c.keys.length < 2 || c.keys.length > MAX_KEYS) fail();
@@ -123,7 +125,7 @@ function view(c, num) {
  * zur Egoansicht.
  */
 export const MAX_KEYS = 8;
-export const FOLLOW = { distance: [40, 800], height: [-200, 400], orbit: [-180, 180] };
+export const FOLLOW = { distance: [40, 800], height: [-200, 400], orbit: [-180, 180], angle: [-180, 180] };
 export const scriptedCut = (c) => c.kind === "path" || c.kind === "follow";
 export const needsScript = (job) => job.sequences.some((s) => (s.cuts || []).some(scriptedCut));
 
