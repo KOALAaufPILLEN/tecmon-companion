@@ -107,3 +107,17 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   (siehe [BUILDING.md](BUILDING.md)); installierte Companions bekommen es als
   Update. Darum nur mit Freigabe mergen.
 - Neue Funktionen im README unter „Neu in X.Y.Z“ beschreiben.
+
+## Eigene TecMon-Engine (`internal-recorder.mjs`, `valve-download.mjs`)
+
+- Download und Aufnahme laufen ohne CS-Demo-Manager-Programm und ohne
+  PostgreSQL. Der CSDM-Weg bleibt als Rückfall erhalten, bis die eigene Engine
+  auf echten PCs freigegeben ist; Aufträge ohne `slot` je Szene nutzen ihn
+  automatisch.
+- Fremde Binärdateien nur mit fester Prüfsumme: CS2-Plugin über
+  `PLUGIN_SHA256` (`recording-engine.mjs`), boiler-writter über die
+  npm-Integrität in `BOILER`. Bei Abweichung abbrechen, nie ungeprüft starten.
+- CS2 nie beenden: Läuft CS2 schon, bricht die Aufnahme ab. In `gameinfo.gi`
+  nur die eigene Zeile ergänzen und wieder entfernen.
+- Befehle in der Aktionsdatei entstehen nur aus geprüften Zahlen und
+  bereinigten Namen des Auftrags, nie aus freiem Text der Webseite.

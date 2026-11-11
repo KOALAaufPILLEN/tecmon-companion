@@ -37,6 +37,8 @@ export function validateJob(value) {
     if (typeof s.steamId !== "string" || !/^\d{17}$/.test(s.steamId)) fail();
     const account = BigInt(s.steamId) - 76561197960265728n;
     if (account < 1n || account > 4294967295n) fail();
+    // spec_player-Wert des Spielers (Controller-Index, 1-64). Optional: ältere Webseiten senden ihn nicht.
+    if (s.slot !== undefined && (!Number.isSafeInteger(s.slot) || s.slot < 1 || s.slot > 64)) fail();
     ticks += s.endTick - s.startTick;
     const cuts = cameraCuts(s.cuts, s.startTick, s.endTick, fail);
     return {
@@ -44,6 +46,7 @@ export function validateJob(value) {
       endTick: s.endTick,
       steamId: s.steamId,
       playerName: text(s.playerName, 64) || "Spieler",
+      ...(s.slot === undefined ? {} : { slot: s.slot }),
       ...(cuts.length ? { cuts } : {}),
     };
   });
