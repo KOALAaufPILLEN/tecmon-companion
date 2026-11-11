@@ -107,3 +107,24 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   (siehe [BUILDING.md](BUILDING.md)); installierte Companions bekommen es als
   Update. Darum nur mit Freigabe mergen.
 - Neue Funktionen im README unter „Neu in X.Y.Z“ beschreiben.
+
+## Eigene TecMon-Engine (`internal-recorder.mjs`, `valve-download.mjs`)
+
+- Download und Aufnahme laufen ohne CS-Demo-Manager-Programm und ohne
+  PostgreSQL. Der CSDM-Weg bleibt als Rückfall erhalten, bis die eigene Engine
+  auf echten PCs freigegeben ist; Aufträge ohne `slot` je Szene nutzen ihn
+  automatisch.
+- Fremde Binärdateien nur mit fester Prüfsumme: CS2-Plugin über
+  `PLUGIN_SHA256` (`recording-engine.mjs`), boiler-writter über die
+  npm-Integrität in `BOILER`. Bei Abweichung abbrechen, nie ungeprüft starten.
+- CS2 nie beenden: Läuft CS2 schon, bricht die Aufnahme ab. In `gameinfo.gi`
+  nur die eigene Zeile ergänzen und wieder entfernen.
+- Befehle in der Aktionsdatei entstehen nur aus geprüften Zahlen und
+  bereinigten Namen des Auftrags, nie aus freiem Text der Webseite.
+- Das HLAE-Kameraskript (`camera-script.mjs`) bekommt nur den Zahlenplan aus
+  `scriptPlan()`; `scriptSource()` prüft ihn. Es läuft nur bei der
+  Offline-Demo-Wiedergabe, nie im Live-Match. „Kamera im Spiel setzen“ ändert
+  nur den eigenen CS2-Konfigurationsordner (`hlae-config`) und liest
+  `console.log`, ohne sie zu löschen. Capabilities: `camera-script-v1`
+  (Schnitte `path`/`follow`), `camera-session-v1` (`POST /bridge/camera`), `camera-angle-v1` (optionaler
+  Startwinkel `angle` bei `follow`, ohne Angabe 0).

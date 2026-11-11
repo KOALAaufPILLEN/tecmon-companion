@@ -133,3 +133,16 @@ Sichtbar über dem Spiel ist die Sprechblase nur im Anzeigemodus „Vollbild im 
 - Die Sprechblase hat jetzt einen goldenen Rahmen mit abgeschrägten Ecken und einer Spitze zur Figur, eine dunkle Fläche, oben „TecMon“ in Gold mit Schließen-Kreuz und darunter die Tipp-Art mit farbigem Punkt.
 - Ein lila Lichtstreifen läuft etwa alle drei Sekunden einmal um den Rahmen, solange die Sprechblase sichtbar ist. Außen liegt ein leichter lila Schein.
 - Gestapelte Tipps derselben Runde stehen darunter, kleiner und mit eigener Überschrift.
+
+## Neu in 0.17.0: Eigene TecMon-Engine (Vorschau)
+
+- **Download ohne CS Demo Manager:** Sharecodes löst der Companion jetzt selbst über dein angemeldetes Steam auf (boiler-writter, MIT, beim ersten Download vom npm-Paket geladen und gegen die feste SHA-512-Prüfsumme geprüft). Die Demo kommt direkt von Valve und wird lokal entpackt.
+- **Aufnahme ohne CS Demo Manager und ohne Datenbank:** Der Companion schreibt den Aufnahmeplan für das offizielle CS2-Plugin selbst, hängt das SHA-256-geprüfte Plugin nur für die Aufnahme ein, startet CS2 über HLAE und führt die Szenen mit FFmpeg zusammen. PostgreSQL startet dafür nicht.
+- Die Befehlsfolge entspricht CS Demo Manager 3.20.1 (MIT). Spieler-Slots, Tickrate und Kamerapunkte kommen aus dem Auftrag der Webseite; dafür muss die Webseite den Slot mitschicken.
+- **Rückfall:** Aufträge ohne Spieler-Slots (ältere Webseite) laufen automatisch weiter über CS Demo Manager. Schlägt der eigene Download fehl, übernimmt CS Demo Manager. Unter „Erweitert → Setup“ lässt sich die eigene Engine ganz abschalten.
+- Läuft CS2 schon, bricht die Aufnahme ab, statt das Spiel zu beenden. Nach der Aufnahme wird nur die eigene Zeile aus `gameinfo.gi` entfernt, nicht eine alte Sicherung zurückgespielt.
+- CS Demo Manager und PostgreSQL bleiben in diesem Release installiert. Sie werden erst entfernt, wenn die eigene Engine auf echten PCs geprüft ist.
+- **Kamerafahrten und Verfolger-Kamera:** Ein TecMon-Skript für HLAE (`mirv_script_load`, ab HLAE 2.190) setzt die Kamera in jedem Bild. Eine Szene kann weich über bis zu 8 Punkte fahren oder dem Spieler mit Abstand, Höhe und optionalem Kreisen folgen. Der Plan im Skript besteht nur aus geprüften Zahlen des Auftrags. Über CS Demo Manager wird daraus ein fester Punkt bzw. die Egoansicht.
+- **Spieler-Intro von vorn:** Die Verfolger-Kamera kann mit einem Startwinkel beginnen, etwa 180° für eine Kamera vor dem Gesicht des Spielers. Die Webseite nutzt das für ein kurzes Intro je Spieler (Capability `camera-angle-v1`). Das Modell und die Skins kommen in CS2 aus der Demo und lassen sich dort nicht tauschen.
+- **Kamera im Spiel setzen:** Die Webseite kann CS2 mit der Demo am gewählten Zeitpunkt öffnen lassen. Mit der HLAE-Freikamera fliegen (WASD, R/F hoch/runter, Pfeiltasten schauen) und mit F8 Punkte merken. Nach dem Schließen von CS2 gehen die Punkte an die Webseite. Läuft mit eigenem CS2-Konfigurationsordner, deine Tastenbelegung bleibt unverändert; eine vorhandene `console.log` wird nur gelesen.
+- Schon geladene Valve-Demos desselben Matches nutzt der Companion wieder, statt sie erneut zu laden.
