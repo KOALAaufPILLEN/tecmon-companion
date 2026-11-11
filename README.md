@@ -134,6 +134,13 @@ Sichtbar über dem Spiel ist die Sprechblase nur im Anzeigemodus „Vollbild im 
 - Ein lila Lichtstreifen läuft etwa alle drei Sekunden einmal um den Rahmen, solange die Sprechblase sichtbar ist. Außen liegt ein leichter lila Schein.
 - Gestapelte Tipps derselben Runde stehen darunter, kleiner und mit eigener Überschrift.
 
+## Neu in 0.17.1: Automatische Updates
+
+- Der Companion sucht zwei Minuten nach dem Start und danach alle sechs Stunden nach einem neuen stabilen Release. Ein gefundenes Update wird mit denselben Prüfungen wie beim Klick (Manifest, Größe, SHA-256) selbst installiert, danach startet der Companion neu.
+- Nie während eines Downloads, einer Aufnahme oder „Kamera im Spiel setzen“; dann beim nächsten Durchgang.
+- Abschaltbar unter „Erweitert → Updates & Info“ (gespeichert in `updates.json`). Ausgeschaltet bleibt es beim Hinweis mit Klick.
+- Von 0.17.0 auf 0.17.1 muss das Update noch einmal per Klick installiert werden, ab dann geht es automatisch.
+
 ## Neu in 0.17.0: Eigene TecMon-Engine (Vorschau)
 
 - **Download ohne CS Demo Manager:** Sharecodes löst der Companion jetzt selbst über dein angemeldetes Steam auf (boiler-writter, MIT, beim ersten Download vom npm-Paket geladen und gegen die feste SHA-512-Prüfsumme geprüft). Die Demo kommt direkt von Valve und wird lokal entpackt.
