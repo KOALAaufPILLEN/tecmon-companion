@@ -2,7 +2,7 @@
   "name": "tecmon-companion",
   "version": "0.16.1",
   "private": true,
-  "description": "Local Windows CS2 demo recording companion for TecMon",
+  "description": "Local Windows companion for TecMon: CS2 demo highlight recording and VAC-safe round tips via official Game State Integration",
   "license": "MIT",
   "type": "module",
   "engines": {

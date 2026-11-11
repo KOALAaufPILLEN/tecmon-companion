@@ -23,16 +23,17 @@ Der Build lädt fehlende Pakete anhand von `tools/cs2-companion/windows/dependen
 
 Der BuildDirectory darf keine bereits eingerichtete Installation enthalten. Keine eigenen `installation.json`, `settings.json`, Datenbanken oder Kennwörter in den Build kopieren. Laufzeitkonfiguration entsteht erst nach dem Start des Installers beim Benutzer.
 
-Ausgabe: `dist/TecMon-Companion-Setup-0.11.0.exe` und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
+Ausgabe: `dist/TecMon-Companion-Setup-<Version>.exe` (Version aus `package.json`) und SHA256 im Build-Protokoll. Compiler-/ZIP-Metadaten können abweichen; bitidentische Reproduzierbarkeit wird nicht behauptet. Binaries ausschließlich nach zusätzlichen Installations-, Lizenz-, Secret- und Aufnahmetests veröffentlichen.
 
 Nur den nativen Launcher zu prüfen erfordert keine Drittanbieter-Downloads: `.github/workflows/test.yml` dokumentiert die Compilerparameter und führt `--self-test` aus. Dieser Selbsttest prüft nicht die vollständige Installation.
 
 ## Release veröffentlichen
 
-1. Version erhöhen: `node scripts/version.mjs set 0.11.0`. Das setzt die Nummer in `package.json`, `package-lock.json`, Updater, Oberfläche, Installation und nativem Launcher. `node scripts/version.mjs check` (läuft auch in `npm test`) meldet abweichende Stellen.
-2. Änderung auf `main` mergen.
+1. Version erhöhen: `node scripts/version.mjs set X.Y.Z`. Das setzt die Nummer in `package.json`, `package-lock.json`, Updater, Oberfläche, Installation und nativem Launcher. `node scripts/version.mjs check` (läuft auch in `npm test`) meldet abweichende Stellen.
+2. Neue Funktionen im README unter „Neu in X.Y.Z“ beschreiben.
+3. Änderung auf `main` mergen. Das veröffentlicht automatisch ein Release, das installierte Companions als Update angeboten bekommen; darum nur mit Freigabe mergen.
 
-Der Workflow [Windows release installer](.github/workflows/release-installer.yml) startet bei jedem Push auf `main`. Gibt es zur Version aus `package.json` noch kein Tag, baut er auf einem frischen Windows-Runner Setup-EXE und Update-EXE, führt die Tests aus und prüft die Originalpakete, den unkonfigurierten Payload, eine isolierte Neuinstallation mit Sonderzeichen-Passwort, getrennte Datenbankkonten, die Reparatur einer unterbrochenen Einrichtung und die CSDM-Tabellenmigrationen. Danach legt er das Release `v<Version>` zunächst als Entwurf an, lädt Setup, Update-EXE, `TecMon-Companion-Update.json` und Prüfsummen hoch und veröffentlicht es erst dann als „Latest“. Installierte Companions sehen das Update damit erst, wenn alle Dateien vorhanden sind. Gibt es das Tag schon, tut der Workflow nichts.
+Der Workflow [Windows release installer](.github/workflows/release-installer.yml) startet bei jedem Push auf `main`. Gibt es zur Version aus `package.json` noch kein Tag, baut er auf einem frischen Windows-Runner Setup-EXE und Update-EXE, führt die Tests aus und prüft die Originalpakete, den unkonfigurierten Payload, eine isolierte Neuinstallation mit Sonderzeichen-Passwort, getrennte Datenbankkonten, die Reparatur einer unterbrochenen Einrichtung und die CSDM-Tabellenmigrationen. Danach legt er das Release `v<Version>` zunächst als Entwurf an, lädt Setup, Update-EXE, `TecMon-Companion-Update.json`, das Branding-v3-Paket und Prüfsummen hoch, dazu Kopien von Setup und Update mit festem Namen (`TecMon-Companion-Setup.exe`, `TecMon-Companion-Update.exe`) für die Links `releases/latest/download/…` auf tecmon.online/companion, und veröffentlicht es erst dann als „Latest“. Installierte Companions sehen das Update damit erst, wenn alle Dateien vorhanden sind. Gibt es das Tag schon, tut der Workflow nichts.
 
 Manuell lässt sich der Workflow mit einem bestehenden Tag starten. Er baut dieses Tag neu und ersetzt die Dateien im Release. Der Workflow ersetzt keinen echten CS2-Aufnahmetest.
 
