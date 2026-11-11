@@ -18,6 +18,8 @@ import { readFile, writeFile, mkdir, rm, readdir, rename, stat } from "node:fs/p
 import { spawn, execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { PLUGIN_REVISION, PLUGIN_SHA256 } from "./recording-engine.mjs";
+import { needsScript } from "./job.mjs";
+import { scriptPlan, scriptSource, parseMarks, MARK_COMMAND } from "./camera-script.mjs";
 
 export const ENGINE_CAPABILITY = "recorder-internal-v1";
 const MIN_TICK = 96; // CSDM #1343: Befehle in den ersten ~1,5 s nach demo_gototick 0 gehen verloren.
@@ -25,6 +27,12 @@ const PLUGIN_FOLDER = "csdm"; // Name, unter dem das Plugin seine Aktionsdatei u
 const GAMEINFO_LINE = "Game\tcsgo/csdm";
 const tick = (t) => Math.max(MIN_TICK, Math.round(t));
 const unix = (p) => p.replaceAll("\\", "/");
+/** Eigene Dateipfade in Befehlen: keine Anführungszeichen, Trenner oder Zeilenumbrüche. */
+const safePath = (p) => {
+  const value = unix(p);
+  if (/[";\r\n\0]/.test(value)) throw new Error("Ungültiger Pfad für das Kameraskript.");
+  return value;
+};
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 export const sequenceName = (s) => `${s.number}-sequence`;
@@ -46,7 +54,7 @@ export function jobSlots(job) {
  * Aktionsdatei für das CS2-Plugin. Gleiche Befehlsfolge wie
  * createCs2VideoJsonFile() in CSDM 3.20.1 für HLAE + FFmpeg + Video.
  */
-export function buildActions(recording, { tickRate, slots, cameras = [] }) {
+export function buildActions(recording, { tickRate, slots, cameras = [], script = "" }) {
   const sequences = [...recording.sequences].sort(
     (a, b) => a.startTick - b.startTick || a.number - b.number,
   );
@@ -69,6 +77,8 @@ export function buildActions(recording, { tickRate, slots, cameras = [] }) {
       "cl_demo_predict 0",
     ])
       add(1, cmd);
+    // Das Kameraskript bleibt nach dem ersten Laden aktiv, auch über go_to_next_sequence.
+    if (script && i === 0) add(1, `mirv_script_load "${safePath(script)}"`);
     add(1, `cl_draw_only_deathnotices ${s.showOnlyDeathNotices ? 1 : 0}`);
     add(1, `mirv_deathmsg lifetime ${s.deathNoticesDuration}`);
     add(1, "mirv_deathmsg filter clear");
@@ -188,7 +198,7 @@ export async function uninstallPlugin(root) {
 }
 
 /** Aufrufparameter für HLAE, wie startCounterStrikeWithHlae() in CSDM. */
-export function hlaeArgs({ hlaeExe, cs2Exe, demo, width, height }) {
+export function hlaeArgs({ hlaeExe, cs2Exe, demo, width, height, extra = "" }) {
   return [
     "-noGui",
     "-autoStart",
@@ -200,7 +210,7 @@ export function hlaeArgs({ hlaeExe, cs2Exe, demo, width, height }) {
     "-programPath",
     cs2Exe,
     "-cmdLine",
-    `-insecure -novid +playdemo "${demo}" -width ${width} -height ${height} -sw`,
+    `-insecure -novid${extra} +playdemo "${demo}" -width ${width} -height ${height} -sw`,
   ];
 }
 
@@ -281,6 +291,35 @@ export async function encodeSequences(recording, ffmpegExe, log = () => {}, ffmp
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** CS2 über HLAE mit der Demo starten und warten, bis CS2 wieder geschlossen ist. */
+async function playInCs2({ installation, cs2Exe, demo, width, height, extra = "", system, log, label, limit = 90 }) {
+  const isRunning = system.isRunning || tasklist;
+  const launch = system.launch || ((exe, args, env) => spawn(exe, args, { shell: false, windowsHide: true, env }));
+  const wait = system.sleep || sleep;
+  log("CS2 über HLAE starten …");
+  const env = {
+    ...process.env,
+    USRLOCALCSGO: configDir(installation),
+  };
+  const child = launch(installation.hlaeExe, hlaeArgs({ hlaeExe: installation.hlaeExe, cs2Exe, demo, width, height, extra }), env);
+  const hlaeCode = await new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", resolve);
+  });
+  if (hlaeCode !== 0) throw new Error(`HLAE wurde mit Code ${hlaeCode} beendet.`);
+  await wait(2000);
+  if (!(await isRunning("cs2.exe"))) throw new Error("CS2 ist nicht gestartet. HLAE-/Plugin-Protokoll prüfen.");
+  log(label);
+  const deadline = Date.now() + limit * 60 * 1000;
+  while (await isRunning("cs2.exe")) {
+    if (Date.now() > deadline) throw new Error("Zeitlimit erreicht. CS2 bitte schließen.");
+    await wait(2000);
+  }
+}
+
+/** Eigener CS2-Konfigurationsordner (USRLOCALCSGO), getrennt von den Einstellungen des Nutzers. */
+const configDir = (installation) => path.join(path.dirname(installation.profileDir), "hlae-config");
+
 /**
  * Komplette Aufnahme. `system` lässt sich für Tests ersetzen
  * (Prozessliste, Prozessstart, FFmpeg, Plugin-Download).
@@ -297,8 +336,6 @@ export async function recordInternal({
   system = {},
 }) {
   const isRunning = system.isRunning || tasklist;
-  const launch = system.launch || ((exe, args, env) => spawn(exe, args, { shell: false, windowsHide: true, env }));
-  const wait = system.sleep || sleep;
   const slots = jobSlots(job);
   if (!slots) throw new Error("Spieler-Slots fehlen im Auftrag.");
   if (!cs2Exe || !existsSync(cs2Exe)) throw new Error("CS2 wurde nicht gefunden.");
@@ -308,39 +345,23 @@ export async function recordInternal({
   if (await isRunning("cs2.exe")) throw new Error("CS2 läuft bereits. Bitte CS2 schließen und erneut starten.");
   const root = cs2Root(cs2Exe);
   const actionsFile = `${unix(demo)}.json`;
-  const actions = buildActions(recording, { tickRate: job.tickRate, slots, cameras });
+  const scriptFile = needsScript(job) ? `${unix(demo)}.tecmon-camera.js` : "";
+  if (scriptFile) {
+    await writeFile(scriptFile, scriptSource(scriptPlan(job)), "utf8");
+    log("Kameraskript für Kamerafahrten und Verfolger-Kamera geschrieben.");
+  }
+  const actions = buildActions(recording, { tickRate: job.tickRate, slots, cameras, script: scriptFile });
   await writeFile(actionsFile, JSON.stringify(actions, null, 2));
   log("Aufnahmeplan für das CS2-Plugin geschrieben.");
   const bytes = system.plugin ? await system.plugin() : await pluginBytes(cacheDir, system.request);
   try {
     await installPlugin(root, bytes);
     await registerFfmpeg(installation.hlaeExe, installation.ffmpegExe);
-    log("CS2 über HLAE starten …");
-    const env = {
-      ...process.env,
-      USRLOCALCSGO: path.join(path.dirname(installation.profileDir), "hlae-config"),
-    };
-    const child = launch(
-      installation.hlaeExe,
-      hlaeArgs({ hlaeExe: installation.hlaeExe, cs2Exe, demo, width: recording.width, height: recording.height }),
-      env,
-    );
-    const hlaeCode = await new Promise((resolve, reject) => {
-      child.once("error", reject);
-      child.once("exit", resolve);
-    });
-    if (hlaeCode !== 0) throw new Error(`HLAE wurde mit Code ${hlaeCode} beendet.`);
-    await wait(2000);
-    if (!(await isRunning("cs2.exe"))) throw new Error("CS2 ist nicht gestartet. HLAE-/Plugin-Protokoll prüfen.");
-    log("CS2 nimmt auf …");
-    const deadline = Date.now() + 90 * 60 * 1000;
-    while (await isRunning("cs2.exe")) {
-      if (Date.now() > deadline) throw new Error("Zeitlimit erreicht. CS2 bitte schließen.");
-      await wait(2000);
-    }
+    await playInCs2({ installation, cs2Exe, demo, width: recording.width, height: recording.height, system, log, label: "CS2 nimmt auf …" });
   } finally {
     await uninstallPlugin(root).catch(() => {});
     await rm(actionsFile, { force: true }).catch(() => {});
+    if (scriptFile) await rm(scriptFile, { force: true }).catch(() => {});
   }
   log("Szenen mit FFmpeg zusammenführen …");
   return encodeSequences(recording, installation.ffmpegExe, log, system.ffmpeg);
@@ -353,4 +374,72 @@ export async function internalReady(installation, cs2Exe, job) {
   for (const exe of [installation.hlaeExe, installation.ffmpegExe])
     if (!(await stat(exe).then((s) => s.isFile(), () => false))) return false;
   return true;
+}
+
+/**
+ * „Kamera im Spiel setzen“: Demo in CS2 am gewünschten Tick öffnen und
+ * anhalten. Der Nutzer fliegt mit der HLAE-Freikamera (`mirv_input camera`,
+ * WASD, R/F hoch/runter) und merkt Punkte mit F8 oder `tecmon_mark`. Nach dem
+ * Schließen von CS2 liest der Companion die Punkte aus `console.log`.
+ * Läuft mit eigenem CS2-Konfigurationsordner, die Tastenbelegung des Nutzers
+ * bleibt unberührt.
+ */
+export async function cameraSession({ demo, tick: startTick, installation, cs2Exe, cacheDir, log = () => {}, system = {} }) {
+  const isRunning = system.isRunning || tasklist;
+  if (!Number.isSafeInteger(startTick) || startTick < 0 || startTick > 100_000_000) throw new Error("Ungültiger Zeitpunkt.");
+  if (!cs2Exe || !existsSync(cs2Exe)) throw new Error("CS2 wurde nicht gefunden.");
+  if (!existsSync(installation.hlaeExe)) throw new Error("hlae.exe fehlt. Companion-Einrichtung reparieren.");
+  if (!(await isRunning("steam.exe"))) throw new Error("Steam läuft nicht. Steam starten und anmelden.");
+  if (await isRunning("cs2.exe")) throw new Error("CS2 läuft bereits. Bitte CS2 schließen und erneut starten.");
+  const root = cs2Root(cs2Exe);
+  const logs = [path.join(root, "game", "csgo", "console.log"), path.join(configDir(installation), "console.log")];
+  // Nur neue Zeilen lesen: bestehende console.log nie löschen.
+  const offsets = await Promise.all(logs.map((f) => stat(f).then((s) => s.size, () => 0)));
+  const actionsFile = `${unix(demo)}.json`;
+  const scriptFile = `${unix(demo)}.tecmon-camera.js`;
+  await writeFile(scriptFile, scriptSource({ v: 1, tickRate: 64, segments: [] }), "utf8");
+  const at = tick(startTick);
+  const actions = [
+    {
+      actions: [
+        { tick: MIN_TICK, cmd: "sv_cheats 1" },
+        { tick: MIN_TICK, cmd: "volume 0.3" },
+        { tick: MIN_TICK, cmd: `mirv_script_load "${safePath(scriptFile)}"` },
+        { tick: MIN_TICK, cmd: `bind "F8" "${MARK_COMMAND}"` },
+        { tick: MIN_TICK, cmd: `demo_gototick ${at}` },
+        { tick: at + 8, cmd: "demo_pause" },
+        { tick: at + 8, cmd: "mirv_input camera" },
+        { tick: at + 8, cmd: 'echo "TecMon: Mit WASD fliegen, R/F hoch/runter, Pfeiltasten schauen. F8 merkt den Punkt. CS2 schließen, wenn fertig."' },
+      ],
+    },
+  ];
+  await writeFile(actionsFile, JSON.stringify(actions, null, 2));
+  const bytes = system.plugin ? await system.plugin() : await pluginBytes(cacheDir, system.request);
+  try {
+    await installPlugin(root, bytes);
+    await playInCs2({
+      installation,
+      cs2Exe,
+      demo,
+      width: 1280,
+      height: 720,
+      extra: " -condebug",
+      system,
+      log,
+      label: "CS2 ist offen: Kamera platzieren und mit F8 merken, danach CS2 schließen.",
+      limit: 60,
+    });
+  } finally {
+    await uninstallPlugin(root).catch(() => {});
+    await rm(actionsFile, { force: true }).catch(() => {});
+    await rm(scriptFile, { force: true }).catch(() => {});
+  }
+  let text = "";
+  for (let i = 0; i < logs.length; i++) {
+    const content = await readFile(logs[i]).catch(() => null);
+    if (content && content.length > offsets[i]) text += content.subarray(offsets[i]).toString("utf8") + "\n";
+  }
+  const marks = parseMarks(text);
+  log(marks.length ? `${marks.length} Kamerapunkt(e) übernommen.` : "Kein Kamerapunkt gemerkt.");
+  return marks;
 }

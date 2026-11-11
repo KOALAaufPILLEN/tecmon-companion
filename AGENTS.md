@@ -121,3 +121,9 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   nur die eigene Zeile ergänzen und wieder entfernen.
 - Befehle in der Aktionsdatei entstehen nur aus geprüften Zahlen und
   bereinigten Namen des Auftrags, nie aus freiem Text der Webseite.
+- Das HLAE-Kameraskript (`camera-script.mjs`) bekommt nur den Zahlenplan aus
+  `scriptPlan()`; `scriptSource()` prüft ihn. Es läuft nur bei der
+  Offline-Demo-Wiedergabe, nie im Live-Match. „Kamera im Spiel setzen“ ändert
+  nur den eigenen CS2-Konfigurationsordner (`hlae-config`) und liest
+  `console.log`, ohne sie zu löschen. Capabilities: `camera-script-v1`
+  (Schnitte `path`/`follow`), `camera-session-v1` (`POST /bridge/camera`).

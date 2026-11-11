@@ -9,10 +9,12 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { validateJob, recordingConfig, jobCameras } from "./job.mjs";
 import { cameraSql, cleanupSql, runCameraSql } from "./custom-cameras.mjs";
-import { matchDownloadRequest } from "./share-code.mjs";
+import { matchDownloadRequest, shareCode } from "./share-code.mjs";
 import { ensureRecordingPlugin, recordingFailure } from "./recording-engine.mjs";
-import { recordInternal, internalReady, ENGINE_CAPABILITY } from "./internal-recorder.mjs";
-import { downloadValveDemo } from "./valve-download.mjs";
+import { recordInternal, internalReady, cameraSession, ENGINE_CAPABILITY } from "./internal-recorder.mjs";
+import { downloadValveDemo, decodeShareCode } from "./valve-download.mjs";
+import { SCRIPT_CAPABILITY, SESSION_CAPABILITY } from "./camera-script.mjs";
+import { needsScript } from "./job.mjs";
 import { updateHandoff } from "./update-handoff.mjs";
 import { lazyEngine } from "./lazy-engine.mjs";
 import { loadBrandingPack } from "./branding-assets.mjs";
@@ -245,7 +247,29 @@ export async function createCompanion({
   const ownDownload = () => ownEngine && !!installation && (process.platform === "win32" || !!engineSystem.download);
   const ownRecording = async (spec) =>
     ownEngine && (engineSystem.recorder ? !!installation : await internalReady(installation, detected.cs2, spec));
+  /** Schon geladene Valve-Demo desselben Matches wiederverwenden (gleicher Dateiname aus der Match-ID). */
+  async function knownDemo(code) {
+    let name;
+    try {
+      name = `match730_${decodeShareCode(code).matchId}.dem`;
+    } catch {
+      return "";
+    }
+    const root = path.join(dataDir, "Downloads");
+    for (const entry of await readdir(root, { withFileTypes: true }).catch(() => [])) {
+      if (!entry.isDirectory() || !JOB_DIR.test(entry.name)) continue;
+      const file = path.join(root, entry.name, name);
+      if (await stat(file).then((s) => s.isFile() && s.size > 1024, () => false)) return file;
+    }
+    return "";
+  }
   async function fetchDemo({ code, directory, exe, entry }) {
+    const known = await knownDemo(code);
+    if (known) {
+      entry.log += "\nDemo dieses Matches liegt schon auf dem PC.";
+      entry.engine = "tecmon";
+      return known;
+    }
     if (ownDownload()) {
       try {
         const demo = await downloadValveDemo({
@@ -403,6 +427,8 @@ export async function createCompanion({
       return finishRecording(job, output, branding, assets);
     }
     job.engine = "csdm";
+    if (needsScript(job.job))
+      job.log += "\nKamerafahrten und Verfolger-Kamera gibt es nur mit der eigenen TecMon-Engine. CS Demo Manager nutzt stattdessen feste Punkte und die Egoansicht.";
     job.status = "analyzing";
     job.output = output;
     await prepareEngine();
@@ -517,7 +543,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? ["video-branding-v1","camera-points-v1",ENGINE_CAPABILITY] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? ["video-branding-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY] : [])] : [])],
       });
     if (req.method === "POST" && url.pathname === "/bridge/insights") {
       const input = await readInput(req, 262144);
@@ -542,12 +568,14 @@ export async function createCompanion({
         id: job.id,
         status: job.status,
         files: job.files.length,
+        ...(job.marks ? { marks: job.marks } : {}),
         error:
           job.status === "error"
             ? "Lokaler Auftrag fehlgeschlagen. Protokoll im Companion prüfen (z. B. abgelaufene Demo oder Steam nicht angemeldet)."
             : undefined,
       });
     }
+    if (req.method === "POST" && url.pathname === "/bridge/camera") return cameraRequest(req, res, owner);
     if (req.method !== "POST" || !["/bridge/download", "/bridge/capture"].includes(url.pathname))
       return json(res, 404, { error: "Nicht gefunden." });
     const input = await readInput(req);
@@ -601,6 +629,70 @@ export async function createCompanion({
             await record(job, { csdm: exe, demo, quality: input.quality });
           }
           else job.status = "done";
+        } catch (error) {
+          job.status = "error";
+          job.log += `\n${error.message}`;
+        } finally {
+          active = false;
+        }
+      })();
+      return json(res, 202, { id: job.id });
+    } catch (error) {
+      active = false;
+      throw error;
+    }
+  }
+  /**
+   * „Kamera im Spiel setzen“: Demo laden (Sharecode oder aus dem Browser),
+   * CS2 am Zeitpunkt öffnen, gemerkte Punkte als `marks` zurückgeben.
+   */
+  async function cameraRequest(req, res, owner) {
+    const input = await readInput(req);
+    if (active) throw new Error("Auf deinem PC läuft bereits eine Aufnahme oder ein Download.");
+    if (input.confirm !== true) throw new Error("Start von CS2 bitte bestätigen.");
+    if (!installation || !ownEngine || (process.platform !== "win32" && !engineSystem.recorder))
+      throw new Error("Kamera im Spiel setzen braucht den installierten Windows-Companion mit eigener TecMon-Engine.");
+    if (!Number.isSafeInteger(input.tick) || input.tick < 0 || input.tick > 100_000_000) throw new Error("Ungültiger Zeitpunkt.");
+    if (jobs.size >= 100) throw new Error("Auftragsliste voll. Companion neu starten.");
+    const code = input.shareCode === undefined ? "" : shareCode(input.shareCode);
+    if (!code && typeof input.demoId !== "string") throw new Error("Sharecode oder die Originaldemo aus dem Browser fehlt.");
+    const job = {
+      id: randomUUID(),
+      owner,
+      job: { title: "Kamera setzen", map: "", tickRate: 64, sequences: [] },
+      status: "downloading",
+      log: "",
+      files: [],
+    };
+    active = true;
+    try {
+      const exe = code ? await csdmIfPresent() : "";
+      const browserDemo = code ? null : browserFiles.consume(owner, input.demoId);
+      jobs.set(job.id, job);
+      void (async () => {
+        try {
+          let demo = browserDemo;
+          if (code) {
+            const entry = { id: randomUUID(), code, status: "downloading", log: "", demo: "" };
+            downloads.set(entry.id, entry);
+            demo = await fetchDemo({ code, directory: path.join(dataDir, "Downloads", entry.id), exe, entry });
+            entry.demo = demo;
+            entry.status = "done";
+          }
+          job.status = "camera";
+          job.engine = "tecmon";
+          job.marks = await cameraSession({
+            demo,
+            tick: input.tick,
+            installation,
+            cs2Exe: detected.cs2,
+            cacheDir: engineCache,
+            log: (message) => {
+              job.log += `\n${message}`;
+            },
+            system: engineSystem.recorder,
+          });
+          job.status = "done";
         } catch (error) {
           job.status = "error";
           job.log += `\n${error.message}`;
