@@ -134,6 +134,14 @@ Sichtbar über dem Spiel ist die Sprechblase nur im Anzeigemodus „Vollbild im 
 - Ein lila Lichtstreifen läuft etwa alle drei Sekunden einmal um den Rahmen, solange die Sprechblase sichtbar ist. Außen liegt ein leichter lila Schein.
 - Gestapelte Tipps derselben Runde stehen darunter, kleiner und mit eigener Überschrift.
 
+## Neu in 0.17.2: Fehlerbehebung Video-Übernahme
+
+Mit der eigenen TecMon-Engine kam die fertige MP4 nicht auf die Webseite
+(„The "path" argument must be of type string“). Das Video wurde aufgenommen,
+aber die Webseite konnte es nicht abholen. Jetzt klappt die Übernahme mit
+beiden Engines. Bereits aufgenommene Videos liegen weiter im Datenordner unter
+`Jobs` und erscheinen im Companion unter den letzten Videos.
+
 ## Neu in 0.17.1: Automatische Updates
 
 - Der Companion sucht zwei Minuten nach dem Start und danach alle sechs Stunden nach einem neuen stabilen Release. Ein gefundenes Update wird mit denselben Prüfungen wie beim Klick (Manifest, Größe, SHA-256) selbst installiert, danach startet der Companion neu.

@@ -469,6 +469,8 @@ export async function createCompanion({
     return finishRecording(job, output, branding, assets);
   }
   async function finishRecording(job, output, branding, assets) {
+    // Beide Engines: /bridge/video liest die fertige MP4 aus diesem Ordner.
+    job.output = output;
     if (branding) {
       job.status = "branding";
       const final = await renderBranding({

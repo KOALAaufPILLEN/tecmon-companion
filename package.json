@@ -1,6 +1,6 @@
 {
   "name": "tecmon-companion",
-  "version": "0.17.1",
+  "version": "0.17.2",
   "private": true,
   "description": "Local Windows CS2 demo recording companion for TecMon",
   "license": "MIT",
