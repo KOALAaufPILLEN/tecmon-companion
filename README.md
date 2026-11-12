@@ -66,6 +66,25 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.19.0: Persönlichkeit, TecMon-Werte, Interaktionen und Spiele
+
+- **Vier Persönlichkeiten:** Super nett, Normal, Nerdy und HUAN-Modus
+  (frech und gemein). Umschaltbar im Rechtsklick-Menü unter „Persönlichkeit“
+  und in der Karte „Dein TecMon“. Der Modus färbt auch die CS2-Rundentipps:
+  Inhalt und Zeitpunkte bleiben gleich, nur der Ton ändert sich. Der
+  HUAN-Modus stichelt nur über das eigene Spiel, nie über Personen.
+- **TecMon-Werte:** Level und Erfahrung, Laune, Energie und Freundschaft.
+  Energie und Laune sinken langsam mit der Zeit; Schlafen lädt Energie auf.
+  Gespeichert lokal in `pet.json`.
+- **Mit TecMon spielen:** Anstupsen, Witz, Kompliment, Trick (er dreht sich
+  einmal im Kreis), Schlafen schicken und Aufwecken. Er antwortet in der
+  Sprechblase mit passendem LED-Gesicht.
+- **Spiele:** Reaktionstest, Schere-Stein-Papier und ein Callout-Quiz zu den
+  CS2-Karten. Gewinnen gibt Erfahrung und gute Laune; Bestwerte werden gemerkt.
+- **Menüs:** Rechtsklick hat die neuen Untermenüs „TecMon“, „Spiele“ und
+  „Persönlichkeit“. Ein Spiel oder „Werte anzeigen“ öffnet das
+  Linksklick-Fenster direkt an der richtigen Stelle.
+
 ### Neu in 0.18.3: Fadenkreuz-Editor, Linksklick-Fenster wie die Sprechblase, Figur bei Aufnahme sichtbar
 
 - **Drehung ohne Schleier:** Die Überblendung zwischen zwei Blickwinkeln ist

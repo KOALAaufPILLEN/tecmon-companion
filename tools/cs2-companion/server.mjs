@@ -24,6 +24,7 @@ import { browserDemos } from "./browser-demo.mjs";
 import { createGameTips, FEATURES } from "./game-tips.mjs";
 import { createInsightsStore } from "./insights.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
+import { createPet, quizQuestion } from "./personality.mjs";
 import { createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
 import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
@@ -196,8 +197,10 @@ export async function createCompanion({
     return existsSync(file) ? file : "";
   }
   const insights = await createInsightsStore(installation?.profileDir || dataDir);
+  const pet = await createPet(installation?.profileDir || dataDir, now ? { now } : {});
   const tips = createGameTips({
     ...(now ? { now } : {}),
+    flavor: (category, text) => pet.flavor(category, text),
     radarPath,
     enabled: (id) => gsi.feature(id),
     insights: (steamId) => insights.get(steamId),
@@ -786,10 +789,12 @@ export async function createCompanion({
           active,
           bridge: bridge.state(),
           gsi: gsiState(),
+          pet: pet.state(),
           downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
         });
+      if (req.method === "GET" && url.pathname === "/api/pet/quiz") return json(res, 200, quizQuestion());
       if (req.method === "GET" && url.pathname === "/api/crosshair") return json(res, 200, crosshairState());
       if (req.method === "GET" && url.pathname === "/api/videos")
         return json(res, 200, { videos: await recentVideos(), folder: dataDir });
@@ -830,6 +835,9 @@ export async function createCompanion({
           gsi: gsiState(),
         });
       }
+      if (url.pathname === "/api/pet/mode") return json(res, 200, { pet: await pet.setMode(String(input.mode || "")) });
+      if (url.pathname === "/api/pet/interact") return json(res, 200, { pet: await pet.interact(String(input.action || "")) });
+      if (url.pathname === "/api/pet/game") return json(res, 200, { pet: await pet.game(String(input.game || ""), { win: input.win === true, score: input.score }) });
       if (url.pathname === "/api/crosshair/save") {
         const result = await crosshair.save(input.crosshair, detected.cs2);
         return json(res, 200, {

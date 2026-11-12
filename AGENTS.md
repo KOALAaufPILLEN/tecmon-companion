@@ -103,6 +103,16 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   `scripts/figure-3d/`). Kein 3D-Renderer im Companion. Figur und Sprechblase
   zeichnen per Pixel-Alpha (`Layered.Push`), nicht über `Region`.
 
+## Persönlichkeit und TecMon-Werte (`personality.mjs`)
+
+- Modi `nett`, `normal`, `nerdy`, `huan` ändern nur den Ton
+  (`flavorTip()` setzt einen Satzanfang vor den Tipp). Inhalt, Kategorien,
+  Zeitpunkte und `BRIEFING_LIMIT` der Rundentipps bleiben unverändert.
+- Der HUAN-Modus stichelt nur über das eigene Spiel, keine Beleidigungen von
+  Personen oder Gruppen.
+- Werte und Zähler bleiben lokal in `pet.json`; Spiele laufen nur in der
+  Companion-Oberfläche, nie im Spiel.
+
 ## Prüfen und veröffentlichen
 
 - Vor jedem Push `npm test` und `node scripts/version.mjs check` im Repo-Stamm.

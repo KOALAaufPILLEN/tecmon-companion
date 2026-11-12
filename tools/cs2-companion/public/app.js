@@ -297,3 +297,48 @@ $('crosshair-import')?.addEventListener('click',async()=>{try{const result=await
 $('crosshair-copy')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(crossCommands(crosshair).join('; '));notice({message:'Befehle kopiert. In der CS2-Konsole einfügen.'});}catch(error){notice(error);}});
 $('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/save',{crosshair});crosshair=result.crosshair;showCrosshair();notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
 loadCrosshair();
+/* TecMon: Werte, Persönlichkeit, Interaktionen und Mini-Spiele. Alles lokal; die Figur zeigt die Antworten. */
+let pet=null;
+function showPet(state){
+  if(!state||!$('pet-heading'))return;pet=state;
+  $('pet-heading').textContent=`Level ${state.level}`;const mode=state.modes.find(m=>m.id===state.mode);$('pet-mode-badge').textContent=mode?mode.label:state.mode;
+  $('pet-xp').max=state.next;$('pet-xp').value=state.xp;$('pet-xp-text').textContent=`${state.xp}/${state.next}`;
+  for(const k of ['mood','energy','friendship']){$('pet-'+k).value=state[k];$(`pet-${k}-text`).textContent=state[k];}
+  if(state.event)$('pet-says').textContent=`„${state.event.text}“`;
+  $('pet-sleep').textContent=state.asleep?'Aufwecken':'Schlafen';$('pet-sleep').dataset.pet=state.asleep?'wake':'sleep';
+  const modes=$('pet-modes');if(modes.childElementCount!==state.modes.length)modes.replaceChildren(...state.modes.map(m=>{const b=el('button',m.label);b.type='button';b.dataset.mode=m.id;b.setAttribute('role','radio');b.addEventListener('click',()=>petCall('/api/pet/mode',{mode:m.id}));return b;}));
+  for(const b of modes.children){const on=b.dataset.mode===state.mode;b.className=on?'':'subtle';b.setAttribute('aria-checked',on);}
+  const c=state.counts||{},games=['reaction','rps','quiz'].reduce((n,g)=>n+(c['game_'+g]||0),0);
+  $('pet-counts').textContent=`Angestupst ${c.poke||0}× · Witze ${c.joke||0} · Tricks ${c.trick||0} · Spiele ${games}`;
+  const best=state.best||{};$('game-best').textContent=[best.reaction?`Bester Reaktionstest: ${best.reaction} ms`:'',c.win_rps?`Schere-Stein-Papier gewonnen: ${c.win_rps}×`:'',c.win_quiz?`Quiz richtig: ${c.win_quiz}×`:''].filter(Boolean).join(' · ');
+}
+async function petCall(url,body){try{const result=await api(url,body);showPet(result.pet);return result.pet;}catch(error){notice(error);}}
+document.querySelectorAll('[data-pet]').forEach(b=>b.addEventListener('click',()=>petCall('/api/pet/interact',{action:b.dataset.pet})));
+async function loadPet(){try{const state=await api('/api/state');showPet(state.pet);}catch(error){}}
+const area=()=>$('game-area');
+function gameDone(game,win,score){petCall('/api/pet/game',{game,win,score});}
+/* Reaktionstest: warten, bis das Feld lila wird, dann so schnell wie möglich klicken. */
+function reactionGame(){
+  const box=el('button','Warte auf Lila …','reaction-box');box.type='button';let ready=0,timer=0,over=false;
+  timer=setTimeout(()=>{ready=performance.now();box.classList.add('go');box.textContent='JETZT!';},1200+Math.random()*2500);
+  box.addEventListener('click',()=>{if(over)return;over=true;clearTimeout(timer);
+    if(!ready){box.textContent='Zu früh! Nochmal?';box.classList.add('fail');gameDone('reaction',false,0);return;}
+    const ms=Math.round(performance.now()-ready);box.textContent=`${ms} ms`;gameDone('reaction',ms<300,ms);});
+  area().replaceChildren(box,el('p','Klick, sobald das Feld lila wird. Unter 300 ms gilt als Sieg.'));
+}
+/* Schere, Stein, Papier gegen TecMon. */
+function rpsGame(){
+  const names=['Schere','Stein','Papier'],icons=['✌','✊','✋'];const result=el('p','Was nimmst du?');
+  const buttons=names.map((n,i)=>{const b=el('button',`${icons[i]} ${n}`);b.type='button';b.addEventListener('click',()=>{const bot=Math.floor(Math.random()*3),diff=(i-bot+3)%3;
+    result.textContent=`TecMon nimmt ${icons[bot]} ${names[bot]}. `+(diff===0?'Unentschieden.':diff===1?'Du gewinnst!':'TecMon gewinnt.');if(diff!==0)gameDone('rps',diff===1,0);});return b;});
+  const row=el('div','','pet-buttons');row.append(...buttons);area().replaceChildren(row,result);
+}
+/* Callout-Quiz: auf welcher Map liegt der Ort? */
+async function quizGame(){
+  try{const q=await api('/api/pet/quiz');const result=el('p','');const row=el('div','','pet-buttons');
+    row.append(...q.options.map((o,i)=>{const b=el('button',o);b.type='button';b.addEventListener('click',()=>{for(const x of row.children)x.disabled=true;const ok=i===q.answer;b.className=ok?'':'subtle';result.textContent=ok?'Richtig!':`Falsch, richtig ist ${q.options[q.answer]}.`;gameDone('quiz',ok,ok?1:0);const next=el('button','Nächste Frage','subtle');next.type='button';next.addEventListener('click',quizGame);result.append(' ',next);});return b;}));
+    area().replaceChildren(el('p',q.question,'quiz-question'),row,result);}catch(error){notice(error);}
+}
+document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>({reaction:reactionGame,rps:rpsGame,quiz:quizGame})[b.dataset.game]()));
+loadPet();setInterval(loadPet,5000);
+if(location.hash==='#spiele'||location.hash==='#tecmon')setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
