@@ -3,25 +3,44 @@
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 const S=Number(new URLSearchParams(location.search).get('s')||512);
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true,premultipliedAlpha:false});
-renderer.setSize(S,S);renderer.setClearColor(0x000000,0);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+renderer.setSize(S,S);renderer.setClearColor(0x000000,0);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.5;
 document.body.appendChild(renderer.domElement);
 const scene=new THREE.Scene();
+// Umgebungslicht für Metall und Gold, sonst wirkt die Figur auf dem Desktop zu dunkel.
+scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(),0.04).texture;scene.environmentIntensity=0.85;
 const cam=new THREE.PerspectiveCamera(22,1,0.1,50);
-scene.add(new THREE.HemisphereLight(0xd8cbff,0x1a1426,1.4));
-const key=new THREE.DirectionalLight(0xffffff,2.6);key.position.set(2,3,4);scene.add(key);
+scene.add(new THREE.HemisphereLight(0xe6dcff,0x3a3050,2.2));
+const key=new THREE.DirectionalLight(0xffffff,3.6);key.position.set(2,3,4);scene.add(key);
 const rim=new THREE.DirectionalLight(0xa78bfa,2.2);rim.position.set(-3,2,-3);scene.add(rim);
-const fill=new THREE.DirectionalLight(0xffe2a8,0.8);fill.position.set(-3,0.5,3);scene.add(fill);
+const fill=new THREE.DirectionalLight(0xffe2a8,1.6);fill.position.set(-3,0.5,3);scene.add(fill);
 const tl=new THREE.TextureLoader();
 const tex=(n,srgb)=>new Promise(r=>tl.load(n+'.png',t=>{t.flipY=false;if(srgb)t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;r(t)}));
 window.ready=(async()=>{
-  const [d,e,n,m,ro]=await Promise.all([tex('diffuse',1),tex('emissive',1),tex('normal_flat'),tex('metallic'),tex('roughness')]);
+  const [d,e,n,m,ro]=await Promise.all([tex('diffuse',1),tex('emissive',1),tex('normal_flat'),tex('metallic_visor'),tex('roughness_visor')]);
   window.tex0=d;window.em0=e;
   const g=await new GLTFLoader().loadAsync('base.glb');
-  const mat=new THREE.MeshStandardMaterial({map:d,emissiveMap:e,emissive:0xffffff,emissiveIntensity:1.4,normalMap:n,metalnessMap:m,roughnessMap:ro,metalness:1,roughness:1,side:THREE.DoubleSide});
+  const mat=new THREE.MeshStandardMaterial({map:d,emissiveMap:e,emissive:0xffffff,emissiveIntensity:1.8,normalMap:n,metalnessMap:m,roughnessMap:ro,metalness:1,roughness:1,side:THREE.DoubleSide});
   window.mat=mat;
   g.scene.traverse(o=>{if(o.isMesh)o.material=mat});
+  /* Das Modell hat Augen und Mund als Relief im Visier. Das Visier glätten, damit nur das LED-Gesicht zu sehen ist. */
+  const mask=await new Promise(r=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas');c.width=i.width;c.height=i.height;const x=c.getContext('2d');x.drawImage(i,0,0);r({w:i.width,h:i.height,d:x.getImageData(0,0,i.width,i.height).data})};i.src='visor_mask.png'});
+  g.scene.traverse(o=>{if(!o.isMesh)return;const geo=o.geometry;
+    const pos=geo.attributes.position,uv=geo.attributes.uv,n=pos.count,p=pos.array;
+    const idx=geo.index?geo.index.array:Uint32Array.from({length:n},(_,i)=>i);
+    /* Gleiche Positionen über UV-Nähte hinweg zusammenfassen, damit auch Nahtkanten mitgeglättet werden. */
+    const key=new Map(),canon=new Int32Array(n);let m=0;
+    for(let i=0;i<n;i++){const k=Math.round(p[i*3]*1e5)+','+Math.round(p[i*3+1]*1e5)+','+Math.round(p[i*3+2]*1e5);let c=key.get(k);if(c===undefined){c=m++;key.set(k,c);}canon[i]=c;}
+    const cp=new Float64Array(m*3),weight=new Float32Array(m);
+    for(let i=0;i<n;i++){const c=canon[i];cp[c*3]=p[i*3];cp[c*3+1]=p[i*3+1];cp[c*3+2]=p[i*3+2];
+      const u=Math.min(mask.w-1,Math.max(0,Math.round(uv.getX(i)*mask.w))),v=Math.min(mask.h-1,Math.max(0,Math.round(uv.getY(i)*mask.h)));weight[c]=Math.max(weight[c],mask.d[(v*mask.w+u)*4]/255);}
+    const nb=Array.from({length:m},()=>[]);
+    for(let t=0;t<idx.length;t+=3){const a=canon[idx[t]],b=canon[idx[t+1]],c=canon[idx[t+2]];if(weight[a]+weight[b]+weight[c]===0)continue;nb[a].push(b,c);nb[b].push(a,c);nb[c].push(a,b);}
+    for(let it=0;it<60;it++){const q=cp.slice();for(let i=0;i<m;i++){if(!weight[i]||!nb[i].length)continue;let x=0,y=0,z=0;for(const j of nb[i]){x+=q[j*3];y+=q[j*3+1];z+=q[j*3+2];}const k=nb[i].length,w=weight[i]*0.6;cp[i*3]+=(x/k-q[i*3])*w;cp[i*3+1]+=(y/k-q[i*3+1])*w;cp[i*3+2]+=(z/k-q[i*3+2])*w;}}
+    for(let i=0;i<n;i++){const c=canon[i];p[i*3]=cp[c*3];p[i*3+1]=cp[c*3+1];p[i*3+2]=cp[c*3+2];}
+    pos.needsUpdate=true;geo.computeVertexNormals();});
   const pivot=new THREE.Group();pivot.add(g.scene);g.scene.position.set(0,-0.635,0);scene.add(pivot);window.pivot=pivot;
   cam.position.set(0,0.1,5.6);cam.lookAt(0,0,0);
   return true;

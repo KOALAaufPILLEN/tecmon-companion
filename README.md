@@ -66,6 +66,16 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.18.2: Hellere Figur, neue LED-Gesichter, Menü im TecMon-Stil
+
+- **Heller:** Die 3D-Figur ist mit Umgebungslicht neu gerendert. Gold und
+  Metall wirken auf dunklen und hellen Hintergründen deutlich heller.
+- **Neue LED-Gesichter:** Statt Smiley jetzt ein schlichter Visier-Look:
+  Balken-Augen, Blinzeln als Linie, Lächeln als Bögen, beim Sprechen ein
+  Equalizer statt Mund. Das im Modell eingeformte alte Lächeln ist geglättet.
+- **Menü:** Das Rechtsklick-Menü der Figur (und das Tray-Menü) hat den Look der
+  Rundentipp-Sprechblase: dunkle Fläche, goldener Rahmen, lila Auswahl.
+
 ### Neu in 0.18.1: Aufnahme nach dem CS2-Update repariert
 
 Seit dem CS2-Update vom 11.11.2026 stürzte CS2 bei jeder Aufnahme etwa 14
