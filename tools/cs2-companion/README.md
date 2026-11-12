@@ -1,6 +1,6 @@
 # TecMon Companion · Anleitung
 
-Diese Anleitung beschreibt Einrichtung, Browser-Verbindung, Aufnahme und Video-Branding. Die CS2-Rundentipps, die Tipps aus „Meine Stats“ und die Desktopfigur stehen im [README](../../README.md#versionsverlauf). Download der neuesten Version: [tecmon.online/companion](https://tecmon.online/companion) oder [GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest).
+Diese Anleitung beschreibt Einrichtung, Browser-Verbindung, Aufnahme und Video-Branding. Seit 0.17 nimmt die eigene TecMon-Engine ohne CS Demo Manager und PostgreSQL auf, mit Kamerafahrten, Verfolger-Kamera und „Kamera im Spiel setzen“; der unten beschriebene CS-Demo-Manager-Weg bleibt als Rückfall. Details im [Versionsverlauf](../../README.md#neu-in-0170-eigene-tecmon-engine-vorschau). Die CS2-Rundentipps, die Tipps aus „Meine Stats“ und die Desktopfigur stehen im [README](../../README.md#versionsverlauf). Download der neuesten Version: [tecmon.online/companion](https://tecmon.online/companion) oder [GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest).
 
 ## Cyberpunk-Overlay und Spielerwechsel ab 0.11
 

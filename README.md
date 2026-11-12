@@ -2,7 +2,7 @@
 
 Öffentlicher Quellcode des lokalen Windows-Programms zu [TecMon](https://tecmon.online). Der Companion läuft auf dem eigenen PC und verbindet sich auf Wunsch mit der Webseite:
 
-- **CS2-Highlights in echter Spielgrafik:** Highlight-Aufträge aus dem TecMon-Replay übernehmen, die Demo per Sharecode lokal laden oder direkt aus dem Browser übernehmen, mit CS Demo Manager / HLAE aufnehmen, mit FFmpeg und TecMon-Branding (Intro, Radar-Rahmen, Spielernamen, Spielerwechsel) zu einer MP4 verarbeiten und an die Webseite zurückgeben. Die Veröffentlichung auf YouTube oder Discord läuft danach über die Webseite.
+- **CS2-Highlights in echter Spielgrafik:** Highlight-Aufträge aus dem TecMon-Replay übernehmen, die Demo per Sharecode lokal laden oder direkt aus dem Browser übernehmen, mit der eigenen TecMon-Engine (ab 0.17, Rückfall auf CS Demo Manager) über HLAE aufnehmen, mit Kamerafahrten, Verfolger-Kamera und im Spiel gesetzten Kamerapunkten, mit FFmpeg und TecMon-Branding (Intro, Radar-Rahmen, Spielernamen, Spielerwechsel) zu einer MP4 verarbeiten und an die Webseite zurückgeben. Die Veröffentlichung auf YouTube oder Discord läuft danach über die Webseite.
 - **CS2-Rundentipps:** VAC-sichere Hinweise über Valves offizielle Game State Integration, nur mit eigenen Spielerdaten, standardmäßig aus (siehe [Neu in 0.14.0](#neu-in-0140-cs2-rundentipps) und folgende).
 - **Tipps aus „Meine Stats“:** Die Webseite schickt auf Wunsch eine Zusammenfassung der eigenen analysierten Matches (`insights-v1`/`insights-v2`). Sie bleibt lokal in `insights.json`.
 - **Desktopfigur:** Der TecMon-Bot schwebt als transparente Windows-Figur über dem Desktop, öffnet per Klick Verbindung und Einstellungen und zeigt die Tipps in einer goldenen Holo-Sprechblase.
@@ -24,7 +24,7 @@ Details, Grenzen und Hinweise für Reviewer: [SECURITY.md](SECURITY.md). Offener
 Die einfachste Quelle ist [tecmon.online/companion](https://tecmon.online/companion): Die Seite verlinkt automatisch die neueste Version. Im [aktuellen GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest) gibt es zwei getrennte EXE-Dateien:
 
 - **TecMon-Companion-Setup-X.Y.Z.exe**: für neue Nutzer ohne vorhandene Installation. Enthält Companion, Node.js, PostgreSQL und CS Demo Manager. Das Setup lädt HLAE und FFmpeg vom Originalanbieter mit SHA256-Prüfung nach, richtet eine private Datenbank ein und fragt nach einem frei wählbaren Administratorpasswort. Steam und CS2 müssen bereits installiert sein. Internetverbindung erforderlich.
-- **TecMon-Companion-Update-X.Y.Z.exe**: für bereits eingerichtete Installationen. Ersetzt nur Companion-Programmdateien und erhält Datenbank, Kennwörter, Tools, Demos, Videos und Einstellungen. Ein laufender Companion findet das Update auch selbst („Auf Updates prüfen“).
+- **TecMon-Companion-Update-X.Y.Z.exe**: für bereits eingerichtete Installationen. Ersetzt nur Companion-Programmdateien und erhält Datenbank, Kennwörter, Tools, Demos, Videos und Einstellungen. Ab 0.17.1 installiert ein laufender Companion neue Versionen automatisch (abschaltbar unter „Erweitert → Updates & Info“); sonst per „Auf Updates prüfen“.
 
 Feste Links auf die jeweils neueste Version: [Setup](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Setup.exe) und [Update](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Update.exe). Der Release-Workflow lädt dafür zusätzlich Kopien ohne Versionsnummer hoch (seit 0.16.1; ältere Releases haben nur die Dateien mit Versionsnummer); Prüfsummen und Update-Manifest beziehen sich weiter auf die Dateien mit Versionsnummer.
 
@@ -50,21 +50,49 @@ Siehe [BUILDING.md](BUILDING.md). Alle Launcher-, Installer- und Serverquellen s
 
 Siehe [Anleitung](tools/cs2-companion/README.md). Companion starten, einmal mit TecMon im Browser verbinden und im Replay „In CS2 aufnehmen“ wählen. Download oder Demo-Übergabe, Aufnahme, Branding und MP4-Rückgabe laufen automatisch. JSON-Import und manuelle Dateiauswahl bleiben unter „Erweitert“ als Alternative verfügbar.
 
-Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` meldet. Aktuell sind das `browser-demo-v1`, `xray-v1`, `insights-v1` und `insights-v2`, mit verwalteter Installation zusätzlich `video-branding-v1` und `camera-points-v1`.
+Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` meldet. Aktuell sind das `browser-demo-v1`, `xray-v1`, `insights-v1` und `insights-v2`; mit verwalteter Installation zusätzlich `video-branding-v1`, `camera-points-v1` und `recorder-internal-v1`, und solange die eigene Engine eingeschaltet ist `camera-script-v1`, `camera-session-v1` und `camera-angle-v1`.
 
-Aufgenommen werden Spieler-Egoansichten oder feste Freecam-Punkte bei normalem Tempo mit Spielton ohne Voicechat, X-Ray standardmäßig an. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demo-Aufnahmen einsetzen; Steam und CS2 werden nicht mitgeliefert.
+Aufgenommen werden Spieler-Egoansichten, feste Freecam-Punkte und mit der eigenen Engine auch Kamerafahrten über bis zu 8 Punkte oder eine Verfolger-Kamera, bei normalem Tempo mit Spielton ohne Voicechat, X-Ray standardmäßig an. Die eigene Engine braucht für Download und Aufnahme weder CS Demo Manager noch PostgreSQL; beide bleiben vorerst als Rückfall installiert. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demo-Aufnahmen einsetzen; Steam und CS2 werden nicht mitgeliefert.
 
-63 automatisierte Companion-Tests sind enthalten (`npm test`), darunter die Prüfung, dass die Rundentipps keine verbotenen GSI-Blöcke anfordern. Eine isolierte Windows-Einrichtung wird bei jedem Release mit PostgreSQL-Anmeldung, Sonderzeichen-Passwort, CSDM-Tabellenmigrationen, FFmpeg und nativem Launcher getestet. Diese Tests sind kein Nachweis einer vollständigen Aufnahme jeder Demo oder jeder CS2-Version. Ein realer Test auf CS2 1.41.9.6 erzeugte eine 2-Sekunden-MP4 sowie einen zusammengesetzten Clip aus zwei Spieleransichten mit dem korrigierten offiziellen CS2-Plugin.
+84 automatisierte Companion-Tests sind enthalten (`npm test`), darunter die Prüfung, dass die Rundentipps keine verbotenen GSI-Blöcke anfordern. Eine isolierte Windows-Einrichtung wird bei jedem Release mit PostgreSQL-Anmeldung, Sonderzeichen-Passwort, CSDM-Tabellenmigrationen, FFmpeg und nativem Launcher getestet. Diese Tests sind kein Nachweis einer vollständigen Aufnahme jeder Demo oder jeder CS2-Version. Ein realer Test auf CS2 1.41.9.6 erzeugte eine 2-Sekunden-MP4 sowie einen zusammengesetzten Clip aus zwei Spieleransichten mit dem korrigierten offiziellen CS2-Plugin.
 
 ## Lizenzen und Herkunft
 
 Der ursprüngliche Companion wurde als eigenständiger Quell-Snapshot aus TecMon extrahiert. Die erste öffentliche Historie enthält nur die ausgewählten Companion-Dateien, keine Website-Commits. Das TecMon-Logo dient zur Kennzeichnung; die Lizenz gewährt keine Markenrechte.
 
-Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL License und GPL. Siehe [THIRD-PARTY-NOTICES.txt](tools/cs2-companion/windows/THIRD-PARTY-NOTICES.txt) und [dependency-manifest.json](tools/cs2-companion/windows/dependency-manifest.json). Diese MIT-Lizenz ersetzt keine Lizenz der gebündelten Drittanbieter. Wer Binärpakete weitergibt, muss deren jeweilige Lizenz- und Quellcodepflichten erfüllen. Dieses Repository veröffentlicht den Companion-Quellcode, die Build-Skripte und kleine Programm-Updates. Ein selbst gebauter Installer enthält Node.js, PostgreSQL und CS Demo Manager mit ihren Lizenzen; HLAE und FFmpeg lädt er bei Bedarf direkt von den Originalanbietern herunter. Radarbilder werden nicht mitgeliefert, sondern lokal aus CS Demo Manager gelesen.
+Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL License und GPL. Siehe [THIRD-PARTY-NOTICES.txt](tools/cs2-companion/windows/THIRD-PARTY-NOTICES.txt) und [dependency-manifest.json](tools/cs2-companion/windows/dependency-manifest.json). Diese MIT-Lizenz ersetzt keine Lizenz der gebündelten Drittanbieter. Wer Binärpakete weitergibt, muss deren jeweilige Lizenz- und Quellcodepflichten erfüllen. Dieses Repository veröffentlicht den Companion-Quellcode, die Build-Skripte und kleine Programm-Updates. Ein selbst gebauter Installer enthält Node.js, PostgreSQL und CS Demo Manager mit ihren Lizenzen; HLAE und FFmpeg lädt er bei Bedarf direkt von den Originalanbietern herunter. boiler-writter (MIT) lädt der Companion beim ersten eigenen Download vom npm-Paket und prüft dessen feste Prüfsumme. Radarbilder werden nicht mitgeliefert, sondern lokal aus CS Demo Manager gelesen.
 
 ## Versionsverlauf
 
 Neueste Version zuerst.
+
+### Neu in 0.17.2: Fehlerbehebung Video-Übernahme
+
+Mit der eigenen TecMon-Engine kam die fertige MP4 nicht auf die Webseite
+(„The "path" argument must be of type string“). Das Video wurde aufgenommen,
+aber die Webseite konnte es nicht abholen. Jetzt klappt die Übernahme mit
+beiden Engines. Bereits aufgenommene Videos liegen weiter im Datenordner unter
+`Jobs` und erscheinen im Companion unter den letzten Videos.
+
+### Neu in 0.17.1: Automatische Updates
+
+- Der Companion sucht zwei Minuten nach dem Start und danach alle sechs Stunden nach einem neuen stabilen Release. Ein gefundenes Update wird mit denselben Prüfungen wie beim Klick (Manifest, Größe, SHA-256) selbst installiert, danach startet der Companion neu.
+- Nie während eines Downloads, einer Aufnahme oder „Kamera im Spiel setzen“; dann beim nächsten Durchgang.
+- Abschaltbar unter „Erweitert → Updates & Info“ (gespeichert in `updates.json`). Ausgeschaltet bleibt es beim Hinweis mit Klick.
+- Von 0.17.0 auf 0.17.1 muss das Update noch einmal per Klick installiert werden, ab dann geht es automatisch.
+
+### Neu in 0.17.0: Eigene TecMon-Engine (Vorschau)
+
+- **Download ohne CS Demo Manager:** Sharecodes löst der Companion jetzt selbst über dein angemeldetes Steam auf (boiler-writter, MIT, beim ersten Download vom npm-Paket geladen und gegen die feste SHA-512-Prüfsumme geprüft). Die Demo kommt direkt von Valve und wird lokal entpackt.
+- **Aufnahme ohne CS Demo Manager und ohne Datenbank:** Der Companion schreibt den Aufnahmeplan für das offizielle CS2-Plugin selbst, hängt das SHA-256-geprüfte Plugin nur für die Aufnahme ein, startet CS2 über HLAE und führt die Szenen mit FFmpeg zusammen. PostgreSQL startet dafür nicht.
+- Die Befehlsfolge entspricht CS Demo Manager 3.20.1 (MIT). Spieler-Slots, Tickrate und Kamerapunkte kommen aus dem Auftrag der Webseite; dafür muss die Webseite den Slot mitschicken.
+- **Rückfall:** Aufträge ohne Spieler-Slots (ältere Webseite) laufen automatisch weiter über CS Demo Manager. Schlägt der eigene Download fehl, übernimmt CS Demo Manager. Unter „Erweitert → Setup“ lässt sich die eigene Engine ganz abschalten.
+- Läuft CS2 schon, bricht die Aufnahme ab, statt das Spiel zu beenden. Nach der Aufnahme wird nur die eigene Zeile aus `gameinfo.gi` entfernt, nicht eine alte Sicherung zurückgespielt.
+- CS Demo Manager und PostgreSQL bleiben in diesem Release installiert. Sie werden erst entfernt, wenn die eigene Engine auf echten PCs geprüft ist.
+- **Kamerafahrten und Verfolger-Kamera:** Ein TecMon-Skript für HLAE (`mirv_script_load`, ab HLAE 2.190) setzt die Kamera in jedem Bild. Eine Szene kann weich über bis zu 8 Punkte fahren oder dem Spieler mit Abstand, Höhe und optionalem Kreisen folgen. Der Plan im Skript besteht nur aus geprüften Zahlen des Auftrags. Über CS Demo Manager wird daraus ein fester Punkt bzw. die Egoansicht.
+- **Spieler-Intro von vorn:** Die Verfolger-Kamera kann mit einem Startwinkel beginnen, etwa 180° für eine Kamera vor dem Gesicht des Spielers. Die Webseite nutzt das für ein kurzes Intro je Spieler (Capability `camera-angle-v1`). Das Modell und die Skins kommen in CS2 aus der Demo und lassen sich dort nicht tauschen.
+- **Kamera im Spiel setzen:** Die Webseite kann CS2 mit der Demo am gewählten Zeitpunkt öffnen lassen. Mit der HLAE-Freikamera fliegen (WASD, R/F hoch/runter, Pfeiltasten schauen) und mit F8 Punkte merken. Nach dem Schließen von CS2 gehen die Punkte an die Webseite. Läuft mit eigenem CS2-Konfigurationsordner, deine Tastenbelegung bleibt unverändert; eine vorhandene `console.log` wird nur gelesen.
+- Schon geladene Valve-Demos desselben Matches nutzt der Companion wieder, statt sie erneut zu laden.
 
 ### Neu in 0.16.1: Sprechblase im TecMon-Gold-Stil
 

@@ -41,6 +41,12 @@ Die Versionen und SHA256-Prüfsummen der bezogenen Originalpakete stehen in depe
 
 Beim öffentlichen Download-Installer sind HLAE und FFmpeg nicht im EXE-Payload enthalten: Das Setup lädt die unveränderten Originalpakete bei Bedarf direkt von den oben genannten Anbietern herunter und prüft deren SHA256. Das Kernpaket enthält die übrigen oben aufgeführten Programme mit ihren mitgelieferten Lizenzdateien.
 
+boiler-writter 1.7.0 (AkiVer) · MIT
+Quellcode: https://github.com/akiver/boiler-writter · Paket: https://registry.npmjs.org/@akiver/boiler-writter/-/boiler-writter-1.7.0.tgz
+Wird von der eigenen TecMon-Engine beim ersten Sharecode-Download geladen und gegen die SHA-512-Prüfsumme der npm-Registry geprüft. Enthält steam_api64.dll aus dem Steamworks SDK (Valve).
+
+Die eigene TecMon-Engine (internal-recorder.mjs, valve-download.mjs) folgt im Ablauf CS Demo Manager 3.20.1 (MIT, Copyright AkiVer und Beitragende).
+
 CS2-Aufnahme-Plugin: offizieller Upstream-Build mit Fix #1483, bei der ersten Aufnahme separat geladen und SHA256-geprüft. MIT und enthaltene Drittanbieter-Hinweise.
 Quelle und Binärdatei: https://github.com/akiver/cs-demo-manager/tree/01f655f20141d366e07a5869f84554df3a61c64a
 SHA256 server.dll: 1ad610f84577d4e9ef22e2757858049420f86649cd89a1afcd4738358d054086

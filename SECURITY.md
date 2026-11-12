@@ -54,3 +54,11 @@ Die Rundentipps nutzen ausschließlich Valves offizielle Game State Integration:
 ## Daten von der Webseite ab 0.15
 
 `POST /bridge/insights` nimmt nur von freigegebenen Webseiten mit gültigem Bridge-Token eine Zusammenfassung der eigenen Matches an (`insights-v1`, ab 0.16 `insights-v2` mit Summen eigener Gewohnheiten und Waffenwerte). `cleanInsights()` prüft und kürzt alle Felder; Daten anderer Spieler werden nicht angenommen. Gespeichert wird lokal in `insights.json` (Modus 600, höchstens vier Konten). Die Daten verlassen den PC nicht und lassen sich im Companion mit „Webseiten-Daten löschen“ entfernen.
+
+## Eigene TecMon-Engine ab 0.17
+
+Download und Aufnahme können ohne CS-Demo-Manager-Programm und ohne PostgreSQL laufen (`internal-recorder.mjs`, `valve-download.mjs`). Fremde Binärdateien starten nur mit fester Prüfsumme: das CS2-Plugin über `PLUGIN_SHA256` in `recording-engine.mjs`, boiler-writter über die feste npm-Integrität. Bei Abweichung bricht der Companion ab. Läuft CS2 schon, bricht die Aufnahme ab, statt das Spiel zu beenden; in `gameinfo.gi` wird nur die eigene Zeile ergänzt und danach wieder entfernt. Befehle in der Aktionsdatei und der Kameraplan für das HLAE-Skript (`camera-script.mjs`) entstehen nur aus geprüften Zahlen und bereinigten Namen des Auftrags, nie aus freiem Text der Webseite. Das Skript läuft nur bei der Offline-Demo-Wiedergabe, nie im Live-Match. „Kamera im Spiel setzen“ nutzt einen eigenen CS2-Konfigurationsordner und liest `console.log` nur.
+
+## Automatische Updates ab 0.17.1
+
+Automatische Updates nutzen dieselben Prüfungen wie der Knopf (Manifest, Größe, SHA-256), laufen nie während Download, Aufnahme oder Kamera-Sitzung und lassen sich unter „Erweitert → Updates & Info“ abschalten (`updates.json`). Für die Grenzen der Hash-Prüfung gilt der Abschnitt „Programm-Updates ab 0.4“.

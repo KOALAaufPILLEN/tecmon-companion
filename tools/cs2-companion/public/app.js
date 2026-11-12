@@ -103,6 +103,8 @@ async function refresh() {
   }
   gameTips(state.gsi);
   databaseState(state.postgres);
+  $('auto-update-row').hidden=!state.updates?.available; $('auto-update').checked=!!state.updates?.auto; $('auto-update-note').textContent=state.updates?.auto?'Neue Versionen werden nach der Prüfung von Größe und Prüfsumme selbst installiert, nie während eines Downloads oder einer Aufnahme. Danach startet der Companion neu.':'Aus: Neue Versionen erscheinen als Hinweis und werden erst nach deinem Klick installiert.';
+ $('own-engine-card').hidden=!state.engine?.available; $('own-engine').checked=!!state.engine?.internal; $('own-engine-note').textContent=state.engine?.internal?'Aktiv: Download und Aufnahme laufen ohne CS Demo Manager. Ältere Aufträge ohne Spieler-Slots nutzen automatisch weiter CS Demo Manager.':'Aus: Download und Aufnahme laufen wie bisher über CS Demo Manager und die lokale Datenbank.';
   $('csdm-open').hidden = !state.managed;
   $('database-port').disabled = state.managed;
   if(state.managed && state.postgres.lazy) { $('database-status').textContent='PostgreSQL startet erst bei Bedarf';$('database-note').textContent='Die lokale Datenbank wird beim ersten Demo-Download, bei einer Aufnahme oder beim Öffnen von CS Demo Manager gestartet.'; }
@@ -205,6 +207,8 @@ $('database-install').addEventListener('click', async () => {
   finally { await refresh().catch(notice); }
 });
 $('engine-browse').addEventListener('click', async () => { try { const selected=await api('/api/pick',{kind:'engine'}); if(selected.path) $('engine').value=selected.path; } catch(error) { notice(error); } });
+$('auto-update').addEventListener('change',async()=>{const box=$('auto-update');box.disabled=true;try{await api('/api/update/auto',{auto:box.checked});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});
+$('own-engine').addEventListener('change',async()=>{const box=$('own-engine');box.disabled=true;try{await api('/api/engine',{internal:box.checked});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});
 $('csdm-open').addEventListener('click', async () => { try { const result=await api('/api/csdm/open',{}); $('notice').textContent=result.message; } catch(error) { notice(error); } });
 let latestUpdate=null;
 function updateOffer(result){

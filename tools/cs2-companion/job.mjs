@@ -37,6 +37,8 @@ export function validateJob(value) {
     if (typeof s.steamId !== "string" || !/^\d{17}$/.test(s.steamId)) fail();
     const account = BigInt(s.steamId) - 76561197960265728n;
     if (account < 1n || account > 4294967295n) fail();
+    // spec_player-Wert des Spielers (Controller-Index, 1-64). Optional: ältere Webseiten senden ihn nicht.
+    if (s.slot !== undefined && (!Number.isSafeInteger(s.slot) || s.slot < 1 || s.slot > 64)) fail();
     ticks += s.endTick - s.startTick;
     const cuts = cameraCuts(s.cuts, s.startTick, s.endTick, fail);
     return {
@@ -44,6 +46,7 @@ export function validateJob(value) {
       endTick: s.endTick,
       steamId: s.steamId,
       playerName: text(s.playerName, 64) || "Spieler",
+      ...(s.slot === undefined ? {} : { slot: s.slot }),
       ...(cuts.length ? { cuts } : {}),
     };
   });
@@ -79,26 +82,62 @@ function cameraCuts(value, startTick, endTick, fail) {
     if (c.tick < startTick || c.tick >= endTick || c.tick < last) fail();
     last = c.tick;
     if (c.kind === "player") return { tick: c.tick, kind: "player" };
-    if (c.kind !== "free") fail();
-    return {
-      tick: c.tick,
-      kind: "free",
-      x: Math.round(num(c.x, COORD) * 100) / 100,
-      y: Math.round(num(c.y, COORD) * 100) / 100,
-      z: Math.round(num(c.z, COORD) * 100) / 100,
-      pitch: Math.round(num(c.pitch, 89) * 100) / 100,
-      yaw: Math.round(num(c.yaw, 360) * 100) / 100,
-    };
+    if (c.kind === "free") return { tick: c.tick, kind: "free", ...view(c, num) };
+    if (c.kind === "follow") {
+      const range = (v, min, max) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? Math.round(v * 10) / 10 : fail());
+      return {
+        tick: c.tick,
+        kind: "follow",
+        distance: range(c.distance, FOLLOW.distance[0], FOLLOW.distance[1]),
+        height: range(c.height, FOLLOW.height[0], FOLLOW.height[1]),
+        orbit: range(c.orbit, FOLLOW.orbit[0], FOLLOW.orbit[1]),
+        // Startwinkel um den Spieler (180 = von vorn, Spieler-Intro); fehlt bei älteren Webseiten.
+        angle: c.angle === undefined ? 0 : range(c.angle, FOLLOW.angle[0], FOLLOW.angle[1]),
+      };
+    }
+    if (c.kind !== "path" || !Array.isArray(c.keys) || c.keys.length < 2 || c.keys.length > MAX_KEYS) fail();
+    let previous = c.tick - 1;
+    const keys = c.keys.map((k) => {
+      if (!k || typeof k !== "object" || !Number.isSafeInteger(k.tick) || k.tick <= previous || k.tick > endTick) fail();
+      previous = k.tick;
+      return { tick: k.tick, ...view(k, num) };
+    });
+    if (keys[0].tick !== c.tick) fail();
+    return { tick: c.tick, kind: "path", keys };
   });
 }
+
+/** Position in Spieleinheiten und Blick in Grad, auf zwei Nachkommastellen. */
+function view(c, num) {
+  return {
+    x: Math.round(num(c.x, COORD) * 100) / 100,
+    y: Math.round(num(c.y, COORD) * 100) / 100,
+    z: Math.round(num(c.z, COORD) * 100) / 100,
+    pitch: Math.round(num(c.pitch, 89) * 100) / 100,
+    yaw: Math.round(num(c.yaw, 360) * 100) / 100,
+  };
+}
+
+/**
+ * Kamerafahrten ("path") und Verfolger-Kamera ("follow") steuert das
+ * TecMon-Skript in HLAE. Nur die eigene Engine kann das; über CS Demo Manager
+ * wird eine Fahrt zum festen Punkt am ersten Wegpunkt und die Verfolger-Kamera
+ * zur Egoansicht.
+ */
+export const MAX_KEYS = 8;
+export const FOLLOW = { distance: [40, 800], height: [-200, 400], orbit: [-180, 180], angle: [-180, 180] };
+export const scriptedCut = (c) => c.kind === "path" || c.kind === "follow";
+export const needsScript = (job) => job.sequences.some((s) => (s.cuts || []).some(scriptedCut));
 
 /** Feste Kamerapunkte eines Auftrags mit den IDs, unter denen sie in CS Demo Manager liegen. */
 export function jobCameras(job, newId) {
   const list = [];
   job.sequences.forEach((s, i) =>
     (s.cuts || []).forEach((c, j) => {
-      if (c.kind !== "free") return;
-      list.push({ sequence: i, tick: c.tick, id: newId(), name: `TecMon ${i + 1}.${j + 1}`, x: c.x, y: c.y, z: c.z, pitch: c.pitch, yaw: c.yaw });
+      // Eine Kamerafahrt beginnt am ersten Wegpunkt; dorthin springt auch CS Demo Manager.
+      const p = c.kind === "free" ? c : c.kind === "path" ? c.keys[0] : null;
+      if (!p) return;
+      list.push({ sequence: i, tick: c.tick, id: newId(), name: `TecMon ${i + 1}.${j + 1}`, x: p.x, y: p.y, z: p.z, pitch: p.pitch, yaw: p.yaw });
     }),
   );
   return list;
@@ -149,11 +188,12 @@ export function recordingConfig(job, demoPath, outputFolderPath, quality, camera
       ],
       playerCameras: [
         // Beginnt die Szene mit einem festen Punkt, nicht vorher noch auf den Spieler schalten.
-        ...(s.cuts?.[0]?.kind === "free" && s.cuts[0].tick === s.startTick
+        ...(["free", "path"].includes(s.cuts?.[0]?.kind) && s.cuts[0].tick === s.startTick
           ? []
           : [{ tick: s.startTick, playerSteamId: s.steamId, playerName: s.playerName }]),
+        // Die Verfolger-Kamera schaut auf den Szenen-Spieler; HUD und Name bleiben seine.
         ...(s.cuts || [])
-          .filter((c) => c.kind === "player")
+          .filter((c) => c.kind === "player" || (c.kind === "follow" && c.tick !== s.startTick))
           .map((c) => ({ tick: c.tick, playerSteamId: s.steamId, playerName: s.playerName })),
       ],
       cameras: cameras
