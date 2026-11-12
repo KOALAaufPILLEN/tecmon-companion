@@ -105,6 +105,16 @@ function openInExplorer(target, select = false) {
 
 const JOB_DIR = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Aufruf des Updaters. `detached` ist Pflicht: Node (libuv) legt Kindprozesse
+ * unter Windows sonst in ein Job-Objekt, das sie beendet, sobald dieser Dienst
+ * endet. Der Updater wartet aber gerade darauf, dass der Dienst endet, und
+ * wurde so mitten im Warten beendet: Companion zu, nichts aktualisiert.
+ */
+export const updaterCommand = (target, pid) => [
+  ["--apply-update", target, String(pid)],
+  { stdio: "ignore", windowsHide: true, detached: true },
+];
 export async function createCompanion({
   dataDir = path.join(local, "TecMon", "Companion"),
   runProcess,
@@ -122,7 +132,7 @@ export async function createCompanion({
   autoUpdate = { first: 0, every: 0 },
   findUpdate = checkUpdate,
   fetchUpdate = downloadUpdate,
-  launchUpdate = (file) => spawn(file, ["--apply-update", root, String(process.pid)], { stdio: "ignore", windowsHide: true }),
+  launchUpdate = (file) => spawn(file, ...updaterCommand(root, process.pid)),
 } = {}) {
   if (installation) dataDir = path.join(installation.dataDir, "Jobs");
   await mkdir(dataDir, { recursive: true });

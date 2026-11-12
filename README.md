@@ -66,7 +66,20 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
-### Neu in 0.17.2: Fehlerbehebung Video-Übernahme
+### Neu in 0.17.3: Update aus dem Companion heraus funktioniert
+
+Beim Update über den Knopf oder automatisch schloss sich der Companion, ohne
+zu aktualisieren, und musste von Hand neu gestartet werden. Ursache: Der
+Updater wurde als Kindprozess des lokalen Dienstes gestartet, und Windows
+beendete ihn zusammen mit dem Dienst, auf dessen Ende er gerade wartete. Der
+Updater läuft jetzt losgelöst, ersetzt die Programmdateien und startet den
+Companion danach wieder.
+
+Wichtig: Der Fehler steckt in den installierten Versionen bis 0.17.2. Auf
+0.17.3 darum einmal mit der Update-EXE von der Release-Seite aktualisieren
+(Doppelklick). Ab 0.17.3 klappen Updates aus dem Companion heraus.
+
+## Neu in 0.17.2: Fehlerbehebung Video-Übernahme
 
 Mit der eigenen TecMon-Engine kam die fertige MP4 nicht auf die Webseite
 („The "path" argument must be of type string“). Das Video wurde aufgenommen,

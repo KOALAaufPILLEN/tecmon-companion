@@ -4,7 +4,7 @@ import { EventEmitter } from "node:events";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createCompanion } from "../server.mjs";
+import { createCompanion, updaterCommand } from "../server.mjs";
 
 async function setup(over = {}) {
   const dir = await mkdtemp(path.join(tmpdir(), "tecmon-auto-"));
@@ -58,4 +58,12 @@ test("Abgeschaltet oder ohne neue Version passiert nichts", async () => {
   assert.equal(broken.calls.launched, 0, "fehlerhaftes Update startet nicht");
   assert.equal(broken.calls.exited, 0);
   broken.server.close();
+});
+
+test("Updater läuft losgelöst vom Dienst, sonst beendet Windows ihn mit dem Dienst", () => {
+  const [args, options] = updaterCommand("C:\\TecMon", 4711);
+  assert.deepEqual(args, ["--apply-update", "C:\\TecMon", "4711"]);
+  assert.equal(options.detached, true, "ohne detached endet der Updater mit dem Dienst (Job-Objekt von Node)");
+  assert.equal(options.stdio, "ignore");
+  assert.equal(options.windowsHide, true);
 });
