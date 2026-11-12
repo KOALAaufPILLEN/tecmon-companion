@@ -140,12 +140,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.19.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.19.1",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.19.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.19.1");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -160,7 +160,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.19.0"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.19.1"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -288,7 +288,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.19.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.19.1 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -725,17 +725,25 @@ class DesktopPet : Form {
     var sleepItem=new ToolStripMenuItem("Schlafen schicken",null,async(s,e)=>await PetAction(petAsleep?"wake":"sleep"));buddy.DropDownItems.Add(sleepItem);
     buddy.DropDownItems.Add(new ToolStripSeparator());buddy.DropDownItems.Add("Werte anzeigen",null,(s,e)=>OpenPanel("tecmon",""));
     buddy.DropDownOpening+=(s,e)=>sleepItem.Text=petAsleep?"Aufwecken":"Schlafen schicken";menu.Items.Add(buddy);
-    var games=new ToolStripMenuItem("Spiele");
-    foreach(var pair in new[]{new[]{"Reaktionstest","reaction"},new[]{"Schere, Stein, Papier","rps"},new[]{"Callout-Quiz","quiz"}}){string game=pair[1];games.DropDownItems.Add(pair[0],null,(s,e)=>OpenPanel("spiele",game));}
+    var games=new ToolStripMenuItem("Spiele mit TecMon");
+    foreach(var pair in new[]{new[]{"Reaktionstest","reaction"},new[]{"Ziele treffen","aim"},new[]{"Muster merken","memory"},new[]{"Schere, Stein, Papier","rps"},new[]{"Zahl raten","guess"}}){string game=pair[1];games.DropDownItems.Add(pair[0],null,(s,e)=>OpenPanel("spiele",game));}
     menu.Items.Add(games);
     personality=new ToolStripMenuItem("Persönlichkeit");
     foreach(var pair in new[]{new[]{"Super nett","nett"},new[]{"Normal","normal"},new[]{"Nerdy","nerdy"},new[]{"HUAN-Modus","huan"}}){string mode=pair[1];var item=new ToolStripMenuItem(pair[0]){Tag=mode,Checked=mode=="normal"};item.Click+=async(s,e)=>await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");personality.DropDownItems.Add(item);}
     menu.Items.Add(personality);menu.Items.Add(new ToolStripSeparator());
     menu.Items.Add("Einstellungen öffnen",null,(s,e)=>{Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();});
     menu.Items.Add("TecMon öffnen",null,(s,e)=>DesktopPanel.OpenExternal("https://tecmon.online"));
-    menu.Items.Add("Videos-Ordner öffnen",null,async(s,e)=>{try{await Request("/api/videos/folder",true);}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}});
     updateItem=new ToolStripMenuItem("Nach Updates suchen",null,async(s,e)=>await CheckUpdate(false));menu.Items.Add(updateItem);
-    tipsItem=new ToolStripMenuItem("CS2-Rundentipps");tipsOn=new ToolStripMenuItem("Eingeschaltet",null,async(s,e)=>await ToggleTips());tipsItem.DropDownItems.Add(tipsOn);tipsItem.DropDownItems.Add(new ToolStripSeparator());menu.Items.Add(tipsItem);
+    /* Games: spielbezogene Integrationen, zuerst CS2. Weitere Spiele sind geplant. */
+    var gamesRoot=new ToolStripMenuItem("Games");var cs2=new ToolStripMenuItem("CS2");
+    tipsItem=new ToolStripMenuItem("Rundentipps");tipsOn=new ToolStripMenuItem("Eingeschaltet",null,async(s,e)=>await ToggleTips());tipsItem.DropDownItems.Add(tipsOn);tipsItem.DropDownItems.Add(new ToolStripSeparator());cs2.DropDownItems.Add(tipsItem);
+    cs2.DropDownItems.Add("Highlights aufnehmen",null,(s,e)=>OpenPanel("games",""));
+    cs2.DropDownItems.Add("Fadenkreuz einstellen",null,(s,e)=>OpenPanel("fadenkreuz",""));
+    cs2.DropDownItems.Add("Callout-Quiz",null,(s,e)=>OpenPanel("quiz","quiz"));
+    cs2.DropDownItems.Add("Waffenpreis-Quiz",null,(s,e)=>OpenPanel("quiz","price"));
+    cs2.DropDownItems.Add("Letzte Videos",null,(s,e)=>OpenPanel("videos",""));
+    cs2.DropDownItems.Add("Videos-Ordner öffnen",null,async(s,e)=>{try{await Request("/api/videos/folder",true);}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}});
+    gamesRoot.DropDownItems.Add(cs2);gamesRoot.DropDownItems.Add(new ToolStripSeparator());gamesRoot.DropDownItems.Add(new ToolStripMenuItem("Weitere Spiele geplant"){Enabled=false});menu.Items.Add(gamesRoot);
     var figure=new ToolStripMenuItem("Figur");
     var fly=new ToolStripMenuItem("Umherfliegen"){Checked=true,CheckOnClick=true};fly.CheckedChanged+=(s,e)=>wandering=fly.Checked;figure.DropDownItems.Add(fly);
     var motion=new ToolStripMenuItem("Animation"){Checked=true,CheckOnClick=true};motion.CheckedChanged+=(s,e)=>{animate=motion.Checked;Render();};figure.DropDownItems.Add(motion);
@@ -746,7 +754,7 @@ class DesktopPet : Form {
     menu.Opening+=(s,e)=>webview.Visible=!DesktopPanel.WebViewInstalled();
     menu.Items.Add(new ToolStripSeparator());menu.Items.Add("Companion beenden",null,async(s,e)=>await Quit());ContextMenuStrip=menu;
     /* Gleicher Look für alle Untermenüs. */
-    TecMonMenu.Apply(menu);foreach(ToolStripItem item in menu.Items){var sub=item as ToolStripMenuItem;if(sub!=null&&sub.HasDropDownItems){TecMonMenu.Apply(sub.DropDown);}}tipsItem.DropDownOpening+=(s,e)=>TecMonMenu.Apply(tipsItem.DropDown);
+    TecMonMenu.Apply(menu);StyleSubmenus(menu.Items);tipsItem.DropDownOpening+=(s,e)=>TecMonMenu.Apply(tipsItem.DropDown);
     if(!preview){tray=new NotifyIcon{Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath),Text="TecMon Companion · Klick für Einstellungen",Visible=true,ContextMenuStrip=menu};tray.MouseClick+=(s,e)=>{if(e.Button==MouseButtons.Left){Show();Toggle();}};}
     MouseEnter+=(s,e)=>hover=true;MouseLeave+=(s,e)=>hover=false;
     MouseDown+=(s,e)=>{if(e.Button!=MouseButtons.Left)return;dragging=true;moved=false;dragStart=Cursor.Position;start=Location;Capture=true;};
@@ -854,6 +862,7 @@ class DesktopPet : Form {
   /* TecMon-Werte und Sprüche aus dem Companion (personality.mjs). */
   ToolStripMenuItem personality;bool petAsleep;long lastPetEvent=-1;double spinLeft;
   static readonly Dictionary<string,int> FaceNames=new Dictionary<string,int>{{"happy",Happy},{"laugh",Laugh},{"love",Love},{"star",Star},{"sleepy",Sleepy},{"surprised",Surprised},{"wink",Wink},{"sad",Sad},{"cool",Cool},{"angry",Angry},{"confused",Confused},{"tongue",Tongue},{"kiss",Kiss},{"dizzy",Dizzy}};
+  static void StyleSubmenus(ToolStripItemCollection items){foreach(ToolStripItem item in items){var sub=item as ToolStripMenuItem;if(sub!=null&&sub.HasDropDownItems){TecMonMenu.Apply(sub.DropDown);StyleSubmenus(sub.DropDownItems);}}}
   void OpenPanel(string id,string game){Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();if(panel!=null)panel.Jump(id,game);}
   async Task PetAction(string action){await PetRequest("/api/pet/interact","{\"action\":\""+action+"\"}");}
   async Task PetRequest(string route,string body){

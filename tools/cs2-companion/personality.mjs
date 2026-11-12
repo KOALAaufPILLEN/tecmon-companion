@@ -108,7 +108,9 @@ const LINES = {
 };
 
 export const ACTIONS = ["poke", "joke", "compliment", "trick", "sleep", "wake"];
-export const GAMES = ["reaction", "rps", "quiz"];
+export const GAMES = ["reaction", "rps", "quiz", "guess", "memory", "price", "aim"];
+/** Bei diesen Spielen ist ein kleinerer Wert besser (Millisekunden, Versuche). */
+export const LOWER_BETTER = ["reaction", "guess", "aim"];
 const FACE = { poke: "happy", joke: "laugh", compliment: "love", trick: "star", sleep: "sleepy", wake: "surprised", tired: "sleepy", mode: "wink", win: "star", lose: "sad" };
 const HUAN_FACE = { compliment: "cool", poke: "angry", trick: "cool", win: "confused", lose: "laugh" };
 
@@ -231,7 +233,7 @@ export async function createPet(dir, { now = () => Date.now(), rand = Math.rando
       tick(); count(`game_${game}`); if (win) count(`win_${game}`);
       const n = Number(score);
       if (Number.isFinite(n) && n > 0) {
-        const lowerBetter = game === "reaction";
+        const lowerBetter = LOWER_BETTER.includes(game);
         const old = data.best[game];
         if (old === undefined || (lowerBetter ? n < old : n > old)) data.best[game] = Math.round(n);
       }
