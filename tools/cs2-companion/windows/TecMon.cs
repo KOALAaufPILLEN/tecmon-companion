@@ -405,7 +405,7 @@ class DesktopPanel : Form {
   Control web;Label fallback=new Label();bool initialized;
   readonly Panel surface=new Panel(),chrome=new Panel();bool tailLeft;Point headerDrag,windowDrag;bool moving;
   public bool TailLeft {get{return tailLeft;}set{tailLeft=value;Shape();}}
-  static readonly Color Cyan=Color.FromArgb(103,232,249);
+  static readonly Color Violet=Color.FromArgb(167,139,250);
   public static System.Drawing.Drawing2D.GraphicsPath Bubble(Size size,bool left) {
     float x=left?19:1,y=1,w=size.Width-21,h=size.Height-2,r=22;
     var path=new System.Drawing.Drawing2D.GraphicsPath();
@@ -416,14 +416,14 @@ class DesktopPanel : Form {
     path.CloseFigure();return path;
   }
   void Shape(){if(ClientSize.Width<100)return;using(var path=Bubble(ClientSize,tailLeft)){var previous=Region;Region=new Region(path);if(previous!=null)previous.Dispose();}int x=tailLeft?32:14;chrome.SetBounds(x,12,ClientSize.Width-48,42);surface.SetBounds(x,61,ClientSize.Width-48,ClientSize.Height-83);Invalidate();}
-  Button ChromeButton(string label,string accessible,Color color,Action action){var b=new Button{Text=label,AccessibleName=accessible,FlatStyle=FlatStyle.Flat,ForeColor=color,BackColor=Color.FromArgb(9,35,48),Font=new Font("Segoe UI",13),Size=new Size(34,30),Cursor=Cursors.Hand,TabStop=true};b.FlatAppearance.BorderColor=color;b.FlatAppearance.MouseOverBackColor=Color.FromArgb(24,65,78);b.Click+=(s,e)=>action();return b;}
-  protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);e.Graphics.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;using(var path=Bubble(ClientSize,tailLeft))using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Color.FromArgb(8,47,65),Color.FromArgb(4,20,32),45))using(var pen=new Pen(Cyan,1.5f)){e.Graphics.FillPath(fill,path);e.Graphics.DrawPath(pen,path);}using(var line=new Pen(Color.FromArgb(16,165,243,252)))for(int y=5;y<Height;y+=4)e.Graphics.DrawLine(line,24,y,Width-24,y);}
+  Button ChromeButton(string label,string accessible,Color color,Action action){var b=new Button{Text=label,AccessibleName=accessible,FlatStyle=FlatStyle.Flat,ForeColor=color,BackColor=Color.FromArgb(27,22,38),Font=new Font("Segoe UI",13),Size=new Size(34,30),Cursor=Cursors.Hand,TabStop=true};b.FlatAppearance.BorderColor=Color.FromArgb(140,color);b.FlatAppearance.MouseOverBackColor=Color.FromArgb(47,36,64);b.Click+=(s,e)=>action();return b;}
+  protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);e.Graphics.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;using(var path=Bubble(ClientSize,tailLeft))using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Color.FromArgb(27,22,38),Color.FromArgb(11,10,17),90))using(var glow=new Pen(Color.FromArgb(70,Violet),4))using(var pen=new Pen(TecMon.Gold,1.5f)){e.Graphics.FillPath(fill,path);e.Graphics.DrawPath(glow,path);e.Graphics.DrawPath(pen,path);}}
 
   public DesktopPanel() {
     Text="TecMon · Verbindung & Einstellungen";ClientSize=new Size(520,640);MinimumSize=new Size(440,450);StartPosition=FormStartPosition.Manual;BackColor=TecMon.Background;ForeColor=Color.White;ShowInTaskbar=true;FormBorderStyle=FormBorderStyle.None;DoubleBuffered=true;KeyPreview=true;Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-    surface.BackColor=Color.FromArgb(4,20,32);Controls.Add(surface);chrome.BackColor=Color.FromArgb(7,29,42);Controls.Add(chrome);
-    var title=new Label{Text="TECMON // HOLOLINK",AutoSize=false,ForeColor=Cyan,Font=new Font("Segoe UI",10,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft,Dock=DockStyle.Fill,Cursor=Cursors.SizeAll};chrome.Controls.Add(title);
-    var close=ChromeButton("×","Sprechblase schließen",Color.FromArgb(251,113,133),()=>Hide());var collapse=ChromeButton("−","Sprechblase einklappen",Cyan,()=>Hide());chrome.Controls.Add(close);chrome.Controls.Add(collapse);
+    surface.BackColor=Color.FromArgb(14,11,22);Controls.Add(surface);chrome.BackColor=Color.FromArgb(27,22,38);Controls.Add(chrome);
+    var title=new Label{Text="TecMon",AutoSize=false,ForeColor=TecMon.Gold,Font=new Font("Segoe UI",10,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft,Dock=DockStyle.Fill,Cursor=Cursors.SizeAll};chrome.Controls.Add(title);
+    var close=ChromeButton("×","Sprechblase schließen",Color.FromArgb(251,113,133),()=>Hide());var collapse=ChromeButton("−","Sprechblase einklappen",Violet,()=>Hide());chrome.Controls.Add(close);chrome.Controls.Add(collapse);
     chrome.Resize+=(sender,args)=>{close.Location=new Point(chrome.Width-36,5);collapse.Location=new Point(chrome.Width-76,5);title.Width=Math.Max(100,chrome.Width-90);close.BringToFront();collapse.BringToFront();};
     title.MouseDown+=(sender,args)=>{if(args.Button!=MouseButtons.Left)return;moving=true;headerDrag=Cursor.Position;windowDrag=Location;title.Capture=true;};title.MouseMove+=(sender,args)=>{if(!moving)return;var point=new Point(windowDrag.X+Cursor.Position.X-headerDrag.X,windowDrag.Y+Cursor.Position.Y-headerDrag.Y);Location=DesktopPet.Fit(point,Screen.FromPoint(Cursor.Position).WorkingArea,Size);};title.MouseUp+=(sender,args)=>{moving=false;title.Capture=false;};
     KeyDown+=(sender,args)=>{if(args.KeyCode==Keys.Escape)Hide();};Resize+=(sender,args)=>Shape();Shape();

@@ -68,13 +68,16 @@ Neueste Version zuerst.
 
 ### Neu in 0.18.2: Hellere Figur, neue LED-Gesichter, Menü im TecMon-Stil
 
-- **Heller:** Die 3D-Figur ist mit Umgebungslicht neu gerendert. Gold und
-  Metall wirken auf dunklen und hellen Hintergründen deutlich heller.
+- **Heller:** Die 3D-Figur ist mit Umgebungslicht neu gerendert, auf einer
+  mittleren Helligkeit: Gold und Metall sind gut erkennbar, ohne zu überstrahlen.
 - **Neue LED-Gesichter:** Statt Smiley jetzt ein schlichter Visier-Look:
   Balken-Augen, Blinzeln als Linie, Lächeln als Bögen, beim Sprechen ein
   Equalizer statt Mund. Das im Modell eingeformte alte Lächeln ist geglättet.
 - **Menü:** Das Rechtsklick-Menü der Figur (und das Tray-Menü) hat den Look der
   Rundentipp-Sprechblase: dunkle Fläche, goldener Rahmen, lila Auswahl.
+- **Linksklick-Fenster aufgeräumt:** Gleicher Stil wie Sprechblase und Menü.
+  Kompakter Kopf, kürzere Karten; „Companion beenden“ und Hinweise stehen im
+  Rechtsklick-Menü bzw. unter „Erweitert“.
 
 ### Neu in 0.18.1: Aufnahme nach dem CS2-Update repariert
 
