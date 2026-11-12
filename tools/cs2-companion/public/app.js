@@ -262,3 +262,38 @@ fetch('/api/health',{cache:'no-store'}).then(r=>r.json()).then(h=>{$('version-la
 let timer = setInterval(() => refresh().catch(notice), 2000);
 refresh().then(()=>{if(latestState?.managed)checkUpdate(true);}).catch(notice);
 loadVideos().catch(()=>{});setInterval(()=>{if(!restarting)loadVideos().catch(()=>{});},10000);
+/* Fadenkreuz-Editor: nur CS2-eigene Einstellungen, Vorschau grob wie CS2 bei 1080 Zeilen (doppelt vergrößert). */
+let crosshair=null,crosshairInfo=null;
+const crossKeys=['size','gap','thickness','outlineThickness','alpha'];
+const hex=c=>'#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');
+function crossCommands(c){const b=v=>v?1:0;return [`cl_crosshairstyle ${c.style}`,`cl_crosshairsize ${c.size}`,`cl_crosshairgap ${c.gap}`,`cl_crosshairthickness ${c.thickness}`,`cl_crosshair_drawoutline ${b(c.outline)}`,`cl_crosshair_outlinethickness ${c.outlineThickness}`,'cl_crosshaircolor 5',`cl_crosshaircolor_r ${c.color[0]}`,`cl_crosshaircolor_g ${c.color[1]}`,`cl_crosshaircolor_b ${c.color[2]}`,`cl_crosshairusealpha ${b(c.alpha<255)}`,`cl_crosshairalpha ${c.alpha}`,`cl_crosshairdot ${b(c.dot)}`,`cl_crosshair_t ${b(c.tStyle)}`,'cl_crosshairgap_useweaponvalue 0'];}
+function drawCrosshair(){
+  const canvas=$('crosshair-preview');if(!canvas||!crosshair)return;const g=canvas.getContext('2d'),c=crosshair,s=2,w=canvas.width;
+  const sky=g.createLinearGradient(0,0,0,w);sky.addColorStop(0,'#c9b48a');sky.addColorStop(.55,'#9c8763');sky.addColorStop(.56,'#6d5b44');sky.addColorStop(1,'#4b3e2f');g.fillStyle=sky;g.fillRect(0,0,w,w);
+  const t=Math.max(1,Math.round(Math.max(.5,c.thickness)*2))*s,len=Math.round(c.size*2)*s,gap=Math.max(0,Math.round(c.gap+4))*s,half=Math.floor(t/2),o=c.outline?Math.max(1,Math.round(c.outlineThickness))*s/2:0;
+  const rects=[];if(len>0){rects.push([gap,-half,len,t],[-gap-len,-half,len,t],[-half,gap,t,len]);if(!c.tStyle)rects.push([-half,-gap-len,t,len]);}if(c.dot)rects.push([-half,-half,t,t]);
+  g.save();g.translate(w/2,w/2);g.globalAlpha=c.alpha/255;
+  if(o){g.fillStyle='#000';for(const r of rects)g.fillRect(r[0]-o,r[1]-o,r[2]+2*o,r[3]+2*o);}
+  g.fillStyle=hex(c.color);for(const r of rects)g.fillRect(...r);g.restore();
+}
+function showCrosshair(){
+  if(!crosshair)return;const c=crosshair;
+  for(const k of crossKeys){const input=$('crosshair-'+k);input.value=c[k];input.nextElementSibling.textContent=c[k];}
+  $('crosshair-style').value=c.style;$('crosshair-color').value=hex(c.color);for(const k of ['outline','dot','tStyle'])$('crosshair-'+k).checked=c[k];
+  $('crosshair-commands').textContent=crossCommands(c).join('\n');drawCrosshair();
+}
+async function loadCrosshair(){
+  if(!$('crosshair-preview'))return;
+  try{crosshairInfo=await api('/api/crosshair');crosshair=crosshairInfo.crosshair;$('crosshair-exec').textContent=crosshairInfo.exec;
+    $('crosshair-style').replaceChildren(...crosshairInfo.styles.map(s=>{const o=el('option',s.label);o.value=s.id;return o;}));
+    $('crosshair-presets').replaceChildren(...crosshairInfo.presets.map(p=>{const b=el('button',p.label,'subtle');b.type='button';b.addEventListener('click',()=>{crosshair={...p.crosshair,color:[...p.crosshair.color]};showCrosshair();});return b;}));
+    if(!crosshairInfo.available)$('crosshair-save').textContent='Speichern';showCrosshair();}catch(error){notice(error);}
+}
+for(const k of crossKeys)$('crosshair-'+k)?.addEventListener('input',e=>{crosshair[k]=Number(e.target.value);showCrosshair();});
+for(const k of ['outline','dot','tStyle'])$('crosshair-'+k)?.addEventListener('change',e=>{crosshair[k]=e.target.checked;showCrosshair();});
+$('crosshair-style')?.addEventListener('change',e=>{crosshair.style=Number(e.target.value);showCrosshair();});
+$('crosshair-color')?.addEventListener('input',e=>{const v=e.target.value;crosshair.color=[1,3,5].map(i=>parseInt(v.slice(i,i+2),16));showCrosshair();});
+$('crosshair-import')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/decode',{code:$('crosshair-code').value});crosshair=result.crosshair;showCrosshair();notice({message:'Fadenkreuz-Code übernommen. Zum Anwenden „In CS2 speichern“.'});}catch(error){notice(error);}});
+$('crosshair-copy')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(crossCommands(crosshair).join('; '));notice({message:'Befehle kopiert. In der CS2-Konsole einfügen.'});}catch(error){notice(error);}});
+$('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/save',{crosshair});crosshair=result.crosshair;showCrosshair();notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
+loadCrosshair();

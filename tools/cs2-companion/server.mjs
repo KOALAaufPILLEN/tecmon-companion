@@ -24,6 +24,7 @@ import { browserDemos } from "./browser-demo.mjs";
 import { createGameTips, FEATURES } from "./game-tips.mjs";
 import { createInsightsStore } from "./insights.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
+import { createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
 import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { checkPostgres, postgresEnvironment } from "./postgresql.mjs";
@@ -186,6 +187,8 @@ export async function createCompanion({
   }
   // CS2 Game State Integration: offizielle, rein lesende Schnittstelle für Rundentipps.
   const gsi = await createGsiSettings(installation?.profileDir || dataDir);
+  const crosshair = await createCrosshairSettings(installation?.profileDir || dataDir);
+  const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES });
   /* Radarbilder bringt CS Demo Manager mit (resources/static/images/maps/cs2/radars). Nur lokal lesen. */
   function radarPath(map) {
     if (!/^de_[a-z0-9_]+$/.test(map) || !detected.csdm) return "";
@@ -787,6 +790,7 @@ export async function createCompanion({
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
         });
+      if (req.method === "GET" && url.pathname === "/api/crosshair") return json(res, 200, crosshairState());
       if (req.method === "GET" && url.pathname === "/api/videos")
         return json(res, 200, { videos: await recentVideos(), folder: dataDir });
       if (req.method === "GET" && url.pathname === "/api/video")
@@ -825,6 +829,20 @@ export async function createCompanion({
           message: "Rundentipps eingeschaltet. Falls CS2 gerade läuft, das Spiel einmal neu starten.",
           gsi: gsiState(),
         });
+      }
+      if (url.pathname === "/api/crosshair/save") {
+        const result = await crosshair.save(input.crosshair, detected.cs2);
+        return json(res, 200, {
+          ...crosshairState(),
+          message: result.written
+            ? `Fadenkreuz gespeichert. In CS2 einmal in die Konsole tippen: ${CROSSHAIR_EXEC}`
+            : "Fadenkreuz gespeichert. CS2 wurde nicht gefunden: Befehle kopieren und in die CS2-Konsole einfügen.",
+        });
+      }
+      if (url.pathname === "/api/crosshair/decode") {
+        const decoded = decodeCrosshairCode(typeof input.code === "string" ? input.code.slice(0, 64) : "");
+        if (!decoded) throw new Error("Das ist kein gültiger CS2-Fadenkreuz-Code (CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx).");
+        return json(res, 200, { crosshair: decoded, commands: crosshairCommands(decoded) });
       }
       if (url.pathname === "/api/gsi/features") {
         const known = new Set(FEATURES.map((f) => f.id));
