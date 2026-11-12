@@ -79,3 +79,17 @@ html:has(.desktop-panel){background:#0e0b16;scrollbar-color:#a78bfa #1b1626}
 .crosshair-commands{font-size:11px;max-height:120px;overflow:auto;padding:8px 10px;border-radius:8px}
 @media (max-width:520px){.crosshair-grid{grid-template-columns:1fr}.crosshair-grid canvas{margin:auto}}
 .crosshair-controls input[type=range],.crosshair-checks input{accent-color:#a78bfa}
+/* TecMon-Karte und Spiele */
+.pet-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px;margin:8px 0}
+.pet-stats label{display:grid;grid-template-columns:90px 1fr 48px;gap:8px;align-items:center;font-size:12px}
+.pet-stats meter{width:100%;height:10px}.pet-stats output{font-size:11px;color:var(--muted);text-align:right}
+meter::-webkit-meter-bar{background:#1b1626;border:1px solid #3a2f4d;border-radius:6px}meter::-webkit-meter-optimum-value{background:linear-gradient(90deg,#a78bfa,#e8c573);border-radius:6px}meter::-webkit-meter-suboptimum-value{background:#e8c573;border-radius:6px}meter::-webkit-meter-even-less-good-value{background:#fb7185;border-radius:6px}
+.pet-says{font-style:italic;color:#d8cbff;min-height:1.2em;margin:6px 0}
+.pet-row{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;margin:6px 0}.pet-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.pet-buttons{display:flex;flex-wrap:wrap;gap:6px}.pet-buttons button{padding:4px 12px;font-size:12px}
+.pet-counts{font-size:11px;color:var(--muted);margin:6px 0 0}
+.game-area{margin:10px 0;min-height:60px}.quiz-question{font-weight:600}
+.reaction-box{width:100%;height:110px;font-size:20px;font-weight:700;border-radius:12px;background:#1b1626;border:1px solid #3a2f4d;color:#a49cb8}
+.reaction-box.go{background:linear-gradient(135deg,#a78bfa,#6d4fc4);color:#fff;border-color:#e8c573}.reaction-box.fail{background:#3a1520;color:#fb7185}
+@media (max-width:520px){.pet-stats{grid-template-columns:1fr}.pet-row{grid-template-columns:1fr}}
+.pet-buttons button[aria-checked="true"]{background:linear-gradient(135deg,#8b5cf6,#d4a72c);color:#fff;border-color:#f5d36b;box-shadow:0 0 10px rgba(167,139,250,.55)}

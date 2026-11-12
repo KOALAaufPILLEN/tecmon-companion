@@ -140,12 +140,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.18.3",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.19.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.18.3");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.19.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -160,7 +160,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.18.3"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.19.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -288,7 +288,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.18.3 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.19.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -459,8 +459,16 @@ class DesktopPanel : Form {
       object core=view.CoreWebView2;
       Attach(core,"NavigationStarting","Navigation");Attach(core,"NewWindowRequested","NewWindow");Attach(core,"PermissionRequested","Permission");
       dynamic settings=view.CoreWebView2.Settings;settings.AreDevToolsEnabled=false;settings.AreDefaultContextMenusEnabled=false;settings.IsStatusBarEnabled=false;
-      view.Source=new Uri("http://127.0.0.1:31977/?desktop=1");
+      view.Source=new Uri("http://127.0.0.1:31977/?desktop=1"+startHash);
     }catch(Exception){if(web!=null){web.Dispose();web=null;}fallback.BringToFront();fallback.Text="Das eingebettete Fenster benötigt Microsoft Edge WebView2 Runtime.\n\nDie Figur bleibt verfügbar. Über das Rechtsklick-Menü kannst du das Studio im Browser öffnen oder zur offiziellen WebView2-Downloadseite wechseln.";}};
+  }
+  /* Zu einem Bereich der Seite springen (feste IDs), optional ein Spiel starten. */
+  string startHash="";
+  public void Jump(string id,string game){
+    if(!System.Text.RegularExpressions.Regex.IsMatch(id,"^[a-z]+$")||!System.Text.RegularExpressions.Regex.IsMatch(game??"","^[a-z]*$"))return;
+    string script="document.getElementById('"+id+"')?.scrollIntoView({behavior:'smooth'});"+(string.IsNullOrEmpty(game)?"":"document.querySelector('[data-game="+game+"]')?.click();");
+    if(web==null){startHash="#"+id;return;}
+    try{dynamic view=web;if(view.CoreWebView2!=null)view.CoreWebView2.ExecuteScriptAsync(script);}catch(Exception){}
   }
   void Attach(object core,string eventName,string method) {var info=core.GetType().GetEvent(eventName);info.AddEventHandler(core,Delegate.CreateDelegate(info.EventHandlerType,this,GetType().GetMethod(method,BindingFlags.Instance|BindingFlags.Public)));}
   public void Navigation(object sender,object args) {dynamic e=args;Uri uri;if(!Uri.TryCreate((string)e.Uri,UriKind.Absolute,out uri)||uri.Scheme!="http"||uri.Host!="127.0.0.1"||uri.Port!=31977){e.Cancel=true;OpenExternal((string)e.Uri);}}
@@ -711,6 +719,18 @@ class DesktopPet : Form {
     }
     var menu=new ContextMenuStrip();
     statusItem=new ToolStripMenuItem("Status wird geprüft …"){Enabled=false};menu.Items.Add(statusItem);menu.Items.Add(new ToolStripSeparator());
+    /* TecMon selbst: Interaktionen, Persönlichkeit und Spiele. */
+    var buddy=new ToolStripMenuItem("TecMon");
+    foreach(var pair in new[]{new[]{"Anstupsen","poke"},new[]{"Witz erzählen","joke"},new[]{"Kompliment","compliment"},new[]{"Trick zeigen","trick"}}){string action=pair[1];buddy.DropDownItems.Add(pair[0],null,async(s,e)=>await PetAction(action));}
+    var sleepItem=new ToolStripMenuItem("Schlafen schicken",null,async(s,e)=>await PetAction(petAsleep?"wake":"sleep"));buddy.DropDownItems.Add(sleepItem);
+    buddy.DropDownItems.Add(new ToolStripSeparator());buddy.DropDownItems.Add("Werte anzeigen",null,(s,e)=>OpenPanel("tecmon",""));
+    buddy.DropDownOpening+=(s,e)=>sleepItem.Text=petAsleep?"Aufwecken":"Schlafen schicken";menu.Items.Add(buddy);
+    var games=new ToolStripMenuItem("Spiele");
+    foreach(var pair in new[]{new[]{"Reaktionstest","reaction"},new[]{"Schere, Stein, Papier","rps"},new[]{"Callout-Quiz","quiz"}}){string game=pair[1];games.DropDownItems.Add(pair[0],null,(s,e)=>OpenPanel("spiele",game));}
+    menu.Items.Add(games);
+    personality=new ToolStripMenuItem("Persönlichkeit");
+    foreach(var pair in new[]{new[]{"Super nett","nett"},new[]{"Normal","normal"},new[]{"Nerdy","nerdy"},new[]{"HUAN-Modus","huan"}}){string mode=pair[1];var item=new ToolStripMenuItem(pair[0]){Tag=mode,Checked=mode=="normal"};item.Click+=async(s,e)=>await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");personality.DropDownItems.Add(item);}
+    menu.Items.Add(personality);menu.Items.Add(new ToolStripSeparator());
     menu.Items.Add("Einstellungen öffnen",null,(s,e)=>{Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();});
     menu.Items.Add("TecMon öffnen",null,(s,e)=>DesktopPanel.OpenExternal("https://tecmon.online"));
     menu.Items.Add("Videos-Ordner öffnen",null,async(s,e)=>{try{await Request("/api/videos/folder",true);}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}});
@@ -735,7 +755,7 @@ class DesktopPet : Form {
     KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&panel!=null)panel.Hide();else if(e.KeyCode==Keys.Enter||e.KeyCode==Keys.Space)Toggle();};
     /* Etwa 60 Bilder pro Sekunde; Bewegung nach vergangener Zeit statt pro Takt, damit sie gleichmäßig bleibt. */
     animation.Interval=15;animation.Tick+=(s,e)=>Tick();
-    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowTip(state);if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
+    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowTip(state);ShowPet(state);if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
     Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
     FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
@@ -760,7 +780,9 @@ class DesktopPet : Form {
     if(wandering&&animate&&!dragging&&!hover&&(panel==null||!panel.Visible)&&!ContextMenuStrip.Visible&&!Talking(now)&&pendingTip==null){var bounds=Screen.FromRectangle(Bounds).WorkingArea;x+=vx*dt*25;y+=vy*dt*25;if(x<bounds.Left||x+Width>bounds.Right)vx=-vx;if(y<bounds.Top||y+Height>bounds.Bottom)vy=-vy;var next=Fit(new Point((int)Math.Round(x),(int)Math.Round(y)),bounds,Size);if(next!=Location)Location=next;x=Math.Max(bounds.Left,Math.Min(bounds.Right-Width,x));y=Math.Max(bounds.Top,Math.Min(bounds.Bottom-Height,y));}
     if(model!=null&&animate){
       /* Gedämpfte Feder: weiches Anlaufen und Abbremsen beim Drehen. */
-      double diff=Turn(Target(now));yawVel+=(diff*70-yawVel*16.7)*dt;yaw=((yaw+yawVel*dt)%360+360)%360;
+      /* Trick: eine schnelle ganze Drehung, danach federt die Figur wieder nach vorn. */
+      if(spinLeft>0){double step=Math.Min(spinLeft,600*dt);spinLeft-=step;yaw=(yaw+step)%360;yawVel=0;}
+      else{double diff=Turn(Target(now));yawVel+=(diff*70-yawVel*16.7)*dt;yaw=((yaw+yawVel*dt)%360+360)%360;}
       if(now>blinkAt){blinkUntil=now+0.14;blinkAt=now+2.5+random.NextDouble()*4;}
     }else if(model!=null){yaw=0;yawVel=0;}
     Render();
@@ -781,7 +803,7 @@ class DesktopPet : Form {
     if(pendingTip!=null)return Surprised;
     if(Talking(now)){int m=(int)(now*9)%4;return m==1?TalkB:m==3?-1:TalkA;}
     if(now<happyUntil)return afterTalk>=0?afterTalk:Happy;
-    if(!watching&&now-activeAt>SleepAfter)return Sleepy;
+    if(petAsleep||(!watching&&now-activeAt>SleepAfter))return Sleepy;
     if(now<blinkUntil)return Blink;
     if(now<moodUntil&&mood>=0)return mood;
     return -1;
@@ -828,6 +850,32 @@ class DesktopPet : Form {
     };
     if(model==null||!animate||!Visible){show();return;}
     pendingTip=show;pendingSince=clock.Elapsed.TotalSeconds;
+  }
+  /* TecMon-Werte und Sprüche aus dem Companion (personality.mjs). */
+  ToolStripMenuItem personality;bool petAsleep;long lastPetEvent=-1;double spinLeft;
+  static readonly Dictionary<string,int> FaceNames=new Dictionary<string,int>{{"happy",Happy},{"laugh",Laugh},{"love",Love},{"star",Star},{"sleepy",Sleepy},{"surprised",Surprised},{"wink",Wink},{"sad",Sad},{"cool",Cool},{"angry",Angry},{"confused",Confused},{"tongue",Tongue},{"kiss",Kiss},{"dizzy",Dizzy}};
+  void OpenPanel(string id,string game){Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();if(panel!=null)panel.Jump(id,game);}
+  async Task PetAction(string action){await PetRequest("/api/pet/interact","{\"action\":\""+action+"\"}");}
+  async Task PetRequest(string route,string body){
+    try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request(route,true,body));var wrap=new Dictionary<string,object>();wrap["pet"]=result.ContainsKey("pet")?result["pet"]:null;ShowPet(wrap);}
+    catch(Exception error){if(tray!=null)tray.ShowBalloonTip(4000,"TecMon",error.Message,ToolTipIcon.Warning);}
+  }
+  void ShowPet(Dictionary<string,object> state){
+    object raw;var pet=state.TryGetValue("pet",out raw)?raw as Dictionary<string,object>:null;if(pet==null)return;
+    petAsleep=pet.ContainsKey("asleep")&&Convert.ToBoolean(pet["asleep"]);
+    string mode=pet.ContainsKey("mode")?Convert.ToString(pet["mode"]):"normal",label="TecMon";
+    if(personality!=null)foreach(ToolStripItem item in personality.DropDownItems){var entry=item as ToolStripMenuItem;if(entry==null)continue;entry.Checked=Convert.ToString(entry.Tag)==mode;if(entry.Checked)label="TecMon · "+entry.Text;}
+    var ev=pet.ContainsKey("event")?pet["event"] as Dictionary<string,object>:null;if(ev==null)return;
+    long id=Convert.ToInt64(ev["id"]);if(id==lastPetEvent)return;bool first=lastPetEvent<0;lastPetEvent=id;
+    /* Beim Start keinen alten Spruch wiederholen; während einer Live-Runde schweigt TecMon. */
+    if(first&&clock.Elapsed.TotalSeconds>5)first=false;if(first||watching||busy)return;
+    string text=Convert.ToString(ev["text"]);if(string.IsNullOrEmpty(text))return;
+    int face;afterTalk=FaceNames.TryGetValue(Convert.ToString(ev.ContainsKey("face")?ev["face"]:""),out face)?face:Happy;
+    if(ev.ContainsKey("spin")&&Convert.ToBoolean(ev["spin"]))spinLeft=360;
+    activeAt=clock.Elapsed.TotalSeconds;mood=-1;
+    /* Ist das Fenster offen, steht der Spruch dort; die Figur spricht dann nur mit Gesicht und Mund. */
+    if(panel==null||panel.IsDisposed||!panel.Visible){if(tip==null||tip.IsDisposed)tip=new TipBubble();var area=Screen.PrimaryScreen.WorkingArea;tip.Present(label,text,Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),null,-1,false);}
+    double now=clock.Elapsed.TotalSeconds;talkUntil=now+Math.Min(4,1+text.Length*0.04);happyUntil=talkUntil+1.6;
   }
   /* Nicht gelieferte Funktionen gelten als an, wie im Companion. */
   static bool FeatureOn(Dictionary<string,object> gsi,string id){object raw;var list=gsi.TryGetValue("features",out raw)?raw as System.Collections.IList:null;if(list==null)return true;foreach(var entry in list){var feature=entry as Dictionary<string,object>;if(feature!=null&&Convert.ToString(feature["id"])==id)return Convert.ToBoolean(feature["enabled"]);}return true;}

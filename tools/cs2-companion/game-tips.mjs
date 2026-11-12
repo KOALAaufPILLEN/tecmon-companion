@@ -370,6 +370,8 @@ export function createGameTips({
   radarPath = () => "",
   enabled = () => true,
   insights = () => null,
+  /* Persönlichkeit: Einstieg vor dem Tipp je nach Modus; Standard lässt den Text unverändert. */
+  flavor = (_category, text) => text,
 } = {}) {
   let tipId = 0;
   let current = null;
@@ -428,7 +430,7 @@ export function createGameTips({
   }
 
   function publish(entry) {
-    current = { id: ++tipId, text: entry.text, category: entry.category, round: entry.round, at: now() };
+    current = { id: ++tipId, text: flavor(entry.category, entry.text), category: entry.category, round: entry.round, at: now() };
     if (entry.visual) current.visual = entry.visual;
     /* Bilder brauchen länger zum Lesen als ein Satz. */
     gap = entry.visual ? VISUAL_GAP : MIN_GAP;
