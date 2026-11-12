@@ -1,7 +1,7 @@
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
-export const VERSION = "0.17.3";
+export const VERSION = "0.18.0";
 const repo = "https://api.github.com/repos/KOALAaufPILLEN/tecmon-companion";
 const releasePrefix = "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/";
 const version = /^\d+\.\d+\.\d+$/;

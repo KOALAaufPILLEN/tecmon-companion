@@ -169,7 +169,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     );
   const config = previous || {
     format: "tecmon-installation-v1",
-    version: "0.17.3",
+    version: "0.18.0",
     installationId: randomUUID(),
     dataDir: options.dataDir,
     clusterDir: path.join(privateDir, "postgres", "data"),

@@ -1,0 +1,31 @@
+<!doctype html><html><body style="margin:0;background:transparent">
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const S=Number(new URLSearchParams(location.search).get('s')||512);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true,premultipliedAlpha:false});
+renderer.setSize(S,S);renderer.setClearColor(0x000000,0);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(22,1,0.1,50);
+scene.add(new THREE.HemisphereLight(0xd8cbff,0x1a1426,1.4));
+const key=new THREE.DirectionalLight(0xffffff,2.6);key.position.set(2,3,4);scene.add(key);
+const rim=new THREE.DirectionalLight(0xa78bfa,2.2);rim.position.set(-3,2,-3);scene.add(rim);
+const fill=new THREE.DirectionalLight(0xffe2a8,0.8);fill.position.set(-3,0.5,3);scene.add(fill);
+const tl=new THREE.TextureLoader();
+const tex=(n,srgb)=>new Promise(r=>tl.load(n+'.png',t=>{t.flipY=false;if(srgb)t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;r(t)}));
+window.ready=(async()=>{
+  const [d,e,n,m,ro]=await Promise.all([tex('diffuse',1),tex('emissive',1),tex('normal_flat'),tex('metallic'),tex('roughness')]);
+  window.tex0=d;window.em0=e;
+  const g=await new GLTFLoader().loadAsync('base.glb');
+  const mat=new THREE.MeshStandardMaterial({map:d,emissiveMap:e,emissive:0xffffff,emissiveIntensity:1.4,normalMap:n,metalnessMap:m,roughnessMap:ro,metalness:1,roughness:1,side:THREE.DoubleSide});
+  window.mat=mat;
+  g.scene.traverse(o=>{if(o.isMesh)o.material=mat});
+  const pivot=new THREE.Group();pivot.add(g.scene);g.scene.position.set(0,-0.635,0);scene.add(pivot);window.pivot=pivot;
+  cam.position.set(0,0.1,5.6);cam.lookAt(0,0,0);
+  return true;
+})();
+window.shot=(yaw,pitch=0)=>{pivot.rotation.set(pitch,yaw,0);renderer.render(scene,cam);return renderer.domElement.toDataURL('image/png');};
+window.setFace=async(n)=>{const [d,e]=await Promise.all([tex('diffuse_'+n,1),tex('emissive_'+n,1)]);mat.map=d;mat.emissiveMap=e;mat.needsUpdate=true;};
+</script></body></html>

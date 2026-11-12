@@ -98,6 +98,10 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   -r:System.Core.dll -r:System.IO.Compression.dll
   -r:System.IO.Compression.FileSystem.dll -out:/tmp/t.exe TecMon.cs`
 - Die Sprechblase nimmt CS2 nie den Fokus.
+- Die 3D-Figur ist ein vorab gerendertes Sprite-Sheet
+  (`public/desktop-bot-3d.png`, Ressource `TecMonBot3D`, Pipeline in
+  `scripts/figure-3d/`). Kein 3D-Renderer im Companion. Figur und Sprechblase
+  zeichnen per Pixel-Alpha (`Layered.Push`), nicht über `Region`.
 
 ## Prüfen und veröffentlichen
 

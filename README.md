@@ -66,6 +66,22 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.18.0: 3D-TecMon mit LED-Gesicht
+
+- **Neue 3D-Figur:** Der TecMon auf dem Desktop ist jetzt das 3D-Modell. Es
+  wurde vorab in 36 Drehwinkeln gerendert, die Figur dreht sich darum rundum
+  ohne 3D-Grafik im Companion. Fehlt das Bild, erscheint die bisherige Figur.
+- **LED-Gesicht:** Das gemalte Gesicht ist durch eine LED-Punktmatrix ersetzt
+  (normal, blinzeln, lächeln, sprechen, Aufnahme).
+- **Flüssiger:** etwa 60 Bilder pro Sekunde, Bewegung nach Zeit statt pro
+  Takt, weiches Schweben, Wiegen und gedämpftes Drehen.
+- **In der Runde:** Läuft die Runde und du lebst (Rundentipps an), dreht sich
+  die Figur zum Spiel und kehrt dir den Rücken zu. Kommt ein Tipp, dreht sie
+  sich zu dir um, die Sprechblase erscheint und der LED-Mund spricht.
+- **Freigestellte Sprechblase:** Die Sprechblase ist jetzt ein Fenster mit
+  echter Transparenz je Pixel. Der dunkle Rand um Rahmen und Spitze ist weg,
+  der lila Schein läuft weich aus. Sie nimmt CS2 weiterhin nie den Fokus.
+
 ### Neu in 0.17.3: Update aus dem Companion heraus funktioniert
 
 Beim Update über den Knopf oder automatisch schloss sich der Companion, ohne
