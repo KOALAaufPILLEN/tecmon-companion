@@ -23,6 +23,7 @@ $native=Join-Path $source 'windows/TecMon.cs'
 $refs=@('/nologo','/target:winexe','/platform:x64','/optimize+','/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:System.Web.Extensions.dll','/r:Microsoft.CSharp.dll',('/win32icon:'+(Join-Path $source 'windows/tecmon.ico')))
 $refs+=('/resource:'+(Join-Path $source 'public/splash-logo.png')+',TecMonLogo')
 $refs+=('/resource:'+(Join-Path $source 'public/desktop-bot.png')+',TecMonBot')
+$refs+=('/resource:'+(Join-Path $source 'public/desktop-bot-3d.png')+',TecMonBot3D')
 & $compiler @refs ('/out:'+(Join-Path $stage 'TecMon Companion.exe')) $native
 if($LASTEXITCODE -ne 0){throw 'Launcher build failed'}
 Add-Type -AssemblyName System.IO.Compression.FileSystem
