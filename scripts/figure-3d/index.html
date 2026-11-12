@@ -6,7 +6,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 const Q=new URLSearchParams(location.search);const S=Number(Q.get('s')||512);
 // Helligkeit: 0 = erste, sehr dunkle Fassung; 1 = sehr hell. Standard dazwischen.
-const L=Number(Q.get('light')||0.45);const mix=(a,b)=>a+(b-a)*L;
+const L=Number(Q.get('light')||0.3);const mix=(a,b)=>a+(b-a)*L;
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true,premultipliedAlpha:false});
 renderer.setSize(S,S);renderer.setClearColor(0x000000,0);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=mix(1.1,1.5);
 document.body.appendChild(renderer.domElement);

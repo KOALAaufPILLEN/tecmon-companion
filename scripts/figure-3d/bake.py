@@ -10,8 +10,8 @@ X0,X1,Y0,Y1=670,1010,905,1465
 # Visier = dunkle/lila Fläche im Gesichtsbereich, nicht Gold.
 m=Image.new('L',D.size,0); px=D.load(); mp=m.load()
 # Zweite UV-Insel: unterer Visierrand mit einem Rest des alten Munds.
-# Dritte Insel: unterer Visierbogen, im Atlas golden eingefärbt, gehört ganz zum Visier.
-BOXES=[(X0,X1,Y0,Y1,False),(1120,1240,1590,1720,False),(1425,1560,0,110,True)]
+# Dritte Insel: unterer Visierbogen; das Gold bleibt, sonst entsteht ein dunkler Fleck am Kinn.
+BOXES=[(X0,X1,Y0,Y1,False),(1120,1240,1590,1720,False),(1425,1560,0,110,False)]
 for (bx0,bx1,by0,by1,whole) in BOXES:
   for x in range(bx0,bx1):
     for y in range(by0,by1):
@@ -23,17 +23,27 @@ rest=ImageChops.subtract(m,main).filter(ImageFilter.MaxFilter(7)).filter(ImageFi
 # Nur die Hauptfläche einziehen, damit das LED-Gesicht nicht an den Goldrand stößt.
 m=ImageChops.lighter(main.filter(ImageFilter.MinFilter(9)).filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(3)),rest)
 
+TILT=float(os.environ.get('TECMON_TILT','-7'))
+CX,CY=int(os.environ.get('TECMON_CX','850')),int(os.environ.get('TECMON_CY','1185'))
+SPECKS=[(1995,935,2048,1015)]
 def bake(name):
-    f=faces.face(name).rotate(-90,expand=True)   # Gesicht oben -> +x im Atlas
+    # Gesicht oben -> +x im Atlas. TILT gleicht die Schräglage der UV-Insel aus,
+    # sonst sitzt das rechte Auge in der Vorderansicht höher als das linke.
+    f=faces.face(name).rotate(-90+TILT,expand=True,resample=Image.BICUBIC)
+    px0,py0=CX-f.size[0]//2,CY-f.size[1]//2
     base=Image.new('RGBA',f.size,(14,8,22,255)); base.alpha_composite(f)
     d=D.copy(); e=E.copy()
     from PIL import ImageStat
     # Visierreste außerhalb des Gesichts in der mittleren Visierfarbe (mit LED-Raster gemittelt) füllen.
     fe=Image.new('RGBA',f.size,(0,0,0,255)); fe.alpha_composite(f)
     avg_d=tuple(int(v) for v in ImageStat.Stat(base.convert('RGB')).mean); avg_e=tuple(int(v) for v in ImageStat.Stat(fe.convert('RGB')).mean)
-    vd=Image.new('RGB',D.size,avg_d); vd.paste(base.convert('RGB'),(1005-f.size[0]+0,1185-f.size[1]//2))
-    ve=Image.new('RGB',D.size,avg_e); ve.paste(fe.convert('RGB'),(1005-f.size[0],1185-f.size[1]//2))
+    vd=Image.new('RGB',D.size,avg_d); vd.paste(base.convert('RGB'),(px0,py0))
+    ve=Image.new('RGB',D.size,avg_e); ve.paste(fe.convert('RGB'),(px0,py0))
     d.paste(vd,(0,0),m); e.paste(ve,(0,0),m)
+    # Rest des alten Munds ausserhalb des Visiers: leuchtete als kleiner Punkt unter dem Gesicht.
+    for box in SPECKS:
+        dark=tuple(int(v) for v in ImageStat.Stat(d.crop((box[0]-12,box[1],box[0]-2,box[3]))).mean)
+        d.paste(dark,box); e.paste((0,0,0),box)
     return d,e
 if __name__=='__main__':
     for n in sys.argv[1:]:

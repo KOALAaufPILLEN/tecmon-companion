@@ -70,9 +70,10 @@ Neueste Version zuerst.
 
 - **Heller:** Die 3D-Figur ist mit Umgebungslicht neu gerendert, auf einer
   mittleren Helligkeit: Gold und Metall sind gut erkennbar, ohne zu überstrahlen.
-- **Neue LED-Gesichter:** Statt Smiley jetzt ein schlichter Visier-Look:
-  Balken-Augen, Blinzeln als Linie, Lächeln als Bögen, beim Sprechen ein
-  Equalizer statt Mund. Das im Modell eingeformte alte Lächeln ist geglättet.
+- **Neue LED-Gesichter:** Hohe, runde LED-Augen, Blinzeln als Linie, Freude
+  als Bögen, beim Sprechen ein kleiner ovaler Mund. Beide Augen sitzen jetzt
+  exakt auf gleicher Höhe (das Gesicht lag im Modell leicht schräg). Das alte,
+  ins Modell eingeformte Lächeln und ein Leuchtpunkt am Kinn sind entfernt.
 - **Menü:** Das Rechtsklick-Menü der Figur (und das Tray-Menü) hat den Look der
   Rundentipp-Sprechblase: dunkle Fläche, goldener Rahmen, lila Auswahl.
 - **Linksklick-Fenster aufgeräumt:** Gleicher Stil wie Sprechblase und Menü.
