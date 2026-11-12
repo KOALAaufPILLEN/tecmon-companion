@@ -1,8 +1,8 @@
 # 3D-Figur: GLB zu Sprite-Sheet
 
 Die Desktop-Figur (`windows/TecMon.cs`) hat keinen 3D-Renderer (nur .NET
-Framework 4, C# 5). Das 3D-Modell wird darum vorab gerendert: 36 Drehwinkel
-plus LED-Gesichter, zusammen in `tools/cs2-companion/public/desktop-bot-3d.png`.
+Framework 4, C# 5). Das 3D-Modell wird darum vorab gerendert: 72 Drehwinkel (5°)
+plus 19 LED-Ausdrücke, zusammen in `tools/cs2-companion/public/desktop-bot-3d.png`.
 Das Bild wird als Ressource `TecMonBot3D` in die EXE eingebaut.
 
 Das Modell (`base.glb`, ~26 MB) und seine Texturen liegen nicht im Repository.
@@ -19,7 +19,7 @@ cp index.html "$TECMON_3D_WORK/"
 ln -s "$TECMON_3D_WORK/node_modules/three" "$TECMON_3D_WORK/three"
 for t in diffuse emissive normal metallic roughness; do cp "$TECMON_3D/texture_$t.png" "$TECMON_3D_WORK/$t.png"; done
 cp "$TECMON_3D/base.glb" "$TECMON_3D_WORK/"
-python3 bake.py idle blink happy talkA talkB focus busy   # Gesicht überdecken, LED-Gesichter einsetzen
+python3 bake.py $(python3 -c "import faces;print(*faces.FACES)")   # Gesicht überdecken, LED-Gesichter einsetzen
 mkdir -p "$TECMON_3D_WORK/frames"
 node render.cjs "$TECMON_3D_WORK/frames"
 python3 sheet.py "$TECMON_3D_WORK/frames" ../../tools/cs2-companion/public/desktop-bot-3d.png

@@ -33,3 +33,34 @@ html:has(.holo){background:#041420;scrollbar-color:#22b8ce #082c3c;scrollbar-wid
 .holo aside{background:#06202e;border-color:#226576}.holo .brand{color:#a5f3fc}.holo .local i{background:#22d3ee}.holo .version{border-color:#226576;color:#9dbdca}.holo .stats{background:#082638;border-color:#226576}.holo .stats div+div{border-color:#226576}
 .game-tips .section-head{align-items:flex-start}.tip-item{border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13px}.tip-item small{display:block;color:var(--muted);font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
 .tips-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 16px;margin:10px 0}.tips-features label{display:flex;gap:8px;align-items:center;font-size:12px;color:#e6f9fc}.tips-features input{width:auto;margin:0}.tips-insights{font-size:12px}
+
+/* 0.18.2: Desktop-Fenster der Figur im Stil der Rundentipp-Sprechblase (dunkel, Gold, Lila) und aufgeräumt. */
+html:has(.desktop-panel){background:#0e0b16;scrollbar-color:#a78bfa #1b1626}
+.desktop-panel.holo{--bg:#0e0b16;--card:#17121f;--line:#3a2f4d;--gold:#e8c573;--violet:#a78bfa;--muted:#a49cb8;background:linear-gradient(170deg,#1b1626,#0b0a11);color:#f1eef7}
+.desktop-panel.holo ::-webkit-scrollbar-track{background:#1b1626}.desktop-panel.holo ::-webkit-scrollbar-thumb{background:linear-gradient(#a78bfa,#6d4fc4);border-color:#1b1626}
+.desktop-panel main{padding:10px 12px 14px}
+.desktop-panel header{position:absolute;top:10px;right:12px}
+.desktop-panel .minimal-hero{padding:4px 0 6px;gap:12px;align-items:center}
+.desktop-panel .minimal-hero>img{width:46px;height:46px;filter:drop-shadow(0 0 8px #a78bfa55)}
+.desktop-panel .minimal-hero .eyebrow,.desktop-panel .minimal-hero p{display:none}
+.desktop-panel .minimal-hero h1{font-size:20px;margin:0;color:var(--gold);text-shadow:none}
+.desktop-panel .website-open{margin-top:6px;padding:4px 12px;font-size:12px}
+.desktop-panel.holo .card{background:linear-gradient(160deg,#1d1729e6,#0f0c16f0);border:1px solid #e8c57355;border-radius:12px;box-shadow:inset 0 0 16px #a78bfa0d;padding:12px 14px;margin:10px 0}
+.desktop-panel .card .eyebrow{font-size:9px;letter-spacing:2px;color:var(--violet)}
+.desktop-panel h2{font-size:15px;margin:2px 0 4px;text-shadow:none!important}
+.desktop-panel .card p{font-size:12px;margin:4px 0}
+.desktop-panel.holo button,.desktop-panel.holo .button{border:1px solid #e8c57388;color:#f6e7c1;background:linear-gradient(135deg,#2a2036,#17121f);box-shadow:none;border-radius:8px;padding:5px 12px;font-size:12px}
+.desktop-panel.holo button:hover,.desktop-panel.holo .button:hover{border-color:var(--gold);background:#2f2440;box-shadow:0 0 10px #a78bfa33}
+.desktop-panel.holo .badge{border-color:#a78bfa77;color:#d8cbff}
+.desktop-panel.holo .status-orb{background:var(--violet);box-shadow:0 0 10px #a78bfa66}
+.desktop-panel.holo .connection-summary.is-connected .status-orb{background:#84d6ac;box-shadow:0 0 10px #84d6ac66}
+.desktop-panel.holo a:not(.button){color:#d8cbff}
+.desktop-panel.holo input,.desktop-panel.holo select,.desktop-panel.holo textarea,.desktop-panel.holo pre{background:#120e19;border-color:#3a2f4d;color:#f1eef7}
+.desktop-panel.holo .tab[aria-selected="true"]{color:var(--gold);border-color:#e8c57366;background:#17121f;box-shadow:none}
+.desktop-panel.holo .update-banner{border-color:#e8c57388;background:#e8c57312}.desktop-panel.holo .update-banner b{color:var(--gold)}
+.desktop-panel.holo .recent-item,.desktop-panel.holo .tip-item{border-color:#3a2f4d}
+.desktop-panel.holo .activity-progress{background:#2a2036}.desktop-panel.holo .activity-progress span{background:linear-gradient(90deg,#a78bfa,#e8c573)}
+.desktop-panel.holo #advanced-panel{border-color:#3a2f4d}
+.desktop-panel .tips-features label{color:#e9e4f3}
+/* Beenden, Studio öffnen und Hinweise stehen im Rechtsklick-Menü bzw. unter „Erweitert“. */
+.desktop-panel footer,.desktop-panel .danger-zone{display:none}

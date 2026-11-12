@@ -33,7 +33,8 @@ test("opening managed Companion starts no database or CSDM; a confirmed download
   assert.equal((await state()).postgres.lazy,true);assert.equal(starts,0);assert.equal(runs,0);
   const response=await fetch(base+"/api/demos/download",{method:"POST",headers,body:JSON.stringify({format:"tecmon-match-download",version:1,shareCodes:["CSGO-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA"],confirm:true,csdm:exe})});
   assert.equal(response.status,202);
-  let result;for(let i=0;i<50;i++){result=await state();if(!result.active)break;await new Promise(resolve=>setTimeout(resolve,10));}
+  /* Bis zu 5 s warten: Windows-Runner brauchen für den Auftrag oft länger als 0,5 s. */
+  let result;for(const end=Date.now()+5000;Date.now()<end;){result=await state();if(!result.active&&result.downloads[0]?.status!=="downloading")break;await new Promise(resolve=>setTimeout(resolve,20));}
   assert.equal(starts,1);assert.equal(runs,1);assert.equal(result.postgres.ready,true);assert.equal(result.downloads[0].status,"done");
 });
 
