@@ -93,3 +93,10 @@ meter::-webkit-meter-bar{background:#1b1626;border:1px solid #3a2f4d;border-radi
 .reaction-box.go{background:linear-gradient(135deg,#a78bfa,#6d4fc4);color:#fff;border-color:#e8c573}.reaction-box.fail{background:#3a1520;color:#fb7185}
 @media (max-width:520px){.pet-stats{grid-template-columns:1fr}.pet-row{grid-template-columns:1fr}}
 .pet-buttons button[aria-checked="true"]{background:linear-gradient(135deg,#8b5cf6,#d4a72c);color:#fff;border-color:#f5d36b;box-shadow:0 0 10px rgba(167,139,250,.55)}
+.aim-field{position:relative;height:200px;border:1px solid rgba(212,167,44,.35);border-radius:10px;background:radial-gradient(circle at 50% 50%,rgba(139,92,246,.12),transparent 70%);overflow:hidden}
+.aim-target{position:absolute;width:30px;height:30px;padding:0;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,#fff 0 18%,#8b5cf6 19% 45%,#f5d36b 46% 60%,#8b5cf6 61%);border:none;box-shadow:0 0 12px rgba(167,139,250,.8);cursor:crosshair}
+.memory-grid{display:grid;grid-template-columns:repeat(2,64px);gap:10px;margin:6px 0}
+.memory-pad{width:64px;height:64px;border-radius:12px;padding:0;opacity:.45;transition:opacity .12s,box-shadow .12s}.memory-pad.lit{opacity:1;box-shadow:0 0 16px currentColor}
+.memory-pad.violet{background:#8b5cf6;color:#8b5cf6}.memory-pad.gold{background:#d4a72c;color:#d4a72c}.memory-pad.cyan{background:#22d3ee;color:#22d3ee}.memory-pad.pink{background:#f472b6;color:#f472b6}
+.guess-input{width:90px}
+.games-head p{margin:4px 0 0;color:var(--muted)}

@@ -52,6 +52,18 @@ test("TecMon-Werte: Interaktion, Energie, Schlaf, Spiele, Speichern", async (t) 
   s = await pet.game("reaction", { win: true, score: 250 });
   s = await pet.game("reaction", { win: false, score: 400 });
   assert.equal(s.best.reaction, 250, "kleinere Reaktionszeit ist besser");
+  await pet.game("aim", { win: true, score: 5200 });
+  s = await pet.game("aim", { win: false, score: 7000 });
+  assert.equal(s.best.aim, 5200, "schnellere Zielzeit ist besser");
+  await pet.game("guess", { win: true, score: 6 });
+  s = await pet.game("guess", { win: false, score: 9 });
+  assert.equal(s.best.guess, 6, "weniger Versuche sind besser");
+  await pet.game("memory", { win: false, score: 4 });
+  s = await pet.game("memory", { win: true, score: 7 });
+  assert.equal(s.best.memory, 7, "längeres Muster ist besser");
+  s = await pet.game("price", { win: true, score: 1 });
+  assert.equal(s.counts.win_price, 1);
+  await assert.rejects(pet.game("poker"), /Unbekanntes Spiel/);
   s = await pet.setMode("huan");
   assert.equal(s.mode, "huan");
   await assert.rejects(pet.setMode("böse"), /Unbekannter Modus/);

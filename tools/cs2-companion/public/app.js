@@ -308,9 +308,9 @@ function showPet(state){
   $('pet-sleep').textContent=state.asleep?'Aufwecken':'Schlafen';$('pet-sleep').dataset.pet=state.asleep?'wake':'sleep';
   const modes=$('pet-modes');if(modes.childElementCount!==state.modes.length)modes.replaceChildren(...state.modes.map(m=>{const b=el('button',m.label);b.type='button';b.dataset.mode=m.id;b.setAttribute('role','radio');b.addEventListener('click',()=>petCall('/api/pet/mode',{mode:m.id}));return b;}));
   for(const b of modes.children){const on=b.dataset.mode===state.mode;b.className=on?'':'subtle';b.setAttribute('aria-checked',on);}
-  const c=state.counts||{},games=['reaction','rps','quiz'].reduce((n,g)=>n+(c['game_'+g]||0),0);
+  const c=state.counts||{},games=['reaction','rps','quiz','guess','memory','price','aim'].reduce((n,g)=>n+(c['game_'+g]||0),0);
   $('pet-counts').textContent=`Angestupst ${c.poke||0}× · Witze ${c.joke||0} · Tricks ${c.trick||0} · Spiele ${games}`;
-  const best=state.best||{};$('game-best').textContent=[best.reaction?`Bester Reaktionstest: ${best.reaction} ms`:'',c.win_rps?`Schere-Stein-Papier gewonnen: ${c.win_rps}×`:'',c.win_quiz?`Quiz richtig: ${c.win_quiz}×`:''].filter(Boolean).join(' · ');
+  const best=state.best||{};$('game-best').textContent=[best.reaction?`Bester Reaktionstest: ${best.reaction} ms`:'',c.win_rps?`Schere-Stein-Papier gewonnen: ${c.win_rps}×`:'',c.win_quiz?`Quiz richtig: ${c.win_quiz}×`:'',best.aim?`Ziele: ${(best.aim/1000).toFixed(2)} s`:'',best.memory?`Muster: ${best.memory}`:'',best.guess?`Zahl geraten in ${best.guess} Versuchen`:'',c.win_price?`Preise richtig: ${c.win_price}×`:''].filter(Boolean).join(' · ');
 }
 async function petCall(url,body){try{const result=await api(url,body);showPet(result.pet);return result.pet;}catch(error){notice(error);}}
 document.querySelectorAll('[data-pet]').forEach(b=>b.addEventListener('click',()=>petCall('/api/pet/interact',{action:b.dataset.pet})));
@@ -339,6 +339,45 @@ async function quizGame(){
     row.append(...q.options.map((o,i)=>{const b=el('button',o);b.type='button';b.addEventListener('click',()=>{for(const x of row.children)x.disabled=true;const ok=i===q.answer;b.className=ok?'':'subtle';result.textContent=ok?'Richtig!':`Falsch, richtig ist ${q.options[q.answer]}.`;gameDone('quiz',ok,ok?1:0);const next=el('button','Nächste Frage','subtle');next.type='button';next.addEventListener('click',quizGame);result.append(' ',next);});return b;}));
     area().replaceChildren(el('p',q.question,'quiz-question'),row,result);}catch(error){notice(error);}
 }
-document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>({reaction:reactionGame,rps:rpsGame,quiz:quizGame})[b.dataset.game]()));
+/* Waffenpreis-Quiz: was kostet die Waffe in CS2? */
+const PRICES=[['AK-47',2700],['M4A4',3100],['M4A1-S',2900],['AWP',4750],['Desert Eagle',700],['Galil AR',1800],['FAMAS',2050],['MP9',1250],['MAC-10',1050],['SSG 08',1700],['P250',300],['Five-SeveN',500],['Tec-9',500],['UMP-45',1200],['AUG',3300],['SG 553',3000],['Zeus x27',200],['Kevlar + Helm',1000]];
+function priceGame(){
+  const [name,price]=PRICES[Math.floor(Math.random()*PRICES.length)];const set=new Set([price]);
+  while(set.size<4)set.add(PRICES[Math.floor(Math.random()*PRICES.length)][1]);
+  const options=[...set].sort(()=>Math.random()-.5);const result=el('p','');const row=el('div','','pet-buttons');
+  row.append(...options.map(o=>{const b=el('button',`$${o}`);b.type='button';b.addEventListener('click',()=>{for(const x of row.children)x.disabled=true;const ok=o===price;b.className=ok?'':'subtle';result.textContent=ok?'Richtig!':`Falsch, ${name} kostet $${price}.`;gameDone('price',ok,ok?1:0);const next=el('button','Nächste Waffe','subtle');next.type='button';next.addEventListener('click',priceGame);result.append(' ',next);});return b;}));
+  area().replaceChildren(el('p',`Was kostet ${name}?`,'quiz-question'),row,result);
+}
+/* Ziele treffen: 10 Ziele so schnell wie möglich anklicken. */
+function aimGame(){
+  const field=el('div','','aim-field');const info=el('p','Klick auf das erste Ziel, dann läuft die Zeit.');let hits=0,start=0;
+  const target=el('button','','aim-target');target.type='button';target.setAttribute('aria-label','Ziel');
+  const move=()=>{target.style.left=`${5+Math.random()*85}%`;target.style.top=`${8+Math.random()*75}%`;};
+  target.addEventListener('click',()=>{if(!start)start=performance.now();hits++;
+    if(hits>=10){const ms=Math.round(performance.now()-start);target.hidden=true;info.textContent=`10 Ziele in ${(ms/1000).toFixed(2)} s.`;gameDone('aim',ms<6000,ms);const again=el('button','Nochmal','subtle');again.type='button';again.addEventListener('click',aimGame);info.append(' ',again);return;}
+    info.textContent=`${hits}/10`;move();});
+  move();field.append(target);area().replaceChildren(field,info);
+}
+/* Muster merken: TecMon zeigt eine Folge, du klickst sie nach. */
+function memoryGame(){
+  const colors=['violet','gold','cyan','pink'],pads=colors.map(c=>{const b=el('button','',`memory-pad ${c}`);b.type='button';b.setAttribute('aria-label',c);return b;});
+  const grid=el('div','','memory-grid');grid.append(...pads);const info=el('p','Schau gut hin …');let seq=[],pos=0,busy=true;
+  const flash=(i)=>new Promise(r=>{pads[i].classList.add('lit');setTimeout(()=>{pads[i].classList.toggle('lit',false);setTimeout(r,180);},420);});
+  const round=async()=>{busy=true;seq.push(Math.floor(Math.random()*4));pos=0;info.textContent=`Runde ${seq.length}: schau gut hin …`;await new Promise(r=>setTimeout(r,500));for(const i of seq)await flash(i);busy=false;info.textContent='Jetzt du!';};
+  pads.forEach((b,i)=>b.addEventListener('click',()=>{if(busy)return;flash(i);
+    if(i!==seq[pos]){busy=true;const score=seq.length-1;info.textContent=`Daneben! Du hast ${score} geschafft.`;gameDone('memory',score>=5,score);const again=el('button','Nochmal','subtle');again.type='button';again.addEventListener('click',memoryGame);info.append(' ',again);return;}
+    if(++pos===seq.length){busy=true;setTimeout(round,600);}}));
+  area().replaceChildren(grid,info);round();
+}
+/* Zahl raten: TecMon denkt sich eine Zahl von 1 bis 100. */
+function guessGame(){
+  const secret=1+Math.floor(Math.random()*100);let tries=0;const input=el('input');input.type='number';input.min='1';input.max='100';input.placeholder='1–100';input.className='guess-input';
+  const go=el('button','Raten');go.type='button';const info=el('p','Ich denke an eine Zahl von 1 bis 100.');const row=el('div','','pet-buttons');row.append(input,go);
+  const guess=()=>{const n=Number(input.value);if(!Number.isInteger(n)||n<1||n>100){info.textContent='Bitte eine Zahl von 1 bis 100.';return;}tries++;
+    if(n===secret){info.textContent=`Richtig, ${secret}! ${tries} Versuche.`;go.disabled=input.disabled=true;gameDone('guess',tries<=7,tries);const again=el('button','Nochmal','subtle');again.type='button';again.addEventListener('click',guessGame);info.append(' ',again);return;}
+    info.textContent=`${n} ist zu ${n<secret?'klein':'groß'}. Versuch ${tries}.`;input.select();};
+  go.addEventListener('click',guess);input.addEventListener('keydown',e=>{if(e.key==='Enter')guess();});area().replaceChildren(row,info);input.focus();
+}
+document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>({reaction:reactionGame,rps:rpsGame,quiz:quizGame,price:priceGame,aim:aimGame,memory:memoryGame,guess:guessGame})[b.dataset.game]()));
 loadPet();setInterval(loadPet,5000);
-if(location.hash==='#spiele'||location.hash==='#tecmon')setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
+if(['#spiele','#tecmon','#games','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);

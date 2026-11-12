@@ -66,6 +66,16 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.19.1: Spiele mit TecMon und Games-Menü
+
+- **Spiele mit TecMon:** Das Menü heißt jetzt so. Vier neue Spiele kommen
+  dazu: Ziele treffen (10 Ziele auf Zeit), Muster merken, Zahl raten und ein
+  Waffenpreis-Quiz zu CS2. Bestwerte werden gemerkt.
+- **Games → CS2:** Neues Rechtsklick-Menü für die CS2-Integrationen:
+  Rundentipps, Fadenkreuz einstellen, letzte Videos und den Videos-Ordner.
+  Weitere Spiele sind geplant. Im Linksklick-Fenster stehen diese Karten
+  gesammelt unter „Games · CS2“.
+
 ### Neu in 0.19.0: Persönlichkeit, TecMon-Werte, Interaktionen und Spiele
 
 - **Vier Persönlichkeiten:** Super nett, Normal, Nerdy und HUAN-Modus

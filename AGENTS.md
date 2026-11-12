@@ -45,7 +45,7 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   `stack`, große Sprechblase) stehen ebenfalls dort; `TecMon.cs` liest sie aus
   `gsi.features`.
 - Funktionen sind einzeln abschaltbar, auf der Companion-Seite
-  (`/api/gsi/features`) und im Figurmenü „CS2-Rundentipps“ (`TecMon.cs`).
+  (`/api/gsi/features`) und im Figurmenü „Games → CS2 → Rundentipps“ (`TecMon.cs`).
   Gespeichert in `gsi.json`; nicht gespeicherte Funktionen gelten als an.
 
 ### Daten von der Webseite (`insights-v1`)
