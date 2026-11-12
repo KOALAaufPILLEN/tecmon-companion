@@ -66,6 +66,13 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.18.3: Figur bleibt während der Aufnahme sichtbar
+
+- Während einer Aufnahme oder eines Downloads bleibt TecMon auf dem Desktop
+  sichtbar und schwebt mit dem „Arbeitet“-Gesicht. Hinter CS2 tritt er nur,
+  solange das CS2-Fenster vorn liegt. Er läuft dabei mit etwa 20 Bildern pro
+  Sekunde und fliegt nicht umher, damit die Aufnahme genug Rechenzeit hat.
+
 ### Neu in 0.18.2: Hellere Figur, 20 LED-Gesichter, flüssigere Drehung, Menü im TecMon-Stil
 
 - **Heller:** Die 3D-Figur ist mit Umgebungslicht neu gerendert, auf einer
