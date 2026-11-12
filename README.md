@@ -76,6 +76,8 @@ Neueste Version zuerst.
   Fadenkreuz, es gibt kein Overlay über dem Spiel.
 - **Linksklick-Fenster:** Gleiche Form wie die Rundentipp-Sprechblase
   (abgeschrägte Ecken, goldener Rahmen) mit dem umlaufenden lila Lichtstreifen.
+  Es gleitet beim Öffnen kurz aus der Figur heraus, die Spitze zeigt immer
+  auf TecMon, und wer das Fenster am Kopf verschiebt, nimmt die Figur mit.
 - **Bei Aufnahme sichtbar:** Während einer Aufnahme oder eines Downloads bleibt TecMon auf dem Desktop
   sichtbar und schwebt mit dem „Arbeitet“-Gesicht. Hinter CS2 tritt er nur,
   solange das CS2-Fenster vorn liegt. Er läuft dabei mit etwa 20 Bildern pro

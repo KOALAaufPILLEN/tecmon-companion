@@ -404,13 +404,17 @@ class SetupWindow : Form {
 class DesktopPanel : Form {
   Control web;Label fallback=new Label();bool initialized;
   readonly Panel surface=new Panel(),chrome=new Panel();bool tailLeft;Point headerDrag,windowDrag;bool moving;
-  public bool TailLeft {get{return tailLeft;}set{tailLeft=value;Shape();}}
+  public bool TailLeft {get{return tailLeft;}set{if(tailLeft==value)return;tailLeft=value;Shape();}}
+  /* Höhe der Spitze im Fenster: zeigt immer auf die Figur. */
+  int tailY=-1;public int TailY {get{return tailY;}set{int v=Math.Max(Edge+Cut+16,Math.Min(ClientSize.Height-Edge-Cut-16,value));if(v==tailY)return;tailY=v;Shape();}}
+  /* Fenster am Kopf verschoben: die Figur zieht mit, damit beide zusammenbleiben. */
+  public Action<int,int> Dragged;
   static readonly Color Violet=Color.FromArgb(167,139,250);
   /* Gleiche Form wie die Rundentipp-Sprechblase: abgeschrägte Ecken, Spitze zur Figur. grow > 0 vergrößert nach außen. */
   const int Edge=8,Tail=16,Cut=16;
-  public static System.Drawing.Drawing2D.GraphicsPath Bubble(Size size,bool left){return Bubble(size,left,0);}
-  public static System.Drawing.Drawing2D.GraphicsPath Bubble(Size size,bool left,int grow){
-    float l=Edge+(left?Tail:0)-grow,t=Edge-grow,r=size.Width-1-Edge-(left?0:Tail)+grow,b=size.Height-1-Edge+grow,c=Cut+grow*0.42f,tip=Tail-2+grow,half=12+grow,ty=size.Height-77;var p=new List<PointF>();
+  System.Drawing.Drawing2D.GraphicsPath Bubble(int grow){return Bubble(ClientSize,tailLeft,grow,tailY<0?ClientSize.Height-77:tailY);}
+  public static System.Drawing.Drawing2D.GraphicsPath Bubble(Size size,bool left,int grow,int tailAt){
+    float l=Edge+(left?Tail:0)-grow,t=Edge-grow,r=size.Width-1-Edge-(left?0:Tail)+grow,b=size.Height-1-Edge+grow,c=Cut+grow*0.42f,tip=Tail-2+grow,half=12+grow,ty=tailAt;var p=new List<PointF>();
     p.Add(new PointF(l+c,t));p.Add(new PointF(r-c,t));p.Add(new PointF(r,t+c));
     if(!left){p.Add(new PointF(r,ty-half));p.Add(new PointF(r+tip,ty));p.Add(new PointF(r,ty+half));}
     p.Add(new PointF(r,b-c));p.Add(new PointF(r-c,b));p.Add(new PointF(l+c,b));p.Add(new PointF(l,b-c));
@@ -418,12 +422,12 @@ class DesktopPanel : Form {
     p.Add(new PointF(l,t+c));
     var path=new System.Drawing.Drawing2D.GraphicsPath();path.AddPolygon(p.ToArray());return path;
   }
-  void Shape(){if(ClientSize.Width<100)return;using(var path=Bubble(ClientSize,tailLeft,Edge-1)){var previous=Region;Region=new Region(path);if(previous!=null)previous.Dispose();}int x=Edge+(tailLeft?Tail:0)+14;int w=ClientSize.Width-2*Edge-Tail-28;chrome.SetBounds(x,Edge+10,w,42);surface.SetBounds(x,Edge+58,w,ClientSize.Height-2*Edge-72);Invalidate();}
+  void Shape(){if(ClientSize.Width<100)return;using(var path=Bubble(Edge-1)){var previous=Region;Region=new Region(path);if(previous!=null)previous.Dispose();}int x=Edge+(tailLeft?Tail:0)+14;int w=ClientSize.Width-2*Edge-Tail-28;chrome.SetBounds(x,Edge+10,w,42);surface.SetBounds(x,Edge+58,w,ClientSize.Height-2*Edge-72);Invalidate();}
   Button ChromeButton(string label,string accessible,Color color,Action action){var b=new Button{Text=label,AccessibleName=accessible,FlatStyle=FlatStyle.Flat,ForeColor=color,BackColor=Color.FromArgb(27,22,38),Font=new Font("Segoe UI",13),Size=new Size(34,30),Cursor=Cursors.Hand,TabStop=true};b.FlatAppearance.BorderColor=Color.FromArgb(140,color);b.FlatAppearance.MouseOverBackColor=Color.FromArgb(47,36,64);b.Click+=(s,e)=>action();return b;}
   /* Wie die Sprechblase: lila Schein, dunkle Fläche, goldener Rahmen und ein umlaufender Lichtstreifen. */
   protected override void OnPaintBackground(PaintEventArgs e){
     var g=e.Graphics;g.Clear(Color.FromArgb(11,10,17));g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-    using(var path=Bubble(ClientSize,tailLeft)){
+    using(var path=Bubble(0)){
       using(var glow=new Pen(Color.FromArgb(45,Violet),12))g.DrawPath(glow,path);
       using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Color.FromArgb(27,22,38),Color.FromArgb(11,10,17),70))g.FillPath(fill,path);
       using(var glow=new Pen(Color.FromArgb(80,Violet),4))g.DrawPath(glow,path);
@@ -439,7 +443,7 @@ class DesktopPanel : Form {
     var title=new Label{Text="TecMon",AutoSize=false,ForeColor=TecMon.Gold,Font=new Font("Segoe UI",10,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft,Dock=DockStyle.Fill,Cursor=Cursors.SizeAll};chrome.Controls.Add(title);
     var close=ChromeButton("×","Sprechblase schließen",Color.FromArgb(251,113,133),()=>Hide());var collapse=ChromeButton("−","Sprechblase einklappen",Violet,()=>Hide());chrome.Controls.Add(close);chrome.Controls.Add(collapse);
     chrome.Resize+=(sender,args)=>{close.Location=new Point(chrome.Width-36,5);collapse.Location=new Point(chrome.Width-76,5);title.Width=Math.Max(100,chrome.Width-90);close.BringToFront();collapse.BringToFront();};
-    title.MouseDown+=(sender,args)=>{if(args.Button!=MouseButtons.Left)return;moving=true;headerDrag=Cursor.Position;windowDrag=Location;title.Capture=true;};title.MouseMove+=(sender,args)=>{if(!moving)return;var point=new Point(windowDrag.X+Cursor.Position.X-headerDrag.X,windowDrag.Y+Cursor.Position.Y-headerDrag.Y);Location=DesktopPet.Fit(point,Screen.FromPoint(Cursor.Position).WorkingArea,Size);};title.MouseUp+=(sender,args)=>{moving=false;title.Capture=false;};
+    title.MouseDown+=(sender,args)=>{if(args.Button!=MouseButtons.Left)return;moving=true;headerDrag=Cursor.Position;windowDrag=Location;title.Capture=true;};title.MouseMove+=(sender,args)=>{if(!moving)return;var point=DesktopPet.Fit(new Point(windowDrag.X+Cursor.Position.X-headerDrag.X,windowDrag.Y+Cursor.Position.Y-headerDrag.Y),Screen.FromPoint(Cursor.Position).WorkingArea,Size);int dx=point.X-Left,dy=point.Y-Top;Location=point;if(Dragged!=null&&(dx!=0||dy!=0))Dragged(dx,dy);};title.MouseUp+=(sender,args)=>{moving=false;title.Capture=false;};
     KeyDown+=(sender,args)=>{if(args.KeyCode==Keys.Escape)Hide();};Resize+=(sender,args)=>Shape();Shape();
     /* Lichtstreifen nur zeichnen, solange das Fenster offen ist; die eingebettete Seite bleibt davon unberührt. */
     runner.Tick+=(sender,args)=>{runnerPhase=(runnerPhase+0.006f)%1f;Invalidate(false);};VisibleChanged+=(sender,args)=>{if(Visible)runner.Start();else runner.Stop();};Disposed+=(sender,args)=>runner.Dispose();
@@ -846,8 +850,22 @@ class DesktopPet : Form {
   }
   protected override void WndProc(ref Message message){if(message.Msg==0x8001){Show();Toggle();return;}base.WndProc(ref message);}
   public static Point Fit(Point point,Rectangle area,Size size){return new Point(Math.Max(area.Left,Math.Min(area.Right-size.Width,point.X)),Math.Max(area.Top,Math.Min(area.Bottom-size.Height,point.Y)));}
-  void AnchorPanel(){var area=Screen.FromRectangle(Bounds).WorkingArea;var preferred=new Point(Left-panel.Width-12,Top-panel.Height+Height);bool onRight=preferred.X<area.Left;if(onRight)preferred.X=Right+12;panel.TailLeft=onRight;panel.Location=Fit(preferred,area,panel.Size);}
-  public void Toggle(){if(panel==null||panel.IsDisposed)panel=new DesktopPanel();if(panel.Visible){panel.Hide();return;}AnchorPanel();panel.TopMost=OnTop();panel.Show(this);panel.Activate();}
+  /* Fenster neben die Figur setzen; die Spitze zeigt auf ihre Mitte, auch wenn das Fenster am Bildschirmrand verschoben wird. */
+  Point PanelSpot(){var area=Screen.FromRectangle(Bounds).WorkingArea;var preferred=new Point(Left-panel.Width+2,Top+Height/2-panel.Height+77);bool onRight=preferred.X<area.Left;if(onRight)preferred.X=Right-2;panel.TailLeft=onRight;var spot=Fit(preferred,area,panel.Size);panel.TailY=Top+Height/2-spot.Y;return spot;}
+  void AnchorPanel(){if(popping)return;panel.Location=PanelSpot();}
+  /* Kurz aus der Figur herausgleiten lassen statt hart aufzutauchen. */
+  bool popping;
+  void PopPanel(){
+    var target=PanelSpot();int from=panel.TailLeft?-36:36;panel.Location=new Point(target.X+from,target.Y+14);popping=true;
+    var watch=Stopwatch.StartNew();var timer=new System.Windows.Forms.Timer{Interval=15};
+    timer.Tick+=(s,e)=>{double k=Math.Min(1,watch.Elapsed.TotalSeconds/0.18),ease=1-Math.Pow(1-k,3);var goal=PanelSpot();if(panel.IsDisposed){timer.Dispose();popping=false;return;}panel.Location=new Point(goal.X+(int)Math.Round(from*(1-ease)),goal.Y+(int)Math.Round(14*(1-ease)));if(k>=1){timer.Stop();timer.Dispose();popping=false;}};
+    timer.Start();
+  }
+  public void Toggle(){
+    if(panel==null||panel.IsDisposed){panel=new DesktopPanel();panel.Dragged=(dx,dy)=>{var area=Screen.FromRectangle(panel.Bounds).WorkingArea;var next=Fit(new Point(Left+dx,Top+dy),area,Size);Location=next;x=Left;y=Top;Render();panel.TailY=Top+Height/2-panel.Top;};}
+    if(panel.Visible){panel.Hide();return;}
+    panel.TopMost=OnTop();PopPanel();panel.Show(this);panel.Activate();
+  }
   public Bitmap Frame(){if(model!=null)return Frame3D();var bitmap=new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format32bppArgb);using(var g=Graphics.FromImage(bitmap)){g.Clear(Color.Transparent);g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;int emotion=busy?3:new[]{0,1,2,0,6,9}[(int)(phase/12)%6];int row=emotion/3;var heights=new[]{390,340,324,411};var tops=new[]{0,390,730,1040};var target=new Rectangle(5,8+(animate?(int)(Math.Sin(phase)*5):0),134,145);if(sheet!=null)g.DrawImage(sheet,target,new Rectangle((emotion%3)*361,tops[row],361,heights[row]),GraphicsUnit.Pixel);}return bitmap;}
   void Render(){
     if(!IsHandleCreated||!Visible)return;
