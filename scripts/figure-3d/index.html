@@ -4,18 +4,20 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
-const S=Number(new URLSearchParams(location.search).get('s')||512);
+const Q=new URLSearchParams(location.search);const S=Number(Q.get('s')||512);
+// Helligkeit: 0 = erste, sehr dunkle Fassung; 1 = sehr hell. Standard dazwischen.
+const L=Number(Q.get('light')||0.45);const mix=(a,b)=>a+(b-a)*L;
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true,premultipliedAlpha:false});
-renderer.setSize(S,S);renderer.setClearColor(0x000000,0);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.5;
+renderer.setSize(S,S);renderer.setClearColor(0x000000,0);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=mix(1.1,1.5);
 document.body.appendChild(renderer.domElement);
 const scene=new THREE.Scene();
 // Umgebungslicht für Metall und Gold, sonst wirkt die Figur auf dem Desktop zu dunkel.
-scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(),0.04).texture;scene.environmentIntensity=0.85;
+scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(),0.04).texture;scene.environmentIntensity=mix(0,0.85);
 const cam=new THREE.PerspectiveCamera(22,1,0.1,50);
-scene.add(new THREE.HemisphereLight(0xe6dcff,0x3a3050,2.2));
-const key=new THREE.DirectionalLight(0xffffff,3.6);key.position.set(2,3,4);scene.add(key);
+scene.add(new THREE.HemisphereLight(0xe6dcff,0x3a3050,mix(1.4,2.2)));
+const key=new THREE.DirectionalLight(0xffffff,mix(2.6,3.6));key.position.set(2,3,4);scene.add(key);
 const rim=new THREE.DirectionalLight(0xa78bfa,2.2);rim.position.set(-3,2,-3);scene.add(rim);
-const fill=new THREE.DirectionalLight(0xffe2a8,1.6);fill.position.set(-3,0.5,3);scene.add(fill);
+const fill=new THREE.DirectionalLight(0xffe2a8,mix(0.8,1.6));fill.position.set(-3,0.5,3);scene.add(fill);
 const tl=new THREE.TextureLoader();
 const tex=(n,srgb)=>new Promise(r=>tl.load(n+'.png',t=>{t.flipY=false;if(srgb)t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;r(t)}));
 window.ready=(async()=>{
