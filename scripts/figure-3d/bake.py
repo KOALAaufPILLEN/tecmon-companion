@@ -11,7 +11,8 @@ X0,X1,Y0,Y1=670,1010,905,1465
 m=Image.new('L',D.size,0); px=D.load(); mp=m.load()
 # Zweite UV-Insel: unterer Visierrand mit einem Rest des alten Munds.
 # Dritte Insel: unterer Visierbogen; das Gold bleibt, sonst entsteht ein dunkler Fleck am Kinn.
-BOXES=[(X0,X1,Y0,Y1,False),(1120,1240,1590,1720,False),(1425,1560,0,110,False)]
+# Vierte Insel: Mundwinkel des alten Gesichts, ragt in der Vorderansicht ins Visier.
+BOXES=[(X0,X1,Y0,Y1,False),(1120,1240,1590,1720,False),(1425,1560,0,110,False),(1995,2048,935,1015,True)]
 for (bx0,bx1,by0,by1,whole) in BOXES:
   for x in range(bx0,bx1):
     for y in range(by0,by1):
@@ -25,7 +26,6 @@ m=ImageChops.lighter(main.filter(ImageFilter.MinFilter(9)).filter(ImageFilter.Ma
 
 TILT=float(os.environ.get('TECMON_TILT','-7'))
 CX,CY=int(os.environ.get('TECMON_CX','850')),int(os.environ.get('TECMON_CY','1185'))
-SPECKS=[(1995,935,2048,1015)]
 def bake(name):
     # Gesicht oben -> +x im Atlas. TILT gleicht die Schräglage der UV-Insel aus,
     # sonst sitzt das rechte Auge in der Vorderansicht höher als das linke.
@@ -40,10 +40,6 @@ def bake(name):
     vd=Image.new('RGB',D.size,avg_d); vd.paste(base.convert('RGB'),(px0,py0))
     ve=Image.new('RGB',D.size,avg_e); ve.paste(fe.convert('RGB'),(px0,py0))
     d.paste(vd,(0,0),m); e.paste(ve,(0,0),m)
-    # Rest des alten Munds ausserhalb des Visiers: leuchtete als kleiner Punkt unter dem Gesicht.
-    for box in SPECKS:
-        dark=tuple(int(v) for v in ImageStat.Stat(d.crop((box[0]-12,box[1],box[0]-2,box[3]))).mean)
-        d.paste(dark,box); e.paste((0,0,0),box)
     return d,e
 if __name__=='__main__':
     for n in sys.argv[1:]:
