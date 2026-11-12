@@ -64,3 +64,18 @@ html:has(.desktop-panel){background:#0e0b16;scrollbar-color:#a78bfa #1b1626}
 .desktop-panel .tips-features label{color:#e9e4f3}
 /* Beenden, Studio öffnen und Hinweise stehen im Rechtsklick-Menü bzw. unter „Erweitert“. */
 .desktop-panel footer,.desktop-panel .danger-zone{display:none}
+/* Fadenkreuz-Editor */
+.crosshair-note code{color:var(--gold,#e8c573);font-size:12px}
+.crosshair-editor summary{cursor:pointer;font-size:13px;margin:6px 0}
+.crosshair-grid{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start;margin:10px 0}
+.crosshair-grid canvas{width:200px;height:200px;border-radius:10px;border:1px solid var(--line);image-rendering:pixelated}
+.crosshair-controls{display:grid;gap:6px}.crosshair-controls>label{display:grid;grid-template-columns:80px 1fr 36px;gap:8px;align-items:center;font-size:12px}
+.crosshair-controls input[type=range]{width:100%;margin:0;padding:0}.crosshair-controls output{font-size:11px;color:var(--muted)}
+.crosshair-controls input[type=color]{width:48px;height:26px;padding:0;margin:0;border:0;background:none}
+.crosshair-controls select{margin:0;padding:4px 6px;font-size:12px}
+.crosshair-presets{display:flex;flex-wrap:wrap;gap:6px}.crosshair-presets button{padding:3px 10px;font-size:11px}
+.crosshair-checks{display:flex;gap:14px;font-size:12px}.crosshair-checks label{display:flex;gap:6px;align-items:center}.crosshair-checks input{width:auto;margin:0}
+.crosshair-import{display:flex;gap:6px}.crosshair-import input{margin:0;font-size:12px;padding:5px 8px}.crosshair-import button{white-space:nowrap}
+.crosshair-commands{font-size:11px;max-height:120px;overflow:auto;padding:8px 10px;border-radius:8px}
+@media (max-width:520px){.crosshair-grid{grid-template-columns:1fr}.crosshair-grid canvas{margin:auto}}
+.crosshair-controls input[type=range],.crosshair-checks input{accent-color:#a78bfa}

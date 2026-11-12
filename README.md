@@ -66,9 +66,17 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
-### Neu in 0.18.3: Figur bleibt während der Aufnahme sichtbar
+### Neu in 0.18.3: Fadenkreuz-Editor, Linksklick-Fenster wie die Sprechblase, Figur bei Aufnahme sichtbar
 
-- Während einer Aufnahme oder eines Downloads bleibt TecMon auf dem Desktop
+- **Fadenkreuz-Editor:** Neue Karte „Fadenkreuz“ mit Vorschau, Vorlagen,
+  Länge, Abstand, Dicke, Umriss, Farbe, Punkt und T-Form. Ein vorhandener
+  CS2-Fadenkreuz-Code (CSGO-…) lässt sich übernehmen. „In CS2 speichern“
+  schreibt `tecmon_crosshair.cfg` in den CS2-cfg-Ordner; in CS2 einmal
+  `exec tecmon_crosshair` in die Konsole tippen. Es ändert nur das CS2-eigene
+  Fadenkreuz, es gibt kein Overlay über dem Spiel.
+- **Linksklick-Fenster:** Gleiche Form wie die Rundentipp-Sprechblase
+  (abgeschrägte Ecken, goldener Rahmen) mit dem umlaufenden lila Lichtstreifen.
+- **Bei Aufnahme sichtbar:** Während einer Aufnahme oder eines Downloads bleibt TecMon auf dem Desktop
   sichtbar und schwebt mit dem „Arbeitet“-Gesicht. Hinter CS2 tritt er nur,
   solange das CS2-Fenster vorn liegt. Er läuft dabei mit etwa 20 Bildern pro
   Sekunde und fliegt nicht umher, damit die Aufnahme genug Rechenzeit hat.

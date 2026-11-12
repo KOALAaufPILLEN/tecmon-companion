@@ -268,7 +268,7 @@ static class TecMon {
       if(args.Length > 0 && args[0] == "--apply-update-cli") {
         try {ApplyUpdate(args[1],"",false);return 0;} catch(Exception error) {WriteUpdateResult(args[1],"error",error.Message);Console.Error.WriteLine(error.Message);return 1;}
       }
-      if(args.Length>1 && args[0]=="--desktop-preview-3d") {using(var pet=new DesktopPet(true)){if(!pet.HasModel)throw new Exception("3D-Figur fehlt");int n=0;foreach(var spec in new[]{"0,-1","32.5,-1","90,-1","150,-1","180,-1","0,72","0,73","0,74","0,75","0,77","0,78","0,79","0,85","0,88","0,89"}){var parts=spec.Split(',');using(var frame=pet.Preview(double.Parse(parts[0]),int.Parse(parts[1])))frame.Save(Path.Combine(args[1],"pet-"+(n++)+".png"),System.Drawing.Imaging.ImageFormat.Png);}}using(var bubble=new TipBubble())using(var image=bubble.Preview("Kauf-Check","Volle Ausrüstung möglich: Rifle, Kevlar + Helm und zwei Granaten."))image.Save(Path.Combine(args[1],"bubble.png"),System.Drawing.Imaging.ImageFormat.Png);using(var pet=new DesktopPet(true)){var menu=pet.ContextMenuStrip;menu.Show(new Point(0,0));if(menu.Items.Count>2)((ToolStripMenuItem)menu.Items[2]).Select();using(var shot=new Bitmap(menu.Width,menu.Height)){menu.DrawToBitmap(shot,new Rectangle(0,0,menu.Width,menu.Height));shot.Save(Path.Combine(args[1],"menu.png"),System.Drawing.Imaging.ImageFormat.Png);}menu.Close();}return 0;}
+      if(args.Length>1 && args[0]=="--desktop-preview-3d") {using(var pet=new DesktopPet(true)){if(!pet.HasModel)throw new Exception("3D-Figur fehlt");int n=0;foreach(var spec in new[]{"0,-1","32.5,-1","90,-1","150,-1","180,-1","0,72","0,73","0,74","0,75","0,77","0,78","0,79","0,85","0,88","0,89"}){var parts=spec.Split(',');using(var frame=pet.Preview(double.Parse(parts[0]),int.Parse(parts[1])))frame.Save(Path.Combine(args[1],"pet-"+(n++)+".png"),System.Drawing.Imaging.ImageFormat.Png);}}using(var bubble=new TipBubble())using(var image=bubble.Preview("Kauf-Check","Volle Ausrüstung möglich: Rifle, Kevlar + Helm und zwei Granaten."))image.Save(Path.Combine(args[1],"bubble.png"),System.Drawing.Imaging.ImageFormat.Png);using(var pet=new DesktopPet(true)){var menu=pet.ContextMenuStrip;menu.Show(new Point(0,0));if(menu.Items.Count>2)((ToolStripMenuItem)menu.Items[2]).Select();using(var shot=new Bitmap(menu.Width,menu.Height)){menu.DrawToBitmap(shot,new Rectangle(0,0,menu.Width,menu.Height));shot.Save(Path.Combine(args[1],"menu.png"),System.Drawing.Imaging.ImageFormat.Png);}menu.Close();}using(var panel=new DesktopPanel()){panel.ClientSize=new Size(520,640);using(var shot=new Bitmap(panel.Width,panel.Height)){panel.DrawToBitmap(shot,new Rectangle(0,0,panel.Width,panel.Height));shot.Save(Path.Combine(args[1],"panel.png"),System.Drawing.Imaging.ImageFormat.Png);}}return 0;}
       if(args.Length>1 && args[0]=="--desktop-preview") {using(var pet=new DesktopPet(true))using(var frame=pet.Frame())frame.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);return 0;}
       if(args.Length>0 && args[0]=="--desktop-self-test") {var result=DesktopPet.Fit(new Point(5000,-5000),new Rectangle(-1920,0,1920,1080),new Size(144,164));if(result.X!=-144||result.Y!=0)throw new Exception("Desktop bounds failed");return 0;}
       if(args.Length > 1 && args[0] == "--splash-preview") {using(var form=new SplashWindow(true)) using(var bitmap=new Bitmap(form.ClientSize.Width,form.ClientSize.Height)) {using(var graphics=Graphics.FromImage(bitmap))graphics.Clear(form.BackColor);foreach(Control control in form.Controls)control.DrawToBitmap(bitmap,control.Bounds);bitmap.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);}return 0;}
@@ -406,18 +406,32 @@ class DesktopPanel : Form {
   readonly Panel surface=new Panel(),chrome=new Panel();bool tailLeft;Point headerDrag,windowDrag;bool moving;
   public bool TailLeft {get{return tailLeft;}set{tailLeft=value;Shape();}}
   static readonly Color Violet=Color.FromArgb(167,139,250);
-  public static System.Drawing.Drawing2D.GraphicsPath Bubble(Size size,bool left) {
-    float x=left?19:1,y=1,w=size.Width-21,h=size.Height-2,r=22;
-    var path=new System.Drawing.Drawing2D.GraphicsPath();
-    path.AddArc(x,y,r*2,r*2,180,90);path.AddArc(x+w-r*2,y,r*2,r*2,270,90);
-    if(!left){path.AddLine(x+w,y+r,x+w,y+h-94);path.AddLine(x+w,y+h-94,size.Width-1,y+h-60);path.AddLine(size.Width-1,y+h-60,x+w,y+h-68);}
-    path.AddArc(x+w-r*2,y+h-r*2,r*2,r*2,0,90);path.AddArc(x,y+h-r*2,r*2,r*2,90,90);
-    if(left){path.AddLine(x,y+h-r,x,y+h-68);path.AddLine(x,y+h-68,1,y+h-60);path.AddLine(1,y+h-60,x,y+h-94);}
-    path.CloseFigure();return path;
+  /* Gleiche Form wie die Rundentipp-Sprechblase: abgeschrägte Ecken, Spitze zur Figur. grow > 0 vergrößert nach außen. */
+  const int Edge=8,Tail=16,Cut=16;
+  public static System.Drawing.Drawing2D.GraphicsPath Bubble(Size size,bool left){return Bubble(size,left,0);}
+  public static System.Drawing.Drawing2D.GraphicsPath Bubble(Size size,bool left,int grow){
+    float l=Edge+(left?Tail:0)-grow,t=Edge-grow,r=size.Width-1-Edge-(left?0:Tail)+grow,b=size.Height-1-Edge+grow,c=Cut+grow*0.42f,tip=Tail-2+grow,half=12+grow,ty=size.Height-77;var p=new List<PointF>();
+    p.Add(new PointF(l+c,t));p.Add(new PointF(r-c,t));p.Add(new PointF(r,t+c));
+    if(!left){p.Add(new PointF(r,ty-half));p.Add(new PointF(r+tip,ty));p.Add(new PointF(r,ty+half));}
+    p.Add(new PointF(r,b-c));p.Add(new PointF(r-c,b));p.Add(new PointF(l+c,b));p.Add(new PointF(l,b-c));
+    if(left){p.Add(new PointF(l,ty+half));p.Add(new PointF(l-tip,ty));p.Add(new PointF(l,ty-half));}
+    p.Add(new PointF(l,t+c));
+    var path=new System.Drawing.Drawing2D.GraphicsPath();path.AddPolygon(p.ToArray());return path;
   }
-  void Shape(){if(ClientSize.Width<100)return;using(var path=Bubble(ClientSize,tailLeft)){var previous=Region;Region=new Region(path);if(previous!=null)previous.Dispose();}int x=tailLeft?32:14;chrome.SetBounds(x,12,ClientSize.Width-48,42);surface.SetBounds(x,61,ClientSize.Width-48,ClientSize.Height-83);Invalidate();}
+  void Shape(){if(ClientSize.Width<100)return;using(var path=Bubble(ClientSize,tailLeft,Edge-1)){var previous=Region;Region=new Region(path);if(previous!=null)previous.Dispose();}int x=Edge+(tailLeft?Tail:0)+14;int w=ClientSize.Width-2*Edge-Tail-28;chrome.SetBounds(x,Edge+10,w,42);surface.SetBounds(x,Edge+58,w,ClientSize.Height-2*Edge-72);Invalidate();}
   Button ChromeButton(string label,string accessible,Color color,Action action){var b=new Button{Text=label,AccessibleName=accessible,FlatStyle=FlatStyle.Flat,ForeColor=color,BackColor=Color.FromArgb(27,22,38),Font=new Font("Segoe UI",13),Size=new Size(34,30),Cursor=Cursors.Hand,TabStop=true};b.FlatAppearance.BorderColor=Color.FromArgb(140,color);b.FlatAppearance.MouseOverBackColor=Color.FromArgb(47,36,64);b.Click+=(s,e)=>action();return b;}
-  protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);e.Graphics.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;using(var path=Bubble(ClientSize,tailLeft))using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Color.FromArgb(27,22,38),Color.FromArgb(11,10,17),90))using(var glow=new Pen(Color.FromArgb(70,Violet),4))using(var pen=new Pen(TecMon.Gold,1.5f)){e.Graphics.FillPath(fill,path);e.Graphics.DrawPath(glow,path);e.Graphics.DrawPath(pen,path);}}
+  /* Wie die Sprechblase: lila Schein, dunkle Fläche, goldener Rahmen und ein umlaufender Lichtstreifen. */
+  protected override void OnPaintBackground(PaintEventArgs e){
+    var g=e.Graphics;g.Clear(Color.FromArgb(11,10,17));g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+    using(var path=Bubble(ClientSize,tailLeft)){
+      using(var glow=new Pen(Color.FromArgb(45,Violet),12))g.DrawPath(glow,path);
+      using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Color.FromArgb(27,22,38),Color.FromArgb(11,10,17),70))g.FillPath(fill,path);
+      using(var glow=new Pen(Color.FromArgb(80,Violet),4))g.DrawPath(glow,path);
+      using(var pen=new Pen(TecMon.Gold,1.8f))g.DrawPath(pen,path);
+      TipBubble.Runner(g,path,runnerPhase);
+    }
+  }
+  float runnerPhase;readonly System.Windows.Forms.Timer runner=new System.Windows.Forms.Timer{Interval=33};
 
   public DesktopPanel() {
     Text="TecMon · Verbindung & Einstellungen";ClientSize=new Size(520,640);MinimumSize=new Size(440,450);StartPosition=FormStartPosition.Manual;BackColor=TecMon.Background;ForeColor=Color.White;ShowInTaskbar=true;FormBorderStyle=FormBorderStyle.None;DoubleBuffered=true;KeyPreview=true;Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -427,6 +441,8 @@ class DesktopPanel : Form {
     chrome.Resize+=(sender,args)=>{close.Location=new Point(chrome.Width-36,5);collapse.Location=new Point(chrome.Width-76,5);title.Width=Math.Max(100,chrome.Width-90);close.BringToFront();collapse.BringToFront();};
     title.MouseDown+=(sender,args)=>{if(args.Button!=MouseButtons.Left)return;moving=true;headerDrag=Cursor.Position;windowDrag=Location;title.Capture=true;};title.MouseMove+=(sender,args)=>{if(!moving)return;var point=new Point(windowDrag.X+Cursor.Position.X-headerDrag.X,windowDrag.Y+Cursor.Position.Y-headerDrag.Y);Location=DesktopPet.Fit(point,Screen.FromPoint(Cursor.Position).WorkingArea,Size);};title.MouseUp+=(sender,args)=>{moving=false;title.Capture=false;};
     KeyDown+=(sender,args)=>{if(args.KeyCode==Keys.Escape)Hide();};Resize+=(sender,args)=>Shape();Shape();
+    /* Lichtstreifen nur zeichnen, solange das Fenster offen ist; die eingebettete Seite bleibt davon unberührt. */
+    runner.Tick+=(sender,args)=>{runnerPhase=(runnerPhase+0.006f)%1f;Invalidate(false);};VisibleChanged+=(sender,args)=>{if(Visible)runner.Start();else runner.Stop();};Disposed+=(sender,args)=>runner.Dispose();
     fallback.Dock=DockStyle.Fill;fallback.Padding=new Padding(24);fallback.ForeColor=TecMon.Gold;fallback.Font=new Font("Segoe UI",11);fallback.Text="Dein Companion-Fenster wird geöffnet …";surface.Controls.Add(fallback);
     FormClosing+=(s,e)=>{if(e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Hide();}};
     Shown+=async(s,e)=>{if(initialized)return;initialized=true;try{
@@ -585,7 +601,8 @@ class TipBubble : Form {
     return pts[pts.Length-1];
   }
   /* Ein lila Lichtstreifen mit Schweif läuft am goldenen Rahmen entlang. */
-  void DrawRunner(Graphics g,System.Drawing.Drawing2D.GraphicsPath outline){
+  void DrawRunner(Graphics g,System.Drawing.Drawing2D.GraphicsPath outline){Runner(g,outline,phase);}
+  public static void Runner(Graphics g,System.Drawing.Drawing2D.GraphicsPath outline,float phase){
     var raw=outline.PathPoints;if(raw.Length<2)return;var pts=new PointF[raw.Length+1];Array.Copy(raw,pts,raw.Length);pts[raw.Length]=raw[0];
     var at=new float[pts.Length];for(int i=1;i<pts.Length;i++){float dx=pts[i].X-pts[i-1].X,dy=pts[i].Y-pts[i-1].Y;at[i]=at[i-1]+(float)Math.Sqrt(dx*dx+dy*dy);}
     float total=at[at.Length-1];if(total<=0)return;float head=phase*total,length=Math.Min(260f,total*0.3f);const int steps=60;
