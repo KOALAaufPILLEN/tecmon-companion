@@ -66,6 +66,16 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.18.1: Aufnahme nach dem CS2-Update repariert
+
+Seit dem CS2-Update vom 11.11.2026 stürzte CS2 bei jeder Aufnahme etwa 14
+Sekunden nach dem Start ab. Der Absturzbericht zeigt die Ursache im
+CS2-Aufnahme-Plugin (Build vom 3.11.). Der Companion nutzt jetzt den
+offiziellen Upstream-Build `3ba51c9d`, der nach dem Update neu gebaut wurde,
+wieder mit fester SHA-256-Prüfsumme. Stürzt CS2 während einer Aufnahme ab,
+nennt das Aufnahme-Protokoll das jetzt direkt mit dem Namen des
+Absturzberichts statt nur „keine Rohaufnahme“.
+
 ### Neu in 0.18.0: 3D-TecMon mit LED-Gesicht
 
 - **Neue 3D-Figur:** Der TecMon auf dem Desktop ist jetzt das 3D-Modell. Es
