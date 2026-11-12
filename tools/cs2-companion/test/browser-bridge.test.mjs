@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, rm, utimes } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { once } from "node:events";
 import { createBrowserBridge } from "../browser-bridge.mjs";
 import { createCompanion } from "../server.mjs";
-import { recordingFailure, PLUGIN_SHA256 } from "../recording-engine.mjs";
+import { recordingFailure, crashSince, PLUGIN_SHA256 } from "../recording-engine.mjs";
 const origin = "https://tecmon.online";
 const code = "CSGO-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA";
 const job = {
@@ -195,4 +195,22 @@ test("recording diagnostics explain missing hook and absent raw files", () => {
     recordingFailure(new Error("engine error"), "Hooked FrameStageNotify"),
     "engine error",
   );
+  assert.match(
+    recordingFailure(new Error("Raw files not found"), "Hooked FrameStageNotify", "cs2_2026_1112_202651_0_accessviolation.mdmp"),
+    /abgestürzt.*accessviolation/,
+  );
+});
+
+test("crash reports are only counted when written after the recording started", async () => {
+  const folder = await mkdtemp(path.join(os.tmpdir(), "tecmon-crash-"));
+  const exe = path.join(folder, "cs2.exe");
+  await writeFile(path.join(folder, "cs2_old_accessviolation.mdmp"), "old");
+  const since = Date.now() + 60_000;
+  assert.equal(await crashSince(exe, since), "");
+  await writeFile(path.join(folder, "cs2_new_accessviolation.mdmp"), "new");
+  await utimes(path.join(folder, "cs2_new_accessviolation.mdmp"), new Date(since + 1000), new Date(since + 1000));
+  await writeFile(path.join(folder, "other.mdmp"), "x");
+  await utimes(path.join(folder, "other.mdmp"), new Date(since + 2000), new Date(since + 2000));
+  assert.equal(await crashSince(exe, since), "cs2_new_accessviolation.mdmp");
+  assert.equal(await crashSince("", since), "");
 });

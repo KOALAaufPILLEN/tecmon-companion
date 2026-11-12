@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { validateJob, recordingConfig, jobCameras } from "./job.mjs";
 import { cameraSql, cleanupSql, runCameraSql } from "./custom-cameras.mjs";
 import { matchDownloadRequest, shareCode } from "./share-code.mjs";
-import { ensureRecordingPlugin, recordingFailure } from "./recording-engine.mjs";
+import { ensureRecordingPlugin, recordingFailure, crashSince } from "./recording-engine.mjs";
 import { recordInternal, internalReady, cameraSession, ENGINE_CAPABILITY } from "./internal-recorder.mjs";
 import { downloadValveDemo, decodeShareCode } from "./valve-download.mjs";
 import { ANGLE_CAPABILITY, SCRIPT_CAPABILITY, SESSION_CAPABILITY } from "./camera-script.mjs";
@@ -424,6 +424,7 @@ export async function createCompanion({
       job.engine = "tecmon";
       job.status = "recording";
       job.log += "\nEigene TecMon-Aufnahme (ohne CS Demo Manager und Datenbank).";
+      const startedAt = Date.now();
       try {
         await recordInternal({
           recording,
@@ -445,7 +446,7 @@ export async function createCompanion({
         } catch {
           /* optional diagnostics */
         }
-        throw new Error(recordingFailure(error, pluginLog));
+        throw new Error(recordingFailure(error, pluginLog, await crashSince(detected.cs2, startedAt)));
       }
       return finishRecording(job, output, branding, assets);
     }
@@ -462,6 +463,7 @@ export async function createCompanion({
       await runSql(cameraSql(job.job.map, cameras));
     }
     job.status = "recording";
+    const startedAt = Date.now();
     try {
       await run(exe, ["video", "--config-file", config], job);
     } catch (error) {
@@ -472,7 +474,7 @@ export async function createCompanion({
       } catch {
         /* optional diagnostics */
       }
-      throw new Error(recordingFailure(error, pluginLog));
+      throw new Error(recordingFailure(error, pluginLog, await crashSince(detected.cs2, startedAt)));
     } finally {
       if (cameras.length) await runSql(cleanupSql()).catch(() => {});
     }
