@@ -760,7 +760,7 @@ class DesktopPet : Form {
     if(wandering&&animate&&!dragging&&!hover&&(panel==null||!panel.Visible)&&!ContextMenuStrip.Visible&&!Talking(now)&&pendingTip==null){var bounds=Screen.FromRectangle(Bounds).WorkingArea;x+=vx*dt*25;y+=vy*dt*25;if(x<bounds.Left||x+Width>bounds.Right)vx=-vx;if(y<bounds.Top||y+Height>bounds.Bottom)vy=-vy;var next=Fit(new Point((int)Math.Round(x),(int)Math.Round(y)),bounds,Size);if(next!=Location)Location=next;x=Math.Max(bounds.Left,Math.Min(bounds.Right-Width,x));y=Math.Max(bounds.Top,Math.Min(bounds.Bottom-Height,y));}
     if(model!=null&&animate){
       /* Gedämpfte Feder: weiches Anlaufen und Abbremsen beim Drehen. */
-      double diff=Turn(Target(now));yawVel+=(diff*30-yawVel*11)*dt;yaw=((yaw+yawVel*dt)%360+360)%360;
+      double diff=Turn(Target(now));yawVel+=(diff*70-yawVel*16.7)*dt;yaw=((yaw+yawVel*dt)%360+360)%360;
       if(now>blinkAt){blinkUntil=now+0.14;blinkAt=now+2.5+random.NextDouble()*4;}
     }else if(model!=null){yaw=0;yawVel=0;}
     Render();
@@ -786,7 +786,7 @@ class DesktopPet : Form {
     if(now<moodUntil&&mood>=0)return mood;
     return -1;
   }
-  /* Zeichnet die Figur; zwischen zwei Drehwinkeln wird weich überblendet, damit die Drehung nicht stufig wirkt. */
+  /* Zeichnet die Figur im jeweils nächsten der 72 Blickwinkel. */
   void Draw3D(Graphics g){
     g.Clear(Color.Transparent);g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.Bilinear;g.PixelOffsetMode=System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
     double now=clock.Elapsed.TotalSeconds;bool live=animate;
@@ -797,9 +797,9 @@ class DesktopPet : Form {
     g.TranslateTransform(Width/2f,Height/2f+bob);g.RotateTransform(roll);
     var target=new Rectangle(-CellW/2,-CellH/2,CellW,CellH);
     if(face>=0){g.DrawImage(cells[face],target);return;}
-    double f=yaw/Step;int first=(int)Math.Floor(f);double mix=f-first;first=(first%Turns+Turns)%Turns;
-    g.DrawImage(cells[first],target);
-    if(mix>0.03){var matrix=new System.Drawing.Imaging.ColorMatrix();matrix.Matrix33=(float)mix;using(var attributes=new System.Drawing.Imaging.ImageAttributes()){attributes.SetColorMatrix(matrix);g.DrawImage(cells[(first+1)%Turns],target,0,0,CellW,CellH,GraphicsUnit.Pixel,attributes);}}
+    /* Nächster Blickwinkel ohne Überblendung: halbdurchsichtige Mischbilder zogen einen Schleier nach. */
+    int turn=((int)Math.Round(yaw/Step)%Turns+Turns)%Turns;
+    g.DrawImage(cells[turn],target);
   }
   Bitmap Frame3D(){var bitmap=new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format32bppArgb);using(var g=Graphics.FromImage(bitmap))Draw3D(g);return bitmap;}
   /* Vorschau ohne Fenster: Drehwinkel in Grad, Ausdruck als Bildnummer (-1 = automatisch). */

@@ -68,6 +68,9 @@ Neueste Version zuerst.
 
 ### Neu in 0.18.3: Fadenkreuz-Editor, Linksklick-Fenster wie die Sprechblase, Figur bei Aufnahme sichtbar
 
+- **Drehung ohne Schleier:** Die Überblendung zwischen zwei Blickwinkeln ist
+  entfernt, weil sie einen Schleier nachzog. TecMon dreht sich jetzt schneller
+  und springt sauber zwischen den 72 Blickwinkeln.
 - **Fadenkreuz-Editor:** Neue Karte „Fadenkreuz“ mit Vorschau, Vorlagen,
   Länge, Abstand, Dicke, Umriss, Farbe, Punkt und T-Form. Ein vorhandener
   CS2-Fadenkreuz-Code (CSGO-…) lässt sich übernehmen. „In CS2 speichern“
