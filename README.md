@@ -66,14 +66,22 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
-### Neu in 0.18.2: Hellere Figur, neue LED-Gesichter, Menü im TecMon-Stil
+### Neu in 0.18.2: Hellere Figur, 20 LED-Gesichter, flüssigere Drehung, Menü im TecMon-Stil
 
 - **Heller:** Die 3D-Figur ist mit Umgebungslicht neu gerendert, auf einer
   mittleren Helligkeit: Gold und Metall sind gut erkennbar, ohne zu überstrahlen.
-- **Neue LED-Gesichter:** Hohe, runde LED-Augen, Blinzeln als Linie, Freude
-  als Bögen, beim Sprechen ein kleiner ovaler Mund. Beide Augen sitzen jetzt
+- **20 LED-Gesichter:** Hohe, runde LED-Augen, Blinzeln, Freude, Sprechen,
+  dazu Zwinkern, Staunen, Herzaugen, Sternaugen, Lachen, Kuss, Zunge, Sonnenbrille,
+  verwirrt, traurig, wütend, schwindelig und Schlafen. Beide Augen sitzen jetzt
   exakt auf gleicher Höhe (das Gesicht lag im Modell leicht schräg). Das alte,
   ins Modell eingeformte Lächeln und ein Leuchtpunkt am Kinn sind entfernt.
+- **Ausdrücke im Alltag:** Ab und zu ein Zwinkern oder Herzaugen, wenn TecMon
+  nichts zu tun hat; nach drei Minuten ohne Aktivität schläft er ein. Vor einem
+  Tipp staunt er kurz, nach einem Tipp zum eigenen Tod schaut er mitfühlend,
+  nach Lob mit Sternaugen.
+- **Flüssigere Drehung:** Doppelt so viele Blickwinkel (alle 5°) und weiches
+  Überblenden dazwischen. Die Einzelbilder werden beim Start einmal
+  ausgeschnitten und das Fensterbild wiederverwendet; das spart Rechenzeit.
 - **Menü:** Das Rechtsklick-Menü der Figur (und das Tray-Menü) hat den Look der
   Rundentipp-Sprechblase: dunkle Fläche, goldener Rahmen, lila Auswahl.
 - **Linksklick-Fenster aufgeräumt:** Gleicher Stil wie Sprechblase und Menü.
