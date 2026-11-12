@@ -726,7 +726,7 @@ class DesktopPet : Form {
     buddy.DropDownItems.Add(new ToolStripSeparator());buddy.DropDownItems.Add("Werte anzeigen",null,(s,e)=>OpenPanel("tecmon",""));
     buddy.DropDownOpening+=(s,e)=>sleepItem.Text=petAsleep?"Aufwecken":"Schlafen schicken";menu.Items.Add(buddy);
     var games=new ToolStripMenuItem("Spiele mit TecMon");
-    foreach(var pair in new[]{new[]{"Reaktionstest","reaction"},new[]{"Ziele treffen","aim"},new[]{"Muster merken","memory"},new[]{"Schere, Stein, Papier","rps"},new[]{"Zahl raten","guess"},new[]{"Callout-Quiz","quiz"},new[]{"Waffenpreis-Quiz","price"}}){string game=pair[1];games.DropDownItems.Add(pair[0],null,(s,e)=>OpenPanel("spiele",game));}
+    foreach(var pair in new[]{new[]{"Reaktionstest","reaction"},new[]{"Ziele treffen","aim"},new[]{"Muster merken","memory"},new[]{"Schere, Stein, Papier","rps"},new[]{"Zahl raten","guess"}}){string game=pair[1];games.DropDownItems.Add(pair[0],null,(s,e)=>OpenPanel("spiele",game));}
     menu.Items.Add(games);
     personality=new ToolStripMenuItem("Persönlichkeit");
     foreach(var pair in new[]{new[]{"Super nett","nett"},new[]{"Normal","normal"},new[]{"Nerdy","nerdy"},new[]{"HUAN-Modus","huan"}}){string mode=pair[1];var item=new ToolStripMenuItem(pair[0]){Tag=mode,Checked=mode=="normal"};item.Click+=async(s,e)=>await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");personality.DropDownItems.Add(item);}
@@ -737,7 +737,10 @@ class DesktopPet : Form {
     /* Games: spielbezogene Integrationen, zuerst CS2. Weitere Spiele sind geplant. */
     var gamesRoot=new ToolStripMenuItem("Games");var cs2=new ToolStripMenuItem("CS2");
     tipsItem=new ToolStripMenuItem("Rundentipps");tipsOn=new ToolStripMenuItem("Eingeschaltet",null,async(s,e)=>await ToggleTips());tipsItem.DropDownItems.Add(tipsOn);tipsItem.DropDownItems.Add(new ToolStripSeparator());cs2.DropDownItems.Add(tipsItem);
+    cs2.DropDownItems.Add("Highlights aufnehmen",null,(s,e)=>OpenPanel("games",""));
     cs2.DropDownItems.Add("Fadenkreuz einstellen",null,(s,e)=>OpenPanel("fadenkreuz",""));
+    cs2.DropDownItems.Add("Callout-Quiz",null,(s,e)=>OpenPanel("quiz","quiz"));
+    cs2.DropDownItems.Add("Waffenpreis-Quiz",null,(s,e)=>OpenPanel("quiz","price"));
     cs2.DropDownItems.Add("Letzte Videos",null,(s,e)=>OpenPanel("videos",""));
     cs2.DropDownItems.Add("Videos-Ordner öffnen",null,async(s,e)=>{try{await Request("/api/videos/folder",true);}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}});
     gamesRoot.DropDownItems.Add(cs2);gamesRoot.DropDownItems.Add(new ToolStripSeparator());gamesRoot.DropDownItems.Add(new ToolStripMenuItem("Weitere Spiele geplant"){Enabled=false});menu.Items.Add(gamesRoot);

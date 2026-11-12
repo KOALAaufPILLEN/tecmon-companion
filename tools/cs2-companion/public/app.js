@@ -315,7 +315,7 @@ function showPet(state){
 async function petCall(url,body){try{const result=await api(url,body);showPet(result.pet);return result.pet;}catch(error){notice(error);}}
 document.querySelectorAll('[data-pet]').forEach(b=>b.addEventListener('click',()=>petCall('/api/pet/interact',{action:b.dataset.pet})));
 async function loadPet(){try{const state=await api('/api/state');showPet(state.pet);}catch(error){}}
-const area=()=>$('game-area');
+let gameArea=$('game-area');const area=()=>gameArea;
 function gameDone(game,win,score){petCall('/api/pet/game',{game,win,score});}
 /* Reaktionstest: warten, bis das Feld lila wird, dann so schnell wie möglich klicken. */
 function reactionGame(){
@@ -378,6 +378,6 @@ function guessGame(){
     info.textContent=`${n} ist zu ${n<secret?'klein':'groß'}. Versuch ${tries}.`;input.select();};
   go.addEventListener('click',guess);input.addEventListener('keydown',e=>{if(e.key==='Enter')guess();});area().replaceChildren(row,info);input.focus();
 }
-document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>({reaction:reactionGame,rps:rpsGame,quiz:quizGame,price:priceGame,aim:aimGame,memory:memoryGame,guess:guessGame})[b.dataset.game]()));
+document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>(gameArea=b.closest('.card').querySelector('.game-area'),{reaction:reactionGame,rps:rpsGame,quiz:quizGame,price:priceGame,aim:aimGame,memory:memoryGame,guess:guessGame})[b.dataset.game]()));
 loadPet();setInterval(loadPet,5000);
-if(['#spiele','#tecmon','#games','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
+if(['#spiele','#tecmon','#games','#quiz','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
