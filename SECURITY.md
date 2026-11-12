@@ -45,3 +45,20 @@ Der verwaltete Recorder lädt für das bekannte originale CSDM-3.20.1-Plugin den
 ## Branding-Integrität ab 0.6
 
 Feste Paket- und Datei-SHA256-Werte im Programmcode, fester Release-Download und Ablehnung manipulierter Cache-Dateien. Aufträge dürfen keine Asset-URLs, Filter oder Soll-Prüfsummen vorgeben. Private, zufällige Arbeitsordner; UTF-8-Texte mit deaktivierter FFmpeg-Textexpansion. Der native Helfer erhält seine Parameter über stdin, öffnet Eingaben mit FileShare.Read, prüft ihre Hashes und hält die Handles während FFmpeg offen. Windows blockiert dadurch Schreiben, Löschen und Ersetzen. Fehler liefern kein ungebrandetes Video als vermeintlich fertiges Ergebnis aus. Wer den Programmcode oder den Prozess mit ausreichenden Rechten verändert, kann diese Schutzkette umgehen; dies ist kein Schutz vor einem kompromittierten Konto oder Administrator.
+
+
+## CS2-Rundentipps ab 0.14
+
+Die Rundentipps nutzen ausschließlich Valves offizielle Game State Integration: CS2 sendet selbst an `127.0.0.1:31977/gsi`. Es gibt keinen Speicherzugriff, keine Injektion, keine Hooks, keine Overlays im Spielprozess und keine Maus- oder Tastatureingaben an das Spiel. Die cfg-Datei `gamestate_integration_tecmon.cfg` entsteht erst nach dem Einschalten, mit eigenem zufälligem Token, und wird beim Ausschalten entfernt. `gsiConfigText()` fordert nur eigene Spielerdaten an (`provider`, `map`, `round`, `player_id`, `player_state`, `player_weapons`, `player_match_stats`, `phase_countdowns`); `allplayers_*`, `bomb`, `grenades` und `player_position` sind ausgeschlossen, ein Test prüft das. Von `phase_countdowns` wird nur der Kaufzeit-Countdown ausgewertet, nie der Bomben-Countdown. Während einer Demo-Aufnahme werden GSI-Daten ignoriert. Turnier- oder FACEIT-Regeln für Zusatzprogramme können strenger sein.
+
+## Daten von der Webseite ab 0.15
+
+`POST /bridge/insights` nimmt nur von freigegebenen Webseiten mit gültigem Bridge-Token eine Zusammenfassung der eigenen Matches an (`insights-v1`, ab 0.16 `insights-v2` mit Summen eigener Gewohnheiten und Waffenwerte). `cleanInsights()` prüft und kürzt alle Felder; Daten anderer Spieler werden nicht angenommen. Gespeichert wird lokal in `insights.json` (Modus 600, höchstens vier Konten). Die Daten verlassen den PC nicht und lassen sich im Companion mit „Webseiten-Daten löschen“ entfernen.
+
+## Eigene TecMon-Engine ab 0.17
+
+Download und Aufnahme können ohne CS-Demo-Manager-Programm und ohne PostgreSQL laufen (`internal-recorder.mjs`, `valve-download.mjs`). Fremde Binärdateien starten nur mit fester Prüfsumme: das CS2-Plugin über `PLUGIN_SHA256` in `recording-engine.mjs`, boiler-writter über die feste npm-Integrität. Bei Abweichung bricht der Companion ab. Läuft CS2 schon, bricht die Aufnahme ab, statt das Spiel zu beenden; in `gameinfo.gi` wird nur die eigene Zeile ergänzt und danach wieder entfernt. Befehle in der Aktionsdatei und der Kameraplan für das HLAE-Skript (`camera-script.mjs`) entstehen nur aus geprüften Zahlen und bereinigten Namen des Auftrags, nie aus freiem Text der Webseite. Das Skript läuft nur bei der Offline-Demo-Wiedergabe, nie im Live-Match. „Kamera im Spiel setzen“ nutzt einen eigenen CS2-Konfigurationsordner und liest `console.log` nur.
+
+## Automatische Updates ab 0.17.1
+
+Automatische Updates nutzen dieselben Prüfungen wie der Knopf (Manifest, Größe, SHA-256), laufen nie während Download, Aufnahme oder Kamera-Sitzung und lassen sich unter „Erweitert → Updates & Info“ abschalten (`updates.json`). Für die Grenzen der Hash-Prüfung gilt der Abschnitt „Programm-Updates ab 0.4“.
