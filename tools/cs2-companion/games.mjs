@@ -19,7 +19,14 @@ export const GAME_CATALOG = [
     data: ["gamestate_integration_tecmon.cfg und tecmon_crosshair.cfg im CS2-Ordner", "crosshair.json und insights.json im Companion-Profil"],
   },
   { id: "valorant", label: "Valorant", short: "Valorant", status: "planned", features: [], data: [] },
-  { id: "dota2", label: "Dota 2", short: "Dota 2", status: "planned", features: [], data: [] },
+  {
+    id: "dota2",
+    label: "Dota 2",
+    short: "Dota 2",
+    status: "available",
+    features: ["Dota-2-Tipps in Pausen und nach dem Tod", "Replay-Auswertung mit Items auf der Webseite"],
+    data: ["gamestate_integration_tecmon.cfg im Dota-2-Ordner (nur wenn eingeschaltet)", "dota2/gsi.json im Companion-Profil"],
+  },
   { id: "wardogs", label: "Wardogs", short: "Wardogs", status: "planned", features: [], data: [] },
 ];
 

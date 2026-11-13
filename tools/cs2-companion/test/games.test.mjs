@@ -12,7 +12,7 @@ test("Spiel-Pakete: CS2 standardmäßig installiert, geplante Spiele nicht insta
   t.after(() => rm(dir, { recursive: true, force: true }));
   const games = await createGamePackages(dir);
   assert.equal(games.has("cs2"), true);
-  assert.deepEqual(GAME_CATALOG.filter((g) => g.status === "planned").map((g) => g.id), ["valorant", "dota2", "wardogs"]);
+  assert.deepEqual(GAME_CATALOG.filter((g) => g.status === "planned").map((g) => g.id), ["valorant", "wardogs"]);
   await assert.rejects(games.install("valorant"), /geplant/);
   await assert.rejects(games.install("tetris"), /Unbekanntes Spiel/);
   await games.remove("cs2");

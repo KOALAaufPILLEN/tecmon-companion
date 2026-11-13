@@ -55,7 +55,7 @@ async function api(url, body) {
 function notice(error) { $('notice').textContent = error.message || String(error); }
 function el(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; }
 const statuses = { preparing:'VISUALS WERDEN GEPRÜFT', branding:'VIDEO-BRANDING LÄUFT', ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER', downloading:'DEMO WIRD GELADEN' };
-const tipLabels={economy:'Wirtschaft',buy:'Kauf-Check',death:'Nach dem Tod',habit:'Gewohnheit',mindset:'Kopf',summary:'Zusammenfassung',weapon:'Waffe',map:'Map',warmup:'Aufwärmen',praise:'Stark',history:'Deine Matches',team:'Team'};
+const tipLabels={economy:'Wirtschaft',buy:'Kauf-Check',death:'Nach dem Tod',habit:'Gewohnheit',mindset:'Kopf',summary:'Zusammenfassung',weapon:'Waffe',map:'Map',warmup:'Aufwärmen',praise:'Stark',history:'Deine Matches',team:'Team',farm:'Farm',buyback:'Buyback',actives:'Items',gold:'Gold'};
 let tipsSignature='';let featuresSignature='';
 function gameTips(gsi){
   if(!gsi)return;
@@ -102,6 +102,7 @@ async function refresh() {
     if(state.bridge?.devices?.length) container.append(connections);
   }
   gameTips(state.gsi);
+  dotaTips(state.dota);
   databaseState(state.postgres);
   $('auto-update-row').hidden=!state.updates?.available; $('auto-update').checked=!!state.updates?.auto; $('auto-update-note').textContent=state.updates?.auto?'Neue Versionen werden nach der Prüfung von Größe und Prüfsumme selbst installiert, nie während eines Downloads oder einer Aufnahme. Danach startet der Companion neu.':'Aus: Neue Versionen erscheinen als Hinweis und werden erst nach deinem Klick installiert.';
  $('own-engine-card').hidden=!state.engine?.available; $('own-engine').checked=!!state.engine?.internal; $('own-engine-note').textContent=state.engine?.internal?'Aktiv: Download und Aufnahme laufen ohne CS Demo Manager. Ältere Aufträge ohne Spieler-Slots nutzen automatisch weiter CS Demo Manager.':'Aus: Download und Aufnahme laufen wie bisher über CS Demo Manager und die lokale Datenbank.';
@@ -312,6 +313,24 @@ function showPet(state){
   $('pet-counts').textContent=`Angestupst ${c.poke||0}× · Witze ${c.joke||0} · Tricks ${c.trick||0} · Spiele ${games}`;
   const best=state.best||{};$('game-best').textContent=[best.reaction?`Bester Reaktionstest: ${best.reaction} ms`:'',c.win_rps?`Schere-Stein-Papier gewonnen: ${c.win_rps}×`:'',c.win_quiz?`Quiz richtig: ${c.win_quiz}×`:'',best.aim?`Ziele: ${(best.aim/1000).toFixed(2)} s`:'',best.memory?`Muster: ${best.memory}`:'',best.guess?`Zahl geraten in ${best.guess} Versuchen`:'',c.win_price?`Preise richtig: ${c.win_price}×`:''].filter(Boolean).join(' · ');
 }
+/* Dota 2: eigener Schalter, eigenes Token, gleiche Regeln (nur eigene Werte, nur in Pausen). */
+let dotaTipsSignature='';let dotaFeaturesSignature='';
+function dotaTips(dota){
+  if(!dota)return;
+  $('dota-tips-heading').textContent=!dota.enabled?'Dota-2-Tipps sind aus':dota.connected?(dota.quiet?'Live: Dota 2 · ich bin still':'Live: Dota 2'):'Eingeschaltet · wartet auf Dota 2';
+  const toggle=$('dota-toggle');toggle.textContent=dota.enabled?'Ausschalten':'Einschalten';toggle.className=dota.enabled?'subtle':'';toggle.disabled=!dota.enabled&&!dota.available;
+  if(dota.error)$('dota-note').textContent=`Konfiguration konnte nicht geschrieben werden: ${dota.error}`;
+  else if(!dota.available&&!dota.enabled)$('dota-note').textContent='Dota 2 wurde auf diesem PC nicht gefunden.';
+  const featureNext=JSON.stringify(dota.features||[]);
+  if(featureNext!==dotaFeaturesSignature){
+    dotaFeaturesSignature=featureNext;
+    $('dota-features').replaceChildren(...(dota.features||[]).map(f=>{const label=el('label');const box=document.createElement('input');box.type='checkbox';box.checked=f.enabled;box.addEventListener('change',async()=>{box.disabled=true;try{await api('/api/dota2/features',{features:{[f.id]:box.checked}});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});label.append(box,document.createTextNode(f.label));return label;}));
+  }
+  const next=JSON.stringify((dota.history||[]).map(t=>t.id));
+  if(next===dotaTipsSignature)return;dotaTipsSignature=next;
+  $('dota-list').replaceChildren(...(dota.history||[]).slice(0,5).map(t=>{const li=el('li','','tip-item');li.append(el('small',tipLabels[t.category]||'Tipp'),document.createTextNode(t.text));return li;}));
+}
+$('dota-toggle').addEventListener('click',async()=>{const button=$('dota-toggle');button.disabled=true;try{const on=latestState?.dota?.enabled;const result=await api(on?'/api/dota2/disable':'/api/dota2/enable',on?{}:{confirm:true});notice({message:result.message});await refresh();}catch(error){notice(error);}finally{button.disabled=false;}});
 async function petCall(url,body){try{const result=await api(url,body);showPet(result.pet);return result.pet;}catch(error){notice(error);}}
 document.querySelectorAll('[data-pet]').forEach(b=>b.addEventListener('click',()=>petCall('/api/pet/interact',{action:b.dataset.pet})));
 async function loadPet(){try{const state=await api('/api/state');showPet(state.pet);if(state.games)showGames(state.games);}catch(error){}}
@@ -319,6 +338,7 @@ async function loadPet(){try{const state=await api('/api/state');showPet(state.p
 let gamesSignature='';
 function showGames(list){
   const cs2=list.find(g=>g.id==='cs2');document.querySelectorAll('.cs2-only').forEach(n=>{n.hidden=!(cs2&&cs2.installed);});
+  const dota=list.find(g=>g.id==='dota2');document.querySelectorAll('.dota2-only').forEach(n=>{n.hidden=!(dota&&dota.installed);});
   const signature=JSON.stringify(list.map(g=>[g.id,g.installed,g.status]));if(signature===gamesSignature)return;gamesSignature=signature;
   $('game-library').replaceChildren(...list.map(g=>{
     const row=el('li','','game-row'+(g.installed?' installed':''));const info=el('div','');info.append(el('b',g.label));
@@ -326,7 +346,7 @@ function showGames(list){
     const button=el('button','');button.type='button';
     if(g.status==='planned'){button.textContent='Herunterladen';button.disabled=true;button.className='subtle';button.title='Kommt in einem späteren Update.';}
     else if(g.installed){button.textContent='Entfernen';button.className='subtle';button.addEventListener('click',async()=>{
-      if(!confirm(`${g.label} entfernen?\n\nGelöscht werden: ${g.data.join('; ')}.\nRundentipps werden ausgeschaltet. Du kannst das Paket jederzeit wieder installieren.`))return;
+      if(!confirm(`${g.label} entfernen?\n\nGelöscht werden: ${g.data.join('; ')}.\nTipps für dieses Spiel werden ausgeschaltet. Du kannst das Paket jederzeit wieder installieren.`))return;
       try{const r=await api('/api/games/remove',{id:g.id,confirm:true});notice(r.message);showGames(r.games);}catch(error){notice(error);}});}
     else{button.textContent='⬇ Installieren';button.addEventListener('click',async()=>{try{const r=await api('/api/games/install',{id:g.id});notice(r.message);showGames(r.games);}catch(error){notice(error);}});}
     row.append(info,button);return row;}));
