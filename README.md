@@ -66,6 +66,14 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.22.2: Szenen mit eigener Beschreibung
+
+- **Beschreibung je Szene:** Auf der Webseite lassen sich die Szenen einer
+  Aufnahme abwählen, in eine eigene Reihenfolge bringen und beschreiben. Die
+  Beschreibung steht im Video unter dem Spielernamen, vor dem Namen der Map.
+- **Nur Text:** höchstens 40 Zeichen, bereinigt wie alle Namen. Aufträge ohne
+  Beschreibung sehen aus wie bisher. Neue Capability: `scene-label-v1`.
+
 ### Neu in 0.22.1: Neue Augen für TecMon
 
 - **Neue Gesichter statt LED-Punkten:** Kräftig leuchtende lila Augen und

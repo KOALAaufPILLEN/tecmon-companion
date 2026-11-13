@@ -1,4 +1,7 @@
 import { shareCode } from "./share-code.mjs";
+/** Webseiten dürfen je Szene eine Beschreibung mitschicken (`label`). */
+export const LABEL_CAPABILITY = "scene-label-v1";
+const SCENE_LABEL_MAX = 40;
 /** Versioned, data-only exchange format. Never accept game commands or paths here. */
 export function validateJob(value) {
   const fail = () => {
@@ -41,6 +44,9 @@ export function validateJob(value) {
     if (s.slot !== undefined && (!Number.isSafeInteger(s.slot) || s.slot < 1 || s.slot > 64)) fail();
     ticks += s.endTick - s.startTick;
     const cuts = cameraCuts(s.cuts, s.startTick, s.endTick, fail);
+    // Beschreibung der Szene fürs Video (scene-label-v1). Optional, nur Text, höchstens 40 Zeichen.
+    if (s.label !== undefined && typeof s.label !== "string") fail();
+    const label = text(s.label, SCENE_LABEL_MAX).replace(/\s+/g, " ").trim();
     return {
       startTick: s.startTick,
       endTick: s.endTick,
@@ -48,6 +54,7 @@ export function validateJob(value) {
       playerName: text(s.playerName, 64) || "Spieler",
       ...(s.slot === undefined ? {} : { slot: s.slot }),
       ...(cuts.length ? { cuts } : {}),
+      ...(label ? { label } : {}),
     };
   });
   if (ticks / value.tickRate > 1200)

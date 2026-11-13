@@ -201,3 +201,22 @@ test("asset integrity failure stops the recording pipeline before CS2 and cannot
     404,
   );
 });
+
+test("Szenenbeschreibung (scene-label-v1): optional, bereinigt, auf 40 Zeichen gekürzt", () => {
+  const first = job.sequences[0];
+  const clean = validateJob({
+    ...job,
+    sequences: [
+      { ...first, label: "  3 Kills <b>an der</b>\n Treppe  " },
+      { ...first, label: "x".repeat(90) },
+      { ...first, label: "   " },
+      first,
+    ],
+  });
+  assert.equal(clean.sequences[0].label, "3 Kills ban der/b Treppe");
+  assert.equal(clean.sequences[1].label.length, 40);
+  assert.equal("label" in clean.sequences[2], false);
+  assert.equal("label" in clean.sequences[3], false);
+  assert.throws(() => validateJob({ ...job, sequences: [{ ...first, label: 5 }] }));
+  assert.throws(() => validateJob({ ...job, sequences: [{ ...first, label: { filter: "movie=x" } }] }));
+});
