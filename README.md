@@ -70,7 +70,7 @@ Neueste Version zuerst.
 
 - **Die letzten Sekunden als Clip:** Im Fenster unter „Clips“ oder per
   Rechtsklick „Clips → Clip-Puffer eingeschaltet“ nimmt TecMon den Bildschirm
-  laufend auf und behält nur die letzten 15 bis 120 Sekunden.
+  laufend auf und behält nur die letzten 10 bis 120 Sekunden.
   **Strg+Alt+C** speichert sie als Clip. Das funktioniert in jedem Spiel.
 - **Kein Eingriff ins Spiel:** FFmpeg liest nur das Windows-Bild (Desktop
   Duplication, wie OBS). Kein Hook, keine Injektion, kein Mitlesen der
