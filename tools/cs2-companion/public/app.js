@@ -314,7 +314,23 @@ function showPet(state){
 }
 async function petCall(url,body){try{const result=await api(url,body);showPet(result.pet);return result.pet;}catch(error){notice(error);}}
 document.querySelectorAll('[data-pet]').forEach(b=>b.addEventListener('click',()=>petCall('/api/pet/interact',{action:b.dataset.pet})));
-async function loadPet(){try{const state=await api('/api/state');showPet(state.pet);}catch(error){}}
+async function loadPet(){try{const state=await api('/api/state');showPet(state.pet);if(state.games)showGames(state.games);}catch(error){}}
+/* Spiel-Pakete: installieren oder entfernen; geplante Spiele nur als Hinweis. */
+let gamesSignature='';
+function showGames(list){
+  const cs2=list.find(g=>g.id==='cs2');document.querySelectorAll('.cs2-only').forEach(n=>{n.hidden=!(cs2&&cs2.installed);});
+  const signature=JSON.stringify(list.map(g=>[g.id,g.installed,g.status]));if(signature===gamesSignature)return;gamesSignature=signature;
+  $('game-library').replaceChildren(...list.map(g=>{
+    const row=el('li','','game-row'+(g.installed?' installed':''));const info=el('div','');info.append(el('b',g.label));
+    const note=g.status==='planned'?'Geplant':g.installed?`Installiert · ${g.features.join(', ')}`:`Nicht installiert · ${g.features.join(', ')}`;info.append(el('small',note));
+    const button=el('button','');button.type='button';
+    if(g.status==='planned'){button.textContent='Herunterladen';button.disabled=true;button.className='subtle';button.title='Kommt in einem späteren Update.';}
+    else if(g.installed){button.textContent='Entfernen';button.className='subtle';button.addEventListener('click',async()=>{
+      if(!confirm(`${g.label} entfernen?\n\nGelöscht werden: ${g.data.join('; ')}.\nRundentipps werden ausgeschaltet. Du kannst das Paket jederzeit wieder installieren.`))return;
+      try{const r=await api('/api/games/remove',{id:g.id,confirm:true});notice(r.message);showGames(r.games);}catch(error){notice(error);}});}
+    else{button.textContent='⬇ Installieren';button.addEventListener('click',async()=>{try{const r=await api('/api/games/install',{id:g.id});notice(r.message);showGames(r.games);}catch(error){notice(error);}});}
+    row.append(info,button);return row;}));
+}
 let gameArea=$('game-area');const area=()=>gameArea;
 function gameDone(game,win,score){petCall('/api/pet/game',{game,win,score});}
 /* Reaktionstest: warten, bis das Feld lila wird, dann so schnell wie möglich klicken. */

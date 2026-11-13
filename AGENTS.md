@@ -113,6 +113,19 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
 - Werte und Zähler bleiben lokal in `pet.json`; Spiele laufen nur in der
   Companion-Oberfläche, nie im Spiel.
 
+## Spiel-Pakete (`games.mjs`)
+
+- Jedes Spiel ist ein Paket in `GAME_CATALOG`. Ohne gespeicherte Auswahl ist
+  CS2 installiert; die Auswahl liegt in `games.json`.
+- Ist ein Paket entfernt, legt der Companion für dieses Spiel keine Dateien an
+  und nimmt keine Daten an (`/gsi`, `/bridge/insights`, `/api/gsi/*`,
+  `/api/crosshair/*` antworten mit Fehler). Entfernen löscht nur eigene
+  Dateien des Pakets. Neue spielbezogene Funktionen gehören zu einem Paket und
+  müssen beim Entfernen mit aufgeräumt werden.
+- Geplante Spiele (`status: "planned"`) lassen sich nicht installieren, bis es
+  echte Funktionen dafür gibt.
+- Die Highlight-Aufnahme gehört zum Companion, nicht zu einem Paket.
+
 ## Prüfen und veröffentlichen
 
 - Vor jedem Push `npm test` und `node scripts/version.mjs check` im Repo-Stamm.

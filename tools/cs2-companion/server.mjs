@@ -23,6 +23,7 @@ import { createBrowserBridge } from "./browser-bridge.mjs";
 import { browserDemos } from "./browser-demo.mjs";
 import { createGameTips, FEATURES } from "./game-tips.mjs";
 import { createInsightsStore } from "./insights.mjs";
+import { createGamePackages } from "./games.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { createPet, quizQuestion } from "./personality.mjs";
 import { createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
@@ -187,6 +188,7 @@ export async function createCompanion({
     detected.cs2 = installation.cs2Exe || detected.cs2;
   }
   // CS2 Game State Integration: offizielle, rein lesende Schnittstelle für Rundentipps.
+  const games = await createGamePackages(installation?.profileDir || dataDir);
   const gsi = await createGsiSettings(installation?.profileDir || dataDir);
   const crosshair = await createCrosshairSettings(installation?.profileDir || dataDir);
   const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES });
@@ -580,6 +582,7 @@ export async function createCompanion({
       });
     if (req.method === "POST" && url.pathname === "/bridge/insights") {
       const input = await readInput(req, 262144);
+      if (!games.has("cs2")) return json(res, 409, { error: "Das CS2-Paket ist im Companion nicht installiert." });
       return json(res, 200, await insights.put(input));
     }
     if(req.method === "POST" && url.pathname === "/bridge/demo/start"){
@@ -753,7 +756,10 @@ export async function createCompanion({
     const url = new URL(req.url, origin);
     try {
       if (url.pathname.startsWith("/bridge/")) return await bridgeRequest(req, res, url);
-      if (url.pathname === "/gsi") return await gsiRequest(req, res);
+      if (url.pathname === "/gsi") {
+        if (!games.has("cs2")) return json(res, 409, { error: "Das CS2-Paket ist nicht installiert." });
+        return await gsiRequest(req, res);
+      }
       if (req.headers.origin && req.headers.origin !== origin)
         return json(res, 403, { error: "Nur im lokalen Companion verfügbar." });
       if (req.method === "GET" && url.pathname === "/api/health")
@@ -790,6 +796,7 @@ export async function createCompanion({
           bridge: bridge.state(),
           gsi: gsiState(),
           pet: pet.state(),
+          games: games.state(),
           downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
@@ -823,6 +830,25 @@ export async function createCompanion({
           openPath(await realpath(dataDir), false);
         }
         return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/games/install") {
+        await games.install(String(input.id || ""));
+        return json(res, 200, { message: "Paket installiert.", games: games.state() });
+      }
+      if (url.pathname === "/api/games/remove") {
+        if (input.confirm !== true) throw new Error("Entfernen bitte ausdrücklich bestätigen.");
+        const id = String(input.id || "");
+        if (id === "cs2") {
+          await gsi.setEnabled(false);
+          await syncGsiConfig();
+          await insights.clear();
+          await crosshair.reset(detected.cs2);
+        }
+        await games.remove(id);
+        return json(res, 200, { message: "Paket entfernt. Seine Daten wurden gelöscht.", games: games.state(), gsi: gsiState() });
+      }
+      if (url.pathname.startsWith("/api/gsi/") || url.pathname.startsWith("/api/crosshair/")) {
+        if (!games.has("cs2")) throw new Error("Das CS2-Paket ist nicht installiert. Unter „Games“ installieren.");
       }
       if (url.pathname === "/api/gsi/enable") {
         if (input.confirm !== true) throw new Error("Rundentipps bitte ausdrücklich einschalten.");

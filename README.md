@@ -66,6 +66,22 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.20.0: Spiel-Pakete
+
+- **Du entscheidest, welche Spiele TecMon nutzt:** Unter „Games“ steht jedes
+  Spiel als Paket mit „Installieren“ oder „Entfernen“. CS2 ist installiert,
+  Valorant, Dota 2 und Wardogs sind als geplant gelistet.
+- **Entfernen löscht die Daten des Pakets:** Beim Entfernen von CS2 werden die
+  Rundentipps ausgeschaltet und `gamestate_integration_tecmon.cfg`,
+  `tecmon_crosshair.cfg`, `crosshair.json` und die übertragenen
+  Webseiten-Daten (`insights.json`) gelöscht. Danach legt TecMon für CS2 keine
+  Dateien mehr an, und Rundentipps, Fadenkreuz und CS2-Quiz verschwinden aus
+  Menüs und Fenster. Wieder installieren geht jederzeit.
+- **Aufnahme bleibt:** Die Highlight-Aufnahme für die Webseite gehört zum
+  Companion und ist vom Paket nicht betroffen.
+- **Rechtsklick:** „Games“ zeigt CS2 oder „CS2 installieren“, die geplanten
+  Spiele und „Spiel-Pakete verwalten“.
+
 ### Neu in 0.19.1: Spiele mit TecMon und Games-Menü
 
 - **Spiele mit TecMon:** Das Menü heißt jetzt so. Vier neue Spiele kommen
