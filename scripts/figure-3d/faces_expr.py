@@ -57,7 +57,7 @@ def eye_closed(c, cx, cy, w=32, sag=10, width=9):     # ‿ entspannt geschlosse
 
 def eye_squeeze(c, cx, cy, side):                      # > <
     s = -side
-    c.line('light', [(cx - 26 * s, cy - 26), (cx + 22 * s, cy), (cx - 26 * s, cy + 26)], 12)
+    c.line('light', [(cx - 30 * s, cy - 32), (cx + 26 * s, cy), (cx - 30 * s, cy + 32)], 15)
 
 def eye_heart(c, cx, cy, s=40):
     pts = []
@@ -77,7 +77,7 @@ def eye_star(c, cx, cy, r=42):
     c.ellipse('white', cx - r * 0.18, cy - r * 0.3, r * 0.1, r * 0.1)
 
 def eye_spiral(c, cx, cy, r=38):
-    c.curve('light', lambda t: (cx + (4 + r * t) * math.cos(t * 4 * math.pi), cy + (4 + r * t) * math.sin(t * 4 * math.pi)), 0, 1, 7, n=120)
+    c.curve('light', lambda t: (cx + (4 + r * t) * math.cos(t * 4 * math.pi), cy + (4 + r * t) * math.sin(t * 4 * math.pi)), 0, 1, 9, n=120)
 
 def eye_scan(c, cx, cy):                                # Arbeiten: eckiges Display mit Scanbalken
     c.d['light'].rounded_rectangle(c.box(cx - 30, cy - 30, cx + 30, cy + 30), radius=10 * S, fill=255)
@@ -158,77 +158,139 @@ def m_kiss(c):
 def m_dots(c):
     for i, a in enumerate((255, 190, 120)): c.ellipse('light', W / 2 - 24 + 24 * i, MY, 6, 6, fill=a)
 
+# ---------- Formen der Vorlage (kräftig, klar lesbar) ----------
+def eye_block(c, cx, cy, rx=30, ry=52):                 # hohes, abgerundetes Leuchtfeld
+    c.d['light'].rounded_rectangle(c.box(cx - rx, cy - ry, cx + rx, cy + ry), radius=min(rx, 18) * S, fill=255)
+
+def eye_oval(c, cx, cy, rx, ry): c.ellipse('light', cx, cy, rx, ry)
+
+def eye_ring(c, cx, cy, r=42, width=13):
+    c.ellipse('light', cx, cy, r, r); c.ellipse('light', cx, cy, r - width, r - width, fill=0)
+
+def eye_line(c, cx, cy, w=34, width=13): c.line('light', [(cx - w, cy), (cx + w, cy)], width)
+
+def eye_slant(c, cx, cy, side, tilt, ry=40):            # Block mit schräg abgeschnittener Oberkante
+    eye_block(c, cx, cy, 32, ry)
+    c.cut([(cx - 50, cy - ry - 20), (cx + 50, cy - ry - 20), (cx + 50, cy - 8 - side * tilt), (cx - 50, cy - 8 + side * tilt)])
+
+def eye_sparkle(c, cx, cy, r=46):                        # große Glitzeraugen
+    c.ellipse('light', cx, cy, r, r); c.ellipse('pupil', cx, cy + 2, r * 0.74, r * 0.74)
+    c.ellipse('iris', cx, cy + r * 0.34, r * 0.5, r * 0.3)
+    c.ellipse('white', cx - r * 0.3, cy - r * 0.3, r * 0.26, r * 0.26)
+    c.ellipse('white', cx + r * 0.34, cy + r * 0.2, r * 0.13, r * 0.13)
+
+def big_shades(c):
+    for side, cx in ((-1, LX), (1, RX)):
+        pts = [(cx - 62, EY - 34), (cx + 62, EY - 34), (cx + 58 - (side < 0) * 6, EY + 14), (cx + 36, EY + 38), (cx - 36, EY + 38), (cx - 58 + (side > 0) * 6, EY + 14)]
+        c.poly('light', pts)
+        for k in (-34, -6, 22):                          # schräge Streifen
+            c.line('dark', [(cx + k, EY + 30), (cx + k + 30, EY - 28)], 7)
+    c.line('light', [(LX + 50, EY - 26), (RX - 50, EY - 26)], 16)
+    c.cut([(0, EY - 80), (W, EY - 80), (W, EY - 34), (0, EY - 34)], layers=('dark',))
+    c.cut([(0, EY + 38), (W, EY + 38), (W, H), (0, H)], layers=('dark',))
+
+def blush(c, alpha=190, hatch=False):
+    for cx in (LX - 6, RX + 6):
+        c.ellipse('pink', cx, EY + 70, 32, 13, fill=alpha)
+        if hatch:
+            for k in (-14, 0, 14): c.line('white', [(cx + k - 4, EY + 76), (cx + k + 4, EY + 64)], 3, fill=150)
+
+def m_ring(c, rx, ry, width=11):
+    c.ellipse('light', W / 2, MY, rx, ry); c.ellipse('light', W / 2, MY, rx - width, ry - width, fill=0)
+
+def m_zigzag(c, w=44, n=6, amp=9, width=10):
+    c.line('light', [(W / 2 - w + 2 * w * i / n, MY + (amp if i % 2 else -amp)) for i in range(n + 1)], width)
+
+def m_squiggle(c, w=30, width=10):
+    c.curve('light', lambda t: (W / 2 - w + 2 * w * t, MY + 8 * math.sin(t * 3 * math.pi)), 0, 1, width, n=60)
+
+def m_three(c):                                           # Kussmund "3"
+    c.curve('light', bez((W / 2 - 10, MY - 22), (W / 2 + 22, MY - 12), (W / 2 - 4, MY)), 0, 1, 10)
+    c.curve('light', bez((W / 2 - 4, MY), (W / 2 + 22, MY + 12), (W / 2 - 10, MY + 22)), 0, 1, 10)
+
+def m_big(c, w=44, h=40, tongue=True):                   # weit offener Lachmund
+    top = MY - 18
+    pts = [(W / 2 + w * math.cos(math.pi * i / 30), top + h * math.sin(math.pi * i / 30)) for i in range(31)]
+    c.poly('light', pts)
+    if tongue: c.ellipse('pink', W / 2, top + h * 0.72, w * 0.5, h * 0.3)
+
+def tears(c):
+    for cx in (LX, RX):
+        c.d['tear'].rounded_rectangle(c.box(cx - 13, EY + 30, cx + 13, EY + 92), radius=13 * S, fill=255)
+        c.line('white', [(cx - 4, EY + 40), (cx - 4, EY + 70)], 4, fill=170)
+
 # ---------- Ausdrücke ----------
 def build(name):
     c = Canvas()
+    both = ((-1, LX), (1, RX))
     if name == 'idle':
-        for cx in (LX, RX): eye_open(c, cx, EY)
-        brows(c, 0, 0, curve=4); m_smile(c, w=20, d=6, width=7)
+        for _, cx in both: eye_block(c, cx, EY)
+        m_smile(c, w=22, d=9, width=11)
     elif name == 'blink':
-        for cx in (LX, RX): eye_closed(c, cx, EY + 6)
-        brows(c, 0, 0, curve=4); m_smile(c, w=20, d=6, width=7)
+        for _, cx in both: eye_closed(c, cx, EY + 4, w=36, sag=11, width=13)
+        m_smile(c, w=22, d=9, width=11)
     elif name == 'happy':
-        for cx in (LX, RX): eye_happy(c, cx, EY)
-        brows(c, -6, 0, y=EY - 78, curve=6); cheeks(c); m_open(c, w=32, h=24)
-    elif name in ('talkA', 'talkB'):
-        for cx in (LX, RX): eye_open(c, cx, EY, look=(0, -2))
-        brows(c, -4, 0, curve=4)
-        if name == 'talkA': m_oval(c, 24, 18, tongue=True)
-        else: m_oval(c, 18, 9)
+        for _, cx in both: eye_happy(c, cx, EY + 4, w=38, lift=24, width=15)
+        blush(c); m_big(c, w=36, h=32)
+    elif name == 'talkA':
+        for _, cx in both: eye_block(c, cx, EY - 4)
+        m_ring(c, 20, 26)
+    elif name == 'talkB':
+        for _, cx in both: eye_block(c, cx, EY - 4)
+        m_ring(c, 30, 16, width=10)
     elif name == 'focus':
-        for side, cx in ((-1, LX), (1, RX)):
-            eye_open(c, cx, EY + 8, ry=40, pupil=0.85)
-            c.cut([(cx - 40, EY - 60), (cx + 40, EY - 60), (cx + 40, EY - 14 + side * 4), (cx - 40, EY - 14 - side * 4)])
-        brows(c, 6, -2, y=EY - 50); c.line('light', [(W / 2 - 16, MY), (W / 2 + 16, MY)], 7)
+        for side, cx in both: eye_slant(c, cx, EY + 12, side, 16, ry=38)
+        brows(c, 16, -12, y=EY - 44, width=13, length=64)
+        c.line('light', [(W / 2 - 28, MY + 6), (W / 2 + 28, MY + 6)], 12)
     elif name == 'busy':
-        for cx in (LX, RX): eye_scan(c, cx, EY)
-        m_dots(c)
+        for side, cx in both:
+            x = cx + side * 58
+            c.line('light', [(x - side * 20, EY - 48), (x, EY - 48), (x, EY + 48), (x - side * 20, EY + 48)], 13)
+            c.ellipse('light', cx - side * 8, EY - 4, 17, 17)
+        c.line('light', [(W / 2 - 34, EY + 34), (W / 2 + 34, EY + 34)], 13)
     elif name == 'wink':
-        eye_open(c, LX, EY); eye_happy(c, RX, EY + 6, lift=14)
-        brow_one(c, -1, 0, 0); brow_one(c, 1, 4, 8); cheeks(c, 120); m_smirk(c)
+        eye_oval(c, LX, EY, 30, 44); c.ellipse('white', LX - 9, EY - 16, 8, 10)
+        eye_squeeze(c, RX, EY, -1)
+        blush(c); m_big(c, w=34, h=30); small_heart(c, RX + 70, EY - 50, 16)
     elif name == 'surprised':
-        for cx in (LX, RX): eye_round(c, cx, EY, r=40, pupil=0.3)
-        brows(c, -10, -6, y=EY - 82, curve=8); m_oval(c, 15, 19)
+        for _, cx in both: eye_ring(c, cx, EY - 2)
+        m_ring(c, 18, 22)
     elif name == 'dizzy':
-        for cx in (LX, RX): eye_spiral(c, cx, EY)
-        m_wave(c); sweat(c, RX + 52, EY - 30)
+        for _, cx in both: eye_spiral(c, cx, EY, r=40)
+        m_zigzag(c)
     elif name == 'laugh':
-        for side, cx in ((-1, LX), (1, RX)): eye_squeeze(c, cx, EY, side)
-        brows(c, -8, 0, y=EY - 76, curve=6); cheeks(c, 170); m_open(c, w=40, h=34, teeth=True)
+        for side, cx in both: eye_squeeze(c, cx, EY, side)
+        m_big(c, w=46, h=42)
     elif name == 'love':
-        for cx in (LX, RX): eye_heart(c, cx, EY)
-        cheeks(c, 170); m_smile(c, w=26, d=12)
+        for _, cx in both: eye_heart(c, cx, EY, s=54)
+        blush(c, hatch=True); m_smile(c, w=24, d=10, width=11)
     elif name == 'kiss':
-        eye_happy(c, LX, EY + 4, lift=14); eye_open(c, RX, EY)
-        cheeks(c, 170); m_kiss(c)
+        for _, cx in both: eye_happy(c, cx, EY + 6, w=36, lift=18, width=14)
+        blush(c, 150); m_three(c); small_heart(c, W / 2 + 56, MY - 6, 20)
     elif name == 'angry':
-        for side, cx in ((-1, LX), (1, RX)):
-            eye_open(c, cx, EY + 6, ry=44, look=(-side * 4, 4), pupil=0.9)
-            c.cut([(cx - 44, EY - 60), (cx + 44, EY - 60), (cx + 44, EY - 30 - side * 20), (cx - 44, EY - 30 + side * 20)])
-        brows(c, 12, -14, y=EY - 54, width=12); m_frown(c, w=26, d=10)
+        for side, cx in both: eye_slant(c, cx, EY + 10, side, -26, ry=44)
+        brows(c, 22, -22, y=EY - 48, width=15, length=72)
+        m_frown(c, w=32, d=13, width=12)
     elif name == 'sleepy':
-        for side, cx in ((-1, LX), (1, RX)):
-            eye_open(c, cx, EY + 12, ry=40, look=(0, 10), pupil=0.9)
-            c.cut([(cx - 44, EY - 60), (cx + 44, EY - 60), (cx + 44, EY + 8), (cx - 44, EY + 8)])
-            c.line('light', [(cx - 30, EY + 8), (cx + 30, EY + 8)], 6)
-        brows(c, 2, 6, y=EY - 60); m_oval(c, 10, 8); zz(c)
+        for _, cx in both: eye_line(c, cx, EY + 8)
+        m_ring(c, 11, 11, width=6)
     elif name == 'tongue':
-        eye_happy(c, LX, EY); eye_open(c, RX, EY, look=(4, 0))
-        cheeks(c, 140); m_smile(c, w=30, d=12)
-        c.ellipse('pink', W / 2 + 8, MY + 18, 13, 15); c.line('dark', [(W / 2 + 8, MY + 10), (W / 2 + 8, MY + 24)], 2)
+        for side, cx in both: eye_squeeze(c, cx, EY, side)
+        m_smile(c, w=34, d=10, width=11)
+        c.d['pink'].rounded_rectangle(c.box(W / 2 - 16, MY + 2, W / 2 + 16, MY + 44), radius=16 * S, fill=255)
+        c.line('dark', [(W / 2, MY + 10), (W / 2, MY + 30)], 3)
     elif name == 'sad':
-        for side, cx in ((-1, LX), (1, RX)):
-            eye_open(c, cx, EY + 6, ry=46, look=(0, 6), pupil=1.05)
-            c.cut([(cx - 44, EY - 60), (cx + 44, EY - 60), (cx + 44, EY - 24 + side * 18), (cx - 44, EY - 24 - side * 18)])
-        brows(c, -14, 8, y=EY - 60); m_frown(c, w=24, d=10); tear(c, LX + 16, EY + 62)
+        for side, cx in both: eye_slant(c, cx, EY, side, 18, ry=34)
+        brows(c, -16, 10, y=EY - 62, width=12, length=56)
+        tears(c); m_frown(c, w=26, d=12, width=11)
     elif name == 'cool':
-        shades(c); brows(c, 4, -4, y=EY - 60); m_smirk(c)
-    elif name == 'star':
-        for cx in (LX, RX): eye_star(c, cx, EY)
-        brows(c, -8, -2, y=EY - 82, curve=6); cheeks(c, 120); m_open(c, w=30, h=22)
+        big_shades(c); c.curve('light', bez((W / 2 - 30, MY + 12), (W / 2 + 8, MY + 22), (W / 2 + 36, MY - 4)), 0, 1, 11)
+    elif name == 'star':                                   # Vorlage "shy": Glitzeraugen, rote Wangen
+        for _, cx in both: eye_sparkle(c, cx, EY - 2)
+        blush(c, hatch=True); m_squiggle(c, w=24)
     elif name == 'confused':
-        eye_open(c, LX, EY, look=(6, -6)); eye_open(c, RX, EY + 6, ry=36, look=(-4, -6), pupil=0.8)
-        brow_one(c, -1, -14, 4); brow_one(c, 1, 8, 4); m_wave(c); sweat(c, RX + 50, EY - 34)
+        eye_oval(c, LX, EY - 4, 36, 48); eye_oval(c, RX, EY + 4, 24, 28)
+        m_squiggle(c, w=34)
     return c
 
 def compose(c):

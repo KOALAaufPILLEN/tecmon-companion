@@ -68,12 +68,11 @@ Neueste Version zuerst.
 
 ### Neu in 0.22.1: Neue Augen für TecMon
 
-- **Ausdrucksstarke Holo-Gesichter statt LED-Punkten:** Leuchtende lila
-  Augen mit Iris, Pupille und Glanzlichtern, dazu Augenbrauen, rosa Wangen und
-  deutlich ausdrucksstärkere Münder. Alle 20 Gesichter (Fröhlich, Zwinkern,
-  Verliebt mit Herzaugen, Sauer mit Zornesbrauen, Traurig mit Träne, Schläfrig
-  mit Zz, Cool mit Sonnenbrille, Sternenaugen und so weiter) sind neu
-  gezeichnet und auf das Visier der 3D-Figur gerendert.
+- **Neue Gesichter statt LED-Punkten:** Kräftig leuchtende lila Augen und
+  Münder für alle 20 Ausdrücke, etwa Herzaugen, Spiralaugen, Sonnenbrille,
+  Tränen und rosa Wangen. Dazu kommen Zeichen neben dem Kopf: Zz beim
+  Schlafen, Ausrufezeichen beim Staunen, ein Fragezeichen bei Verwirrung,
+  Herzen und Funkeln.
 
 ### Neu in 0.22.0: Dota-2-Paket
 
