@@ -746,7 +746,7 @@ class DesktopPet : Form {
     cs2.DropDownItems.Add(new ToolStripSeparator());cs2.DropDownItems.Add("CS2-Paket entfernen …",null,(s,e)=>OpenPanel("games",""));
     cs2Item=cs2;cs2Install=new ToolStripMenuItem("CS2 installieren",null,async(s,e)=>await PetRequest("/api/games/install","{\"id\":\"cs2\"}")){Visible=false};
     gamesRoot.DropDownItems.Add(cs2);gamesRoot.DropDownItems.Add(cs2Install);gamesRoot.DropDownItems.Add(new ToolStripSeparator());
-    foreach(var planned in new[]{"Valorant","Dota 2","Wardogs"})gamesRoot.DropDownItems.Add(new ToolStripMenuItem(planned+" · geplant"){Enabled=false});
+    foreach(var planned in new[]{"Valorant","Dota 2","Deadlock","Wardogs"})gamesRoot.DropDownItems.Add(new ToolStripMenuItem(planned+" · geplant"){Enabled=false});
     gamesRoot.DropDownItems.Add(new ToolStripSeparator());gamesRoot.DropDownItems.Add("Spiel-Pakete verwalten",null,(s,e)=>OpenPanel("games",""));
     gamesRoot.DropDownOpening+=(s,e)=>{cs2Item.Visible=cs2Installed;cs2Install.Visible=!cs2Installed;};menu.Items.Add(gamesRoot);
     /* Clip-Puffer: Bildschirmaufnahme der letzten Sekunden, fuer alle Spiele. Standardmaessig aus. */

@@ -124,6 +124,11 @@ Neueste Version zuerst.
   Companion und ist vom Paket nicht betroffen.
 - **Rechtsklick:** „Games“ zeigt CS2 oder „CS2 installieren“, die geplanten
   Spiele und „Spiel-Pakete verwalten“.
+- **Deadlock** steht als geplantes Paket in der Liste. Deadlock hat keine
+  offizielle Schnittstelle für Live-Daten, deshalb gibt es im Companion noch
+  keine Rundentipps. Die Replay-Auswertung (Scoreboard, Item-Käufe mit Minute,
+  Todeskarte, Laufwege, Stats je Held und Item) läuft schon jetzt auf der
+  Webseite im Browser; die Karte im Fenster weist darauf hin.
 
 ### Neu in 0.19.1: Spiele mit TecMon und Games-Menü
 

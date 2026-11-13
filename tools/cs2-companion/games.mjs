@@ -27,6 +27,17 @@ export const GAME_CATALOG = [
     features: ["Dota-2-Tipps in Pausen und nach dem Tod", "Replay-Auswertung mit Items auf der Webseite"],
     data: ["gamestate_integration_tecmon.cfg im Dota-2-Ordner (nur wenn eingeschaltet)", "dota2/gsi.json im Companion-Profil"],
   },
+  {
+    id: "deadlock",
+    label: "Deadlock",
+    short: "Deadlock",
+    status: "planned",
+    features: [],
+    data: [],
+    // Deadlock hat keine offizielle Game State Integration. Die Replay-Auswertung
+    // laeuft deshalb auf der Webseite im Browser, nicht im Companion.
+    web: "Replay-Auswertung auf der Webseite unter Games → Deadlock → Replay",
+  },
   { id: "wardogs", label: "Wardogs", short: "Wardogs", status: "planned", features: [], data: [] },
 ];
 
