@@ -66,6 +66,13 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.22.1: Neue Augen für TecMon
+
+- **Holo-Augen statt LED-Punkten:** Glatte, leuchtende lila Augen mit
+  Glanzpunkt und feinen Holo-Linien. Alle 20 Gesichter (Fröhlich, Zwinkern,
+  Verliebt, Sauer, Cool und so weiter) sind neu gezeichnet und auf das Visier
+  der 3D-Figur gerendert.
+
 ### Neu in 0.22.0: Dota-2-Paket
 
 - **Dota 2 ist jetzt ein installierbares Paket** unter „Games“. Es bringt

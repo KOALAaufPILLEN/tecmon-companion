@@ -4,6 +4,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 SRC=os.environ['TECMON_3D']; OUT=os.environ['TECMON_3D_WORK']
 from PIL import Image, ImageFilter, ImageChops
 import faces
+STYLE=os.environ.get('TECMON_FACES','holo')
+if STYLE in ('holo','gold'):
+    import faces_holo
+    def face_image(name): return faces_holo.face(name, STYLE)
+else:
+    def face_image(name): return faces.face(name)
 D=Image.open(SRC+'/texture_diffuse.png').convert('RGB')
 E=Image.open(SRC+'/texture_emissive.png').convert('RGB')
 X0,X1,Y0,Y1=670,1010,905,1465
@@ -29,7 +35,7 @@ CX,CY=int(os.environ.get('TECMON_CX','850')),int(os.environ.get('TECMON_CY','118
 def bake(name):
     # Gesicht oben -> +x im Atlas. TILT gleicht die Schräglage der UV-Insel aus,
     # sonst sitzt das rechte Auge in der Vorderansicht höher als das linke.
-    f=faces.face(name).rotate(-90+TILT,expand=True,resample=Image.BICUBIC)
+    f=face_image(name).rotate(-90+TILT,expand=True,resample=Image.BICUBIC)
     px0,py0=CX-f.size[0]//2,CY-f.size[1]//2
     base=Image.new('RGBA',f.size,(14,8,22,255)); base.alpha_composite(f)
     d=D.copy(); e=E.copy()
