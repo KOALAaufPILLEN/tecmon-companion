@@ -4,8 +4,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 SRC=os.environ['TECMON_3D']; OUT=os.environ['TECMON_3D_WORK']
 from PIL import Image, ImageFilter, ImageChops
 import faces
-STYLE=os.environ.get('TECMON_FACES','holo')
-if STYLE in ('holo','gold'):
+STYLE=os.environ.get('TECMON_FACES','expr')
+if STYLE=='expr':
+    import faces_expr
+    def face_image(name): return faces_expr.face(name)
+elif STYLE in ('holo','gold'):
     import faces_holo
     def face_image(name): return faces_holo.face(name, STYLE)
 else:

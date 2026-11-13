@@ -27,8 +27,12 @@ python3 sheet.py "$TECMON_3D_WORK/frames" ../../tools/cs2-companion/public/deskt
 
 - `faces.py`: Formen der Gesichter (Augen, Mund, Ausdrücke) und der alte
   LED-Punktstil.
-- `faces_holo.py`: Standardstil seit 0.22.1, glatte Holo-Augen mit Verlauf,
-  Glanzpunkt und Scanlines. `TECMON_FACES=holo|gold|led` wählt den Stil für
+- `faces_expr.py`: Standardstil seit 0.22.1, gezeichnete Holo-Gesichter mit
+  Iris, Pupille, Glanzlichtern, Augenbrauen, Wangen, Tränen, Herzen und
+  ausdrucksstarken Mündern. `python3 faces_expr.py <ordner>` speichert sie zur
+  Ansicht.
+- `faces_holo.py`: schlichtere Holo-Augen mit Verlauf, Glanzpunkt und
+  Scanlines. `TECMON_FACES=expr|holo|gold|led` wählt den Stil für
   `bake.py`; `python3 faces_holo.py <ordner> [holo|gold]` speichert die
   Gesichter zur Ansicht.
   `python3 faces.py <ordner>` speichert sie zur Ansicht als PNG.
