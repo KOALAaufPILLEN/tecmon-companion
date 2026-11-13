@@ -396,4 +396,44 @@ function guessGame(){
 }
 document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>(gameArea=b.closest('.card').querySelector('.game-area'),{reaction:reactionGame,rps:rpsGame,quiz:quizGame,price:priceGame,aim:aimGame,memory:memoryGame,guess:guessGame})[b.dataset.game]()));
 loadPet();setInterval(loadPet,5000);
-if(['#spiele','#tecmon','#games','#quiz','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
+if(['#spiele','#tecmon','#games','#clips','#quiz','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
+
+/* Clip-Puffer: Einstellungen, Liste, Branding. Hochladen zu YouTube läuft auf der Webseite. */
+const CLIP_GAMES=[['cs2','CS2'],['valorant','Valorant'],['dota2','Dota 2'],['deadlock','Deadlock'],['wardogs','Wardogs'],['lol','League of Legends'],['other','Anderes Spiel']];
+let clipBuffer=null,clipSignature='';
+function clipStatus(clip){return clip.status==='branding'?'Branding läuft …':clip.status==='error'?`Fehler: ${clip.error||'Branding fehlgeschlagen'}`:clip.branded?'Mit TecMon-Branding fertig · auf TecMon hochladen':'Rohclip';}
+function showClipBuffer(buffer){
+  clipBuffer=buffer;const on=buffer.recording;
+  $('clips-heading').textContent=on?`Clip-Puffer läuft · letzte ${buffer.seconds} s`:buffer.enabled?'Clip-Puffer startet …':'Clip-Puffer ist aus';
+  $('clips-toggle').textContent=buffer.enabled?'Ausschalten':'Einschalten';$('clips-toggle').disabled=!buffer.available;
+  $('clips-save').disabled=!on;
+  if(!buffer.available)$('clips-note').textContent='Der Clip-Puffer braucht den installierten Windows-Companion mit FFmpeg.';
+  else if(buffer.error)$('clips-note').textContent=buffer.error;
+  for(const key of ['seconds','fps','height'])if(document.activeElement!==$(`clips-${key}`))$(`clips-${key}`).value=String(buffer[key]);
+  const audio=$('clips-audio');if(buffer.audioDevice&&![...audio.options].some(o=>o.value===buffer.audioDevice))audio.append(new Option(buffer.audioDevice,buffer.audioDevice));audio.value=buffer.audioDevice||'';
+}
+async function loadClips(){
+  const {clips,buffer}=await api('/api/clips');showClipBuffer(buffer);
+  const next=JSON.stringify(clips);if(next===clipSignature)return;clipSignature=next;
+  const list=$('clips-list');list.replaceChildren();
+  if(!clips.length){list.append(el('li','Noch keine Clips.','recent-empty'));return;}
+  for(const clip of clips.slice(0,20)){
+    const item=el('li','','recent-item');const text=el('div');text.append(el('b',clip.title||clip.id),el('small',`${timeLabel(clip.time)} · ${sizeLabel(clip.size)} · ${clipStatus(clip)}`));
+    const actions=el('div','','actions');
+    const play=el('button','▶ Abspielen');play.type='button';play.addEventListener('click',()=>api('/api/clips/open',{id:clip.id,branded:clip.branded}).catch(notice));
+    const game=document.createElement('select');game.setAttribute('aria-label','Spiel');for(const [id,label] of CLIP_GAMES)game.append(new Option(label,id));game.value=clip.game||'other';
+    const title=document.createElement('input');title.maxLength=80;title.placeholder='Titel, z. B. 1v3 Clutch';title.value=clip.title||'';title.setAttribute('aria-label','Titel');
+    const brand=el('button',clip.branded?'Neu branden':'Branding erstellen','subtle');brand.type='button';brand.disabled=clip.status==='branding';
+    brand.addEventListener('click',()=>api('/api/clips/brand',{id:clip.id,game:game.value,title:title.value}).then(()=>{clipSignature='';loadClips();}).catch(notice));
+    const remove=el('button','Löschen','subtle');remove.type='button';remove.addEventListener('click',()=>{if(confirm('Clip und seine TecMon-Fassung löschen?'))api('/api/clips/remove',{id:clip.id}).then(()=>{clipSignature='';loadClips();}).catch(notice);});
+    actions.append(play,game,title,brand,remove);item.append(text,actions);list.append(item);
+  }
+}
+const clipSettings=body=>api('/api/clips/settings',body).then(r=>{showClipBuffer(r.buffer);if(r.message)$('notice').textContent=r.message;}).catch(notice);
+$('clips-toggle').addEventListener('click',()=>clipSettings({enabled:!clipBuffer?.enabled}));
+for(const key of ['seconds','fps','height'])$(`clips-${key}`).addEventListener('change',e=>clipSettings({[key]:Number(e.target.value)}));
+$('clips-audio').addEventListener('change',e=>clipSettings({audioDevice:e.target.value}));
+$('clips-devices').addEventListener('click',()=>api('/api/clips/devices').then(({devices})=>{const audio=$('clips-audio'),current=audio.value;audio.replaceChildren(new Option('ohne Ton',''));for(const d of devices)audio.append(new Option(d,d));audio.value=current;if(!devices.length)$('notice').textContent='Keine Tonquelle gefunden. In Windows „Stereomix“ aktivieren.';}).catch(notice));
+$('clips-save').addEventListener('click',()=>api('/api/clips/save',{}).then(r=>{$('notice').textContent=r.message;clipSignature='';loadClips();}).catch(notice));
+$('clips-folder').addEventListener('click',()=>api('/api/clips/folder',{}).catch(notice));
+loadClips().catch(()=>{});setInterval(()=>{if(!restarting)loadClips().catch(()=>{});},4000);

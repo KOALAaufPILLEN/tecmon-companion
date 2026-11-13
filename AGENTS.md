@@ -126,6 +126,24 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   echte Funktionen dafür gibt.
 - Die Highlight-Aufnahme gehört zum Companion, nicht zu einem Paket.
 
+## Clip-Puffer (`clips.mjs`, `clip-branding.mjs`)
+
+- Gehört zum Companion, nicht zu einem Spiel-Paket. Standardmäßig aus
+  (`clips.json`). Nur Bildschirmaufnahme per FFmpeg `ddagrab`; kein Hook, keine
+  Injektion, kein Overlay im Spiel, kein Mitlesen der Tastatur. Die Figur
+  registriert nur Strg+Alt+C (`RegisterHotKey`) und zeigt Rückmeldungen als
+  Windows-Hinweis, ohne den Fokus zu nehmen.
+- Der Ringpuffer (`Clips/puffer`) enthält Bildschirminhalt: beim Ausschalten,
+  Beenden und Start löschen. Argumente für FFmpeg nur als Liste, nie über eine
+  Shell; der Ton-Gerätename wird bereinigt.
+- Die Bridge gibt nur Clips mit TecMon-Branding heraus (`GET /bridge/clip`),
+  nie Rohclips. Capability `clips-v1`: `GET /bridge/clips`,
+  `GET /bridge/clip?id=`, `POST /bridge/clips/brand` (`id`, `game` aus
+  `CLIP_GAMES`, `title` max. 80 Zeichen).
+- Keine Live-Auswertung des Bildschirms im Spiel. Eine spätere KI-Analyse nur
+  für fertige Clips, nur mit dem eigenen API-Schlüssel des Nutzers und nur
+  nach ausdrücklichem Einschalten.
+
 ## Prüfen und veröffentlichen
 
 - Vor jedem Push `npm test` und `node scripts/version.mjs check` im Repo-Stamm.

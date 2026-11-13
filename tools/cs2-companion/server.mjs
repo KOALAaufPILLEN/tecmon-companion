@@ -24,6 +24,8 @@ import { browserDemos } from "./browser-demo.mjs";
 import { createGameTips, FEATURES } from "./game-tips.mjs";
 import { createInsightsStore } from "./insights.mjs";
 import { createGamePackages } from "./games.mjs";
+import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
+import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { createPet, quizQuestion } from "./personality.mjs";
 import { createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
@@ -190,6 +192,55 @@ export async function createCompanion({
   // CS2 Game State Integration: offizielle, rein lesende Schnittstelle für Rundentipps.
   const games = await createGamePackages(installation?.profileDir || dataDir);
   const gsi = await createGsiSettings(installation?.profileDir || dataDir);
+  // Clip-Puffer: Bildschirmaufnahme der letzten Sekunden, gehört zum Companion (kein Spiel-Paket).
+  const clips = await createClips({
+    dir: installation ? installation.dataDir : dataDir,
+    settingsDir: installation?.profileDir || dataDir,
+    ffmpeg: installation?.ffmpegExe || "",
+    ...(engineSystem.clipSpawn ? { spawnProcess: engineSystem.clipSpawn, settleMs: 5 } : {}),
+  });
+  let clipBranding = false;
+  function brandClip(id, game, title) {
+    if (!installation) throw new Error("Das Clip-Branding braucht den installierten Windows-Companion.");
+    if (clipBranding) throw new Error("Ein Clip wird gerade bearbeitet. Kurz warten.");
+    const source = clips.clipPath(id);
+    if (!existsSync(source)) throw new Error("Clip nicht gefunden.");
+    const labels = clipLabels({ game, title });
+    clips.setMeta(id, { status: "branding", error: "", title: labels.title, game: labels.game });
+    clipBranding = true;
+    (async () => {
+      try {
+        const assets = await loadAssets(path.join(installation.profileDir, "Branding"));
+        await (engineSystem.renderClip || renderClipBranding)({
+          source,
+          directory: clips.dir,
+          id,
+          game: labels.game,
+          title: labels.title,
+          assets,
+          ffmpeg: installation.ffmpegExe,
+          launcher: path.join(root, "TecMon Companion.exe"),
+        });
+        clips.setMeta(id, { status: "ready" });
+      } catch (error) {
+        clips.setMeta(id, { status: "error", error: error.message || "Branding fehlgeschlagen." });
+      } finally {
+        clipBranding = false;
+      }
+    })();
+  }
+  async function sendClip(res, id) {
+    const file = clips.clipPath(id, true);
+    const info = await stat(file).catch(() => null);
+    if (!info?.isFile() || (await clips.list()).find((c) => c.id === id)?.status === "branding")
+      return json(res, 404, { error: "Fertiger Clip mit TecMon-Branding fehlt." });
+    res.writeHead(200, {
+      "Content-Type": "video/mp4",
+      "Content-Length": info.size,
+      "Content-Disposition": `attachment; filename="${path.basename(file)}"`,
+    });
+    return createReadStream(file).on("error", () => res.destroy()).pipe(res);
+  }
   const crosshair = await createCrosshairSettings(installation?.profileDir || dataDir);
   const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES });
   /* Radarbilder bringt CS Demo Manager mit (resources/static/images/maps/cs2/radars). Nur lokal lesen. */
@@ -578,12 +629,25 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? ["video-branding-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
       });
     if (req.method === "POST" && url.pathname === "/bridge/insights") {
       const input = await readInput(req, 262144);
       if (!games.has("cs2")) return json(res, 409, { error: "Das CS2-Paket ist im Companion nicht installiert." });
       return json(res, 200, await insights.put(input));
+    }
+    if (req.method === "GET" && url.pathname === "/bridge/clips") {
+      if (!installation) return json(res, 409, { error: "Clips brauchen den installierten Windows-Companion." });
+      return json(res, 200, { clips: await clips.list(), buffer: clips.state() });
+    }
+    if (req.method === "GET" && url.pathname === "/bridge/clip") {
+      if (!installation) return json(res, 409, { error: "Clips brauchen den installierten Windows-Companion." });
+      return await sendClip(res, url.searchParams.get("id"));
+    }
+    if (req.method === "POST" && url.pathname === "/bridge/clips/brand") {
+      const input = await readInput(req, 4096);
+      brandClip(String(input.id || ""), String(input.game || ""), String(input.title || ""));
+      return json(res, 202, { id: input.id, status: "branding" });
     }
     if(req.method === "POST" && url.pathname === "/bridge/demo/start"){
       if(active || jobs.size>=100)throw new Error("Zuerst den laufenden Auftrag abschließen.");
@@ -797,12 +861,17 @@ export async function createCompanion({
           gsi: gsiState(),
           pet: pet.state(),
           games: games.state(),
+          clips: clips.state(),
           downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
         });
       if (req.method === "GET" && url.pathname === "/api/pet/quiz") return json(res, 200, quizQuestion());
       if (req.method === "GET" && url.pathname === "/api/crosshair") return json(res, 200, crosshairState());
+      if (req.method === "GET" && url.pathname === "/api/clips")
+        return json(res, 200, { clips: await clips.list(), buffer: clips.state(), folder: clips.dir });
+      if (req.method === "GET" && url.pathname === "/api/clips/devices")
+        return json(res, 200, { devices: await clips.devices() });
       if (req.method === "GET" && url.pathname === "/api/videos")
         return json(res, 200, { videos: await recentVideos(), folder: dataDir });
       if (req.method === "GET" && url.pathname === "/api/video")
@@ -829,6 +898,33 @@ export async function createCompanion({
           await mkdir(dataDir, { recursive: true });
           openPath(await realpath(dataDir), false);
         }
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/clips/settings") {
+        const result = await clips.setSettings(input);
+        return json(res, 200, { buffer: result, message: result.enabled ? `Clip-Puffer läuft. ${result.hotkey} speichert die letzten ${result.seconds} Sekunden.` : "Clip-Puffer aus. Der Zwischenspeicher wurde gelöscht." });
+      }
+      if (url.pathname === "/api/clips/save") {
+        const saved = await clips.save(input.seconds);
+        return json(res, 200, { ...saved, message: `Clip gespeichert (${saved.seconds} s).` });
+      }
+      if (url.pathname === "/api/clips/remove") {
+        await clips.remove(String(input.id || ""));
+        return json(res, 200, { clips: await clips.list() });
+      }
+      if (url.pathname === "/api/clips/brand") {
+        brandClip(String(input.id || ""), String(input.game || ""), String(input.title || ""));
+        return json(res, 202, { status: "branding" });
+      }
+      if (url.pathname === "/api/clips/open") {
+        const file = clips.clipPath(String(input.id || ""), input.branded === true);
+        if (!existsSync(file)) throw new Error("Clip nicht gefunden.");
+        openPath(file, false);
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/clips/folder") {
+        if (input.id) openPath(clips.clipPath(String(input.id)), true);
+        else openPath(await realpath(clips.dir), false);
         return json(res, 200, { ok: true });
       }
       if (url.pathname === "/api/games/install") {
@@ -1113,6 +1209,7 @@ export async function createCompanion({
       }
       if (url.pathname === "/api/shutdown") {
         if (active) throw new Error("Zuerst die laufende Aufnahme in CS Demo Manager beenden.");
+        await clips.stop();
         if (installation) await stopDatabase(installation);
         json(res, 200, { ok: true });
         server.close();
@@ -1174,7 +1271,9 @@ export async function createCompanion({
     updateTimer = setTimeout(autoUpdateTick, autoUpdate.first);
     updateTimer.unref?.();
   }
+  if (installation) clips.resume();
   server.on("close", () => {
+    clips.stop().catch(() => {});
     if (updateTimer) clearTimeout(updateTimer);
   });
   return { server, token, autoUpdateTick };

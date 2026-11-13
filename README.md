@@ -66,6 +66,30 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.21.0: Clip-Puffer für alle Spiele
+
+- **Die letzten Sekunden als Clip:** Im Fenster unter „Clips“ oder per
+  Rechtsklick „Clips → Clip-Puffer eingeschaltet“ nimmt TecMon den Bildschirm
+  laufend auf und behält nur die letzten 15 bis 120 Sekunden.
+  **Strg+Alt+C** speichert sie als Clip. Das funktioniert in jedem Spiel.
+- **Kein Eingriff ins Spiel:** FFmpeg liest nur das Windows-Bild (Desktop
+  Duplication, wie OBS). Kein Hook, keine Injektion, kein Mitlesen der
+  Tastatur: Strg+Alt+C ist eine einzelne registrierte Taste. Die Rückmeldung
+  kommt als Windows-Hinweis und nimmt dem Spiel nicht den Fokus.
+- **Standardmäßig aus:** Der Zwischenspeicher wird beim Ausschalten, beim
+  Beenden und beim nächsten Start gelöscht. Gespeicherte Clips liegen im
+  Datenordner unter `Clips`.
+- **Grafikkarte zuerst:** Die Aufnahme versucht NVENC, AMF und Quick Sync und
+  nimmt erst danach den Prozessor (x264).
+- **Ton optional:** Für Spielton braucht Windows ein Aufnahmegerät wie
+  „Stereomix“. Ohne Gerät sind Clips stumm.
+- **TecMon-Branding:** „Branding erstellen“ setzt ein kleines Logo an den
+  rechten Rand, zeigt Titel und Spiel in den ersten drei Sekunden und hängt
+  den Abspann an. Wie beim Highlight-Branding nur mit geprüften Assets.
+- **Hochladen auf der Webseite:** Fertige Clips mit Branding holt TecMon.online
+  über die Browser-Verbindung (Capability `clips-v1`) und lädt sie zu YouTube
+  hoch. Rohclips ohne Branding gibt der Companion nicht heraus.
+
 ### Neu in 0.20.0: Spiel-Pakete
 
 - **Du entscheidest, welche Spiele TecMon nutzt:** Unter „Games“ steht jedes
