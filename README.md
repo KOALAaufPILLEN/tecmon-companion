@@ -66,6 +66,70 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.22.0: Dota-2-Paket
+
+- **Dota 2 ist jetzt ein installierbares Paket** unter „Games“. Es bringt
+  Dota-2-Tipps über die offizielle Game State Integration von Valve und gehört
+  zur neuen Dota-2-Replay-Seite auf TecMon (Stats und jeder Item-Kauf mit Zeit).
+- **Nur eigene Werte:** Die cfg fordert nur `provider`, `map`, `player`, `hero`
+  und `items` an. Keine Gebäude, keine Minimap, kein Roshan, keine Kuriere, keine
+  Draft- oder Gegnerdaten. Nachrichten mit Daten beider Teams (Zuschauer, Replay)
+  werden verworfen.
+- **Nur in Pausen:** vor dem Horn, in Spielpausen, nach deinem Tod und am
+  Matchende. Solange du lebst und das Spiel läuft, ist TecMon still. Höchstens
+  drei Tipps je Pause. Inhalte: Last-Hit-Tempo, Gold für Buyback ab Minute 25,
+  beim Tod noch bereite aktive Items, nicht ausgegebenes Gold, Match-Bilanz.
+  Jede Tippart lässt sich einzeln abschalten.
+- **Standardmäßig aus**, mit eigenem Token. Die cfg landet in
+  `dota 2 beta\game\dota\cfg\gamestate_integration` und wird beim Ausschalten
+  oder Entfernen des Pakets gelöscht. Dota 2 braucht dafür in Steam die
+  Startoption `-gamestateintegration`.
+
+### Neu in 0.21.0: Clip-Puffer für alle Spiele
+
+- **Die letzten Sekunden als Clip:** Im Fenster unter „Clips“ oder per
+  Rechtsklick „Clips → Clip-Puffer eingeschaltet“ nimmt TecMon den Bildschirm
+  laufend auf und behält nur die letzten 10 bis 120 Sekunden.
+  **Strg+Alt+C** speichert sie als Clip. Das funktioniert in jedem Spiel.
+- **Kein Eingriff ins Spiel:** FFmpeg liest nur das Windows-Bild (Desktop
+  Duplication, wie OBS). Kein Hook, keine Injektion, kein Mitlesen der
+  Tastatur: Strg+Alt+C ist eine einzelne registrierte Taste. Die Rückmeldung
+  kommt als Windows-Hinweis und nimmt dem Spiel nicht den Fokus.
+- **Standardmäßig aus:** Der Zwischenspeicher wird beim Ausschalten, beim
+  Beenden und beim nächsten Start gelöscht. Gespeicherte Clips liegen im
+  Datenordner unter `Clips`.
+- **Grafikkarte zuerst:** Die Aufnahme versucht NVENC, AMF und Quick Sync und
+  nimmt erst danach den Prozessor (x264).
+- **Ton optional:** Für Spielton braucht Windows ein Aufnahmegerät wie
+  „Stereomix“. Ohne Gerät sind Clips stumm.
+- **TecMon-Branding:** „Branding erstellen“ setzt ein kleines Logo an den
+  rechten Rand, zeigt Titel und Spiel in den ersten drei Sekunden und hängt
+  den Abspann an. Wie beim Highlight-Branding nur mit geprüften Assets.
+- **Hochladen auf der Webseite:** Fertige Clips mit Branding holt TecMon.online
+  über die Browser-Verbindung (Capability `clips-v1`) und lädt sie zu YouTube
+  hoch. Rohclips ohne Branding gibt der Companion nicht heraus.
+
+### Neu in 0.20.0: Spiel-Pakete
+
+- **Du entscheidest, welche Spiele TecMon nutzt:** Unter „Games“ steht jedes
+  Spiel als Paket mit „Installieren“ oder „Entfernen“. CS2 ist installiert,
+  Valorant, Dota 2 und Wardogs sind als geplant gelistet.
+- **Entfernen löscht die Daten des Pakets:** Beim Entfernen von CS2 werden die
+  Rundentipps ausgeschaltet und `gamestate_integration_tecmon.cfg`,
+  `tecmon_crosshair.cfg`, `crosshair.json` und die übertragenen
+  Webseiten-Daten (`insights.json`) gelöscht. Danach legt TecMon für CS2 keine
+  Dateien mehr an, und Rundentipps, Fadenkreuz und CS2-Quiz verschwinden aus
+  Menüs und Fenster. Wieder installieren geht jederzeit.
+- **Aufnahme bleibt:** Die Highlight-Aufnahme für die Webseite gehört zum
+  Companion und ist vom Paket nicht betroffen.
+- **Rechtsklick:** „Games“ zeigt CS2 oder „CS2 installieren“, die geplanten
+  Spiele und „Spiel-Pakete verwalten“.
+- **Deadlock** steht als geplantes Paket in der Liste. Deadlock hat keine
+  offizielle Schnittstelle für Live-Daten, deshalb gibt es im Companion noch
+  keine Rundentipps. Die Replay-Auswertung (Scoreboard, Item-Käufe mit Minute,
+  Todeskarte, Laufwege, Stats je Held und Item) läuft schon jetzt auf der
+  Webseite im Browser; die Karte im Fenster weist darauf hin.
+
 ### Neu in 0.19.1: Spiele mit TecMon und Games-Menü
 
 - **Spiele mit TecMon:** Das Menü heißt jetzt so. Vier neue Spiele kommen

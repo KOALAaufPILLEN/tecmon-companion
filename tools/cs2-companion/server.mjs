@@ -22,7 +22,12 @@ import { renderBranding } from "./video-branding.mjs";
 import { createBrowserBridge } from "./browser-bridge.mjs";
 import { browserDemos } from "./browser-demo.mjs";
 import { createGameTips, FEATURES } from "./game-tips.mjs";
+import { createDotaTips, DOTA_FEATURES } from "./dota-tips.mjs";
+import { cleanDotaPayload, dotaGsiConfigPath, installDotaGsiConfig, removeDotaGsiConfig } from "./dota-gsi.mjs";
 import { createInsightsStore } from "./insights.mjs";
+import { createGamePackages } from "./games.mjs";
+import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
+import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { createPet, quizQuestion } from "./personality.mjs";
 import { createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
@@ -76,7 +81,11 @@ export async function detect() {
         ),
       )
       .find(existsSync) || "";
-  return { csdm, cs2 };
+  const dota2 =
+    steam
+      .map((p) => path.join(p, "steamapps", "common", "dota 2 beta", "game", "bin", "win64", "dota2.exe"))
+      .find(existsSync) || "";
+  return { csdm, cs2, dota2 };
 }
 
 async function mp4s(dir, base = dir) {
@@ -187,7 +196,57 @@ export async function createCompanion({
     detected.cs2 = installation.cs2Exe || detected.cs2;
   }
   // CS2 Game State Integration: offizielle, rein lesende Schnittstelle für Rundentipps.
+  const games = await createGamePackages(installation?.profileDir || dataDir);
   const gsi = await createGsiSettings(installation?.profileDir || dataDir);
+  // Clip-Puffer: Bildschirmaufnahme der letzten Sekunden, gehört zum Companion (kein Spiel-Paket).
+  const clips = await createClips({
+    dir: installation ? installation.dataDir : dataDir,
+    settingsDir: installation?.profileDir || dataDir,
+    ffmpeg: installation?.ffmpegExe || "",
+    ...(engineSystem.clipSpawn ? { spawnProcess: engineSystem.clipSpawn, settleMs: 5 } : {}),
+  });
+  let clipBranding = false;
+  function brandClip(id, game, title) {
+    if (!installation) throw new Error("Das Clip-Branding braucht den installierten Windows-Companion.");
+    if (clipBranding) throw new Error("Ein Clip wird gerade bearbeitet. Kurz warten.");
+    const source = clips.clipPath(id);
+    if (!existsSync(source)) throw new Error("Clip nicht gefunden.");
+    const labels = clipLabels({ game, title });
+    clips.setMeta(id, { status: "branding", error: "", title: labels.title, game: labels.game });
+    clipBranding = true;
+    (async () => {
+      try {
+        const assets = await loadAssets(path.join(installation.profileDir, "Branding"));
+        await (engineSystem.renderClip || renderClipBranding)({
+          source,
+          directory: clips.dir,
+          id,
+          game: labels.game,
+          title: labels.title,
+          assets,
+          ffmpeg: installation.ffmpegExe,
+          launcher: path.join(root, "TecMon Companion.exe"),
+        });
+        clips.setMeta(id, { status: "ready" });
+      } catch (error) {
+        clips.setMeta(id, { status: "error", error: error.message || "Branding fehlgeschlagen." });
+      } finally {
+        clipBranding = false;
+      }
+    })();
+  }
+  async function sendClip(res, id) {
+    const file = clips.clipPath(id, true);
+    const info = await stat(file).catch(() => null);
+    if (!info?.isFile() || (await clips.list()).find((c) => c.id === id)?.status === "branding")
+      return json(res, 404, { error: "Fertiger Clip mit TecMon-Branding fehlt." });
+    res.writeHead(200, {
+      "Content-Type": "video/mp4",
+      "Content-Length": info.size,
+      "Content-Disposition": `attachment; filename="${path.basename(file)}"`,
+    });
+    return createReadStream(file).on("error", () => res.destroy()).pipe(res);
+  }
   const crosshair = await createCrosshairSettings(installation?.profileDir || dataDir);
   const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES });
   /* Radarbilder bringt CS Demo Manager mit (resources/static/images/maps/cs2/radars). Nur lokal lesen. */
@@ -205,6 +264,34 @@ export async function createCompanion({
     enabled: (id) => gsi.feature(id),
     insights: (steamId) => insights.get(steamId),
   });
+  // Dota 2: eigene GSI-Einstellungen (eigenes Token) im Unterordner, gleiche Regeln wie CS2.
+  const dotaDir = path.join(installation?.profileDir || dataDir, "dota2");
+  const dotaGsi = await createGsiSettings(dotaDir);
+  const dotaTips = createDotaTips({
+    ...(now ? { now } : {}),
+    flavor: (category, text) => pet.flavor(category, text),
+    enabled: (id) => dotaGsi.feature(id),
+  });
+  let dotaError = "";
+  async function syncDotaConfig() {
+    dotaError = "";
+    try {
+      if (dotaGsi.enabled && games.has("dota2")) await installDotaGsiConfig(detected.dota2, dotaGsi.token);
+      else await removeDotaGsiConfig(detected.dota2);
+    } catch (error) {
+      dotaError = error.message;
+    }
+  }
+  if (dotaGsi.enabled) await syncDotaConfig();
+  function dotaState() {
+    return {
+      enabled: dotaGsi.enabled,
+      available: !!dotaGsiConfigPath(detected.dota2),
+      error: dotaError,
+      features: DOTA_FEATURES.map(({ id, label }) => ({ id, label, enabled: dotaGsi.feature(id) })),
+      ...dotaTips.state(),
+    };
+  }
   let gsiError = "";
   async function syncGsiConfig() {
     gsiError = "";
@@ -217,14 +304,53 @@ export async function createCompanion({
   }
   if (gsi.enabled) await syncGsiConfig();
   function gsiState() {
+    const cs = tips.state();
+    const dota = dotaGsi.enabled ? dotaTips.state() : null;
+    // Die Figur zeigt die Tipps des Spiels, das zuletzt Daten geschickt hat.
+    const dotaActive = !!dota?.connected && (!cs.connected || dota.lastSeen > cs.lastSeen);
     return {
       enabled: gsi.enabled,
       available: !!gsiConfigPath(detected.cs2),
       error: gsiError,
       features: FEATURES.map(({ id, label }) => ({ id, label, enabled: gsi.feature(id) })),
       insights: insights.summary(),
-      ...tips.state(),
+      ...cs,
+      ...(dotaActive
+        ? {
+            dotaActive: true,
+            quiet: dota.quiet,
+            // Eigene Nummern, damit die Figur Dota- und CS2-Tipps nicht verwechselt.
+            tip: dota.tip ? { ...dota.tip, id: 1e9 + dota.tip.id } : cs.tip,
+          }
+        : {}),
     };
+  }
+  async function readGsiBody(req, res) {
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 262144) {
+        json(res, 413, { error: "Zu groß." });
+        return null;
+      }
+    }
+    try {
+      return JSON.parse(body);
+    } catch {
+      json(res, 400, { error: "Ungültige Daten." });
+      return null;
+    }
+  }
+  async function dotaGsiRequest(req, res) {
+    // Dota 2 schickt kein Origin; Browser-Anfragen tragen immer eins.
+    if (req.method !== "POST" || req.headers.origin) return json(res, 403, { error: "Nur für Dota 2 vorgesehen." });
+    const payload = await readGsiBody(req, res);
+    if (!payload) return;
+    if (!dotaGsi.matches(payload?.auth?.token)) return json(res, 401, { error: "Falsches Token." });
+    // Zuschauer-/Replay-Daten (beide Teams) verwirft cleanDotaPayload; während einer Aufnahme nichts annehmen.
+    const data = cleanDotaPayload(payload);
+    if (dotaGsi.enabled && !active && data) dotaTips.ingest(data);
+    return json(res, 200, { ok: true });
   }
   async function gsiRequest(req, res) {
     // CS2 schickt weder Origin noch Sitzungstoken; Browser-Anfragen tragen immer ein Origin.
@@ -576,11 +702,25 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? ["video-branding-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
       });
     if (req.method === "POST" && url.pathname === "/bridge/insights") {
       const input = await readInput(req, 262144);
+      if (!games.has("cs2")) return json(res, 409, { error: "Das CS2-Paket ist im Companion nicht installiert." });
       return json(res, 200, await insights.put(input));
+    }
+    if (req.method === "GET" && url.pathname === "/bridge/clips") {
+      if (!installation) return json(res, 409, { error: "Clips brauchen den installierten Windows-Companion." });
+      return json(res, 200, { clips: await clips.list(), buffer: clips.state() });
+    }
+    if (req.method === "GET" && url.pathname === "/bridge/clip") {
+      if (!installation) return json(res, 409, { error: "Clips brauchen den installierten Windows-Companion." });
+      return await sendClip(res, url.searchParams.get("id"));
+    }
+    if (req.method === "POST" && url.pathname === "/bridge/clips/brand") {
+      const input = await readInput(req, 4096);
+      brandClip(String(input.id || ""), String(input.game || ""), String(input.title || ""));
+      return json(res, 202, { id: input.id, status: "branding" });
     }
     if(req.method === "POST" && url.pathname === "/bridge/demo/start"){
       if(active || jobs.size>=100)throw new Error("Zuerst den laufenden Auftrag abschließen.");
@@ -753,7 +893,14 @@ export async function createCompanion({
     const url = new URL(req.url, origin);
     try {
       if (url.pathname.startsWith("/bridge/")) return await bridgeRequest(req, res, url);
-      if (url.pathname === "/gsi") return await gsiRequest(req, res);
+      if (url.pathname === "/gsi/dota2") {
+        if (!games.has("dota2")) return json(res, 409, { error: "Das Dota-2-Paket ist nicht installiert." });
+        return await dotaGsiRequest(req, res);
+      }
+      if (url.pathname === "/gsi") {
+        if (!games.has("cs2")) return json(res, 409, { error: "Das CS2-Paket ist nicht installiert." });
+        return await gsiRequest(req, res);
+      }
       if (req.headers.origin && req.headers.origin !== origin)
         return json(res, 403, { error: "Nur im lokalen Companion verfügbar." });
       if (req.method === "GET" && url.pathname === "/api/health")
@@ -789,13 +936,20 @@ export async function createCompanion({
           active,
           bridge: bridge.state(),
           gsi: gsiState(),
+          dota: dotaState(),
           pet: pet.state(),
+          games: games.state(),
+          clips: clips.state(),
           downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
         });
       if (req.method === "GET" && url.pathname === "/api/pet/quiz") return json(res, 200, quizQuestion());
       if (req.method === "GET" && url.pathname === "/api/crosshair") return json(res, 200, crosshairState());
+      if (req.method === "GET" && url.pathname === "/api/clips")
+        return json(res, 200, { clips: await clips.list(), buffer: clips.state(), folder: clips.dir });
+      if (req.method === "GET" && url.pathname === "/api/clips/devices")
+        return json(res, 200, { devices: await clips.devices() });
       if (req.method === "GET" && url.pathname === "/api/videos")
         return json(res, 200, { videos: await recentVideos(), folder: dataDir });
       if (req.method === "GET" && url.pathname === "/api/video")
@@ -823,6 +977,83 @@ export async function createCompanion({
           openPath(await realpath(dataDir), false);
         }
         return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/clips/settings") {
+        const result = await clips.setSettings(input);
+        return json(res, 200, { buffer: result, message: result.enabled ? `Clip-Puffer läuft. ${result.hotkey} speichert die letzten ${result.seconds} Sekunden.` : "Clip-Puffer aus. Der Zwischenspeicher wurde gelöscht." });
+      }
+      if (url.pathname === "/api/clips/save") {
+        const saved = await clips.save(input.seconds);
+        return json(res, 200, { ...saved, message: `Clip gespeichert (${saved.seconds} s).` });
+      }
+      if (url.pathname === "/api/clips/remove") {
+        await clips.remove(String(input.id || ""));
+        return json(res, 200, { clips: await clips.list() });
+      }
+      if (url.pathname === "/api/clips/brand") {
+        brandClip(String(input.id || ""), String(input.game || ""), String(input.title || ""));
+        return json(res, 202, { status: "branding" });
+      }
+      if (url.pathname === "/api/clips/open") {
+        const file = clips.clipPath(String(input.id || ""), input.branded === true);
+        if (!existsSync(file)) throw new Error("Clip nicht gefunden.");
+        openPath(file, false);
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/clips/folder") {
+        if (input.id) openPath(clips.clipPath(String(input.id)), true);
+        else openPath(await realpath(clips.dir), false);
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/games/install") {
+        await games.install(String(input.id || ""));
+        return json(res, 200, { message: "Paket installiert.", games: games.state() });
+      }
+      if (url.pathname === "/api/games/remove") {
+        if (input.confirm !== true) throw new Error("Entfernen bitte ausdrücklich bestätigen.");
+        const id = String(input.id || "");
+        if (id === "cs2") {
+          await gsi.setEnabled(false);
+          await syncGsiConfig();
+          await insights.clear();
+          await crosshair.reset(detected.cs2);
+        }
+        await games.remove(id);
+        if (id === "dota2") {
+          await dotaGsi.setEnabled(false);
+          await dotaGsi.setFeatures(Object.fromEntries(DOTA_FEATURES.map((f) => [f.id, true])));
+          await syncDotaConfig();
+        }
+        return json(res, 200, { message: "Paket entfernt. Seine Daten wurden gelöscht.", games: games.state(), gsi: gsiState() });
+      }
+      if (url.pathname.startsWith("/api/dota2/") && !games.has("dota2"))
+        throw new Error("Das Dota-2-Paket ist nicht installiert. Unter „Games“ installieren.");
+      if (url.pathname === "/api/dota2/enable") {
+        if (input.confirm !== true) throw new Error("Dota-2-Tipps bitte ausdrücklich einschalten.");
+        if (!dotaGsiConfigPath(detected.dota2)) throw new Error("Dota 2 wurde auf diesem PC nicht gefunden.");
+        await installDotaGsiConfig(detected.dota2, dotaGsi.token);
+        await dotaGsi.setEnabled(true);
+        dotaError = "";
+        return json(res, 200, {
+          message: "Dota-2-Tipps eingeschaltet. In Steam bei Dota 2 die Startoption -gamestateintegration setzen und das Spiel neu starten.",
+          dota: dotaState(),
+        });
+      }
+      if (url.pathname === "/api/dota2/disable") {
+        await dotaGsi.setEnabled(false);
+        await syncDotaConfig();
+        return json(res, 200, { message: "Dota-2-Tipps ausgeschaltet.", dota: dotaState() });
+      }
+      if (url.pathname === "/api/dota2/features") {
+        const known = new Set(DOTA_FEATURES.map((f) => f.id));
+        const update = Object.fromEntries(
+          Object.entries(input.features || {}).filter(([id, on]) => known.has(id) && typeof on === "boolean"),
+        );
+        await dotaGsi.setFeatures(update);
+        return json(res, 200, { dota: dotaState() });
+      }
+      if (url.pathname.startsWith("/api/gsi/") || url.pathname.startsWith("/api/crosshair/")) {
+        if (!games.has("cs2")) throw new Error("Das CS2-Paket ist nicht installiert. Unter „Games“ installieren.");
       }
       if (url.pathname === "/api/gsi/enable") {
         if (input.confirm !== true) throw new Error("Rundentipps bitte ausdrücklich einschalten.");
@@ -1087,6 +1318,7 @@ export async function createCompanion({
       }
       if (url.pathname === "/api/shutdown") {
         if (active) throw new Error("Zuerst die laufende Aufnahme in CS Demo Manager beenden.");
+        await clips.stop();
         if (installation) await stopDatabase(installation);
         json(res, 200, { ok: true });
         server.close();
@@ -1148,7 +1380,9 @@ export async function createCompanion({
     updateTimer = setTimeout(autoUpdateTick, autoUpdate.first);
     updateTimer.unref?.();
   }
+  if (installation) clips.resume();
   server.on("close", () => {
+    clips.stop().catch(() => {});
     if (updateTimer) clearTimeout(updateTimer);
   });
   return { server, token, autoUpdateTick };

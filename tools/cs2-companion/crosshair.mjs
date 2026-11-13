@@ -1,4 +1,4 @@
-import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
+import { readFile, writeFile, rename, mkdir, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
@@ -156,6 +156,14 @@ export async function createCrosshairSettings(dir) {
       await mkdir(path.dirname(target), { recursive: true });
       await writeAtomic(target, crosshairConfigText(current));
       return { crosshair: current, written: true };
+    },
+    /** Nur die eigenen Dateien löschen: crosshair.json und tecmon_crosshair.cfg. */
+    async reset(cs2Exe) {
+      current = { ...DEFAULT_CROSSHAIR };
+      for (const target of [file, crosshairConfigPath(cs2Exe)]) {
+        if (!target) continue;
+        try { await unlink(target); } catch (error) { if (error.code !== "ENOENT") throw error; }
+      }
     },
   };
 }

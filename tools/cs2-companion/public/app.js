@@ -55,7 +55,7 @@ async function api(url, body) {
 function notice(error) { $('notice').textContent = error.message || String(error); }
 function el(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; }
 const statuses = { preparing:'VISUALS WERDEN GEPRÜFT', branding:'VIDEO-BRANDING LÄUFT', ready: 'BEREIT', analyzing: 'DEMO WIRD GEPRÜFT', recording: 'AUFNAHME LÄUFT', done: 'FERTIG', error: 'FEHLER', downloading:'DEMO WIRD GELADEN' };
-const tipLabels={economy:'Wirtschaft',buy:'Kauf-Check',death:'Nach dem Tod',habit:'Gewohnheit',mindset:'Kopf',summary:'Zusammenfassung',weapon:'Waffe',map:'Map',warmup:'Aufwärmen',praise:'Stark',history:'Deine Matches',team:'Team'};
+const tipLabels={economy:'Wirtschaft',buy:'Kauf-Check',death:'Nach dem Tod',habit:'Gewohnheit',mindset:'Kopf',summary:'Zusammenfassung',weapon:'Waffe',map:'Map',warmup:'Aufwärmen',praise:'Stark',history:'Deine Matches',team:'Team',farm:'Farm',buyback:'Buyback',actives:'Items',gold:'Gold'};
 let tipsSignature='';let featuresSignature='';
 function gameTips(gsi){
   if(!gsi)return;
@@ -102,6 +102,7 @@ async function refresh() {
     if(state.bridge?.devices?.length) container.append(connections);
   }
   gameTips(state.gsi);
+  dotaTips(state.dota);
   databaseState(state.postgres);
   $('auto-update-row').hidden=!state.updates?.available; $('auto-update').checked=!!state.updates?.auto; $('auto-update-note').textContent=state.updates?.auto?'Neue Versionen werden nach der Prüfung von Größe und Prüfsumme selbst installiert, nie während eines Downloads oder einer Aufnahme. Danach startet der Companion neu.':'Aus: Neue Versionen erscheinen als Hinweis und werden erst nach deinem Klick installiert.';
  $('own-engine-card').hidden=!state.engine?.available; $('own-engine').checked=!!state.engine?.internal; $('own-engine-note').textContent=state.engine?.internal?'Aktiv: Download und Aufnahme laufen ohne CS Demo Manager. Ältere Aufträge ohne Spieler-Slots nutzen automatisch weiter CS Demo Manager.':'Aus: Download und Aufnahme laufen wie bisher über CS Demo Manager und die lokale Datenbank.';
@@ -312,9 +313,44 @@ function showPet(state){
   $('pet-counts').textContent=`Angestupst ${c.poke||0}× · Witze ${c.joke||0} · Tricks ${c.trick||0} · Spiele ${games}`;
   const best=state.best||{};$('game-best').textContent=[best.reaction?`Bester Reaktionstest: ${best.reaction} ms`:'',c.win_rps?`Schere-Stein-Papier gewonnen: ${c.win_rps}×`:'',c.win_quiz?`Quiz richtig: ${c.win_quiz}×`:'',best.aim?`Ziele: ${(best.aim/1000).toFixed(2)} s`:'',best.memory?`Muster: ${best.memory}`:'',best.guess?`Zahl geraten in ${best.guess} Versuchen`:'',c.win_price?`Preise richtig: ${c.win_price}×`:''].filter(Boolean).join(' · ');
 }
+/* Dota 2: eigener Schalter, eigenes Token, gleiche Regeln (nur eigene Werte, nur in Pausen). */
+let dotaTipsSignature='';let dotaFeaturesSignature='';
+function dotaTips(dota){
+  if(!dota)return;
+  $('dota-tips-heading').textContent=!dota.enabled?'Dota-2-Tipps sind aus':dota.connected?(dota.quiet?'Live: Dota 2 · ich bin still':'Live: Dota 2'):'Eingeschaltet · wartet auf Dota 2';
+  const toggle=$('dota-toggle');toggle.textContent=dota.enabled?'Ausschalten':'Einschalten';toggle.className=dota.enabled?'subtle':'';toggle.disabled=!dota.enabled&&!dota.available;
+  if(dota.error)$('dota-note').textContent=`Konfiguration konnte nicht geschrieben werden: ${dota.error}`;
+  else if(!dota.available&&!dota.enabled)$('dota-note').textContent='Dota 2 wurde auf diesem PC nicht gefunden.';
+  const featureNext=JSON.stringify(dota.features||[]);
+  if(featureNext!==dotaFeaturesSignature){
+    dotaFeaturesSignature=featureNext;
+    $('dota-features').replaceChildren(...(dota.features||[]).map(f=>{const label=el('label');const box=document.createElement('input');box.type='checkbox';box.checked=f.enabled;box.addEventListener('change',async()=>{box.disabled=true;try{await api('/api/dota2/features',{features:{[f.id]:box.checked}});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});label.append(box,document.createTextNode(f.label));return label;}));
+  }
+  const next=JSON.stringify((dota.history||[]).map(t=>t.id));
+  if(next===dotaTipsSignature)return;dotaTipsSignature=next;
+  $('dota-list').replaceChildren(...(dota.history||[]).slice(0,5).map(t=>{const li=el('li','','tip-item');li.append(el('small',tipLabels[t.category]||'Tipp'),document.createTextNode(t.text));return li;}));
+}
+$('dota-toggle').addEventListener('click',async()=>{const button=$('dota-toggle');button.disabled=true;try{const on=latestState?.dota?.enabled;const result=await api(on?'/api/dota2/disable':'/api/dota2/enable',on?{}:{confirm:true});notice({message:result.message});await refresh();}catch(error){notice(error);}finally{button.disabled=false;}});
 async function petCall(url,body){try{const result=await api(url,body);showPet(result.pet);return result.pet;}catch(error){notice(error);}}
 document.querySelectorAll('[data-pet]').forEach(b=>b.addEventListener('click',()=>petCall('/api/pet/interact',{action:b.dataset.pet})));
-async function loadPet(){try{const state=await api('/api/state');showPet(state.pet);}catch(error){}}
+async function loadPet(){try{const state=await api('/api/state');showPet(state.pet);if(state.games)showGames(state.games);}catch(error){}}
+/* Spiel-Pakete: installieren oder entfernen; geplante Spiele nur als Hinweis. */
+let gamesSignature='';
+function showGames(list){
+  const cs2=list.find(g=>g.id==='cs2');document.querySelectorAll('.cs2-only').forEach(n=>{n.hidden=!(cs2&&cs2.installed);});
+  const dota=list.find(g=>g.id==='dota2');document.querySelectorAll('.dota2-only').forEach(n=>{n.hidden=!(dota&&dota.installed);});
+  const signature=JSON.stringify(list.map(g=>[g.id,g.installed,g.status]));if(signature===gamesSignature)return;gamesSignature=signature;
+  $('game-library').replaceChildren(...list.map(g=>{
+    const row=el('li','','game-row'+(g.installed?' installed':''));const info=el('div','');info.append(el('b',g.label));
+    const note=g.status==='planned'?(g.web?`Geplant · Schon jetzt: ${g.web}`:'Geplant'):g.installed?`Installiert · ${g.features.join(', ')}`:`Nicht installiert · ${g.features.join(', ')}`;info.append(el('small',note));
+    const button=el('button','');button.type='button';
+    if(g.status==='planned'){button.textContent='Herunterladen';button.disabled=true;button.className='subtle';button.title='Kommt in einem späteren Update.';}
+    else if(g.installed){button.textContent='Entfernen';button.className='subtle';button.addEventListener('click',async()=>{
+      if(!confirm(`${g.label} entfernen?\n\nGelöscht werden: ${g.data.join('; ')}.\nTipps für dieses Spiel werden ausgeschaltet. Du kannst das Paket jederzeit wieder installieren.`))return;
+      try{const r=await api('/api/games/remove',{id:g.id,confirm:true});notice(r.message);showGames(r.games);}catch(error){notice(error);}});}
+    else{button.textContent='⬇ Installieren';button.addEventListener('click',async()=>{try{const r=await api('/api/games/install',{id:g.id});notice(r.message);showGames(r.games);}catch(error){notice(error);}});}
+    row.append(info,button);return row;}));
+}
 let gameArea=$('game-area');const area=()=>gameArea;
 function gameDone(game,win,score){petCall('/api/pet/game',{game,win,score});}
 /* Reaktionstest: warten, bis das Feld lila wird, dann so schnell wie möglich klicken. */
@@ -380,4 +416,44 @@ function guessGame(){
 }
 document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>(gameArea=b.closest('.card').querySelector('.game-area'),{reaction:reactionGame,rps:rpsGame,quiz:quizGame,price:priceGame,aim:aimGame,memory:memoryGame,guess:guessGame})[b.dataset.game]()));
 loadPet();setInterval(loadPet,5000);
-if(['#spiele','#tecmon','#games','#quiz','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
+if(['#spiele','#tecmon','#games','#clips','#quiz','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
+
+/* Clip-Puffer: Einstellungen, Liste, Branding. Hochladen zu YouTube läuft auf der Webseite. */
+const CLIP_GAMES=[['cs2','CS2'],['valorant','Valorant'],['dota2','Dota 2'],['deadlock','Deadlock'],['wardogs','Wardogs'],['lol','League of Legends'],['other','Anderes Spiel']];
+let clipBuffer=null,clipSignature='';
+function clipStatus(clip){return clip.status==='branding'?'Branding läuft …':clip.status==='error'?`Fehler: ${clip.error||'Branding fehlgeschlagen'}`:clip.branded?'Mit TecMon-Branding fertig · auf TecMon hochladen':'Rohclip';}
+function showClipBuffer(buffer){
+  clipBuffer=buffer;const on=buffer.recording;
+  $('clips-heading').textContent=on?`Clip-Puffer läuft · letzte ${buffer.seconds} s`:buffer.enabled?'Clip-Puffer startet …':'Clip-Puffer ist aus';
+  $('clips-toggle').textContent=buffer.enabled?'Ausschalten':'Einschalten';$('clips-toggle').disabled=!buffer.available;
+  $('clips-save').disabled=!on;
+  if(!buffer.available)$('clips-note').textContent='Der Clip-Puffer braucht den installierten Windows-Companion mit FFmpeg.';
+  else if(buffer.error)$('clips-note').textContent=buffer.error;
+  for(const key of ['seconds','fps','height'])if(document.activeElement!==$(`clips-${key}`))$(`clips-${key}`).value=String(buffer[key]);
+  const audio=$('clips-audio');if(buffer.audioDevice&&![...audio.options].some(o=>o.value===buffer.audioDevice))audio.append(new Option(buffer.audioDevice,buffer.audioDevice));audio.value=buffer.audioDevice||'';
+}
+async function loadClips(){
+  const {clips,buffer}=await api('/api/clips');showClipBuffer(buffer);
+  const next=JSON.stringify(clips);if(next===clipSignature)return;clipSignature=next;
+  const list=$('clips-list');list.replaceChildren();
+  if(!clips.length){list.append(el('li','Noch keine Clips.','recent-empty'));return;}
+  for(const clip of clips.slice(0,20)){
+    const item=el('li','','recent-item');const text=el('div');text.append(el('b',clip.title||clip.id),el('small',`${timeLabel(clip.time)} · ${sizeLabel(clip.size)} · ${clipStatus(clip)}`));
+    const actions=el('div','','actions');
+    const play=el('button','▶ Abspielen');play.type='button';play.addEventListener('click',()=>api('/api/clips/open',{id:clip.id,branded:clip.branded}).catch(notice));
+    const game=document.createElement('select');game.setAttribute('aria-label','Spiel');for(const [id,label] of CLIP_GAMES)game.append(new Option(label,id));game.value=clip.game||'other';
+    const title=document.createElement('input');title.maxLength=80;title.placeholder='Titel, z. B. 1v3 Clutch';title.value=clip.title||'';title.setAttribute('aria-label','Titel');
+    const brand=el('button',clip.branded?'Neu branden':'Branding erstellen','subtle');brand.type='button';brand.disabled=clip.status==='branding';
+    brand.addEventListener('click',()=>api('/api/clips/brand',{id:clip.id,game:game.value,title:title.value}).then(()=>{clipSignature='';loadClips();}).catch(notice));
+    const remove=el('button','Löschen','subtle');remove.type='button';remove.addEventListener('click',()=>{if(confirm('Clip und seine TecMon-Fassung löschen?'))api('/api/clips/remove',{id:clip.id}).then(()=>{clipSignature='';loadClips();}).catch(notice);});
+    actions.append(play,game,title,brand,remove);item.append(text,actions);list.append(item);
+  }
+}
+const clipSettings=body=>api('/api/clips/settings',body).then(r=>{showClipBuffer(r.buffer);if(r.message)$('notice').textContent=r.message;}).catch(notice);
+$('clips-toggle').addEventListener('click',()=>clipSettings({enabled:!clipBuffer?.enabled}));
+for(const key of ['seconds','fps','height'])$(`clips-${key}`).addEventListener('change',e=>clipSettings({[key]:Number(e.target.value)}));
+$('clips-audio').addEventListener('change',e=>clipSettings({audioDevice:e.target.value}));
+$('clips-devices').addEventListener('click',()=>api('/api/clips/devices').then(({devices})=>{const audio=$('clips-audio'),current=audio.value;audio.replaceChildren(new Option('ohne Ton',''));for(const d of devices)audio.append(new Option(d,d));audio.value=current;if(!devices.length)$('notice').textContent='Keine Tonquelle gefunden. In Windows „Stereomix“ aktivieren.';}).catch(notice));
+$('clips-save').addEventListener('click',()=>api('/api/clips/save',{}).then(r=>{$('notice').textContent=r.message;clipSignature='';loadClips();}).catch(notice));
+$('clips-folder').addEventListener('click',()=>api('/api/clips/folder',{}).catch(notice));
+loadClips().catch(()=>{});setInterval(()=>{if(!restarting)loadClips().catch(()=>{});},4000);

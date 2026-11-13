@@ -82,6 +82,26 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   1024er-Radars. Spray-Muster in `spray-patterns.mjs` stammen aus
   `lib/recoilProfiles.ts` der Webseite.
 
+## Dota-2-Tipps (`dota-gsi.mjs`, `dota-tips.mjs`)
+
+Gleiche Grenzen wie bei CS2, verbindlich:
+
+- **Nur offizielle GSI, nur lesen, keine Eingaben.** Dota 2 schickt an
+  `127.0.0.1:31977/gsi/dota2`, eigenes Token in `dota2/gsi.json`. Erlaubt sind
+  nur `DOTA_GSI_BLOCKS` (`provider`, `map`, `player`, `hero`, `items`).
+  Verboten: `buildings`, `minimap`, `roshan`, `couriers`, `draft`,
+  `neutralitems`, `events`, `league`, `wearables`, `abilities` und alles mit
+  Gegner- oder Teamdaten. `test/dota-tips.test.mjs` prüft das und darf nicht
+  gelockert werden.
+- `cleanDotaPayload()` verwirft Nachrichten mit `team2`/`team3` (Zuschauer,
+  Replay) und behält nur die eigenen Werte. Keine Timer für Roshan oder
+  gegnerische Buybacks.
+- **Nur in Pausen:** Strategiephase/Pre-Game, Spielpause, nach dem eigenen Tod,
+  Matchende. Lebend im laufenden Spiel `quiet` und Warteschlange leeren.
+  `BRIEFING_LIMIT` (3) je Pause. Jede Kategorie gehört zu `DOTA_FEATURES`.
+- Standardmäßig aus; cfg nur nach Einschalten, beim Ausschalten und beim
+  Entfernen des Pakets löschen. Während einer Demo-Aufnahme nichts annehmen.
+
 ## Browser-Bridge
 
 - `/bridge/*` nur mit geprüftem Origin und Bridge-Token. Neue Funktionen
@@ -112,6 +132,38 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   Personen oder Gruppen.
 - Werte und Zähler bleiben lokal in `pet.json`; Spiele laufen nur in der
   Companion-Oberfläche, nie im Spiel.
+
+## Spiel-Pakete (`games.mjs`)
+
+- Jedes Spiel ist ein Paket in `GAME_CATALOG`. Ohne gespeicherte Auswahl ist
+  CS2 installiert; die Auswahl liegt in `games.json`.
+- Ist ein Paket entfernt, legt der Companion für dieses Spiel keine Dateien an
+  und nimmt keine Daten an (`/gsi`, `/bridge/insights`, `/api/gsi/*`,
+  `/api/crosshair/*` antworten mit Fehler). Entfernen löscht nur eigene
+  Dateien des Pakets. Neue spielbezogene Funktionen gehören zu einem Paket und
+  müssen beim Entfernen mit aufgeräumt werden.
+- Dota 2 ist seit 0.22.0 verfügbar (`/gsi/dota2`, `/api/dota2/*`).
+- Geplante Spiele (`status: "planned"`) lassen sich nicht installieren, bis es
+  echte Funktionen dafür gibt.
+- Die Highlight-Aufnahme gehört zum Companion, nicht zu einem Paket.
+
+## Clip-Puffer (`clips.mjs`, `clip-branding.mjs`)
+
+- Gehört zum Companion, nicht zu einem Spiel-Paket. Standardmäßig aus
+  (`clips.json`). Nur Bildschirmaufnahme per FFmpeg `ddagrab`; kein Hook, keine
+  Injektion, kein Overlay im Spiel, kein Mitlesen der Tastatur. Die Figur
+  registriert nur Strg+Alt+C (`RegisterHotKey`) und zeigt Rückmeldungen als
+  Windows-Hinweis, ohne den Fokus zu nehmen.
+- Der Ringpuffer (`Clips/puffer`) enthält Bildschirminhalt: beim Ausschalten,
+  Beenden und Start löschen. Argumente für FFmpeg nur als Liste, nie über eine
+  Shell; der Ton-Gerätename wird bereinigt.
+- Die Bridge gibt nur Clips mit TecMon-Branding heraus (`GET /bridge/clip`),
+  nie Rohclips. Capability `clips-v1`: `GET /bridge/clips`,
+  `GET /bridge/clip?id=`, `POST /bridge/clips/brand` (`id`, `game` aus
+  `CLIP_GAMES`, `title` max. 80 Zeichen).
+- Keine Live-Auswertung des Bildschirms im Spiel. Eine spätere KI-Analyse nur
+  für fertige Clips, nur mit dem eigenen API-Schlüssel des Nutzers und nur
+  nach ausdrücklichem Einschalten.
 
 ## Prüfen und veröffentlichen
 
