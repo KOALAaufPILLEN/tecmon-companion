@@ -66,6 +66,25 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.22.0: Dota-2-Paket
+
+- **Dota 2 ist jetzt ein installierbares Paket** unter „Games“. Es bringt
+  Dota-2-Tipps über die offizielle Game State Integration von Valve und gehört
+  zur neuen Dota-2-Replay-Seite auf TecMon (Stats und jeder Item-Kauf mit Zeit).
+- **Nur eigene Werte:** Die cfg fordert nur `provider`, `map`, `player`, `hero`
+  und `items` an. Keine Gebäude, keine Minimap, kein Roshan, keine Kuriere, keine
+  Draft- oder Gegnerdaten. Nachrichten mit Daten beider Teams (Zuschauer, Replay)
+  werden verworfen.
+- **Nur in Pausen:** vor dem Horn, in Spielpausen, nach deinem Tod und am
+  Matchende. Solange du lebst und das Spiel läuft, ist TecMon still. Höchstens
+  drei Tipps je Pause. Inhalte: Last-Hit-Tempo, Gold für Buyback ab Minute 25,
+  beim Tod noch bereite aktive Items, nicht ausgegebenes Gold, Match-Bilanz.
+  Jede Tippart lässt sich einzeln abschalten.
+- **Standardmäßig aus**, mit eigenem Token. Die cfg landet in
+  `dota 2 beta\game\dota\cfg\gamestate_integration` und wird beim Ausschalten
+  oder Entfernen des Pakets gelöscht. Dota 2 braucht dafür in Steam die
+  Startoption `-gamestateintegration`.
+
 ### Neu in 0.21.0: Clip-Puffer für alle Spiele
 
 - **Die letzten Sekunden als Clip:** Im Fenster unter „Clips“ oder per
