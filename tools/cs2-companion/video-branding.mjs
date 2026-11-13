@@ -259,7 +259,10 @@ export async function renderBranding({
       const label = await artifact(`name-${i}.txt`, displayName);
       const caption = await artifact(
         `caption-${i}.txt`,
-        clipText(mapLabel(job.map), 20),
+        // Eigene Beschreibung der Szene zuerst, dahinter die Map.
+        sequence.label
+          ? clipText(`${sequence.label} · ${mapLabel(job.map)}`, 64)
+          : clipText(mapLabel(job.map), 20),
       );
       const counter=await artifact(`counter-${i}.txt`,`${String(i+1).padStart(2,'0')}/${String(sources.length).padStart(2,'0')}`);
       if(i>0 && job.sequences[i-1].steamId!==sequence.steamId){

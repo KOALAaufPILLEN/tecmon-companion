@@ -108,6 +108,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   bekommen eine eigene Capability in `/bridge/state`; bestehende Capabilities
   nicht ändern oder entfernen, weil ältere Webseiten-Versionen darauf prüfen.
 - Größenlimits für Eingaben (`readInput(req, limit)`) immer setzen.
+- `scene-label-v1`: Aufträge dürfen je Szene ein optionales `label` enthalten
+  (Text, höchstens 40 Zeichen, in `validateJob()` bereinigt). Es landet nur in
+  einer Textdatei für die Einblendung, nie in einem Filterausdruck oder Befehl.
 
 ## Windows-Figur (`windows/TecMon.cs`)
 
