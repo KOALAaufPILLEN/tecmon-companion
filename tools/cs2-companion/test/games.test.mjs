@@ -12,8 +12,10 @@ test("Spiel-Pakete: CS2 standardmäßig installiert, geplante Spiele nicht insta
   t.after(() => rm(dir, { recursive: true, force: true }));
   const games = await createGamePackages(dir);
   assert.equal(games.has("cs2"), true);
-  assert.deepEqual(GAME_CATALOG.filter((g) => g.status === "planned").map((g) => g.id), ["valorant", "dota2", "wardogs"]);
+  assert.deepEqual(GAME_CATALOG.filter((g) => g.status === "planned").map((g) => g.id), ["valorant", "dota2", "deadlock", "wardogs"]);
   await assert.rejects(games.install("valorant"), /geplant/);
+  await assert.rejects(games.install("deadlock"), /geplant/);
+  assert.match(GAME_CATALOG.find((g) => g.id === "deadlock").web, /Webseite/, "Deadlock verweist auf die Replay-Auswertung der Webseite");
   await assert.rejects(games.install("tetris"), /Unbekanntes Spiel/);
   await games.remove("cs2");
   assert.equal(games.has("cs2"), false);
@@ -58,5 +60,5 @@ test("Spiel-Pakete: CS2 entfernen löscht eigene Dateien und sperrt CS2-Funktion
   const back = await (await post("/api/games/install", { id: "cs2" })).json();
   assert.equal(back.games.find((g) => g.id === "cs2").installed, true);
   const state = await (await fetch(base + "/api/state", { headers })).json();
-  assert.equal(state.games.length, 4);
+  assert.equal(state.games.length, GAME_CATALOG.length);
 });

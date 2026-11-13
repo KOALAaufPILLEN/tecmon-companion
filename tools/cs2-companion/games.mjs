@@ -20,6 +20,17 @@ export const GAME_CATALOG = [
   },
   { id: "valorant", label: "Valorant", short: "Valorant", status: "planned", features: [], data: [] },
   { id: "dota2", label: "Dota 2", short: "Dota 2", status: "planned", features: [], data: [] },
+  {
+    id: "deadlock",
+    label: "Deadlock",
+    short: "Deadlock",
+    status: "planned",
+    features: [],
+    data: [],
+    // Deadlock hat keine offizielle Game State Integration. Die Replay-Auswertung
+    // laeuft deshalb auf der Webseite im Browser, nicht im Companion.
+    web: "Replay-Auswertung auf der Webseite unter Games → Deadlock → Replay",
+  },
   { id: "wardogs", label: "Wardogs", short: "Wardogs", status: "planned", features: [], data: [] },
 ];
 

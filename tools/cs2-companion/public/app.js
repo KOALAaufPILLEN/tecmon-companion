@@ -322,7 +322,7 @@ function showGames(list){
   const signature=JSON.stringify(list.map(g=>[g.id,g.installed,g.status]));if(signature===gamesSignature)return;gamesSignature=signature;
   $('game-library').replaceChildren(...list.map(g=>{
     const row=el('li','','game-row'+(g.installed?' installed':''));const info=el('div','');info.append(el('b',g.label));
-    const note=g.status==='planned'?'Geplant':g.installed?`Installiert · ${g.features.join(', ')}`:`Nicht installiert · ${g.features.join(', ')}`;info.append(el('small',note));
+    const note=g.status==='planned'?(g.web?`Geplant · Schon jetzt: ${g.web}`:'Geplant'):g.installed?`Installiert · ${g.features.join(', ')}`:`Nicht installiert · ${g.features.join(', ')}`;info.append(el('small',note));
     const button=el('button','');button.type='button';
     if(g.status==='planned'){button.textContent='Herunterladen';button.disabled=true;button.className='subtle';button.title='Kommt in einem späteren Update.';}
     else if(g.installed){button.textContent='Entfernen';button.className='subtle';button.addEventListener('click',async()=>{
