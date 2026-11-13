@@ -66,6 +66,14 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.22.1: Neue Augen für TecMon
+
+- **Neue Gesichter statt LED-Punkten:** Kräftig leuchtende lila Augen und
+  Münder für alle 20 Ausdrücke, etwa Herzaugen, Spiralaugen, Sonnenbrille,
+  Tränen und rosa Wangen. Dazu kommen Zeichen neben dem Kopf: Zz beim
+  Schlafen, Ausrufezeichen beim Staunen, ein Fragezeichen bei Verwirrung,
+  Herzen und Funkeln.
+
 ### Neu in 0.22.0: Dota-2-Paket
 
 - **Dota 2 ist jetzt ein installierbares Paket** unter „Games“. Es bringt
