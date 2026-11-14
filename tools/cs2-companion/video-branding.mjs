@@ -8,7 +8,8 @@ import { runTool } from "./managed-installation.mjs";
 import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, STINGER_SECONDS, crossfadeGraph } from "./cyber-hud.mjs";
 
 /** Länge von intro.mp4 aus dem Video-Paket (5,78 s), knapp darunter geschnitten. */
-export const MOTION_INTRO_SECONDS = 5.75;
+export const MOTION_INTRO_SECONDS = 6.46;
+export const MOTION_OUTRO_SECONDS = 5.47;
 
 export const visualPlayerName = (value) =>
   String(value)
@@ -314,7 +315,26 @@ export async function renderBranding({
         [label, caption, counter, "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt", { path: source.file, sha256: source.sha256 }],
       );
     }
-    if (job.branding.outro) {
+    if (job.branding.outro && motion) {
+      // TecMon winkt und fliegt davon; Website und Kanal erscheinen, sobald nur noch das Logo steht.
+      progress("Animiertes TecMon-Outro wird eingefügt …");
+      const fade = `:alpha='if(lt(t,3.95),(t-3.7)/0.25,if(gt(t,4.95),max(0,(5.3-t)/0.35),1))':enable='between(t,3.7,5.3)'`;
+      const graph =
+        `[0:v]scale=${w}:${h},setsar=1,fps=${fps},format=yuv420p,` +
+        [
+          text("website.txt", 42, "(w-text_w)/2", "h*0.74", "white", fade + ":shadowcolor=black@0.85:shadowx=2:shadowy=2"),
+          text("channel.txt", 32, "(w-text_w)/2", "h*0.82", "0xefc96d", fade + ":shadowcolor=black@0.85:shadowx=2:shadowy=2"),
+        ].join(",") +
+        "[v]";
+      await encode(
+        "outro",
+        ["-i", "motion-outro.mp4"],
+        graph,
+        "0:a:0",
+        MOTION_OUTRO_SECONDS,
+        ["motion-outro.mp4", "website.txt", "channel.txt"],
+      );
+    } else if (job.branding.outro) {
       progress("TecMon-Outro wird lokal erstellt …");
       const graph =
         `[0:v]${chrome}[bg];[1:v]scale=${n(350)}:${n(350)}[logo];[bg][logo]overlay=(W-w)/2:H*0.10,` +

@@ -233,7 +233,7 @@ test("motion pack is pinned: offline falls back to null, changed bytes always fa
 test("animated intro precedes the title card and player switches use the checked stinger", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-brand-motion-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  const spec = validateJob(job);
+  const spec = validateJob({ ...job, branding: { enabled: true, intro: true, outro: true } });
   for (let i = 0; i < spec.sequences.length; i++)
     await writeFile(path.join(dir, sequenceFile(spec.sequences[i], i)), "source " + i);
   const graphs = {};
@@ -258,13 +258,16 @@ test("animated intro precedes the title card and player switches use the checked
       if (name === "tecmon-highlight.mp4")
         finalInputs = request.args.filter((_, i) => request.args[i - 1] === "-i");
       else if (name !== "intro-film.mp4") assert.ok(!request.args.includes("motion-intro.mp4"));
+      if (name !== "outro.mp4" && name !== "tecmon-highlight.mp4") assert.ok(!request.args.includes("motion-outro.mp4"));
       await writeFile(request.args.at(-1), "encoded fixture");
     },
   });
-  assert.deepEqual(finalInputs, ["intro-film.mp4", "intro.mp4", "scene-0.mp4", "switch-1.mp4", "scene-1.mp4"]);
+  assert.deepEqual(finalInputs, ["intro-film.mp4", "intro.mp4", "scene-0.mp4", "switch-1.mp4", "scene-1.mp4", "outro.mp4"]);
   const final = graphs["tecmon-highlight.mp4"];
-  assert.equal(final.match(/xfade=/g).length, 4);
-  assert.equal(final.match(/acrossfade=/g).length, 4);
+  assert.equal(final.match(/xfade=/g).length, 5);
+  assert.equal(final.match(/acrossfade=/g).length, 5);
+  assert.ok(graphs["outro.mp4"].includes("textfile=website.txt") && graphs["outro.mp4"].includes("textfile=channel.txt"));
+  assert.ok(!graphs["outro.mp4"].includes("drawbox"), "animated outro replaces the static card");
   assert.ok(!graphs["intro.mp4"].includes("fade=t="), "title card blends via crossfade, no dip to black");
   assert.ok(graphs["switch-1.mp4"].includes("textfile=name-1.txt"));
   assert.ok(graphs["switch-1.mp4"].includes("expansion=none"));

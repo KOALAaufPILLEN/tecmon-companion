@@ -25,14 +25,14 @@ export function playerSwitch({width,height,fps,nextFile,playerLength}){
   `[curtain];[game][curtain]overlay=x='if(lt(t,0.32),W*(1-t/0.32),if(lt(t,0.78),0,-W*(t-0.78)/0.32))':y=0:eval=frame[v]`;
 }
 
-export const STINGER_SECONDS=2.1;
+export const STINGER_SECONDS=2.8;
 /** Animierter Spielerwechsel aus dem geprüften Video-Paket (stinger.mp4, Eingang 0).
- * Im Partikelsturm erscheint der neue Spielername. Die weichen Überblendungen aus der
+ * TecMon zieht mit Lichtspur durchs Bild; im Partikelsturm (1,5–2,6 s) erscheint der neue Spielername. Die weichen Überblendungen aus der
  * alten und in die neue Szene macht die Endmontage (crossfadeGraph), kein Gameplay fällt weg.
  */
 export function playerStinger({width,height,fps,nextFile,playerLength}){
  const n=v=>Math.max(1,Math.round(v*width/1920));
- const fade=`alpha='if(lt(t,1.4),(t-1.25)/0.15,if(gt(t,1.85),max(0,(2.1-t)/0.25),1))':enable='between(t,1.25,2.1)'`;
+ const fade=`alpha='if(lt(t,1.65),(t-1.5)/0.15,if(gt(t,2.35),max(0,(2.6-t)/0.25),1))':enable='between(t,1.5,2.6)'`;
  const text=(file,size,y,color)=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:borderw=${n(3)}:bordercolor=black@0.75:shadowcolor=black@0.85:shadowx=${n(2)}:shadowy=${n(2)}:x=(w-text_w)/2:y=${n(y)}:${fade}`;
  const nameSize=Math.min(96,Math.max(36,Math.floor(1200/Math.max(playerLength,12))));
  return `[0:v]scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=0.5,`+

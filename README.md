@@ -66,18 +66,21 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
-### Neu in 0.23.0: Animiertes Intro und Spielerwechsel
+### Neu in 0.23.0: Animiertes Intro, Spielerwechsel und Outro
 
-- **Neues TecMon-Intro im Highlight-Video:** Lichtstrahl, goldenes Logo und
-  TecMon fliegt ins Bild (knapp 6 s), danach die bekannte Titelkarte mit Spielern
-  und Map (jetzt 2,5 s).
-- **Neuer Spielerwechsel im Teamvideo:** Energiestrahlen, Holo-Karte mit Logo,
-  Partikelsturm. Im Partikelsturm erscheint der Name des nächsten Spielers.
+- **Neues TecMon-Intro im Highlight-Video:** TecMon schwebt ins neblige
+  Neon-Raster, scannt mit lila Strahl, das goldene Logo baut sich auf und er
+  zwinkert (6,5 s). Danach die bekannte Titelkarte mit Spielern und Map (2,5 s).
+- **Neuer Spielerwechsel im Teamvideo:** TecMon zieht mit Lichtspur quer durchs
+  Bild, die Spur füllt das Bild und zerfällt in Partikel. Darin erscheint der
+  Name des nächsten Spielers.
+- **Animiertes Outro:** TecMon winkt und fliegt davon, das Logo bleibt stehen,
+  darunter Website und Kanal, dann Abblende.
 - **Weiche Übergänge statt harter Schnitte:** Intro, Titelkarte, Szenen,
   Spielerwechsel und Outro werden ineinander überblendet (0,3–0,5 s, Bild und
   Ton). Dafür wird das fertige Video einmal neu kodiert. Ohne Video-Paket bleibt
   die bisherige Montage.
-- **Geprüft wie das übrige Branding:** Beide Videos kommen als eigenes Paket
+- **Geprüft wie das übrige Branding:** Alle drei Videos kommen als eigenes Paket
   `TecMon-Motion-v1.json` (rund 5 MB) von einer festen Release-Adresse und haben
   feste SHA256-Prüfsummen. Weicht etwas ab, bricht der Auftrag ab. Ist das Paket
   offline nicht erreichbar, nutzt der Companion das bisherige statische Intro.

@@ -59,16 +59,17 @@ export async function loadBrandingPack(directory, request = fetch) {
 }
 
 /**
- * Animiertes Intro und Szenenwechsel (ab 0.23.0). Eigenes Paket, damit das kleine
+ * Animiertes Intro, Szenenwechsel und Outro (ab 0.23.0). Eigenes Paket, damit das kleine
  * v3-Paket gleich bleibt. Feste URL und feste SHA256 wie bei v3: Bei Abweichung
  * wird nichts verwendet und der Auftrag bricht ab.
  */
 export const MOTION_URL =
   "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.23.0/TecMon-Motion-v1.json";
-export const MOTION_SHA256 = "713eb9f3b61807279deade5130971703bd97caae6850066ca22aed5e3aa4b2b1";
+export const MOTION_SHA256 = "64e38c19eeca53585e9986e6fdd03a6a0e93cd21d672c8a96e41bd60c126c5e6";
 export const MOTION_FILES = Object.freeze({
-  "intro.mp4": "063254e7d22a0616426101253171f4c8974c18749cd08455e5a6b7957bd30b1d",
-  "stinger.mp4": "d2fc4ff9151783898920aa2a105821452a941cdb07775900169cad8499b15c26",
+  "intro.mp4": "c29e4a6f7c9f3e1b110ae5710bb80625b1e965f105dc8ea48536ad8ea247d72b",
+  "stinger.mp4": "5605f927efad38f86aecac192ffbf0c0e92ceb215a5da7eb7e7bd1fbda2bed89",
+  "outro.mp4": "5a2b145dc5eb093470e1be1471987622ed005ea21549e490b3bf047a334cbcfd",
 });
 const MOTION_LIMIT = 8 * 1024 * 1024;
 export function verifyMotionPack(bytes) {

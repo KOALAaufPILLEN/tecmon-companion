@@ -16,15 +16,17 @@ Barlow Condensed Bold: Copyright 2017 The Barlow Project Authors, SIL Open Font 
 
 ## Video-Paket Motion v1 (ab 0.23.0)
 
-`TecMon-Motion-v1.json` enthält `intro.mp4` (5,78 s, 1280×720, 60 fps) und
-`stinger.mp4` (2,13 s, 1280×720, 24 fps), beide mit Ton. Paket-SHA256:
-`713eb9f3b61807279deade5130971703bd97caae6850066ca22aed5e3aa4b2b1`. Der
+`TecMon-Motion-v1.json` enthält `intro.mp4` (6,50 s), `stinger.mp4` (2,83 s) und
+`outro.mp4` (5,50 s), alle 1280×720, 24 fps, mit Ton. Paket-SHA256:
+`64e38c19eeca53585e9986e6fdd03a6a0e93cd21d672c8a96e41bd60c126c5e6`. Der
 Release-Workflow lädt es als Release-Asset hoch; die Laufzeit holt es über
 `MOTION_URL` und prüft `MOTION_SHA256` und `MOTION_FILES`.
 
-Quelle sind vom Projektinhaber gelieferte TecMon-Videos. Schnitt mit FFmpeg:
-Intro aus `TecmonIntro.mp4` 0,8–3,0 s normal, 3,0–4,4 s dreifach beschleunigt
-(ohne Schnitt, damit das Logo nicht springt), 4,4–7,5 s normal, am Ende 0,2 s
-Abblende. Szenenwechsel aus `szenenwechsel.mp4`
-der Bereich 0,12–2,22 s. Beide mit `libx264 -crf 20 -preset veryslow`, AAC
-128 kbit/s, 48 kHz, ohne Metadaten.
+Die Clips wurden im Auftrag des Projektinhabers mit Google Gemini Omni Flash
+(`gemini-omni-1.1-flash`) erzeugt, mit TecMon-Figur und TecMon-Logo aus dessen
+eigenem Intro als Bildvorlage. Schnitt mit FFmpeg: Intro 0,6–3,0 s normal,
+3,0–4,9 s doppelt so schnell (Logo steht still), 4,9–8,04 s normal, am Ende 0,2 s
+Abblende. Szenenwechsel 0,5–3,3 s; der Spielername erscheint im Partikelsturm
+(1,5–2,6 s). Outro 0,0–5,5 s mit 0,6 s Ton-Abblende; Website und Kanal
+blendet der Companion ab 3,7 s unter dem Logo ein. Alle mit
+`libx264 -crf 20 -preset veryslow`, AAC 128 kbit/s, 48 kHz, ohne Metadaten.
