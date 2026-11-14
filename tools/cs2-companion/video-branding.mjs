@@ -2,10 +2,12 @@ import path from "node:path";
 import { readFile, writeFile, mkdir, mkdtemp, rm, rename, lstat, realpath } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { createHash } from "node:crypto";
-import { sha256, BRANDING_FILES } from "./branding-assets.mjs";
+import { sha256, BRANDING_FILES, MOTION_FILES } from "./branding-assets.mjs";
 import { validateJob } from "./job.mjs";
 import { runTool } from "./managed-installation.mjs";
-import { cyberHud, playerSwitch, SWITCH_SECONDS } from "./cyber-hud.mjs";
+import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, MOTION_STYLES, motionTitle, crossfadeGraph } from "./cyber-hud.mjs";
+
+/** Länge von intro.mp4 aus dem Video-Paket (5,78 s), knapp darunter geschnitten. */
 
 export const visualPlayerName = (value) =>
   String(value)
@@ -32,6 +34,8 @@ const clipText = (value, max = 100) =>
   String(value)
     .replace(/[\x00-\x1f]/g, " ")
     .slice(0, max);
+/** Nur Pfad und Prüfsumme gehen an den Sperr-Helfer. */
+const lockedFile = (part) => ({ path: part.path, sha256: part.sha256 });
 const fileHash = async (file) => {
   const hash = createHash("sha256");
   for await (const chunk of createReadStream(file)) hash.update(chunk);
@@ -94,6 +98,7 @@ export async function renderBranding({
   progress = () => {},
   execute = lockedFfmpeg,
   probe = probeVideo,
+  motion = null,
 }) {
   job = validateJob(job);
   if (!job.branding.enabled) throw new Error("Branding ist für diesen Auftrag deaktiviert.");
@@ -119,6 +124,14 @@ export async function renderBranding({
         throw new Error("Branding-Arbeitskopie stimmt nicht mit der festen Prüfsumme überein.");
       await artifact(name, assets[name]);
     }
+    // Animiertes Intro und Szenenwechsel nur aus dem geprüften Video-Paket; sonst statisch wie bisher.
+    if (motion) {
+      for (const [name, hash] of Object.entries(MOTION_FILES)) {
+        if (!Buffer.isBuffer(motion[name]) || sha256(motion[name]) !== hash)
+          throw new Error("Video-Branding stimmt nicht mit der festen Prüfsumme überein.");
+        await artifact("motion-" + name, motion[name]);
+      }
+    }
     const directoryReal = await realpath(directory);
     const sources = [];
     for (let i = 0; i < job.sequences.length; i++) {
@@ -136,6 +149,7 @@ export async function renderBranding({
     const text = (file, size, x, y, color = "white", extra = "") =>
       `drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:x=${x}:y=${y}${extra}`;
     const { title, players } = brandingTitle(job);
+    const style = MOTION_STYLES[job.branding.style] || MOTION_STYLES.a;
     await artifact("title.txt", clipText(title, 80));
     await artifact("players.txt", clipText(players, 110));
     await artifact(
@@ -213,27 +227,57 @@ export async function renderBranding({
           output,
         ],
       });
-      parts.push({ path: output, sha256: await fileHash(output) });
+      const kind = name === "intro-film" ? "film" : name === "intro" ? "title" : name.replace(/-\d+$/, "");
+      parts.push({ path: output, sha256: await fileHash(output), kind, duration });
     }
     const background = `color=c=0x0d0d16:s=${w}x${h}:r=${fps}`;
     const chrome = `drawbox=x=0:y=ih*0.85:w=iw:h=${n(5)}:color=0x8b4dff:t=fill,drawbox=x=iw*0.08:y=ih*0.92:w=iw*0.84:h=${n(2)}:color=0xefc96d:t=fill,drawbox=x=0:y=ih*0.94:w=iw*0.35:h=ih*0.06:color=0x8b4dff@0.35:t=fill`;
-    if (job.branding.intro) {
+    if (job.branding.intro && motion) {
+      progress("Animiertes TecMon-Intro wird eingefügt …");
+      await encode(
+        "intro-film",
+        ["-i", "motion-" + style.intro],
+        `[0:v]scale=${w}:${h},setsar=1,fps=${fps},format=yuv420p[v]`,
+        "0:a:0",
+        style.introSeconds,
+        ["motion-" + style.intro],
+      );
+    }
+    const titleSeconds = motion ? 2.5 : 3;
+    const multiPlayer = new Set(job.sequences.map((s) => s.steamId)).size > 1;
+    const showSubtitle = job.branding.subtitle || !/^(highlights|team-highlights)$/i.test(job.title);
+    if (job.branding.intro && motion) {
+      progress("Titelkarte im TecMon-Stil wird erstellt …");
+      const titleSize = Math.min(104, Math.max(44, Math.round(1600 / Math.max(title.length, 12))));
+      const fadeIn = (start) => `:alpha='min(1,max(0,(t-${start})/0.3))'`;
+      const texts = [
+        text("title.txt", titleSize, "(w-text_w)/2", "h*0.68", "0xefc96d", fadeIn(0.45) + ":shadowcolor=black@0.8:shadowx=2:shadowy=2"),
+        ...(multiPlayer ? [text("players.txt", 40, "(w-text_w)/2", "h*0.785", "white", fadeIn(0.6))] : []),
+        ...(showSubtitle ? [text("subtitle.txt", 30, "(w-text_w)/2", multiPlayer ? "h*0.845" : "h*0.79", "white", fadeIn(0.7))] : []),
+        text("map.txt", 24, "(w-text_w)/2", "h*0.91", "0x9cefff", fadeIn(0.8)),
+      ];
+      await encode(
+        "intro",
+        ["-ss", String(style.titleFrame), "-i", "motion-" + style.intro],
+        motionTitle({ width: w, height: h, fps, seconds: titleSeconds, texts }),
+        "1:a:0",
+        titleSeconds,
+        ["title.txt", "players.txt", "subtitle.txt", "map.txt", "motion-" + style.intro],
+      );
+    } else if (job.branding.intro) {
       progress("TecMon-Intro wird lokal erstellt …");
       const titleSize = Math.min(112, Math.max(48, Math.round(1700 / Math.max(title.length, 12))));
       const graph =
-        `[0:v]scale=${w}:${h},trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=3,boxblur=10:1,drawbox=color=black@0.75:t=fill,${chrome}[bg];[1:v]scale=${n(450)}:${n(450)}[logo];[bg][logo]overlay=(W-w)/2:H*0.06,` +
+        `[0:v]scale=${w}:${h},trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${titleSeconds},boxblur=10:1,drawbox=color=black@0.75:t=fill,${chrome}[bg];[1:v]scale=${n(450)}:${n(450)}[logo];[bg][logo]overlay=(W-w)/2:H*0.06,` +
         [
           text("title.txt", titleSize, "(w-text_w)/2", "h*0.54", "0xefc96d"),
-          ...(new Set(job.sequences.map((s) => s.steamId)).size > 1
-            ? [text("players.txt", 42, "(w-text_w)/2", "h*0.68")]
-            : []),
-          ...(job.branding.subtitle || !/^(highlights|team-highlights)$/i.test(job.title)
-            ? [text("subtitle.txt", 32, "(w-text_w)/2", "h*0.76")]
-            : []),
+          ...(multiPlayer ? [text("players.txt", 42, "(w-text_w)/2", "h*0.68")] : []),
+          ...(showSubtitle ? [text("subtitle.txt", 32, "(w-text_w)/2", "h*0.76")] : []),
           text("map.txt", 26, "(w-text_w)/2", "h*0.87", "0xefc96d"),
           "setsar=1",
+          // Mit Video-Paket blendet die Endmontage weich über, ohne Schwarzblende.
           "fade=t=in:st=0:d=0.2",
-          "fade=t=out:st=2.8:d=0.2",
+          `fade=t=out:st=${titleSeconds - 0.2}:d=0.2`,
         ].join(",") +
         "[v]";
       await encode(
@@ -241,7 +285,7 @@ export async function renderBranding({
         ["-i", sources[0].file, "-loop", "1", "-i", "logo.webp"],
         graph,
         "2:a:0",
-        3,
+        titleSeconds,
         [
           "title.txt",
           "players.txt",
@@ -266,7 +310,12 @@ export async function renderBranding({
         progress(`Cyberpunk-Spielerwechsel zu ${displayName} …`);
         const previous=sources[i-1];
         const previousFrame=Math.max(0,previous.info.duration-1/fps);
-        await encode(`switch-${i}`,
+        if(motion){
+          await encode(`switch-${i}`,
+            ['-i','motion-'+style.stinger,'-ss',previousFrame.toFixed(6),'-i',previous.file,'-i',source.file],
+            playerStinger({width:w,height:h,fps,nextFile:label,playerLength:displayName.length,style}),'0:a:0',style.stingerSeconds,
+            [label,'motion-'+style.stinger,'switch-label.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);
+        }else await encode(`switch-${i}`,
           ['-ss',previousFrame.toFixed(6),'-i',previous.file,'-i',source.file,'-loop','1','-i','cyber-stinger.png','-loop','1','-i','logo.webp'],
           playerSwitch({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}), '4:a:0',SWITCH_SECONDS,
           [label,'cyber-stinger.png','switch-label.txt','switch-footer.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);
@@ -282,7 +331,27 @@ export async function renderBranding({
         [label, caption, counter, "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt", { path: source.file, sha256: source.sha256 }],
       );
     }
-    if (job.branding.outro) {
+    if (job.branding.outro && motion) {
+      // TecMon winkt und fliegt davon; Website und Kanal erscheinen, sobald nur noch das Logo steht.
+      progress("Animiertes TecMon-Outro wird eingefügt …");
+      const [from, to] = style.outroText;
+      const fade = `:alpha='if(lt(t,${from + 0.25}),(t-${from})/0.25,if(gt(t,${to - 0.35}),max(0,(${to}-t)/0.35),1))':enable='between(t,${from},${to})'`;
+      const graph =
+        `[0:v]scale=${w}:${h},setsar=1,fps=${fps},format=yuv420p,` +
+        [
+          text("website.txt", 42, "(w-text_w)/2", `h*${style.outroY[0]}`, "white", fade + ":shadowcolor=black@0.85:shadowx=2:shadowy=2"),
+          text("channel.txt", 32, "(w-text_w)/2", `h*${style.outroY[1]}`, "0xefc96d", fade + ":shadowcolor=black@0.85:shadowx=2:shadowy=2"),
+        ].join(",") +
+        "[v]";
+      await encode(
+        "outro",
+        ["-i", "motion-" + style.outro],
+        graph,
+        "0:a:0",
+        style.outroSeconds,
+        ["motion-" + style.outro, "website.txt", "channel.txt"],
+      );
+    } else if (job.branding.outro) {
       progress("TecMon-Outro wird lokal erstellt …");
       const graph =
         `[0:v]${chrome}[bg];[1:v]scale=${n(350)}:${n(350)}[logo];[bg][logo]overlay=(W-w)/2:H*0.10,` +
@@ -291,7 +360,7 @@ export async function renderBranding({
           text("website.txt", 42, "(w-text_w)/2", "h*0.67"),
           text("channel.txt", 32, "(w-text_w)/2", "h*0.76"),
           "setsar=1",
-          "fade=t=in:st=0:d=0.2",
+          ...(motion ? [] : ["fade=t=in:st=0:d=0.2"]),
           "fade=t=out:st=1.8:d=0.2",
         ].join(",") +
         "[v]";
@@ -304,36 +373,60 @@ export async function renderBranding({
         ["outro.txt", "website.txt", "channel.txt"],
       );
     }
-    const list = await artifact(
-      "parts.txt",
-      parts.map((p) => `file '${path.basename(p.path)}'`).join("\n"),
-    );
     const partial = path.join(work, "tecmon-highlight.mp4");
-    progress("Intro und Highlight-Szenen werden zusammengefügt …");
-    await execute({
-      launcher,
-      exe: ffmpeg,
-      cwd: work,
-      files: [artifacts.get(list), ...parts],
-      args: [
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-nostdin",
-        "-y",
-        "-f",
-        "concat",
-        "-safe",
-        "1",
-        "-i",
-        list,
-        "-c",
-        "copy",
-        "-movflags",
-        "+faststart",
-        partial,
-      ],
-    });
+    if (motion) {
+      // Weiche Überblendungen zwischen allen Teilen statt harter Schnitte (einmal neu kodiert).
+      progress("Intro, Szenen und Übergänge werden weich überblendet …");
+      const { graph, duration } = crossfadeGraph(parts, fps);
+      const graphName = await artifact("final.graph", graph);
+      await execute({
+        launcher,
+        exe: ffmpeg,
+        cwd: work,
+        files: [artifacts.get(graphName), ...parts.map(lockedFile)],
+        args: [
+          "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
+          ...parts.flatMap((p) => ["-i", path.basename(p.path)]),
+          "-filter_complex_script", graphName,
+          "-map", "[v]", "-map", "[a]",
+          "-t", duration.toFixed(6), "-r", String(fps),
+          "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p",
+          "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+          "-movflags", "+faststart",
+          partial,
+        ],
+      });
+    } else {
+      const list = await artifact(
+        "parts.txt",
+        parts.map((p) => `file '${path.basename(p.path)}'`).join("\n"),
+      );
+      progress("Intro und Highlight-Szenen werden zusammengefügt …");
+      await execute({
+        launcher,
+        exe: ffmpeg,
+        cwd: work,
+        files: [artifacts.get(list), ...parts.map(lockedFile)],
+        args: [
+          "-hide_banner",
+          "-loglevel",
+          "error",
+          "-nostdin",
+          "-y",
+          "-f",
+          "concat",
+          "-safe",
+          "1",
+          "-i",
+          list,
+          "-c",
+          "copy",
+          "-movflags",
+          "+faststart",
+          partial,
+        ],
+      });
+    }
     const final = path.join(directory, "tecmon-highlight.mp4");
     await rename(partial, final);
     return final;

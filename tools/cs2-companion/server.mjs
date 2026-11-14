@@ -17,7 +17,7 @@ import { ANGLE_CAPABILITY, SCRIPT_CAPABILITY, SESSION_CAPABILITY } from "./camer
 import { needsScript } from "./job.mjs";
 import { updateHandoff } from "./update-handoff.mjs";
 import { lazyEngine } from "./lazy-engine.mjs";
-import { loadBrandingPack } from "./branding-assets.mjs";
+import { loadBrandingPack, loadMotionPack } from "./branding-assets.mjs";
 import { renderBranding } from "./video-branding.mjs";
 import { createBrowserBridge } from "./browser-bridge.mjs";
 import { browserDemos } from "./browser-demo.mjs";
@@ -132,6 +132,7 @@ export async function createCompanion({
   installation = null,
   detectTools = detect,
   loadAssets = loadBrandingPack,
+  loadMotion = loadMotionPack,
   startDatabase = ensureManagedDatabase,
   stopDatabase = stopManagedDatabase,
   runSql = (sql) => runCameraSql(installation, sql, runTool),
@@ -531,6 +532,12 @@ export async function createCompanion({
       job.status = "preparing";
       job.log += "\nVersionierte TecMon-Visuals laden und feste SHA-256-Prüfsummen prüfen …";
       assets = await loadAssets(path.join(installation.profileDir, "Branding"));
+      if (job.job.branding.intro || new Set(job.job.sequences.map((s) => s.steamId)).size > 1) {
+        // Animiertes Intro und Spielerwechsel: Netzfehler -> statische Variante, falsche Prüfsumme -> Abbruch.
+        const motion = await loadMotion(path.join(installation.profileDir, "Branding"));
+        if (motion) assets = { ...assets, motion };
+        else job.log += "\nAnimiertes Intro nicht erreichbar, statisches TecMon-Intro wird genutzt.";
+      }
     }
     if (installation && !own)
       await ensureRecordingPlugin(installation, (message) => {
@@ -621,6 +628,7 @@ export async function createCompanion({
         job: job.job,
         directory: output,
         assets,
+        motion: assets.motion || null,
         ffmpeg: installation.ffmpegExe,
         launcher: path.join(root, "TecMon Companion.exe"),
         progress: (message) => {
@@ -702,7 +710,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
       });
     if (req.method === "POST" && url.pathname === "/bridge/insights") {
       const input = await readInput(req, 262144);

@@ -11,6 +11,10 @@ import {
   BRANDING_SHA256,
   BRANDING_URL,
   sha256,
+  verifyMotionPack,
+  loadMotionPack,
+  MOTION_SHA256,
+  MOTION_URL,
 } from "../branding-assets.mjs";
 import {
   renderBranding,
@@ -20,6 +24,7 @@ import {
 } from "../video-branding.mjs";
 import { validateJob } from "../job.mjs";
 const packed = await readFile(new URL("../branding/TecMon-Branding-v3.json", import.meta.url));
+const motionPacked = await readFile(new URL("../branding/TecMon-Motion-v1.json", import.meta.url));
 const job = {
   format: "tecmon-cs2-job",
   version: 1,
@@ -75,7 +80,7 @@ test("legacy jobs get branding; single/team titles use players and ignore suppli
       filter: "movie=private",
     },
   });
-  assert.deepEqual(clean.branding, { enabled: true, intro: true, outro: true, subtitle: "Clutch" });
+  assert.deepEqual(clean.branding, { enabled: true, intro: true, outro: true, subtitle: "Clutch", style: "a" });
   assert.equal(brandingTitle(clean).title, "TEAM-HIGHLIGHTS");
   assert.equal(
     brandingTitle({ ...clean, sequences: [clean.sequences[0]] }).title,
@@ -200,4 +205,110 @@ test("asset integrity failure stops the recording pipeline before CS2 and cannot
     (await fetch(base + `/api/video?job=${imported.id}&file=0`, { headers })).status,
     404,
   );
+});
+
+test("motion pack is pinned: offline falls back to null, changed bytes always fail closed", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-motion-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  assert.equal(sha256(motionPacked), MOTION_SHA256);
+  assert.match(MOTION_URL, /releases\/download\/v\d+\.\d+\.\d+\/TecMon-Motion-v1\.json$/);
+  assert.equal(await loadMotionPack(path.join(dir, "offline"), async () => { throw new Error("offline"); }), null);
+  assert.equal(await loadMotionPack(path.join(dir, "missing"), async () => new Response("nope", { status: 404 })), null);
+  let calls = 0;
+  const files = await loadMotionPack(dir, async (url) => {
+    calls++;
+    assert.equal(url, MOTION_URL);
+    return new Response(motionPacked);
+  });
+  assert.ok(files["intro.mp4"].length > 100000 && files["stinger.mp4"].length > 100000);
+  await loadMotionPack(dir, async () => { throw new Error("cache should avoid download"); });
+  assert.equal(calls, 1);
+  const changed = Buffer.from(motionPacked);
+  changed[200] ^= 1;
+  assert.throws(() => verifyMotionPack(changed), /Prüfsumme/);
+  await assert.rejects(loadMotionPack(path.join(dir, "evil"), async () => new Response(changed)), /Prüfsumme/);
+  assert.deepEqual(await readdir(path.join(dir, "evil")), []);
+});
+
+test("animated intro precedes the title card and player switches use the checked stinger", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-brand-motion-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const spec = validateJob({ ...job, branding: { enabled: true, intro: true, outro: true } });
+  for (let i = 0; i < spec.sequences.length; i++)
+    await writeFile(path.join(dir, sequenceFile(spec.sequences[i], i)), "source " + i);
+  const graphs = {};
+  let finalInputs = [];
+  await renderBranding({
+    job: spec,
+    directory: dir,
+    assets: verifyBrandingPack(packed),
+    motion: verifyMotionPack(motionPacked),
+    ffmpeg: "unused",
+    launcher: "unused",
+    probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 3, audio: true }),
+    execute: async (request) => {
+      for (const file of request.files) {
+        assert.deepEqual(Object.keys(file).sort(), ["path", "sha256"]);
+        assert.equal(sha256(await readFile(file.path)), file.sha256);
+      }
+      assert.ok(!request.args.includes("concat"), "motion mode crossfades instead of hard concat cuts");
+      const index = request.args.indexOf("-filter_complex_script");
+      const name = path.basename(request.args.at(-1));
+      graphs[name] = await readFile(path.join(request.cwd, request.args[index + 1]), "utf8");
+      if (name === "tecmon-highlight.mp4")
+        finalInputs = request.args.filter((_, i) => request.args[i - 1] === "-i");
+      else if (!["intro-film.mp4", "intro.mp4"].includes(name)) assert.ok(!request.args.includes("motion-intro.mp4"));
+      if (name !== "outro.mp4" && name !== "tecmon-highlight.mp4") assert.ok(!request.args.includes("motion-outro.mp4"));
+      await writeFile(request.args.at(-1), "encoded fixture");
+    },
+  });
+  assert.deepEqual(finalInputs, ["intro-film.mp4", "intro.mp4", "scene-0.mp4", "switch-1.mp4", "scene-1.mp4", "outro.mp4"]);
+  const final = graphs["tecmon-highlight.mp4"];
+  assert.equal(final.match(/xfade=/g).length, 5);
+  assert.equal(final.match(/acrossfade=/g).length, 5);
+  assert.ok(graphs["outro.mp4"].includes("textfile=website.txt") && graphs["outro.mp4"].includes("textfile=channel.txt"));
+  assert.ok(!graphs["outro.mp4"].includes("drawbox"), "animated outro replaces the static card");
+  assert.ok(!graphs["intro.mp4"].includes("fade=t="), "title card blends via crossfade, no dip to black");
+  assert.ok(graphs["switch-1.mp4"].includes("textfile=name-1.txt"));
+  assert.ok(graphs["switch-1.mp4"].includes("expansion=none"));
+  assert.ok(graphs["intro.mp4"].includes("stop_duration=2.5"));
+  assert.ok(graphs["switch-1.mp4"].includes("chromakey="), "green screen stinger is keyed over the gameplay");
+  assert.ok(graphs["switch-1.mp4"].includes("xfade="), "gameplay underneath switches softly under the cover");
+  const changed = verifyMotionPack(motionPacked);
+  changed["stinger.mp4"][10] ^= 1;
+  await assert.rejects(
+    renderBranding({
+      job: spec,
+      directory: dir,
+      assets: verifyBrandingPack(packed),
+      motion: changed,
+      probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 3, audio: true }),
+      execute: async () => assert.fail("encoder must not run"),
+    }),
+    /Prüfsumme/,
+  );
+});
+
+test("style b uses the hologram clips; unknown styles fall back to a", async (t) => {
+  assert.equal(validateJob({ ...job, branding: { style: "b" } }).branding.style, "b");
+  assert.equal(validateJob({ ...job, branding: { style: "x;evil" } }).branding.style, "a");
+  assert.equal(validateJob(job).branding.style, "a");
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-brand-style-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const spec = validateJob({ ...job, branding: { enabled: true, intro: true, outro: true, style: "b" } });
+  for (let i = 0; i < spec.sequences.length; i++)
+    await writeFile(path.join(dir, sequenceFile(spec.sequences[i], i)), "source " + i);
+  const used = new Set();
+  await renderBranding({
+    job: spec,
+    directory: dir,
+    assets: verifyBrandingPack(packed),
+    motion: verifyMotionPack(motionPacked),
+    probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 3, audio: true }),
+    execute: async (request) => {
+      for (const a of request.args) if (/^motion-/.test(a)) used.add(a);
+      await writeFile(request.args.at(-1), "encoded fixture");
+    },
+  });
+  assert.deepEqual([...used].sort(), ["motion-intro-b.mp4", "motion-outro-b.mp4", "motion-stinger-b.mp4"]);
 });

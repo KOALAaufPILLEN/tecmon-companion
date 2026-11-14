@@ -57,3 +57,79 @@ export async function loadBrandingPack(directory, request = fetch) {
   await rename(temporary, target);
   return files;
 }
+
+/**
+ * Animiertes Intro, Szenenwechsel und Outro (ab 0.23.0). Eigenes Paket, damit das kleine
+ * v3-Paket gleich bleibt. Feste URL und feste SHA256 wie bei v3: Bei Abweichung
+ * wird nichts verwendet und der Auftrag bricht ab.
+ */
+export const MOTION_URL =
+  "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.23.0/TecMon-Motion-v1.json";
+export const MOTION_SHA256 = "df4ff27ac9661bc9c9837ecc8d4e9e1c8ddc2fb0f1f4abf39a549d484ae27207";
+export const MOTION_FILES = Object.freeze({
+  "intro.mp4": "c29e4a6f7c9f3e1b110ae5710bb80625b1e965f105dc8ea48536ad8ea247d72b",
+  "stinger.mp4": "d36ff885222f650bd962261e786f89b0762b4c73e6bd39c3af75de1acba01dd3",
+  "outro.mp4": "5a2b145dc5eb093470e1be1471987622ed005ea21549e490b3bf047a334cbcfd",
+  "intro-b.mp4": "0c1628cba6ce74e26d14ec63245d6d556e58c8cf2e3a927489b025165d3c23c0",
+  "stinger-b.mp4": "2a75b3b5aa5f354fc46e4a92dc8b01f32c3048cbac0ea00f0dcadbd3792a4b01",
+  "outro-b.mp4": "bd59ab6e01d936901fc1324ae99884679793839a8ec0eccf3e0a6fd08e87ba8d",
+});
+const MOTION_LIMIT = 16 * 1024 * 1024;
+export function verifyMotionPack(bytes) {
+  if (bytes.length > MOTION_LIMIT || sha256(bytes) !== MOTION_SHA256)
+    throw new Error("Prüfsumme des Video-Brandings stimmt nicht. Geänderte Videos werden nicht verwendet.");
+  const pack = JSON.parse(bytes.toString("utf8"));
+  if (
+    pack.format !== "tecmon-motion" ||
+    pack.version !== 1 ||
+    !pack.files ||
+    Object.keys(pack.files).length !== Object.keys(MOTION_FILES).length
+  )
+    throw new Error("Ungültiges Video-Branding-Paket.");
+  const files = {};
+  for (const [name, hash] of Object.entries(MOTION_FILES)) {
+    if (typeof pack.files[name] !== "string") throw new Error("Video-Branding-Datei fehlt.");
+    const data = Buffer.from(pack.files[name], "base64");
+    if (sha256(data) !== hash) throw new Error("Video-Branding-Datei wurde verändert (Prüfsumme).");
+    files[name] = data;
+  }
+  return files;
+}
+/**
+ * Lädt das Paket einmal und hält es im Branding-Ordner. Netzfehler liefern null
+ * (dann bleibt das bisherige statische Intro). Falsche Prüfsummen werfen immer.
+ */
+export async function loadMotionPack(directory, request = fetch) {
+  await mkdir(directory, { recursive: true });
+  const target = path.join(directory, "TecMon-Motion-v1.json");
+  try {
+    return verifyMotionPack(await readFile(target));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  let response;
+  try {
+    response = await request(MOTION_URL, { signal: AbortSignal.timeout(180000) });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  let size = 0;
+  const chunks = [];
+  try {
+    for await (const chunk of response.body) {
+      size += chunk.length;
+      if (size > MOTION_LIMIT) break;
+      chunks.push(chunk);
+    }
+  } catch {
+    return null;
+  }
+  if (size > MOTION_LIMIT) throw new Error("Video-Branding-Paket zu groß.");
+  const bytes = Buffer.concat(chunks);
+  const files = verifyMotionPack(bytes);
+  const temporary = target + "." + randomUUID() + ".tmp";
+  await writeFile(temporary, bytes, { mode: 0o600 });
+  await rename(temporary, target);
+  return files;
+}

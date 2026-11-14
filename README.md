@@ -66,6 +66,31 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.23.0: Animiertes Intro, Spielerwechsel und Outro
+
+- **Neues TecMon-Intro im Highlight-Video:** TecMon schwebt ins neblige
+  Neon-Raster, scannt mit lila Strahl, das goldene Logo baut sich auf und er
+  zwinkert (6,5 s). Danach die Titelkarte mit Spielern und Map (2,5 s).
+- **Zwei Video-Stile zur Auswahl:** „Neon-Raster“ (A) und „Hologramm“ (B, TecMon
+  fliegt durch einen Lichttunnel und projiziert das Logo als Hologramm). Die
+  Webseite wählt per `branding.style` (`"a"`/`"b"`) im Auftrag, sobald der
+  Companion `video-style-v1` meldet; ohne Angabe gilt A.
+- **Neuer Spielerwechsel im Teamvideo:** vor Greenscreen erzeugt und über das
+  Gameplay gelegt. A: Lichtspur mit Partikeln, B: TecMon fliegt auf die Kamera
+  zu. Darin erscheint der Name des nächsten Spielers.
+- **Neue Titelkarte:** Das letzte Intro-Bild schrumpft nach oben, darunter Titel
+  und Spieler. Kein Standbild-Logo mehr über dem Gameplay.
+- **Animiertes Outro:** TecMon winkt und fliegt davon, das Logo bleibt stehen,
+  darunter Website und Kanal, dann Abblende.
+- **Weiche Übergänge statt harter Schnitte:** Intro, Titelkarte, Szenen,
+  Spielerwechsel und Outro werden ineinander überblendet (0,3–0,5 s, Bild und
+  Ton). Dafür wird das fertige Video einmal neu kodiert. Ohne Video-Paket bleibt
+  die bisherige Montage.
+- **Geprüft wie das übrige Branding:** Alle Videos kommen als eigenes Paket
+  `TecMon-Motion-v1.json` (rund 11,5 MB) von einer festen Release-Adresse und haben
+  feste SHA256-Prüfsummen. Weicht etwas ab, bricht der Auftrag ab. Ist das Paket
+  offline nicht erreichbar, nutzt der Companion das bisherige statische Intro.
+
 ### Neu in 0.22.1: Neue Augen für TecMon
 
 - **Neue Gesichter statt LED-Punkten:** Kräftig leuchtende lila Augen und
