@@ -59,18 +59,22 @@ export async function loadBrandingPack(directory, request = fetch) {
 }
 
 /**
- * Animiertes Intro und Szenenwechsel (ab 0.23.0). Eigenes Paket, damit das kleine
+ * Animiertes Intro, Szenenwechsel und Outro (ab 0.23.0). Eigenes Paket, damit das kleine
  * v3-Paket gleich bleibt. Feste URL und feste SHA256 wie bei v3: Bei Abweichung
  * wird nichts verwendet und der Auftrag bricht ab.
  */
 export const MOTION_URL =
   "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.23.0/TecMon-Motion-v1.json";
-export const MOTION_SHA256 = "713eb9f3b61807279deade5130971703bd97caae6850066ca22aed5e3aa4b2b1";
+export const MOTION_SHA256 = "df4ff27ac9661bc9c9837ecc8d4e9e1c8ddc2fb0f1f4abf39a549d484ae27207";
 export const MOTION_FILES = Object.freeze({
-  "intro.mp4": "063254e7d22a0616426101253171f4c8974c18749cd08455e5a6b7957bd30b1d",
-  "stinger.mp4": "d2fc4ff9151783898920aa2a105821452a941cdb07775900169cad8499b15c26",
+  "intro.mp4": "c29e4a6f7c9f3e1b110ae5710bb80625b1e965f105dc8ea48536ad8ea247d72b",
+  "stinger.mp4": "d36ff885222f650bd962261e786f89b0762b4c73e6bd39c3af75de1acba01dd3",
+  "outro.mp4": "5a2b145dc5eb093470e1be1471987622ed005ea21549e490b3bf047a334cbcfd",
+  "intro-b.mp4": "0c1628cba6ce74e26d14ec63245d6d556e58c8cf2e3a927489b025165d3c23c0",
+  "stinger-b.mp4": "2a75b3b5aa5f354fc46e4a92dc8b01f32c3048cbac0ea00f0dcadbd3792a4b01",
+  "outro-b.mp4": "bd59ab6e01d936901fc1324ae99884679793839a8ec0eccf3e0a6fd08e87ba8d",
 });
-const MOTION_LIMIT = 8 * 1024 * 1024;
+const MOTION_LIMIT = 16 * 1024 * 1024;
 export function verifyMotionPack(bytes) {
   if (bytes.length > MOTION_LIMIT || sha256(bytes) !== MOTION_SHA256)
     throw new Error("Prüfsumme des Video-Brandings stimmt nicht. Geänderte Videos werden nicht verwendet.");

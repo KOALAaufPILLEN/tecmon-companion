@@ -25,18 +25,50 @@ export function playerSwitch({width,height,fps,nextFile,playerLength}){
   `[curtain];[game][curtain]overlay=x='if(lt(t,0.32),W*(1-t/0.32),if(lt(t,0.78),0,-W*(t-0.78)/0.32))':y=0:eval=frame[v]`;
 }
 
-export const STINGER_SECONDS=2.1;
-/** Animierter Spielerwechsel aus dem geprüften Video-Paket (stinger.mp4, Eingang 0).
- * Im Partikelsturm erscheint der neue Spielername. Die weichen Überblendungen aus der
- * alten und in die neue Szene macht die Endmontage (crossfadeGraph), kein Gameplay fällt weg.
+/** Zwei wählbare Video-Stile aus dem geprüften Paket. Zeiten in Sekunden der geschnittenen Clips:
+ * cut = Moment, in dem die Lichtspur/Figur das Bild deckt (dort wechselt das Gameplay darunter),
+ * name = Einblendung des neuen Spielernamens, outroText = Website/Kanal im Outro.
  */
-export function playerStinger({width,height,fps,nextFile,playerLength}){
+export const MOTION_STYLES=Object.freeze({
+ a:Object.freeze({intro:'intro.mp4',introSeconds:6.46,titleFrame:6.0,stinger:'stinger.mp4',stingerSeconds:3.3,cut:1.55,name:[1.8,3.0],outro:'outro.mp4',outroSeconds:5.47,outroText:[3.7,5.3],outroY:[0.74,0.82]}),
+ b:Object.freeze({intro:'intro-b.mp4',introSeconds:6.97,titleFrame:6.6,stinger:'stinger-b.mp4',stingerSeconds:3.3,cut:2.1,name:[2.45,3.25],outro:'outro-b.mp4',outroSeconds:5.47,outroText:[3.9,5.2],outroY:[0.88,0.94]}),
+});
+/** Greenscreen-Spielerwechsel: Eingang 0 = Stinger vor Grün, 1 = letztes Bild der alten Szene,
+ * 2 = erstes Bild der neuen Szene. Der Stinger wird freigestellt und über das Gameplay gelegt;
+ * unter der deckenden Spur wechselt das Bild weich. Kein Gameplay fällt weg, der Ton kommt vom Stinger.
+ */
+export function playerStinger({width,height,fps,nextFile,playerLength,style=MOTION_STYLES.a}){
  const n=v=>Math.max(1,Math.round(v*width/1920));
- const fade=`alpha='if(lt(t,1.4),(t-1.25)/0.15,if(gt(t,1.85),max(0,(2.1-t)/0.25),1))':enable='between(t,1.25,2.1)'`;
+ const [from,to]=style.name;
+ const fade=`alpha='if(lt(t,${from+0.15}),(t-${from})/0.15,if(gt(t,${to-0.25}),max(0,(${to}-t)/0.25),1))':enable='between(t,${from},${to})'`;
  const text=(file,size,y,color)=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:borderw=${n(3)}:bordercolor=black@0.75:shadowcolor=black@0.85:shadowx=${n(2)}:shadowy=${n(2)}:x=(w-text_w)/2:y=${n(y)}:${fade}`;
  const nameSize=Math.min(96,Math.max(36,Math.floor(1200/Math.max(playerLength,12))));
- return `[0:v]scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=0.5,`+
+ const ch=(c,k)=>`${c}='clip((${c}(X,Y)-(255-alpha(X,Y))*${k}/255)*255/max(alpha(X,Y),8),0,255)'`;
+ const unmix=[ch('r',12),ch('g',162),ch('b',24),"a='alpha(X,Y)'"].join(':');
+ const hold=(input,label)=>`[${input}:v]scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${style.stingerSeconds+0.5}[${label}];`;
+ return hold(1,'old')+hold(2,'next')+
+  `[old][next]xfade=transition=fade:duration=0.3:offset=${(style.cut-0.15).toFixed(2)}[under];`+
+  // Bis zum Deckmoment hartes Freistellen (Figur bleibt deckend), danach weiches Freistellen mit
+  // herausgerechnetem Grün, damit Partikel und Glühen ohne grauen Schleier über dem Gameplay liegen.
+  `[0:v]scale=1280:720,setsar=1,fps=${fps},setpts=PTS-STARTPTS,split[g1][g2];`+
+  `[g1]chromakey=0x0CA218:0.16:0.06,despill=type=green,scale=${width}:${height}[hard];`+
+  `[g2]chromakey=0x0CA218:0.10:0.20,format=gbrap,geq=${unmix},scale=${width}:${height}[soft];`+
+  `[under][hard]overlay=0:0:eof_action=pass:enable='lt(t,${style.cut})'[o1];`+
+  `[o1][soft]overlay=0:0:eof_action=pass:enable='gte(t,${style.cut})',format=yuv420p,`+
   [text('switch-label.txt',28,735,'0x85e8ef'),text(nextFile,nameSize,775,'0xefc96d')].join(',')+'[v]';
+}
+
+/** Titelkarte im Video-Stil: Das letzte Intro-Bild schrumpft nach oben, darunter erscheinen die Texte.
+ * Kein Standbild-Logo über Gameplay; der Übergang aus dem Intro ist nahtlos, weil das Bild gleich ist.
+ */
+export function motionTitle({width,height,fps,seconds,texts}){
+ const ease=`min(t/0.6,1)`;
+ return `[0:v]scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${seconds},split[a][b];`+
+  `[a]boxblur=24:2,eq=brightness=-0.12:saturation=0.9[bg];`+
+  `[b]scale=w='trunc(iw*(1-0.4*${ease})/2)*2':h=-2:eval=frame,drawbox=x=0:y=0:w=iw:h=ih:color=0xefc96d@0.9:t=${Math.max(2,Math.round(4*width/1920))}[card];`+
+  `[bg][card]overlay=x='(W-w)/2':y='(H-h)/2-H*0.17*${ease}':eval=frame,`+
+  `drawbox=x=iw*0.08:y=ih*0.655:w=iw*0.84:h=${Math.max(1,Math.round(2*width/1920))}:color=0xefc96d@0.8:t=fill,`+
+  texts.join(',')+',setsar=1[v]';
 }
 
 /** Überblendlänge je Übergang (Sekunden), höchstens ein Drittel des kürzeren Teils. */
