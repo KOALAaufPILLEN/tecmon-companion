@@ -66,18 +66,24 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
-### Neu in 0.23.1: Gameplay direkt nach dem Intro
+### Neu in 0.24.0: Esport-Titelbild und Esport-Spielerwechsel
 
-- **Keine Titelkarte mehr mit Video-Paket:** Nach dem TecMon-Intro startet sofort
-  das Gameplay der ersten Szene. Titel, Spieler, Untertitel und Map werden in den
-  ersten Sekunden darüber eingeblendet und wieder ausgeblendet. Ohne Video-Paket
-  bleibt die bisherige Titelkarte.
+- **Animiertes Esport-Titelbild:** Nach dem TecMon-Intro schlagen Seitenpaneele
+  und ein goldenes Banner ein, das Logo fällt oben hinein. In der Mitte des
+  Banners stehen Titel bzw. Spielername, darüber die Map, darunter die Spieler.
+  Nach drei Sekunden zerspringt das Bild in Stücke und gibt das Gameplay frei
+  (4,2 s, darunter steht das erste Bild der ersten Szene).
+- **Neuer Spielerwechsel ohne Figur:** Drei schräge Paneele (Gold, Lila, Navy)
+  wischen über das Bild, in der Mitte erscheint der nächste Spieler, dann wischen
+  sie wieder heraus (2,8 s). Gilt für beide Video-Stile.
+- **Neues Video-Paket `TecMon-Motion-v2.json`** mit neuen festen Prüfsummen; das
+  alte v1-Paket wird aus dem Branding-Ordner gelöscht.
 
 ### Neu in 0.23.0: Animiertes Intro, Spielerwechsel und Outro
 
 - **Neues TecMon-Intro im Highlight-Video:** TecMon schwebt ins neblige
   Neon-Raster, scannt mit lila Strahl, das goldene Logo baut sich auf und er
-  zwinkert (6,5 s). Danach die Titelkarte mit Spielern und Map (2,5 s).
+  zwinkert (6,5 s). Danach die Titelkarte mit Spielern und Map (2,5 s, ab 0.24.0 Esport-Titelbild).
 - **Zwei Video-Stile zur Auswahl:** „Neon-Raster“ (A) und „Hologramm“ (B, TecMon
   fliegt durch einen Lichttunnel und projiziert das Logo als Hologramm). Die
   Webseite wählt per `branding.style` (`"a"`/`"b"`) im Auftrag, sobald der

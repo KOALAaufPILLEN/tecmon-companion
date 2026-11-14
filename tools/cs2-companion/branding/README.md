@@ -14,7 +14,27 @@ Quellen und Reproduktion: `scripts/build-branding-pack.mjs`.
 
 Barlow Condensed Bold: Copyright 2017 The Barlow Project Authors, SIL Open Font License 1.1. OFL.txt ist im Paket sowie neben dieser Datei enthalten. Markenrechte am TecMon-Logo werden durch die Quellcode-Lizenz nicht übertragen.
 
-## Video-Paket Motion v1 (ab 0.23.0)
+## Video-Paket Motion v2 (ab 0.24.0)
+
+`TecMon-Motion-v2.json` (10,7 MB, Limit 16 MB, `version: 2`). Paket-SHA256:
+`afb9af4d056e9690fe2e0e37150e60979e5ae45743b0d1f69317c143b35d111f`. Enthält die
+Intros und Outros aus v1 (unverändert, gleiche Prüfsummen) und zwei neue Clips
+für beide Stile:
+
+| Clip | Länge | Inhalt |
+| --- | --- | --- |
+| `title.mp4` | 4,4 s (genutzt 4,2 s) | Esport-Titelbild vor Grün (#00FF00): Paneele und Banner bis 0,9 s, Text 0,95–3,0 s, ab 3,0 s zerspringt das Bild in Stücke |
+| `switch.mp4` | 2,8 s | Esport-Spielerwechsel vor Grün: drei schräge Paneele, deckend etwa 0,65–2,1 s, Wechsel bei 1,4 s |
+
+Beide Clips sind programmiert (keine KI): `source/esport-motion.html` zeichnet sie
+auf einem Canvas, `source/esport-render.cjs` speichert sie Bild für Bild
+(`node esport-render.cjs title 4.4 30 <Ordner>` bzw. `stinger 2.8 30`, `logo.webp`
+neben der HTML-Datei). Ton aus FFmpeg-Generatoren (Rauschen und Tiefton-Schlag).
+Kodierung `libx264 -crf 18 -preset veryslow`, AAC 128 kbit/s. Den Text im Banner
+schreibt der Companion selbst; das Grün wird freigestellt und herausgerechnet.
+
+## Video-Paket Motion v1 (0.23.x)
+
 
 `TecMon-Motion-v1.json` (11,5 MB, Limit 16 MB) enthält zwei wählbare Stile, alle
 Clips 1280×720, 24 fps, mit Ton. Paket-SHA256:
@@ -39,7 +59,7 @@ eigenem Intro als Bildvorlage. Schnitte mit FFmpeg:
   Bis dahin hartes Freistellen, danach weiches mit herausgerechnetem Grün.
 - Outro A: 0,0–5,5 s. Outro B: 0,0–5,5 s, beginnt mit dem letzten Bild von
   Intro B. Website und Kanal blendet der Companion ein.
-- Keine eigene Titelkarte: Titel, Spieler, Untertitel und Map werden über die
-  ersten Sekunden der ersten Szene geblendet (ab 0.23.1).
+- 0.23.1 blendete den Titel über die erste Szene; ab 0.24.0 ersetzt durch das
+  Esport-Titelbild, die Spielerwechsel `stinger*.mp4` durch `switch.mp4`.
 
 Alle mit `libx264 -crf 20/21 -preset veryslow`, AAC 128 kbit/s, 48 kHz, ohne Metadaten.

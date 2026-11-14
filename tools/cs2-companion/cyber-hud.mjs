@@ -29,10 +29,19 @@ export function playerSwitch({width,height,fps,nextFile,playerLength}){
  * cut = Moment, in dem die Lichtspur/Figur das Bild deckt (dort wechselt das Gameplay darunter),
  * name = Einblendung des neuen Spielernamens, outroText = Website/Kanal im Outro.
  */
+// Esport-Titelbild (Name im Banner, zerspringt in Stücke) und Esport-Spielerwechsel gelten für beide Stile.
+const ESPORT={title:'title.mp4',titleSeconds:4.2,titleText:[0.95,3.0],stinger:'switch.mp4',stingerSeconds:2.8,cut:1.4,name:[0.85,1.95],nameY:[452,512],key:[0,255,0]};
 export const MOTION_STYLES=Object.freeze({
- a:Object.freeze({intro:'intro.mp4',introSeconds:6.46,stinger:'stinger.mp4',stingerSeconds:3.3,cut:1.55,name:[1.8,3.0],outro:'outro.mp4',outroSeconds:5.47,outroText:[3.7,5.3],outroY:[0.74,0.82]}),
- b:Object.freeze({intro:'intro-b.mp4',introSeconds:6.97,stinger:'stinger-b.mp4',stingerSeconds:3.3,cut:2.1,name:[2.45,3.25],outro:'outro-b.mp4',outroSeconds:5.47,outroText:[3.9,5.2],outroY:[0.88,0.94]}),
+ a:Object.freeze({...ESPORT,intro:'intro.mp4',introSeconds:6.46,outro:'outro.mp4',outroSeconds:5.47,outroText:[3.7,5.3],outroY:[0.74,0.82]}),
+ b:Object.freeze({...ESPORT,intro:'intro-b.mp4',introSeconds:6.97,outro:'outro-b.mp4',outroSeconds:5.47,outroText:[3.9,5.2],outroY:[0.88,0.94]}),
 });
+/** Farbe des Greenscreens als FFmpeg-Wert. */
+export function keyColor(style){return '0x'+style.key.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();}
+/** Freistellen mit herausgerechnetem Grün (weiche Kanten ohne grauen Schleier). */
+export function unmixGreen(style){
+ const ch=(c,k)=>`${c}='clip((${c}(X,Y)-(255-alpha(X,Y))*${k}/255)*255/max(alpha(X,Y),8),0,255)'`;
+ return [ch('r',style.key[0]),ch('g',style.key[1]),ch('b',style.key[2]),"a='alpha(X,Y)'"].join(':');
+}
 /** Greenscreen-Spielerwechsel: Eingang 0 = Stinger vor Grün, 1 = letztes Bild der alten Szene,
  * 2 = erstes Bild der neuen Szene. Der Stinger wird freigestellt und über das Gameplay gelegt;
  * unter der deckenden Spur wechselt das Bild weich. Kein Gameplay fällt weg, der Ton kommt vom Stinger.
@@ -42,20 +51,19 @@ export function playerStinger({width,height,fps,nextFile,playerLength,style=MOTI
  const [from,to]=style.name;
  const fade=`alpha='if(lt(t,${from+0.15}),(t-${from})/0.15,if(gt(t,${to-0.25}),max(0,(${to}-t)/0.25),1))':enable='between(t,${from},${to})'`;
  const text=(file,size,y,color)=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:borderw=${n(3)}:bordercolor=black@0.75:shadowcolor=black@0.85:shadowx=${n(2)}:shadowy=${n(2)}:x=(w-text_w)/2:y=${n(y)}:${fade}`;
- const nameSize=Math.min(96,Math.max(36,Math.floor(1200/Math.max(playerLength,12))));
- const ch=(c,k)=>`${c}='clip((${c}(X,Y)-(255-alpha(X,Y))*${k}/255)*255/max(alpha(X,Y),8),0,255)'`;
- const unmix=[ch('r',12),ch('g',162),ch('b',24),"a='alpha(X,Y)'"].join(':');
+ const nameSize=Math.min(84,Math.max(36,Math.floor(1200/Math.max(playerLength,12))));
+ const unmix=unmixGreen(style),key=keyColor(style);
  const hold=(input,label)=>`[${input}:v]scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${style.stingerSeconds+0.5}[${label}];`;
  return hold(1,'old')+hold(2,'next')+
   `[old][next]xfade=transition=fade:duration=0.3:offset=${(style.cut-0.15).toFixed(2)}[under];`+
   // Bis zum Deckmoment hartes Freistellen (Figur bleibt deckend), danach weiches Freistellen mit
   // herausgerechnetem Grün, damit Partikel und Glühen ohne grauen Schleier über dem Gameplay liegen.
   `[0:v]scale=1280:720,setsar=1,fps=${fps},setpts=PTS-STARTPTS,split[g1][g2];`+
-  `[g1]chromakey=0x0CA218:0.16:0.06,despill=type=green,scale=${width}:${height}[hard];`+
-  `[g2]chromakey=0x0CA218:0.10:0.20,format=gbrap,geq=${unmix},scale=${width}:${height}[soft];`+
+  `[g1]chromakey=${key}:0.16:0.06,despill=type=green,scale=${width}:${height}[hard];`+
+  `[g2]chromakey=${key}:0.10:0.20,format=gbrap,geq=${unmix},scale=${width}:${height}[soft];`+
   `[under][hard]overlay=0:0:eof_action=pass:enable='lt(t,${style.cut})'[o1];`+
   `[o1][soft]overlay=0:0:eof_action=pass:enable='gte(t,${style.cut})',format=yuv420p,`+
-  [text('switch-label.txt',28,735,'0x85e8ef'),text(nextFile,nameSize,775,'0xefc96d')].join(',')+'[v]';
+  [text('switch-label.txt',28,style.nameY[0],'0x85e8ef'),text(nextFile,nameSize,style.nameY[1],'0xefc96d')].join(',')+'[v]';
 }
 
 /** Überblendlänge je Übergang (Sekunden), höchstens ein Drittel des kürzeren Teils. */
