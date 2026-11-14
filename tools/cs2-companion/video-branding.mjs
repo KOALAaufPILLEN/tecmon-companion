@@ -5,11 +5,9 @@ import { createHash } from "node:crypto";
 import { sha256, BRANDING_FILES, MOTION_FILES } from "./branding-assets.mjs";
 import { validateJob } from "./job.mjs";
 import { runTool } from "./managed-installation.mjs";
-import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, STINGER_SECONDS, crossfadeGraph } from "./cyber-hud.mjs";
+import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, MOTION_STYLES, motionTitle, crossfadeGraph } from "./cyber-hud.mjs";
 
 /** Länge von intro.mp4 aus dem Video-Paket (5,78 s), knapp darunter geschnitten. */
-export const MOTION_INTRO_SECONDS = 6.46;
-export const MOTION_OUTRO_SECONDS = 5.47;
 
 export const visualPlayerName = (value) =>
   String(value)
@@ -151,6 +149,7 @@ export async function renderBranding({
     const text = (file, size, x, y, color = "white", extra = "") =>
       `drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:x=${x}:y=${y}${extra}`;
     const { title, players } = brandingTitle(job);
+    const style = MOTION_STYLES[job.branding.style] || MOTION_STYLES.a;
     await artifact("title.txt", clipText(title, 80));
     await artifact("players.txt", clipText(players, 110));
     await artifact(
@@ -237,31 +236,48 @@ export async function renderBranding({
       progress("Animiertes TecMon-Intro wird eingefügt …");
       await encode(
         "intro-film",
-        ["-i", "motion-intro.mp4"],
+        ["-i", "motion-" + style.intro],
         `[0:v]scale=${w}:${h},setsar=1,fps=${fps},format=yuv420p[v]`,
         "0:a:0",
-        MOTION_INTRO_SECONDS,
-        ["motion-intro.mp4"],
+        style.introSeconds,
+        ["motion-" + style.intro],
       );
     }
     const titleSeconds = motion ? 2.5 : 3;
-    if (job.branding.intro) {
+    const multiPlayer = new Set(job.sequences.map((s) => s.steamId)).size > 1;
+    const showSubtitle = job.branding.subtitle || !/^(highlights|team-highlights)$/i.test(job.title);
+    if (job.branding.intro && motion) {
+      progress("Titelkarte im TecMon-Stil wird erstellt …");
+      const titleSize = Math.min(104, Math.max(44, Math.round(1600 / Math.max(title.length, 12))));
+      const fadeIn = (start) => `:alpha='min(1,max(0,(t-${start})/0.3))'`;
+      const texts = [
+        text("title.txt", titleSize, "(w-text_w)/2", "h*0.68", "0xefc96d", fadeIn(0.45) + ":shadowcolor=black@0.8:shadowx=2:shadowy=2"),
+        ...(multiPlayer ? [text("players.txt", 40, "(w-text_w)/2", "h*0.785", "white", fadeIn(0.6))] : []),
+        ...(showSubtitle ? [text("subtitle.txt", 30, "(w-text_w)/2", multiPlayer ? "h*0.845" : "h*0.79", "white", fadeIn(0.7))] : []),
+        text("map.txt", 24, "(w-text_w)/2", "h*0.91", "0x9cefff", fadeIn(0.8)),
+      ];
+      await encode(
+        "intro",
+        ["-ss", String(style.titleFrame), "-i", "motion-" + style.intro],
+        motionTitle({ width: w, height: h, fps, seconds: titleSeconds, texts }),
+        "1:a:0",
+        titleSeconds,
+        ["title.txt", "players.txt", "subtitle.txt", "map.txt", "motion-" + style.intro],
+      );
+    } else if (job.branding.intro) {
       progress("TecMon-Intro wird lokal erstellt …");
       const titleSize = Math.min(112, Math.max(48, Math.round(1700 / Math.max(title.length, 12))));
       const graph =
         `[0:v]scale=${w}:${h},trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${titleSeconds},boxblur=10:1,drawbox=color=black@0.75:t=fill,${chrome}[bg];[1:v]scale=${n(450)}:${n(450)}[logo];[bg][logo]overlay=(W-w)/2:H*0.06,` +
         [
           text("title.txt", titleSize, "(w-text_w)/2", "h*0.54", "0xefc96d"),
-          ...(new Set(job.sequences.map((s) => s.steamId)).size > 1
-            ? [text("players.txt", 42, "(w-text_w)/2", "h*0.68")]
-            : []),
-          ...(job.branding.subtitle || !/^(highlights|team-highlights)$/i.test(job.title)
-            ? [text("subtitle.txt", 32, "(w-text_w)/2", "h*0.76")]
-            : []),
+          ...(multiPlayer ? [text("players.txt", 42, "(w-text_w)/2", "h*0.68")] : []),
+          ...(showSubtitle ? [text("subtitle.txt", 32, "(w-text_w)/2", "h*0.76")] : []),
           text("map.txt", 26, "(w-text_w)/2", "h*0.87", "0xefc96d"),
           "setsar=1",
           // Mit Video-Paket blendet die Endmontage weich über, ohne Schwarzblende.
-          ...(motion ? [] : ["fade=t=in:st=0:d=0.2", `fade=t=out:st=${titleSeconds - 0.2}:d=0.2`]),
+          "fade=t=in:st=0:d=0.2",
+          `fade=t=out:st=${titleSeconds - 0.2}:d=0.2`,
         ].join(",") +
         "[v]";
       await encode(
@@ -296,9 +312,9 @@ export async function renderBranding({
         const previousFrame=Math.max(0,previous.info.duration-1/fps);
         if(motion){
           await encode(`switch-${i}`,
-            ['-i','motion-stinger.mp4'],
-            playerStinger({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}),'0:a:0',STINGER_SECONDS,
-            [label,'motion-stinger.mp4','switch-label.txt']);
+            ['-i','motion-'+style.stinger,'-ss',previousFrame.toFixed(6),'-i',previous.file,'-i',source.file],
+            playerStinger({width:w,height:h,fps,nextFile:label,playerLength:displayName.length,style}),'0:a:0',style.stingerSeconds,
+            [label,'motion-'+style.stinger,'switch-label.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);
         }else await encode(`switch-${i}`,
           ['-ss',previousFrame.toFixed(6),'-i',previous.file,'-i',source.file,'-loop','1','-i','cyber-stinger.png','-loop','1','-i','logo.webp'],
           playerSwitch({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}), '4:a:0',SWITCH_SECONDS,
@@ -318,21 +334,22 @@ export async function renderBranding({
     if (job.branding.outro && motion) {
       // TecMon winkt und fliegt davon; Website und Kanal erscheinen, sobald nur noch das Logo steht.
       progress("Animiertes TecMon-Outro wird eingefügt …");
-      const fade = `:alpha='if(lt(t,3.95),(t-3.7)/0.25,if(gt(t,4.95),max(0,(5.3-t)/0.35),1))':enable='between(t,3.7,5.3)'`;
+      const [from, to] = style.outroText;
+      const fade = `:alpha='if(lt(t,${from + 0.25}),(t-${from})/0.25,if(gt(t,${to - 0.35}),max(0,(${to}-t)/0.35),1))':enable='between(t,${from},${to})'`;
       const graph =
         `[0:v]scale=${w}:${h},setsar=1,fps=${fps},format=yuv420p,` +
         [
-          text("website.txt", 42, "(w-text_w)/2", "h*0.74", "white", fade + ":shadowcolor=black@0.85:shadowx=2:shadowy=2"),
-          text("channel.txt", 32, "(w-text_w)/2", "h*0.82", "0xefc96d", fade + ":shadowcolor=black@0.85:shadowx=2:shadowy=2"),
+          text("website.txt", 42, "(w-text_w)/2", `h*${style.outroY[0]}`, "white", fade + ":shadowcolor=black@0.85:shadowx=2:shadowy=2"),
+          text("channel.txt", 32, "(w-text_w)/2", `h*${style.outroY[1]}`, "0xefc96d", fade + ":shadowcolor=black@0.85:shadowx=2:shadowy=2"),
         ].join(",") +
         "[v]";
       await encode(
         "outro",
-        ["-i", "motion-outro.mp4"],
+        ["-i", "motion-" + style.outro],
         graph,
         "0:a:0",
-        MOTION_OUTRO_SECONDS,
-        ["motion-outro.mp4", "website.txt", "channel.txt"],
+        style.outroSeconds,
+        ["motion-" + style.outro, "website.txt", "channel.txt"],
       );
     } else if (job.branding.outro) {
       progress("TecMon-Outro wird lokal erstellt …");

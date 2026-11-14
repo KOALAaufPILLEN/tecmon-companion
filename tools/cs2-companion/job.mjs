@@ -19,6 +19,8 @@ export function validateJob(value) {
     intro: style.intro !== false,
     outro: style.outro === true,
     subtitle: text(style.subtitle, 100),
+    // Video-Stil aus dem geprüften Paket: "a" (Neon-Raster) oder "b" (Hologramm). Unbekannt = "a".
+    style: style.style === "b" ? "b" : "a",
   };
   // X-Ray (Gegner durch Waende) ist Standard; nur ein ausdrueckliches false schaltet es ab.
   if (value.xray !== undefined && typeof value.xray !== "boolean") fail();

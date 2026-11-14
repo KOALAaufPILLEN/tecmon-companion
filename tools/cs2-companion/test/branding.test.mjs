@@ -80,7 +80,7 @@ test("legacy jobs get branding; single/team titles use players and ignore suppli
       filter: "movie=private",
     },
   });
-  assert.deepEqual(clean.branding, { enabled: true, intro: true, outro: true, subtitle: "Clutch" });
+  assert.deepEqual(clean.branding, { enabled: true, intro: true, outro: true, subtitle: "Clutch", style: "a" });
   assert.equal(brandingTitle(clean).title, "TEAM-HIGHLIGHTS");
   assert.equal(
     brandingTitle({ ...clean, sequences: [clean.sequences[0]] }).title,
@@ -257,7 +257,7 @@ test("animated intro precedes the title card and player switches use the checked
       graphs[name] = await readFile(path.join(request.cwd, request.args[index + 1]), "utf8");
       if (name === "tecmon-highlight.mp4")
         finalInputs = request.args.filter((_, i) => request.args[i - 1] === "-i");
-      else if (name !== "intro-film.mp4") assert.ok(!request.args.includes("motion-intro.mp4"));
+      else if (!["intro-film.mp4", "intro.mp4"].includes(name)) assert.ok(!request.args.includes("motion-intro.mp4"));
       if (name !== "outro.mp4" && name !== "tecmon-highlight.mp4") assert.ok(!request.args.includes("motion-outro.mp4"));
       await writeFile(request.args.at(-1), "encoded fixture");
     },
@@ -272,6 +272,8 @@ test("animated intro precedes the title card and player switches use the checked
   assert.ok(graphs["switch-1.mp4"].includes("textfile=name-1.txt"));
   assert.ok(graphs["switch-1.mp4"].includes("expansion=none"));
   assert.ok(graphs["intro.mp4"].includes("stop_duration=2.5"));
+  assert.ok(graphs["switch-1.mp4"].includes("chromakey="), "green screen stinger is keyed over the gameplay");
+  assert.ok(graphs["switch-1.mp4"].includes("xfade="), "gameplay underneath switches softly under the cover");
   const changed = verifyMotionPack(motionPacked);
   changed["stinger.mp4"][10] ^= 1;
   await assert.rejects(
@@ -285,4 +287,28 @@ test("animated intro precedes the title card and player switches use the checked
     }),
     /Prüfsumme/,
   );
+});
+
+test("style b uses the hologram clips; unknown styles fall back to a", async (t) => {
+  assert.equal(validateJob({ ...job, branding: { style: "b" } }).branding.style, "b");
+  assert.equal(validateJob({ ...job, branding: { style: "x;evil" } }).branding.style, "a");
+  assert.equal(validateJob(job).branding.style, "a");
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-brand-style-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const spec = validateJob({ ...job, branding: { enabled: true, intro: true, outro: true, style: "b" } });
+  for (let i = 0; i < spec.sequences.length; i++)
+    await writeFile(path.join(dir, sequenceFile(spec.sequences[i], i)), "source " + i);
+  const used = new Set();
+  await renderBranding({
+    job: spec,
+    directory: dir,
+    assets: verifyBrandingPack(packed),
+    motion: verifyMotionPack(motionPacked),
+    probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 3, audio: true }),
+    execute: async (request) => {
+      for (const a of request.args) if (/^motion-/.test(a)) used.add(a);
+      await writeFile(request.args.at(-1), "encoded fixture");
+    },
+  });
+  assert.deepEqual([...used].sort(), ["motion-intro-b.mp4", "motion-outro-b.mp4", "motion-stinger-b.mp4"]);
 });
