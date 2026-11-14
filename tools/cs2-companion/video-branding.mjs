@@ -5,10 +5,10 @@ import { createHash } from "node:crypto";
 import { sha256, BRANDING_FILES, MOTION_FILES } from "./branding-assets.mjs";
 import { validateJob } from "./job.mjs";
 import { runTool } from "./managed-installation.mjs";
-import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, STINGER_SECONDS } from "./cyber-hud.mjs";
+import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, STINGER_SECONDS, crossfadeGraph } from "./cyber-hud.mjs";
 
-/** Länge von intro.mp4 aus dem Video-Paket (5,48 s), knapp darunter geschnitten. */
-export const MOTION_INTRO_SECONDS = 5.45;
+/** Länge von intro.mp4 aus dem Video-Paket (5,78 s), knapp darunter geschnitten. */
+export const MOTION_INTRO_SECONDS = 5.75;
 
 export const visualPlayerName = (value) =>
   String(value)
@@ -35,6 +35,8 @@ const clipText = (value, max = 100) =>
   String(value)
     .replace(/[\x00-\x1f]/g, " ")
     .slice(0, max);
+/** Nur Pfad und Prüfsumme gehen an den Sperr-Helfer. */
+const lockedFile = (part) => ({ path: part.path, sha256: part.sha256 });
 const fileHash = async (file) => {
   const hash = createHash("sha256");
   for await (const chunk of createReadStream(file)) hash.update(chunk);
@@ -225,7 +227,8 @@ export async function renderBranding({
           output,
         ],
       });
-      parts.push({ path: output, sha256: await fileHash(output) });
+      const kind = name === "intro-film" ? "film" : name === "intro" ? "title" : name.replace(/-\d+$/, "");
+      parts.push({ path: output, sha256: await fileHash(output), kind, duration });
     }
     const background = `color=c=0x0d0d16:s=${w}x${h}:r=${fps}`;
     const chrome = `drawbox=x=0:y=ih*0.85:w=iw:h=${n(5)}:color=0x8b4dff:t=fill,drawbox=x=iw*0.08:y=ih*0.92:w=iw*0.84:h=${n(2)}:color=0xefc96d:t=fill,drawbox=x=0:y=ih*0.94:w=iw*0.35:h=ih*0.06:color=0x8b4dff@0.35:t=fill`;
@@ -256,8 +259,8 @@ export async function renderBranding({
             : []),
           text("map.txt", 26, "(w-text_w)/2", "h*0.87", "0xefc96d"),
           "setsar=1",
-          "fade=t=in:st=0:d=0.2",
-          `fade=t=out:st=${titleSeconds - 0.2}:d=0.2`,
+          // Mit Video-Paket blendet die Endmontage weich über, ohne Schwarzblende.
+          ...(motion ? [] : ["fade=t=in:st=0:d=0.2", `fade=t=out:st=${titleSeconds - 0.2}:d=0.2`]),
         ].join(",") +
         "[v]";
       await encode(
@@ -292,9 +295,9 @@ export async function renderBranding({
         const previousFrame=Math.max(0,previous.info.duration-1/fps);
         if(motion){
           await encode(`switch-${i}`,
-            ['-ss',previousFrame.toFixed(6),'-i',previous.file,'-i',source.file,'-i','motion-stinger.mp4'],
-            playerStinger({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}),'2:a:0',STINGER_SECONDS,
-            [label,'motion-stinger.mp4','switch-label.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);
+            ['-i','motion-stinger.mp4'],
+            playerStinger({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}),'0:a:0',STINGER_SECONDS,
+            [label,'motion-stinger.mp4','switch-label.txt']);
         }else await encode(`switch-${i}`,
           ['-ss',previousFrame.toFixed(6),'-i',previous.file,'-i',source.file,'-loop','1','-i','cyber-stinger.png','-loop','1','-i','logo.webp'],
           playerSwitch({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}), '4:a:0',SWITCH_SECONDS,
@@ -320,7 +323,7 @@ export async function renderBranding({
           text("website.txt", 42, "(w-text_w)/2", "h*0.67"),
           text("channel.txt", 32, "(w-text_w)/2", "h*0.76"),
           "setsar=1",
-          "fade=t=in:st=0:d=0.2",
+          ...(motion ? [] : ["fade=t=in:st=0:d=0.2"]),
           "fade=t=out:st=1.8:d=0.2",
         ].join(",") +
         "[v]";
@@ -333,36 +336,60 @@ export async function renderBranding({
         ["outro.txt", "website.txt", "channel.txt"],
       );
     }
-    const list = await artifact(
-      "parts.txt",
-      parts.map((p) => `file '${path.basename(p.path)}'`).join("\n"),
-    );
     const partial = path.join(work, "tecmon-highlight.mp4");
-    progress("Intro und Highlight-Szenen werden zusammengefügt …");
-    await execute({
-      launcher,
-      exe: ffmpeg,
-      cwd: work,
-      files: [artifacts.get(list), ...parts],
-      args: [
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-nostdin",
-        "-y",
-        "-f",
-        "concat",
-        "-safe",
-        "1",
-        "-i",
-        list,
-        "-c",
-        "copy",
-        "-movflags",
-        "+faststart",
-        partial,
-      ],
-    });
+    if (motion) {
+      // Weiche Überblendungen zwischen allen Teilen statt harter Schnitte (einmal neu kodiert).
+      progress("Intro, Szenen und Übergänge werden weich überblendet …");
+      const { graph, duration } = crossfadeGraph(parts, fps);
+      const graphName = await artifact("final.graph", graph);
+      await execute({
+        launcher,
+        exe: ffmpeg,
+        cwd: work,
+        files: [artifacts.get(graphName), ...parts.map(lockedFile)],
+        args: [
+          "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
+          ...parts.flatMap((p) => ["-i", path.basename(p.path)]),
+          "-filter_complex_script", graphName,
+          "-map", "[v]", "-map", "[a]",
+          "-t", duration.toFixed(6), "-r", String(fps),
+          "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p",
+          "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+          "-movflags", "+faststart",
+          partial,
+        ],
+      });
+    } else {
+      const list = await artifact(
+        "parts.txt",
+        parts.map((p) => `file '${path.basename(p.path)}'`).join("\n"),
+      );
+      progress("Intro und Highlight-Szenen werden zusammengefügt …");
+      await execute({
+        launcher,
+        exe: ffmpeg,
+        cwd: work,
+        files: [artifacts.get(list), ...parts.map(lockedFile)],
+        args: [
+          "-hide_banner",
+          "-loglevel",
+          "error",
+          "-nostdin",
+          "-y",
+          "-f",
+          "concat",
+          "-safe",
+          "1",
+          "-i",
+          list,
+          "-c",
+          "copy",
+          "-movflags",
+          "+faststart",
+          partial,
+        ],
+      });
+    }
     const final = path.join(directory, "tecmon-highlight.mp4");
     await rename(partial, final);
     return final;

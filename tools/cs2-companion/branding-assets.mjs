@@ -65,9 +65,9 @@ export async function loadBrandingPack(directory, request = fetch) {
  */
 export const MOTION_URL =
   "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.23.0/TecMon-Motion-v1.json";
-export const MOTION_SHA256 = "e88136364b4e120f723ca4fff5d61e47cd11e527548b8aaaabf3f4c3e950b476";
+export const MOTION_SHA256 = "713eb9f3b61807279deade5130971703bd97caae6850066ca22aed5e3aa4b2b1";
 export const MOTION_FILES = Object.freeze({
-  "intro.mp4": "1d6a659d1f29548ec09a359b041fa720e1a606fad47217c5fe915f6183c17d1f",
+  "intro.mp4": "063254e7d22a0616426101253171f4c8974c18749cd08455e5a6b7957bd30b1d",
   "stinger.mp4": "d2fc4ff9151783898920aa2a105821452a941cdb07775900169cad8499b15c26",
 });
 const MOTION_LIMIT = 8 * 1024 * 1024;

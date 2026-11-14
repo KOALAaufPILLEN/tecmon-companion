@@ -16,14 +16,15 @@ Barlow Condensed Bold: Copyright 2017 The Barlow Project Authors, SIL Open Font 
 
 ## Video-Paket Motion v1 (ab 0.23.0)
 
-`TecMon-Motion-v1.json` enthält `intro.mp4` (5,48 s, 1280×720, 60 fps) und
+`TecMon-Motion-v1.json` enthält `intro.mp4` (5,78 s, 1280×720, 60 fps) und
 `stinger.mp4` (2,13 s, 1280×720, 24 fps), beide mit Ton. Paket-SHA256:
-`e88136364b4e120f723ca4fff5d61e47cd11e527548b8aaaabf3f4c3e950b476`. Der
+`713eb9f3b61807279deade5130971703bd97caae6850066ca22aed5e3aa4b2b1`. Der
 Release-Workflow lädt es als Release-Asset hoch; die Laufzeit holt es über
 `MOTION_URL` und prüft `MOTION_SHA256` und `MOTION_FILES`.
 
 Quelle sind vom Projektinhaber gelieferte TecMon-Videos. Schnitt mit FFmpeg:
-Intro aus `TecmonIntro.mp4` die Bereiche 0,8–3,0 s und 4,4–7,8 s mit 0,12 s
-Überblendung, am Ende 0,18 s Abblende. Szenenwechsel aus `szenenwechsel.mp4`
+Intro aus `TecmonIntro.mp4` 0,8–3,0 s normal, 3,0–4,4 s dreifach beschleunigt
+(ohne Schnitt, damit das Logo nicht springt), 4,4–7,5 s normal, am Ende 0,2 s
+Abblende. Szenenwechsel aus `szenenwechsel.mp4`
 der Bereich 0,12–2,22 s. Beide mit `libx264 -crf 20 -preset veryslow`, AAC
 128 kbit/s, 48 kHz, ohne Metadaten.

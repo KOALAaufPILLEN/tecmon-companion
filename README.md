@@ -69,11 +69,14 @@ Neueste Version zuerst.
 ### Neu in 0.23.0: Animiertes Intro und Spielerwechsel
 
 - **Neues TecMon-Intro im Highlight-Video:** Lichtstrahl, goldenes Logo und
-  TecMon fliegt ins Bild (5,5 s), danach die bekannte Titelkarte mit Spielern
+  TecMon fliegt ins Bild (knapp 6 s), danach die bekannte Titelkarte mit Spielern
   und Map (jetzt 2,5 s).
 - **Neuer Spielerwechsel im Teamvideo:** Energiestrahlen, Holo-Karte mit Logo,
-  Partikelsturm. Im Partikelsturm erscheint der Name des nächsten Spielers, dann
-  blendet der Wechsel weich in die nächste Szene. Kein Gameplay wird gekürzt.
+  Partikelsturm. Im Partikelsturm erscheint der Name des nächsten Spielers.
+- **Weiche Übergänge statt harter Schnitte:** Intro, Titelkarte, Szenen,
+  Spielerwechsel und Outro werden ineinander überblendet (0,3–0,5 s, Bild und
+  Ton). Dafür wird das fertige Video einmal neu kodiert. Ohne Video-Paket bleibt
+  die bisherige Montage.
 - **Geprüft wie das übrige Branding:** Beide Videos kommen als eigenes Paket
   `TecMon-Motion-v1.json` (rund 5 MB) von einer festen Release-Adresse und haben
   feste SHA256-Prüfsummen. Weicht etwas ab, bricht der Auftrag ab. Ist das Paket

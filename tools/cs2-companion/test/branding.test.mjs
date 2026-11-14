@@ -237,7 +237,7 @@ test("animated intro precedes the title card and player switches use the checked
   for (let i = 0; i < spec.sequences.length; i++)
     await writeFile(path.join(dir, sequenceFile(spec.sequences[i], i)), "source " + i);
   const graphs = {};
-  let list = "";
+  let finalInputs = [];
   await renderBranding({
     job: spec,
     directory: dir,
@@ -245,24 +245,27 @@ test("animated intro precedes the title card and player switches use the checked
     motion: verifyMotionPack(motionPacked),
     ffmpeg: "unused",
     launcher: "unused",
-    probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 2, audio: true }),
+    probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 3, audio: true }),
     execute: async (request) => {
-      for (const file of request.files)
+      for (const file of request.files) {
+        assert.deepEqual(Object.keys(file).sort(), ["path", "sha256"]);
         assert.equal(sha256(await readFile(file.path)), file.sha256);
+      }
+      assert.ok(!request.args.includes("concat"), "motion mode crossfades instead of hard concat cuts");
       const index = request.args.indexOf("-filter_complex_script");
       const name = path.basename(request.args.at(-1));
-      if (index !== -1) {
-        graphs[name] = await readFile(path.join(request.cwd, request.args[index + 1]), "utf8");
-        if (name !== "intro-film.mp4") assert.ok(!request.args.includes("motion-intro.mp4"));
-      } else list = await readFile(path.join(request.cwd, "parts.txt"), "utf8");
+      graphs[name] = await readFile(path.join(request.cwd, request.args[index + 1]), "utf8");
+      if (name === "tecmon-highlight.mp4")
+        finalInputs = request.args.filter((_, i) => request.args[i - 1] === "-i");
+      else if (name !== "intro-film.mp4") assert.ok(!request.args.includes("motion-intro.mp4"));
       await writeFile(request.args.at(-1), "encoded fixture");
     },
   });
-  assert.equal(
-    list,
-    "file 'intro-film.mp4'\nfile 'intro.mp4'\nfile 'scene-0.mp4'\nfile 'switch-1.mp4'\nfile 'scene-1.mp4'",
-  );
-  assert.ok(graphs["switch-1.mp4"].includes("xfade"));
+  assert.deepEqual(finalInputs, ["intro-film.mp4", "intro.mp4", "scene-0.mp4", "switch-1.mp4", "scene-1.mp4"]);
+  const final = graphs["tecmon-highlight.mp4"];
+  assert.equal(final.match(/xfade=/g).length, 4);
+  assert.equal(final.match(/acrossfade=/g).length, 4);
+  assert.ok(!graphs["intro.mp4"].includes("fade=t="), "title card blends via crossfade, no dip to black");
   assert.ok(graphs["switch-1.mp4"].includes("textfile=name-1.txt"));
   assert.ok(graphs["switch-1.mp4"].includes("expansion=none"));
   assert.ok(graphs["intro.mp4"].includes("stop_duration=2.5"));
@@ -274,7 +277,7 @@ test("animated intro precedes the title card and player switches use the checked
       directory: dir,
       assets: verifyBrandingPack(packed),
       motion: changed,
-      probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 2, audio: true }),
+      probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 3, audio: true }),
       execute: async () => assert.fail("encoder must not run"),
     }),
     /Prüfsumme/,

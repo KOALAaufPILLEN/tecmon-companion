@@ -26,20 +26,35 @@ export function playerSwitch({width,height,fps,nextFile,playerLength}){
 }
 
 export const STINGER_SECONDS=2.1;
-/** Animierter Spielerwechsel aus dem geprüften Video-Paket (stinger.mp4, Eingang 2).
- * Altes Standbild blendet in den Stinger, im Partikelsturm erscheint der neue Spielername,
- * am Ende blendet der Stinger in das erste Bild der nächsten Szene. Kein Gameplay wird gekürzt.
+/** Animierter Spielerwechsel aus dem geprüften Video-Paket (stinger.mp4, Eingang 0).
+ * Im Partikelsturm erscheint der neue Spielername. Die weichen Überblendungen aus der
+ * alten und in die neue Szene macht die Endmontage (crossfadeGraph), kein Gameplay fällt weg.
  */
 export function playerStinger({width,height,fps,nextFile,playerLength}){
  const n=v=>Math.max(1,Math.round(v*width/1920));
- const prep=`scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,settb=AVTB`;
- const freeze=(input,label)=>`[${input}:v]${prep},trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${STINGER_SECONDS+0.5}[${label}];`;
- const fade=`alpha='if(lt(t,1.4),(t-1.25)/0.15,if(gt(t,1.8),max(0,(2.05-t)/0.25),1))':enable='between(t,1.25,2.05)'`;
+ const fade=`alpha='if(lt(t,1.4),(t-1.25)/0.15,if(gt(t,1.85),max(0,(2.1-t)/0.25),1))':enable='between(t,1.25,2.1)'`;
  const text=(file,size,y,color)=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:borderw=${n(3)}:bordercolor=black@0.75:shadowcolor=black@0.85:shadowx=${n(2)}:shadowy=${n(2)}:x=(w-text_w)/2:y=${n(y)}:${fade}`;
  const nameSize=Math.min(96,Math.max(36,Math.floor(1200/Math.max(playerLength,12))));
- return freeze(0,'old')+freeze(1,'next')+
-  `[2:v]${prep},setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=0.5[st];`+
-  `[old][st]xfade=transition=fade:duration=0.22:offset=0[a];`+
-  `[a][next]xfade=transition=fade:duration=0.35:offset=${(STINGER_SECONDS-0.35).toFixed(2)},`+
+ return `[0:v]scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=0.5,`+
   [text('switch-label.txt',28,735,'0x85e8ef'),text(nextFile,nameSize,775,'0xefc96d')].join(',')+'[v]';
+}
+
+/** Überblendlänge je Übergang (Sekunden), höchstens ein Drittel des kürzeren Teils. */
+export function blendSeconds(previous,next){
+ const base=previous.kind==='film'?0.5:next.kind==='switch'?0.3:previous.kind==='switch'?0.4:previous.kind==='title'||next.kind==='outro'?0.45:0.3;
+ return Math.min(base,previous.duration/3,next.duration/3);
+}
+/** Endmontage mit echten Überblendungen statt harter Schnitte: Bild per xfade, Ton per acrossfade. */
+export function crossfadeGraph(parts,fps){
+ const prep=parts.map((p,i)=>`[${i}:v]fps=${fps},format=yuv420p,setsar=1,settb=AVTB,setpts=PTS-STARTPTS[v${i}];[${i}:a]aresample=48000,aformat=channel_layouts=stereo,asetpts=PTS-STARTPTS[a${i}];`).join('');
+ let video='v0',audio='a0',length=parts[0].duration,chain='';
+ for(let i=1;i<parts.length;i++){
+  const d=blendSeconds(parts[i-1],parts[i]);
+  const last=i===parts.length-1;
+  const vo=last?'v':`x${i}`,ao=last?'a':`y${i}`;
+  chain+=`[${video}][v${i}]xfade=transition=fade:duration=${d.toFixed(3)}:offset=${(length-d).toFixed(3)}[${vo}];[${audio}][a${i}]acrossfade=d=${d.toFixed(3)}[${ao}];`;
+  video=vo;audio=ao;length+=parts[i].duration-d;
+ }
+ if(parts.length===1) chain='[v0]null[v];[a0]anull[a];';
+ return {graph:(prep+chain).replace(/;$/,''),duration:length};
 }
