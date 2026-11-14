@@ -269,12 +269,12 @@ test("animated intro leads into the esports title card and player switches use t
   assert.ok(graphs["outro.mp4"].includes("textfile=website.txt") && graphs["outro.mp4"].includes("textfile=channel.txt"));
   assert.ok(!graphs["outro.mp4"].includes("drawbox"), "animated outro replaces the static card");
   assert.ok(graphs["intro.mp4"].includes("textfile=title.txt"), "title sits in the esports banner");
-  assert.ok(graphs["intro.mp4"].includes("chromakey=0x00FF00"), "title card shatters over the first gameplay frame");
-  assert.ok(!graphs["intro.mp4"].includes("TecMonBot") && !graphs["intro.mp4"].includes("drawbox"), "no static card");
+  assert.ok(graphs["intro.mp4"].includes("colorkey=0x10B142"), "title card shatters over the first gameplay frame");
+  assert.ok(!graphs["intro.mp4"].includes("TecMonBot") && !graphs["intro.mp4"].includes("boxblur"), "no static card");
   assert.ok(!graphs["scene-0.mp4"].includes("textfile=title.txt"));
   assert.ok(graphs["switch-1.mp4"].includes("textfile=name-1.txt"));
   assert.ok(graphs["switch-1.mp4"].includes("expansion=none"));
-  assert.ok(graphs["switch-1.mp4"].includes("chromakey="), "green screen stinger is keyed over the gameplay");
+  assert.ok(graphs["switch-1.mp4"].includes("colorkey="), "green screen stinger is keyed over the gameplay");
   assert.ok(graphs["switch-1.mp4"].includes("xfade="), "gameplay underneath switches softly under the cover");
   const changed = verifyMotionPack(motionPacked);
   changed["switch.mp4"][10] ^= 1;

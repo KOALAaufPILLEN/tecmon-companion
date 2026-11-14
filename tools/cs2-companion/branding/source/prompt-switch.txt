@@ -1,0 +1,9 @@
+Professional esports broadcast stinger transition (ESL / Major tournament style), 16:9, for chroma keying.
+Background: perfectly flat, uniform pure chroma green (#00FF00) for the entire clip wherever nothing is drawn. No gradients, no shadows, no vignette on the green.
+Timeline:
+0.0-0.5 s: only pure green.
+0.5-1.3 s: three large slanted parallelogram panels (gold, purple, dark navy, same colors and hexagon pattern as the reference image) slash in fast from the right, one after another, with motion blur and a bright light streak, until the dark navy panel covers the ENTIRE frame edge to edge.
+1.3-3.0 s: the frame is fully covered by the navy panel with subtle hexagon grid, two thin horizontal gold lines across the middle with an empty band between them (leave that band EMPTY, no text), the round gold TecMon logo from the reference small at the top center, gentle shimmer.
+3.0-3.8 s: the panels slash out to the left in layers, revealing pure green again.
+3.8 s to end: only pure green.
+No text, no letters, no numbers, no characters or robots, no people. Locked-off camera, crisp edges, high contrast, premium polished motion design.
