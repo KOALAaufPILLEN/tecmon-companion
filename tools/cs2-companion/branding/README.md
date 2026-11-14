@@ -14,7 +14,34 @@ Quellen und Reproduktion: `scripts/build-branding-pack.mjs`.
 
 Barlow Condensed Bold: Copyright 2017 The Barlow Project Authors, SIL Open Font License 1.1. OFL.txt ist im Paket sowie neben dieser Datei enthalten. Markenrechte am TecMon-Logo werden durch die Quellcode-Lizenz nicht übertragen.
 
-## Video-Paket Motion v1 (ab 0.23.0)
+## Video-Paket Motion v2 (ab 0.24.0)
+
+`TecMon-Motion-v2.json` (9,5 MB, Limit 16 MB, `version: 2`). Paket-SHA256:
+`5ce1817e13a61ba26df41a105734d79693058b01d926a3f0c0ba9ac7e7cac2ba`. Enthält die
+Intros und Outros aus v1 (unverändert, gleiche Prüfsummen) und zwei neue Clips
+für beide Stile, 1280×720, 30 fps, mit Ton:
+
+| Clip | Länge | Inhalt |
+| --- | --- | --- |
+| `title.mp4` | 3,8 s | Esport-Titelbild vor Grün (#00FF00): Paneele und Banner bis 0,9 s, Text 0,95–3,0 s, ab 3,0 s verlässt das Bild als schräger Streifen nach links, lila und goldene Streifen folgen (frei bei 3,66 s) |
+| `switch.mp4` | 2,8 s | Esport-Spielerwechsel vor Grün: drei schräge Paneele, deckend etwa 0,65–2,1 s, Wechsel bei 1,4 s |
+
+Hintergrund ist das Sternennetz der Webseite (`components/fx/CyberBackground.tsx`
+im Repo `tecmon`): driftende Knoten, die sich in der Nähe violett verbinden,
+goldene Knoten und ein wandernder Lichtpunkt mit goldenen Leitungen.
+
+Beide Clips sind programmiert (keine KI): `source/esport-motion.html` zeichnet sie
+auf einem Canvas, `source/esport-render.cjs` speichert sie Bild für Bild
+(`node esport-render.cjs title 3.8 30 <Ordner>` bzw. `stinger 2.8 30`, `logo.webp`
+neben der HTML-Datei). Ton aus FFmpeg-Generatoren (Rauschen und Tiefton-Schlag).
+Kodierung `libx264 -crf 18 -preset veryslow`, AAC 128 kbit/s. Den Text im Banner
+schreibt der Companion selbst. Freigestellt wird per `colorkey` (RGB-Abstand) mit
+herausgerechnetem Grün; Grün bleibt danach höchstens so stark wie Rot oder Blau,
+damit an unscharfen Kanten kein grüner Rand stehen bleibt. Vom Titelbild zur
+ersten Szene wird nur 0,12 s überblendet, damit der Streifen-Abgang nicht durchscheint.
+
+## Video-Paket Motion v1 (0.23.x)
+
 
 `TecMon-Motion-v1.json` (11,5 MB, Limit 16 MB) enthält zwei wählbare Stile, alle
 Clips 1280×720, 24 fps, mit Ton. Paket-SHA256:
@@ -39,7 +66,7 @@ eigenem Intro als Bildvorlage. Schnitte mit FFmpeg:
   Bis dahin hartes Freistellen, danach weiches mit herausgerechnetem Grün.
 - Outro A: 0,0–5,5 s. Outro B: 0,0–5,5 s, beginnt mit dem letzten Bild von
   Intro B. Website und Kanal blendet der Companion ein.
-- Titelkarte: Das Intro-Bild bei `titleFrame` schrumpft nach oben, darunter
-  Titel, Spieler, Untertitel und Map.
+- 0.23.1 blendete den Titel über die erste Szene; ab 0.24.0 ersetzt durch das
+  Esport-Titelbild, die Spielerwechsel `stinger*.mp4` durch `switch.mp4`.
 
 Alle mit `libx264 -crf 20/21 -preset veryslow`, AAC 128 kbit/s, 48 kHz, ohne Metadaten.

@@ -66,11 +66,26 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.24.0: Esport-Titelbild und Esport-Spielerwechsel
+
+- **Animiertes Esport-Titelbild:** Nach dem TecMon-Intro schlagen Seitenpaneele
+  und ein goldenes Banner ein, das Logo fällt oben hinein. In der Mitte des
+  Banners stehen Titel bzw. Spielername, darüber die Map, darunter die Spieler.
+  Dahinter läuft das Sternennetz der Webseite. Danach wischt das Bild als
+  schräger Streifen nach links weg, dunkellila und goldene Streifen folgen und
+  geben das Gameplay frei (3,8 s, darunter steht das erste Bild der ersten Szene).
+- **Neuer Spielerwechsel ohne Figur:** Drei schräge Paneele (Gold, Dunkellila, Navy)
+  wischen über das Bild, in der Mitte erscheint der nächste Spieler, dann wischen
+  sie wieder heraus (2,8 s). Gilt für beide Video-Stile. Beide Clips sind
+  programmiert, vor Greenscreen gerendert und werden ohne grüne Ränder freigestellt.
+- **Neues Video-Paket `TecMon-Motion-v2.json`** mit neuen festen Prüfsummen; das
+  alte v1-Paket wird aus dem Branding-Ordner gelöscht.
+
 ### Neu in 0.23.0: Animiertes Intro, Spielerwechsel und Outro
 
 - **Neues TecMon-Intro im Highlight-Video:** TecMon schwebt ins neblige
   Neon-Raster, scannt mit lila Strahl, das goldene Logo baut sich auf und er
-  zwinkert (6,5 s). Danach die Titelkarte mit Spielern und Map (2,5 s).
+  zwinkert (6,5 s). Danach die Titelkarte mit Spielern und Map (2,5 s, ab 0.24.0 Esport-Titelbild).
 - **Zwei Video-Stile zur Auswahl:** „Neon-Raster“ (A) und „Hologramm“ (B, TecMon
   fliegt durch einen Lichttunnel und projiziert das Logo als Hologramm). Die
   Webseite wählt per `branding.style` (`"a"`/`"b"`) im Auftrag, sobald der
@@ -78,8 +93,6 @@ Neueste Version zuerst.
 - **Neuer Spielerwechsel im Teamvideo:** vor Greenscreen erzeugt und über das
   Gameplay gelegt. A: Lichtspur mit Partikeln, B: TecMon fliegt auf die Kamera
   zu. Darin erscheint der Name des nächsten Spielers.
-- **Neue Titelkarte:** Das letzte Intro-Bild schrumpft nach oben, darunter Titel
-  und Spieler. Kein Standbild-Logo mehr über dem Gameplay.
 - **Animiertes Outro:** TecMon winkt und fliegt davon, das Logo bleibt stehen,
   darunter Website und Kanal, dann Abblende.
 - **Weiche Übergänge statt harter Schnitte:** Intro, Titelkarte, Szenen,

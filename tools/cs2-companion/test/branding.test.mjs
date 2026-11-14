@@ -24,7 +24,7 @@ import {
 } from "../video-branding.mjs";
 import { validateJob } from "../job.mjs";
 const packed = await readFile(new URL("../branding/TecMon-Branding-v3.json", import.meta.url));
-const motionPacked = await readFile(new URL("../branding/TecMon-Motion-v1.json", import.meta.url));
+const motionPacked = await readFile(new URL("../branding/TecMon-Motion-v2.json", import.meta.url));
 const job = {
   format: "tecmon-cs2-job",
   version: 1,
@@ -211,7 +211,7 @@ test("motion pack is pinned: offline falls back to null, changed bytes always fa
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-motion-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   assert.equal(sha256(motionPacked), MOTION_SHA256);
-  assert.match(MOTION_URL, /releases\/download\/v\d+\.\d+\.\d+\/TecMon-Motion-v1\.json$/);
+  assert.match(MOTION_URL, /releases\/download\/v\d+\.\d+\.\d+\/TecMon-Motion-v2\.json$/);
   assert.equal(await loadMotionPack(path.join(dir, "offline"), async () => { throw new Error("offline"); }), null);
   assert.equal(await loadMotionPack(path.join(dir, "missing"), async () => new Response("nope", { status: 404 })), null);
   let calls = 0;
@@ -220,7 +220,7 @@ test("motion pack is pinned: offline falls back to null, changed bytes always fa
     assert.equal(url, MOTION_URL);
     return new Response(motionPacked);
   });
-  assert.ok(files["intro.mp4"].length > 100000 && files["stinger.mp4"].length > 100000);
+  assert.ok(files["intro.mp4"].length > 100000 && files["switch.mp4"].length > 100000 && files["title.mp4"].length > 100000);
   await loadMotionPack(dir, async () => { throw new Error("cache should avoid download"); });
   assert.equal(calls, 1);
   const changed = Buffer.from(motionPacked);
@@ -230,7 +230,7 @@ test("motion pack is pinned: offline falls back to null, changed bytes always fa
   assert.deepEqual(await readdir(path.join(dir, "evil")), []);
 });
 
-test("animated intro precedes the title card and player switches use the checked stinger", async (t) => {
+test("animated intro leads into the esports title card and player switches use the checked stinger", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-brand-motion-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const spec = validateJob({ ...job, branding: { enabled: true, intro: true, outro: true } });
@@ -257,7 +257,7 @@ test("animated intro precedes the title card and player switches use the checked
       graphs[name] = await readFile(path.join(request.cwd, request.args[index + 1]), "utf8");
       if (name === "tecmon-highlight.mp4")
         finalInputs = request.args.filter((_, i) => request.args[i - 1] === "-i");
-      else if (!["intro-film.mp4", "intro.mp4"].includes(name)) assert.ok(!request.args.includes("motion-intro.mp4"));
+      else if (name !== "intro-film.mp4") assert.ok(!request.args.includes("motion-intro.mp4"));
       if (name !== "outro.mp4" && name !== "tecmon-highlight.mp4") assert.ok(!request.args.includes("motion-outro.mp4"));
       await writeFile(request.args.at(-1), "encoded fixture");
     },
@@ -268,14 +268,16 @@ test("animated intro precedes the title card and player switches use the checked
   assert.equal(final.match(/acrossfade=/g).length, 5);
   assert.ok(graphs["outro.mp4"].includes("textfile=website.txt") && graphs["outro.mp4"].includes("textfile=channel.txt"));
   assert.ok(!graphs["outro.mp4"].includes("drawbox"), "animated outro replaces the static card");
-  assert.ok(!graphs["intro.mp4"].includes("fade=t="), "title card blends via crossfade, no dip to black");
+  assert.ok(graphs["intro.mp4"].includes("textfile=title.txt"), "title sits in the esports banner");
+  assert.ok(graphs["intro.mp4"].includes("colorkey=0x00FF00"), "title card shatters over the first gameplay frame");
+  assert.ok(!graphs["intro.mp4"].includes("TecMonBot") && !graphs["intro.mp4"].includes("boxblur"), "no static card");
+  assert.ok(!graphs["scene-0.mp4"].includes("textfile=title.txt"));
   assert.ok(graphs["switch-1.mp4"].includes("textfile=name-1.txt"));
   assert.ok(graphs["switch-1.mp4"].includes("expansion=none"));
-  assert.ok(graphs["intro.mp4"].includes("stop_duration=2.5"));
-  assert.ok(graphs["switch-1.mp4"].includes("chromakey="), "green screen stinger is keyed over the gameplay");
+  assert.ok(graphs["switch-1.mp4"].includes("colorkey="), "green screen stinger is keyed over the gameplay");
   assert.ok(graphs["switch-1.mp4"].includes("xfade="), "gameplay underneath switches softly under the cover");
   const changed = verifyMotionPack(motionPacked);
-  changed["stinger.mp4"][10] ^= 1;
+  changed["switch.mp4"][10] ^= 1;
   await assert.rejects(
     renderBranding({
       job: spec,
@@ -289,7 +291,7 @@ test("animated intro precedes the title card and player switches use the checked
   );
 });
 
-test("style b uses the hologram clips; unknown styles fall back to a", async (t) => {
+test("style b uses the hologram intro and outro; unknown styles fall back to a", async (t) => {
   assert.equal(validateJob({ ...job, branding: { style: "b" } }).branding.style, "b");
   assert.equal(validateJob({ ...job, branding: { style: "x;evil" } }).branding.style, "a");
   assert.equal(validateJob(job).branding.style, "a");
@@ -310,5 +312,5 @@ test("style b uses the hologram clips; unknown styles fall back to a", async (t)
       await writeFile(request.args.at(-1), "encoded fixture");
     },
   });
-  assert.deepEqual([...used].sort(), ["motion-intro-b.mp4", "motion-outro-b.mp4", "motion-stinger-b.mp4"]);
+  assert.deepEqual([...used].sort(), ["motion-intro-b.mp4", "motion-outro-b.mp4", "motion-switch.mp4", "motion-title.mp4"]);
 });

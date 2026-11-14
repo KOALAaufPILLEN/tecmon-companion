@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { sha256, BRANDING_FILES, MOTION_FILES } from "./branding-assets.mjs";
 import { validateJob } from "./job.mjs";
 import { runTool } from "./managed-installation.mjs";
-import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, MOTION_STYLES, motionTitle, crossfadeGraph } from "./cyber-hud.mjs";
+import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, MOTION_STYLES, crossfadeGraph, keyColor, unmixGreen } from "./cyber-hud.mjs";
 
 /** Länge von intro.mp4 aus dem Video-Paket (5,78 s), knapp darunter geschnitten. */
 
@@ -243,26 +243,41 @@ export async function renderBranding({
         ["motion-" + style.intro],
       );
     }
-    const titleSeconds = motion ? 2.5 : 3;
+    const titleSeconds = 3;
     const multiPlayer = new Set(job.sequences.map((s) => s.steamId)).size > 1;
     const showSubtitle = job.branding.subtitle || !/^(highlights|team-highlights)$/i.test(job.title);
     if (job.branding.intro && motion) {
-      progress("Titelkarte im TecMon-Stil wird erstellt …");
-      const titleSize = Math.min(104, Math.max(44, Math.round(1600 / Math.max(title.length, 12))));
-      const fadeIn = (start) => `:alpha='min(1,max(0,(t-${start})/0.3))'`;
-      const texts = [
-        text("title.txt", titleSize, "(w-text_w)/2", "h*0.68", "0xefc96d", fadeIn(0.45) + ":shadowcolor=black@0.8:shadowx=2:shadowy=2"),
-        ...(multiPlayer ? [text("players.txt", 40, "(w-text_w)/2", "h*0.785", "white", fadeIn(0.6))] : []),
-        ...(showSubtitle ? [text("subtitle.txt", 30, "(w-text_w)/2", multiPlayer ? "h*0.845" : "h*0.79", "white", fadeIn(0.7))] : []),
-        text("map.txt", 24, "(w-text_w)/2", "h*0.91", "0x9cefff", fadeIn(0.8)),
+      // Esport-Titelbild: Banner mit Titel, Map und Spielern über dem ersten Bild der ersten Szene,
+      // danach zerspringt das Bild in Stücke und gibt das Gameplay frei.
+      progress("Esport-Titelbild wird erstellt …");
+      const [from, to] = style.titleText;
+      const titleSize = Math.min(84, Math.max(40, Math.round(1500 / Math.max(title.length, 12))));
+      const fade = `:alpha='if(lt(t,${from + 0.2}),max(0,(t-${from})/0.2),if(gt(t,${to - 0.15}),max(0,(${to}-t)/0.15),1))':enable='between(t,${from},${to})'`;
+      const look = `:borderw=${n(2)}:bordercolor=black@0.6:shadowcolor=black@0.8:shadowx=${n(2)}:shadowy=${n(2)}`;
+      const below = [
+        ...(multiPlayer ? ["players.txt"] : []),
+        ...(showSubtitle ? ["subtitle.txt"] : []),
       ];
+      const graph =
+        `[1:v]scale=${w}:${h},setsar=1,fps=${fps},format=yuv420p,trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${style.titleSeconds + 0.5}${style.titleCover ? `,drawbox=color=0x0b1030:t=fill:enable='between(t,${style.titleCover[0]},${style.titleCover[1]})'` : ""}[bg];` +
+        `[0:v]scale=1280:720,setsar=1,fps=${fps},setpts=PTS-STARTPTS,colorkey=${keyColor(style.titleKey)}:0.17:0.09,format=gbrap,geq=${unmixGreen(style.titleKey)},scale=${w}:${h}[card];` +
+        `[bg][card]overlay=0:0:eof_action=pass,format=yuv420p,` +
+        [
+          text("map.txt", 24, "(w-text_w)/2", "h*0.415", "0x9cefff", fade + look),
+          text("title.txt", titleSize, "(w-text_w)/2", `h*0.522-${n(titleSize)}/2`, "0xefc96d", fade + look),
+          ...below.map((file, k) =>
+            text(file, k ? 26 : 32, "(w-text_w)/2", k ? "h*0.665" : "h*0.585", "white", fade + look),
+          ),
+          "setsar=1",
+        ].join(",") +
+        "[v]";
       await encode(
         "intro",
-        ["-ss", String(style.titleFrame), "-i", "motion-" + style.intro],
-        motionTitle({ width: w, height: h, fps, seconds: titleSeconds, texts }),
-        "1:a:0",
-        titleSeconds,
-        ["title.txt", "players.txt", "subtitle.txt", "map.txt", "motion-" + style.intro],
+        ["-i", "motion-" + style.title, "-i", sources[0].file],
+        graph,
+        "0:a:0",
+        style.titleSeconds,
+        ["motion-" + style.title, "title.txt", "players.txt", "subtitle.txt", "map.txt", { path: sources[0].file, sha256: sources[0].sha256 }],
       );
     } else if (job.branding.intro) {
       progress("TecMon-Intro wird lokal erstellt …");
@@ -320,7 +335,7 @@ export async function renderBranding({
           playerSwitch({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}), '4:a:0',SWITCH_SECONDS,
           [label,'cyber-stinger.png','switch-label.txt','switch-footer.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);
       }
-      const graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length});
+      let graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length});
       progress(`Cyberpunk-HUD mit dauerhaftem Spielername: Szene ${i + 1}/${sources.length} …`);
       await encode(
         `scene-${i}`,
@@ -328,7 +343,8 @@ export async function renderBranding({
         graph,
         source.info.audio ? "0:a:0" : "3:a:0",
         source.info.duration,
-        [label, caption, counter, "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt", { path: source.file, sha256: source.sha256 }],
+        [label, caption, counter, "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt",
+          { path: source.file, sha256: source.sha256 }],
       );
     }
     if (job.branding.outro && motion) {
