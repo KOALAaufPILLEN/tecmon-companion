@@ -1,9 +1,0 @@
-Professional esports tournament title card animation (ESL / Major broadcast style), 16:9, for chroma keying.
-Background where nothing is drawn: perfectly flat uniform pure chroma green (#00FF00). No gradient or shadow on the green.
-Timeline:
-0.0-0.4 s: pure green.
-0.4-1.2 s: dark navy side panels with hexagon pattern and purple diagonal stripes slam in from left and right and cover the full frame, then a wide horizontal dark banner with thin gold border, gold corner brackets and gold chevrons expands from the center, exactly like the reference image. The round gold TecMon logo from the reference drops in at the top center with a flash.
-1.2-3.5 s: hold the composition. The banner interior stays EMPTY and calm (no text, room for a name), a soft light sweep passes over it, small sparks.
-3.5-5.0 s: the whole image shatters like glass into many sharp triangular shards with glowing gold edges that burst outward toward the camera and spin away, revealing the pure green background behind.
-5.0 s to end: only pure green.
-No text, no letters, no numbers, no robots, no people. Locked-off camera, crisp, premium motion design.

@@ -16,24 +16,28 @@ Barlow Condensed Bold: Copyright 2017 The Barlow Project Authors, SIL Open Font 
 
 ## Video-Paket Motion v2 (ab 0.24.0)
 
-`TecMon-Motion-v2.json` (10,6 MB, Limit 16 MB, `version: 2`). Paket-SHA256:
-`afb69c9b48724867baa46fb38baa15e7a2b5601a6a84ead1ca12eeca6531fdf9`. Enthält die
+`TecMon-Motion-v2.json` (10,9 MB, Limit 16 MB, `version: 2`). Paket-SHA256:
+`6c45809c0d91b9baecf5facd1f72284bc88799574a45c8c1070957b02ce2f1c4`. Enthält die
 Intros und Outros aus v1 (unverändert, gleiche Prüfsummen) und zwei neue Clips
-für beide Stile, 1280×720, 24 fps, mit Ton:
+für beide Stile, 1280×720, 30 fps, mit Ton:
 
 | Clip | Länge | Inhalt |
 | --- | --- | --- |
-| `title.mp4` | 4,6 s | Esport-Titelbild vor Grün (#10B142): Paneele und Banner schlagen ein, Banner ab 1,9 s deckend, Text 1,95–3,6 s, danach zerspringt das Bild wie Glas |
-| `switch.mp4` | 3,5 s | Esport-Spielerwechsel vor Grün (#1AE51D): schräge Paneele, deckend etwa 0,95–2,75 s, Wechsel bei 1,85 s |
+| `title.mp4` | 4,4 s (genutzt 4,2 s) | Esport-Titelbild vor Grün (#00FF00): Paneele und Banner bis 0,9 s, Text 0,95–3,0 s, ab 3,0 s zerspringt das Bild in Stücke |
+| `switch.mp4` | 2,8 s | Esport-Spielerwechsel vor Grün: drei schräge Paneele, deckend etwa 0,65–2,1 s, Wechsel bei 1,4 s |
 
-Erzeugt im Auftrag des Projektinhabers mit Google Gemini Omni Flash
-(`gemini-omni-1.1-flash`), mit einem Standbild des Titelbanners und des Logos als
-Vorlage. Prompts: `source/prompt-title.txt`, `source/prompt-switch.txt`.
-Schnitt: Titel 0,1–4,7 s, Spielerwechsel 0,4–3,9 s, `libx264 -crf 20 -preset
-veryslow`, AAC 128 kbit/s. Den Text im Banner schreibt der Companion selbst.
-Freigestellt wird per `colorkey` (RGB-Abstand, damit das dunkle Navy deckend
-bleibt) mit herausgerechnetem Grün. Bis 1,9 s füllt der Companion die grüne Mitte
-des Titelbilds mit Navy, damit dort kein Standbild durchscheint.
+Hintergrund ist das Sternennetz der Webseite (`components/fx/CyberBackground.tsx`
+im Repo `tecmon`): driftende Knoten, die sich in der Nähe violett verbinden,
+goldene Knoten und ein wandernder Lichtpunkt mit goldenen Leitungen.
+
+Beide Clips sind programmiert (keine KI): `source/esport-motion.html` zeichnet sie
+auf einem Canvas, `source/esport-render.cjs` speichert sie Bild für Bild
+(`node esport-render.cjs title 4.4 30 <Ordner>` bzw. `stinger 2.8 30`, `logo.webp`
+neben der HTML-Datei). Ton aus FFmpeg-Generatoren (Rauschen und Tiefton-Schlag).
+Kodierung `libx264 -crf 18 -preset veryslow`, AAC 128 kbit/s. Den Text im Banner
+schreibt der Companion selbst. Freigestellt wird per `colorkey` (RGB-Abstand) mit
+herausgerechnetem Grün; Grün bleibt danach höchstens so stark wie Rot oder Blau,
+damit an unscharfen Kanten kein grüner Rand stehen bleibt.
 
 ## Video-Paket Motion v1 (0.23.x)
 

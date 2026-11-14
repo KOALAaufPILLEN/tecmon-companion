@@ -30,7 +30,7 @@ export function playerSwitch({width,height,fps,nextFile,playerLength}){
  * name = Einblendung des neuen Spielernamens, outroText = Website/Kanal im Outro.
  */
 // Esport-Titelbild (Name im Banner, zerspringt in Stücke) und Esport-Spielerwechsel gelten für beide Stile.
-const ESPORT={title:'title.mp4',titleSeconds:4.6,titleText:[1.95,3.6],titleCover:[0.45,1.9],titleKey:[16,177,66],stinger:'switch.mp4',stingerSeconds:3.5,cut:1.85,name:[1.1,2.6],nameY:[452,512],key:[26,229,29]};
+const ESPORT={title:'title.mp4',titleSeconds:4.2,titleText:[0.95,3.0],titleKey:[0,255,0],stinger:'switch.mp4',stingerSeconds:2.8,cut:1.4,name:[0.85,1.95],nameY:[452,512],key:[0,255,0]};
 export const MOTION_STYLES=Object.freeze({
  a:Object.freeze({...ESPORT,intro:'intro.mp4',introSeconds:6.46,outro:'outro.mp4',outroSeconds:5.47,outroText:[3.7,5.3],outroY:[0.74,0.82]}),
  b:Object.freeze({...ESPORT,intro:'intro-b.mp4',introSeconds:6.97,outro:'outro-b.mp4',outroSeconds:5.47,outroText:[3.9,5.2],outroY:[0.88,0.94]}),
@@ -40,7 +40,10 @@ export function keyColor(key){return '0x'+key.map(v=>v.toString(16).padStart(2,'
 /** Freistellen mit herausgerechnetem Grün (weiche Kanten ohne grauen Schleier). */
 export function unmixGreen(key){
  const ch=(c,k)=>`${c}='clip((${c}(X,Y)-(255-alpha(X,Y))*${k}/255)*255/max(alpha(X,Y),8),0,255)'`;
- return [ch('r',key[0]),ch('g',key[1]),ch('b',key[2]),"a='alpha(X,Y)'"].join(':');
+ // Grün nach dem Herausrechnen höchstens so stark wie Rot oder Blau: keine grünen Ränder an
+ // unscharfen Kanten, Gold und Lila bleiben unverändert.
+ const g=ch('g',key[1]).replace(/^g='(.*)'$/,"g='min($1,max(r(X,Y),b(X,Y)))'");
+ return [ch('r',key[0]),g,ch('b',key[2]),"a='alpha(X,Y)'"].join(':');
 }
 /** Greenscreen-Spielerwechsel: Eingang 0 = Stinger vor Grün, 1 = letztes Bild der alten Szene,
  * 2 = erstes Bild der neuen Szene. Der Stinger wird freigestellt und über das Gameplay gelegt;
@@ -59,8 +62,8 @@ export function playerStinger({width,height,fps,nextFile,playerLength,style=MOTI
   // Bis zum Deckmoment hartes Freistellen (Figur bleibt deckend), danach weiches Freistellen mit
   // herausgerechnetem Grün, damit Partikel und Glühen ohne grauen Schleier über dem Gameplay liegen.
   `[0:v]scale=1280:720,setsar=1,fps=${fps},setpts=PTS-STARTPTS,split[g1][g2];`+
-  `[g1]colorkey=${key}:0.16:0.03,despill=type=green,scale=${width}:${height}[hard];`+
-  `[g2]colorkey=${key}:0.15:0.07,format=gbrap,geq=${unmix},scale=${width}:${height}[soft];`+
+  `[g1]colorkey=${key}:0.16:0.03,format=gbrap,geq=${unmix},scale=${width}:${height}[hard];`+
+  `[g2]colorkey=${key}:0.18:0.10,format=gbrap,geq=${unmix},scale=${width}:${height}[soft];`+
   `[under][hard]overlay=0:0:eof_action=pass:enable='lt(t,${style.cut})'[o1];`+
   `[o1][soft]overlay=0:0:eof_action=pass:enable='gte(t,${style.cut})',format=yuv420p,`+
   [text('switch-label.txt',28,style.nameY[0],'0x85e8ef'),text(nextFile,nameSize,style.nameY[1],'0xefc96d')].join(',')+'[v]';

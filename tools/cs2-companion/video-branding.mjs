@@ -259,8 +259,8 @@ export async function renderBranding({
         ...(showSubtitle ? ["subtitle.txt"] : []),
       ];
       const graph =
-        `[1:v]scale=${w}:${h},setsar=1,fps=${fps},format=yuv420p,trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${style.titleSeconds + 0.5},drawbox=color=0x0b1030:t=fill:enable='between(t,${style.titleCover[0]},${style.titleCover[1]})'[bg];` +
-        `[0:v]scale=1280:720,setsar=1,fps=${fps},setpts=PTS-STARTPTS,colorkey=${keyColor(style.titleKey)}:0.15:0.07,format=gbrap,geq=${unmixGreen(style.titleKey)},scale=${w}:${h}[card];` +
+        `[1:v]scale=${w}:${h},setsar=1,fps=${fps},format=yuv420p,trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${style.titleSeconds + 0.5}${style.titleCover ? `,drawbox=color=0x0b1030:t=fill:enable='between(t,${style.titleCover[0]},${style.titleCover[1]})'` : ""}[bg];` +
+        `[0:v]scale=1280:720,setsar=1,fps=${fps},setpts=PTS-STARTPTS,colorkey=${keyColor(style.titleKey)}:0.17:0.09,format=gbrap,geq=${unmixGreen(style.titleKey)},scale=${w}:${h}[card];` +
         `[bg][card]overlay=0:0:eof_action=pass,format=yuv420p,` +
         [
           text("map.txt", 24, "(w-text_w)/2", "h*0.415", "0x9cefff", fade + look),

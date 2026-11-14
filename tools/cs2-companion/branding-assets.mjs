@@ -65,15 +65,15 @@ export async function loadBrandingPack(directory, request = fetch) {
  */
 export const MOTION_URL =
   "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.24.0/TecMon-Motion-v2.json";
-export const MOTION_SHA256 = "afb69c9b48724867baa46fb38baa15e7a2b5601a6a84ead1ca12eeca6531fdf9";
+export const MOTION_SHA256 = "6c45809c0d91b9baecf5facd1f72284bc88799574a45c8c1070957b02ce2f1c4";
 export const MOTION_FILE = "TecMon-Motion-v2.json";
 export const MOTION_FILES = Object.freeze({
   "intro.mp4": "c29e4a6f7c9f3e1b110ae5710bb80625b1e965f105dc8ea48536ad8ea247d72b",
   "outro.mp4": "5a2b145dc5eb093470e1be1471987622ed005ea21549e490b3bf047a334cbcfd",
   "intro-b.mp4": "0c1628cba6ce74e26d14ec63245d6d556e58c8cf2e3a927489b025165d3c23c0",
   "outro-b.mp4": "bd59ab6e01d936901fc1324ae99884679793839a8ec0eccf3e0a6fd08e87ba8d",
-  "title.mp4": "21430ce6e99cd07847e429371129d4d1ee7059f0be1c15ed7d8a9913e1f4e7fa",
-  "switch.mp4": "9aa05036a54d91974a8605a4b45c70b86a0429bbc5c02cc6bf46cabcd5a052de",
+  "title.mp4": "6980ae8f79e0b526cb07ec1ec6de40699007e35d050661bdf2ce4c9865d379b5",
+  "switch.mp4": "1b38f8d5eafe23d87de86302d5ddd49559170925c5267db7f2ecc3c0daf7d38e",
 });
 const MOTION_LIMIT = 16 * 1024 * 1024;
 export function verifyMotionPack(bytes) {

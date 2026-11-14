@@ -71,12 +71,13 @@ Neueste Version zuerst.
 - **Animiertes Esport-Titelbild:** Nach dem TecMon-Intro schlagen Seitenpaneele
   und ein goldenes Banner ein, das Logo fällt oben hinein. In der Mitte des
   Banners stehen Titel bzw. Spielername, darüber die Map, darunter die Spieler.
-  Danach zerspringt das Bild wie Glas in Stücke und gibt das Gameplay frei
-  (4,6 s, darunter steht das erste Bild der ersten Szene).
+  Dahinter läuft das Sternennetz der Webseite. Danach zerspringt das Bild in
+  Stücke und gibt das Gameplay frei (4,2 s, darunter steht das erste Bild der
+  ersten Szene).
 - **Neuer Spielerwechsel ohne Figur:** Drei schräge Paneele (Gold, Lila, Navy)
   wischen über das Bild, in der Mitte erscheint der nächste Spieler, dann wischen
-  sie wieder heraus (3,5 s). Gilt für beide Video-Stile. Beide Clips sind mit
-  Google-Video-KI vor Greenscreen erzeugt und werden freigestellt.
+  sie wieder heraus (2,8 s). Gilt für beide Video-Stile. Beide Clips sind
+  programmiert, vor Greenscreen gerendert und werden ohne grüne Ränder freigestellt.
 - **Neues Video-Paket `TecMon-Motion-v2.json`** mit neuen festen Prüfsummen; das
   alte v1-Paket wird aus dem Branding-Ordner gelöscht.
 
