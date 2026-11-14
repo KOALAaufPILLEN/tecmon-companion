@@ -2,10 +2,13 @@ import path from "node:path";
 import { readFile, writeFile, mkdir, mkdtemp, rm, rename, lstat, realpath } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { createHash } from "node:crypto";
-import { sha256, BRANDING_FILES } from "./branding-assets.mjs";
+import { sha256, BRANDING_FILES, MOTION_FILES } from "./branding-assets.mjs";
 import { validateJob } from "./job.mjs";
 import { runTool } from "./managed-installation.mjs";
-import { cyberHud, playerSwitch, SWITCH_SECONDS } from "./cyber-hud.mjs";
+import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, STINGER_SECONDS } from "./cyber-hud.mjs";
+
+/** Länge von intro.mp4 aus dem Video-Paket (5,48 s), knapp darunter geschnitten. */
+export const MOTION_INTRO_SECONDS = 5.45;
 
 export const visualPlayerName = (value) =>
   String(value)
@@ -94,6 +97,7 @@ export async function renderBranding({
   progress = () => {},
   execute = lockedFfmpeg,
   probe = probeVideo,
+  motion = null,
 }) {
   job = validateJob(job);
   if (!job.branding.enabled) throw new Error("Branding ist für diesen Auftrag deaktiviert.");
@@ -118,6 +122,14 @@ export async function renderBranding({
       if (!Buffer.isBuffer(assets[name]) || sha256(assets[name]) !== hash)
         throw new Error("Branding-Arbeitskopie stimmt nicht mit der festen Prüfsumme überein.");
       await artifact(name, assets[name]);
+    }
+    // Animiertes Intro und Szenenwechsel nur aus dem geprüften Video-Paket; sonst statisch wie bisher.
+    if (motion) {
+      for (const [name, hash] of Object.entries(MOTION_FILES)) {
+        if (!Buffer.isBuffer(motion[name]) || sha256(motion[name]) !== hash)
+          throw new Error("Video-Branding stimmt nicht mit der festen Prüfsumme überein.");
+        await artifact("motion-" + name, motion[name]);
+      }
     }
     const directoryReal = await realpath(directory);
     const sources = [];
@@ -217,11 +229,23 @@ export async function renderBranding({
     }
     const background = `color=c=0x0d0d16:s=${w}x${h}:r=${fps}`;
     const chrome = `drawbox=x=0:y=ih*0.85:w=iw:h=${n(5)}:color=0x8b4dff:t=fill,drawbox=x=iw*0.08:y=ih*0.92:w=iw*0.84:h=${n(2)}:color=0xefc96d:t=fill,drawbox=x=0:y=ih*0.94:w=iw*0.35:h=ih*0.06:color=0x8b4dff@0.35:t=fill`;
+    if (job.branding.intro && motion) {
+      progress("Animiertes TecMon-Intro wird eingefügt …");
+      await encode(
+        "intro-film",
+        ["-i", "motion-intro.mp4"],
+        `[0:v]scale=${w}:${h},setsar=1,fps=${fps},format=yuv420p[v]`,
+        "0:a:0",
+        MOTION_INTRO_SECONDS,
+        ["motion-intro.mp4"],
+      );
+    }
+    const titleSeconds = motion ? 2.5 : 3;
     if (job.branding.intro) {
       progress("TecMon-Intro wird lokal erstellt …");
       const titleSize = Math.min(112, Math.max(48, Math.round(1700 / Math.max(title.length, 12))));
       const graph =
-        `[0:v]scale=${w}:${h},trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=3,boxblur=10:1,drawbox=color=black@0.75:t=fill,${chrome}[bg];[1:v]scale=${n(450)}:${n(450)}[logo];[bg][logo]overlay=(W-w)/2:H*0.06,` +
+        `[0:v]scale=${w}:${h},trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${titleSeconds},boxblur=10:1,drawbox=color=black@0.75:t=fill,${chrome}[bg];[1:v]scale=${n(450)}:${n(450)}[logo];[bg][logo]overlay=(W-w)/2:H*0.06,` +
         [
           text("title.txt", titleSize, "(w-text_w)/2", "h*0.54", "0xefc96d"),
           ...(new Set(job.sequences.map((s) => s.steamId)).size > 1
@@ -233,7 +257,7 @@ export async function renderBranding({
           text("map.txt", 26, "(w-text_w)/2", "h*0.87", "0xefc96d"),
           "setsar=1",
           "fade=t=in:st=0:d=0.2",
-          "fade=t=out:st=2.8:d=0.2",
+          `fade=t=out:st=${titleSeconds - 0.2}:d=0.2`,
         ].join(",") +
         "[v]";
       await encode(
@@ -241,7 +265,7 @@ export async function renderBranding({
         ["-i", sources[0].file, "-loop", "1", "-i", "logo.webp"],
         graph,
         "2:a:0",
-        3,
+        titleSeconds,
         [
           "title.txt",
           "players.txt",
@@ -266,7 +290,12 @@ export async function renderBranding({
         progress(`Cyberpunk-Spielerwechsel zu ${displayName} …`);
         const previous=sources[i-1];
         const previousFrame=Math.max(0,previous.info.duration-1/fps);
-        await encode(`switch-${i}`,
+        if(motion){
+          await encode(`switch-${i}`,
+            ['-ss',previousFrame.toFixed(6),'-i',previous.file,'-i',source.file,'-i','motion-stinger.mp4'],
+            playerStinger({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}),'2:a:0',STINGER_SECONDS,
+            [label,'motion-stinger.mp4','switch-label.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);
+        }else await encode(`switch-${i}`,
           ['-ss',previousFrame.toFixed(6),'-i',previous.file,'-i',source.file,'-loop','1','-i','cyber-stinger.png','-loop','1','-i','logo.webp'],
           playerSwitch({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}), '4:a:0',SWITCH_SECONDS,
           [label,'cyber-stinger.png','switch-label.txt','switch-footer.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);

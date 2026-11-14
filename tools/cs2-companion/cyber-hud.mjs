@@ -24,3 +24,22 @@ export function playerSwitch({width,height,fps,nextFile,playerLength}){
   [text('switch-label.txt',30,392,'0x85e8ef'),text(nextFile,Math.min(100,Math.max(36,Math.floor(1200/Math.max(playerLength,12)))),465,'0xefc96d'),text('switch-footer.txt',24,675,'0xbba4ff')].join(',')+
   `[curtain];[game][curtain]overlay=x='if(lt(t,0.32),W*(1-t/0.32),if(lt(t,0.78),0,-W*(t-0.78)/0.32))':y=0:eval=frame[v]`;
 }
+
+export const STINGER_SECONDS=2.1;
+/** Animierter Spielerwechsel aus dem geprüften Video-Paket (stinger.mp4, Eingang 2).
+ * Altes Standbild blendet in den Stinger, im Partikelsturm erscheint der neue Spielername,
+ * am Ende blendet der Stinger in das erste Bild der nächsten Szene. Kein Gameplay wird gekürzt.
+ */
+export function playerStinger({width,height,fps,nextFile,playerLength}){
+ const n=v=>Math.max(1,Math.round(v*width/1920));
+ const prep=`scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,settb=AVTB`;
+ const freeze=(input,label)=>`[${input}:v]${prep},trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${STINGER_SECONDS+0.5}[${label}];`;
+ const fade=`alpha='if(lt(t,1.4),(t-1.25)/0.15,if(gt(t,1.8),max(0,(2.05-t)/0.25),1))':enable='between(t,1.25,2.05)'`;
+ const text=(file,size,y,color)=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:borderw=${n(3)}:bordercolor=black@0.75:shadowcolor=black@0.85:shadowx=${n(2)}:shadowy=${n(2)}:x=(w-text_w)/2:y=${n(y)}:${fade}`;
+ const nameSize=Math.min(96,Math.max(36,Math.floor(1200/Math.max(playerLength,12))));
+ return freeze(0,'old')+freeze(1,'next')+
+  `[2:v]${prep},setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=0.5[st];`+
+  `[old][st]xfade=transition=fade:duration=0.22:offset=0[a];`+
+  `[a][next]xfade=transition=fade:duration=0.35:offset=${(STINGER_SECONDS-0.35).toFixed(2)},`+
+  [text('switch-label.txt',28,735,'0x85e8ef'),text(nextFile,nameSize,775,'0xefc96d')].join(',')+'[v]';
+}

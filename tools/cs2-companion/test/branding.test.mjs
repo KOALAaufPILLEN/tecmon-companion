@@ -11,6 +11,10 @@ import {
   BRANDING_SHA256,
   BRANDING_URL,
   sha256,
+  verifyMotionPack,
+  loadMotionPack,
+  MOTION_SHA256,
+  MOTION_URL,
 } from "../branding-assets.mjs";
 import {
   renderBranding,
@@ -20,6 +24,7 @@ import {
 } from "../video-branding.mjs";
 import { validateJob } from "../job.mjs";
 const packed = await readFile(new URL("../branding/TecMon-Branding-v3.json", import.meta.url));
+const motionPacked = await readFile(new URL("../branding/TecMon-Motion-v1.json", import.meta.url));
 const job = {
   format: "tecmon-cs2-job",
   version: 1,
@@ -199,5 +204,79 @@ test("asset integrity failure stops the recording pipeline before CS2 and cannot
   assert.equal(
     (await fetch(base + `/api/video?job=${imported.id}&file=0`, { headers })).status,
     404,
+  );
+});
+
+test("motion pack is pinned: offline falls back to null, changed bytes always fail closed", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-motion-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  assert.equal(sha256(motionPacked), MOTION_SHA256);
+  assert.match(MOTION_URL, /releases\/download\/v\d+\.\d+\.\d+\/TecMon-Motion-v1\.json$/);
+  assert.equal(await loadMotionPack(path.join(dir, "offline"), async () => { throw new Error("offline"); }), null);
+  assert.equal(await loadMotionPack(path.join(dir, "missing"), async () => new Response("nope", { status: 404 })), null);
+  let calls = 0;
+  const files = await loadMotionPack(dir, async (url) => {
+    calls++;
+    assert.equal(url, MOTION_URL);
+    return new Response(motionPacked);
+  });
+  assert.ok(files["intro.mp4"].length > 100000 && files["stinger.mp4"].length > 100000);
+  await loadMotionPack(dir, async () => { throw new Error("cache should avoid download"); });
+  assert.equal(calls, 1);
+  const changed = Buffer.from(motionPacked);
+  changed[200] ^= 1;
+  assert.throws(() => verifyMotionPack(changed), /Prüfsumme/);
+  await assert.rejects(loadMotionPack(path.join(dir, "evil"), async () => new Response(changed)), /Prüfsumme/);
+  assert.deepEqual(await readdir(path.join(dir, "evil")), []);
+});
+
+test("animated intro precedes the title card and player switches use the checked stinger", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-brand-motion-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const spec = validateJob(job);
+  for (let i = 0; i < spec.sequences.length; i++)
+    await writeFile(path.join(dir, sequenceFile(spec.sequences[i], i)), "source " + i);
+  const graphs = {};
+  let list = "";
+  await renderBranding({
+    job: spec,
+    directory: dir,
+    assets: verifyBrandingPack(packed),
+    motion: verifyMotionPack(motionPacked),
+    ffmpeg: "unused",
+    launcher: "unused",
+    probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 2, audio: true }),
+    execute: async (request) => {
+      for (const file of request.files)
+        assert.equal(sha256(await readFile(file.path)), file.sha256);
+      const index = request.args.indexOf("-filter_complex_script");
+      const name = path.basename(request.args.at(-1));
+      if (index !== -1) {
+        graphs[name] = await readFile(path.join(request.cwd, request.args[index + 1]), "utf8");
+        if (name !== "intro-film.mp4") assert.ok(!request.args.includes("motion-intro.mp4"));
+      } else list = await readFile(path.join(request.cwd, "parts.txt"), "utf8");
+      await writeFile(request.args.at(-1), "encoded fixture");
+    },
+  });
+  assert.equal(
+    list,
+    "file 'intro-film.mp4'\nfile 'intro.mp4'\nfile 'scene-0.mp4'\nfile 'switch-1.mp4'\nfile 'scene-1.mp4'",
+  );
+  assert.ok(graphs["switch-1.mp4"].includes("xfade"));
+  assert.ok(graphs["switch-1.mp4"].includes("textfile=name-1.txt"));
+  assert.ok(graphs["switch-1.mp4"].includes("expansion=none"));
+  assert.ok(graphs["intro.mp4"].includes("stop_duration=2.5"));
+  const changed = verifyMotionPack(motionPacked);
+  changed["stinger.mp4"][10] ^= 1;
+  await assert.rejects(
+    renderBranding({
+      job: spec,
+      directory: dir,
+      assets: verifyBrandingPack(packed),
+      motion: changed,
+      probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 2, audio: true }),
+      execute: async () => assert.fail("encoder must not run"),
+    }),
+    /Prüfsumme/,
   );
 });

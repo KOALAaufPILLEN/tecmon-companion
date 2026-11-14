@@ -57,3 +57,75 @@ export async function loadBrandingPack(directory, request = fetch) {
   await rename(temporary, target);
   return files;
 }
+
+/**
+ * Animiertes Intro und Szenenwechsel (ab 0.23.0). Eigenes Paket, damit das kleine
+ * v3-Paket gleich bleibt. Feste URL und feste SHA256 wie bei v3: Bei Abweichung
+ * wird nichts verwendet und der Auftrag bricht ab.
+ */
+export const MOTION_URL =
+  "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.23.0/TecMon-Motion-v1.json";
+export const MOTION_SHA256 = "e88136364b4e120f723ca4fff5d61e47cd11e527548b8aaaabf3f4c3e950b476";
+export const MOTION_FILES = Object.freeze({
+  "intro.mp4": "1d6a659d1f29548ec09a359b041fa720e1a606fad47217c5fe915f6183c17d1f",
+  "stinger.mp4": "d2fc4ff9151783898920aa2a105821452a941cdb07775900169cad8499b15c26",
+});
+const MOTION_LIMIT = 8 * 1024 * 1024;
+export function verifyMotionPack(bytes) {
+  if (bytes.length > MOTION_LIMIT || sha256(bytes) !== MOTION_SHA256)
+    throw new Error("Prüfsumme des Video-Brandings stimmt nicht. Geänderte Videos werden nicht verwendet.");
+  const pack = JSON.parse(bytes.toString("utf8"));
+  if (
+    pack.format !== "tecmon-motion" ||
+    pack.version !== 1 ||
+    !pack.files ||
+    Object.keys(pack.files).length !== Object.keys(MOTION_FILES).length
+  )
+    throw new Error("Ungültiges Video-Branding-Paket.");
+  const files = {};
+  for (const [name, hash] of Object.entries(MOTION_FILES)) {
+    if (typeof pack.files[name] !== "string") throw new Error("Video-Branding-Datei fehlt.");
+    const data = Buffer.from(pack.files[name], "base64");
+    if (sha256(data) !== hash) throw new Error("Video-Branding-Datei wurde verändert (Prüfsumme).");
+    files[name] = data;
+  }
+  return files;
+}
+/**
+ * Lädt das Paket einmal und hält es im Branding-Ordner. Netzfehler liefern null
+ * (dann bleibt das bisherige statische Intro). Falsche Prüfsummen werfen immer.
+ */
+export async function loadMotionPack(directory, request = fetch) {
+  await mkdir(directory, { recursive: true });
+  const target = path.join(directory, "TecMon-Motion-v1.json");
+  try {
+    return verifyMotionPack(await readFile(target));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  let response;
+  try {
+    response = await request(MOTION_URL, { signal: AbortSignal.timeout(180000) });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  let size = 0;
+  const chunks = [];
+  try {
+    for await (const chunk of response.body) {
+      size += chunk.length;
+      if (size > MOTION_LIMIT) break;
+      chunks.push(chunk);
+    }
+  } catch {
+    return null;
+  }
+  if (size > MOTION_LIMIT) throw new Error("Video-Branding-Paket zu groß.");
+  const bytes = Buffer.concat(chunks);
+  const files = verifyMotionPack(bytes);
+  const temporary = target + "." + randomUUID() + ".tmp";
+  await writeFile(temporary, bytes, { mode: 0o600 });
+  await rename(temporary, target);
+  return files;
+}
