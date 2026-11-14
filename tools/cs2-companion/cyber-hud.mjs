@@ -30,8 +30,8 @@ export function playerSwitch({width,height,fps,nextFile,playerLength}){
  * name = Einblendung des neuen Spielernamens, outroText = Website/Kanal im Outro.
  */
 export const MOTION_STYLES=Object.freeze({
- a:Object.freeze({intro:'intro.mp4',introSeconds:6.46,titleFrame:6.0,stinger:'stinger.mp4',stingerSeconds:3.3,cut:1.55,name:[1.8,3.0],outro:'outro.mp4',outroSeconds:5.47,outroText:[3.7,5.3],outroY:[0.74,0.82]}),
- b:Object.freeze({intro:'intro-b.mp4',introSeconds:6.97,titleFrame:6.6,stinger:'stinger-b.mp4',stingerSeconds:3.3,cut:2.1,name:[2.45,3.25],outro:'outro-b.mp4',outroSeconds:5.47,outroText:[3.9,5.2],outroY:[0.88,0.94]}),
+ a:Object.freeze({intro:'intro.mp4',introSeconds:6.46,stinger:'stinger.mp4',stingerSeconds:3.3,cut:1.55,name:[1.8,3.0],outro:'outro.mp4',outroSeconds:5.47,outroText:[3.7,5.3],outroY:[0.74,0.82]}),
+ b:Object.freeze({intro:'intro-b.mp4',introSeconds:6.97,stinger:'stinger-b.mp4',stingerSeconds:3.3,cut:2.1,name:[2.45,3.25],outro:'outro-b.mp4',outroSeconds:5.47,outroText:[3.9,5.2],outroY:[0.88,0.94]}),
 });
 /** Greenscreen-Spielerwechsel: Eingang 0 = Stinger vor Grün, 1 = letztes Bild der alten Szene,
  * 2 = erstes Bild der neuen Szene. Der Stinger wird freigestellt und über das Gameplay gelegt;
@@ -56,19 +56,6 @@ export function playerStinger({width,height,fps,nextFile,playerLength,style=MOTI
   `[under][hard]overlay=0:0:eof_action=pass:enable='lt(t,${style.cut})'[o1];`+
   `[o1][soft]overlay=0:0:eof_action=pass:enable='gte(t,${style.cut})',format=yuv420p,`+
   [text('switch-label.txt',28,735,'0x85e8ef'),text(nextFile,nameSize,775,'0xefc96d')].join(',')+'[v]';
-}
-
-/** Titelkarte im Video-Stil: Das letzte Intro-Bild schrumpft nach oben, darunter erscheinen die Texte.
- * Kein Standbild-Logo über Gameplay; der Übergang aus dem Intro ist nahtlos, weil das Bild gleich ist.
- */
-export function motionTitle({width,height,fps,seconds,texts}){
- const ease=`min(t/0.6,1)`;
- return `[0:v]scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${seconds},split[a][b];`+
-  `[a]boxblur=24:2,eq=brightness=-0.12:saturation=0.9[bg];`+
-  `[b]scale=w='trunc(iw*(1-0.4*${ease})/2)*2':h=-2:eval=frame,drawbox=x=0:y=0:w=iw:h=ih:color=0xefc96d@0.9:t=${Math.max(2,Math.round(4*width/1920))}[card];`+
-  `[bg][card]overlay=x='(W-w)/2':y='(H-h)/2-H*0.17*${ease}':eval=frame,`+
-  `drawbox=x=iw*0.08:y=ih*0.655:w=iw*0.84:h=${Math.max(1,Math.round(2*width/1920))}:color=0xefc96d@0.8:t=fill,`+
-  texts.join(',')+',setsar=1[v]';
 }
 
 /** Überblendlänge je Übergang (Sekunden), höchstens ein Drittel des kürzeren Teils. */

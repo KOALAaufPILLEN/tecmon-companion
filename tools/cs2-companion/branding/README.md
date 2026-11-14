@@ -39,7 +39,7 @@ eigenem Intro als Bildvorlage. Schnitte mit FFmpeg:
   Bis dahin hartes Freistellen, danach weiches mit herausgerechnetem Grün.
 - Outro A: 0,0–5,5 s. Outro B: 0,0–5,5 s, beginnt mit dem letzten Bild von
   Intro B. Website und Kanal blendet der Companion ein.
-- Titelkarte: Das Intro-Bild bei `titleFrame` schrumpft nach oben, darunter
-  Titel, Spieler, Untertitel und Map.
+- Keine eigene Titelkarte: Titel, Spieler, Untertitel und Map werden über die
+  ersten Sekunden der ersten Szene geblendet (ab 0.23.1).
 
 Alle mit `libx264 -crf 20/21 -preset veryslow`, AAC 128 kbit/s, 48 kHz, ohne Metadaten.

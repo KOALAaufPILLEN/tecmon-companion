@@ -66,6 +66,13 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.23.1: Gameplay direkt nach dem Intro
+
+- **Keine Titelkarte mehr mit Video-Paket:** Nach dem TecMon-Intro startet sofort
+  das Gameplay der ersten Szene. Titel, Spieler, Untertitel und Map werden in den
+  ersten Sekunden darüber eingeblendet und wieder ausgeblendet. Ohne Video-Paket
+  bleibt die bisherige Titelkarte.
+
 ### Neu in 0.23.0: Animiertes Intro, Spielerwechsel und Outro
 
 - **Neues TecMon-Intro im Highlight-Video:** TecMon schwebt ins neblige
@@ -78,8 +85,6 @@ Neueste Version zuerst.
 - **Neuer Spielerwechsel im Teamvideo:** vor Greenscreen erzeugt und über das
   Gameplay gelegt. A: Lichtspur mit Partikeln, B: TecMon fliegt auf die Kamera
   zu. Darin erscheint der Name des nächsten Spielers.
-- **Neue Titelkarte:** Das letzte Intro-Bild schrumpft nach oben, darunter Titel
-  und Spieler. Kein Standbild-Logo mehr über dem Gameplay.
 - **Animiertes Outro:** TecMon winkt und fliegt davon, das Logo bleibt stehen,
   darunter Website und Kanal, dann Abblende.
 - **Weiche Übergänge statt harter Schnitte:** Intro, Titelkarte, Szenen,
