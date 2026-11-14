@@ -71,10 +71,10 @@ Neueste Version zuerst.
 - **Animiertes Esport-Titelbild:** Nach dem TecMon-Intro schlagen Seitenpaneele
   und ein goldenes Banner ein, das Logo fällt oben hinein. In der Mitte des
   Banners stehen Titel bzw. Spielername, darüber die Map, darunter die Spieler.
-  Dahinter läuft das Sternennetz der Webseite. Danach zerspringt das Bild in
-  Stücke und gibt das Gameplay frei (4,2 s, darunter steht das erste Bild der
-  ersten Szene).
-- **Neuer Spielerwechsel ohne Figur:** Drei schräge Paneele (Gold, Lila, Navy)
+  Dahinter läuft das Sternennetz der Webseite. Danach wischt das Bild als
+  schräger Streifen nach links weg, dunkellila und goldene Streifen folgen und
+  geben das Gameplay frei (3,8 s, darunter steht das erste Bild der ersten Szene).
+- **Neuer Spielerwechsel ohne Figur:** Drei schräge Paneele (Gold, Dunkellila, Navy)
   wischen über das Bild, in der Mitte erscheint der nächste Spieler, dann wischen
   sie wieder heraus (2,8 s). Gilt für beide Video-Stile. Beide Clips sind
   programmiert, vor Greenscreen gerendert und werden ohne grüne Ränder freigestellt.

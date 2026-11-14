@@ -30,7 +30,7 @@ export function playerSwitch({width,height,fps,nextFile,playerLength}){
  * name = Einblendung des neuen Spielernamens, outroText = Website/Kanal im Outro.
  */
 // Esport-Titelbild (Name im Banner, zerspringt in Stücke) und Esport-Spielerwechsel gelten für beide Stile.
-const ESPORT={title:'title.mp4',titleSeconds:4.2,titleText:[0.95,3.0],titleKey:[0,255,0],stinger:'switch.mp4',stingerSeconds:2.8,cut:1.4,name:[0.85,1.95],nameY:[452,512],key:[0,255,0]};
+const ESPORT={title:'title.mp4',titleSeconds:3.8,titleText:[0.95,3.0],titleKey:[0,255,0],stinger:'switch.mp4',stingerSeconds:2.8,cut:1.4,name:[0.85,1.95],nameY:[452,512],key:[0,255,0]};
 export const MOTION_STYLES=Object.freeze({
  a:Object.freeze({...ESPORT,intro:'intro.mp4',introSeconds:6.46,outro:'outro.mp4',outroSeconds:5.47,outroText:[3.7,5.3],outroY:[0.74,0.82]}),
  b:Object.freeze({...ESPORT,intro:'intro-b.mp4',introSeconds:6.97,outro:'outro-b.mp4',outroSeconds:5.47,outroText:[3.9,5.2],outroY:[0.88,0.94]}),
@@ -71,7 +71,7 @@ export function playerStinger({width,height,fps,nextFile,playerLength,style=MOTI
 
 /** Überblendlänge je Übergang (Sekunden), höchstens ein Drittel des kürzeren Teils. */
 export function blendSeconds(previous,next){
- const base=previous.kind==='film'?0.5:next.kind==='switch'?0.3:previous.kind==='switch'?0.4:previous.kind==='title'||next.kind==='outro'?0.45:0.3;
+ const base=previous.kind==='film'?0.5:next.kind==='switch'?0.3:previous.kind==='switch'?0.4:previous.kind==='title'?0.12:next.kind==='outro'?0.45:0.3;
  return Math.min(base,previous.duration/3,next.duration/3);
 }
 /** Endmontage mit echten Überblendungen statt harter Schnitte: Bild per xfade, Ton per acrossfade. */
