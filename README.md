@@ -66,6 +66,14 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.32.1: Figur sagt, was sie gerade am Video macht
+
+- Während ein Video entsteht, zeigt die Figur eine Sprechblase mit dem aktuellen
+  Schritt, etwa „Aktuell arbeite ich am Video-Branding, das dauert kurz …“
+  (Download, Vorbereitung, Aufnahme, Branding, fertig). Die Blase bleibt stehen,
+  bis der nächste Schritt kommt; ein Klick blendet sie aus. Sie nimmt CS2 nie
+  den Fokus.
+
 ### Neu in 0.32.0: Messer und Handschuhe im Skin-Tausch (Versuch)
 
 - Mit eingeschaltetem Skin-Tausch meldet der Companion `skin-swap-v2`: Auf

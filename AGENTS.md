@@ -272,6 +272,10 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   dort ergänzen, alles andere im vollständigen Menü. Dessen Einträge zeichnet
   `TecMonMenu` als Buttons. Keine Windows-Standarddialoge für Fragen während
   des Spiels.
+- Fortschritt beim Video: `/api/state` liefert `work` aus `workState()` (`work-status.mjs`),
+  nur Status, Schritt und feste Texte, keine Pfade oder Protokollzeilen. `ShowWork()` in
+  `TecMon.cs` zeigt ihn als stehende Sprechblase (`Present(..., sticky)`), „Fertig“ nur für
+  einen selbst gesehenen Auftrag.
 - Das Linksklick-Fenster (`?desktop=1`) gruppiert die Karten in Reiter
   (`desktopSections()` in `public/app.js`). Neue Karten dort einer Gruppe zuordnen.
 
