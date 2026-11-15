@@ -31,7 +31,8 @@ import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
 import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { createPet, quizQuestion } from "./personality.mjs";
-import { createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
+import { createCfgLibrary } from "./cfg-library.mjs";
+import { createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, createOverlaySettings, cs2WindowMode, OVERLAY_NOTICE, OVERLAY_NOTICE_VERSION, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
 import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { checkPostgres, postgresEnvironment } from "./postgresql.mjs";
@@ -250,7 +251,23 @@ export async function createCompanion({
     return createReadStream(file).on("error", () => res.destroy()).pipe(res);
   }
   const crosshair = await createCrosshairSettings(installation?.profileDir || dataDir);
-  const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES });
+  const overlay = await createOverlaySettings(installation?.profileDir || dataDir);
+  const cfgs = await createCfgLibrary(installation?.profileDir || dataDir);
+  const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES, overlay: { ...overlay.get(), mode: windowMode, notice: OVERLAY_NOTICE, noticeVersion: OVERLAY_NOTICE_VERSION } });
+  /* CS2-Anzeigemodus aus cs2_video.txt, höchstens alle 10 Sekunden gelesen und nur bei eingeschaltetem Overlay. */
+  let windowMode = "unknown", windowModeAt = 0;
+  const refreshWindowMode = () => {
+    if (!overlay.get().enabled || Date.now() - windowModeAt < 10000) return;
+    windowModeAt = Date.now();
+    cs2WindowMode().then((mode) => { windowMode = mode; }, () => {});
+  };
+  /** Für die Figur: Overlay nur mit CS2-Paket, eingeschaltet, bestätigt und nicht im echten Vollbild. */
+  const overlayState = () => {
+    const o = overlay.get();
+    refreshWindowMode();
+    const on = games.has("cs2") && o.enabled && o.accepted;
+    return { enabled: on && (windowMode === "borderless" || windowMode === "unknown"), wanted: on, mode: windowMode, crosshair: crosshair.get() };
+  };
   /* Radarbilder bringt CS Demo Manager mit (resources/static/images/maps/cs2/radars). Nur lokal lesen. */
   function radarPath(map) {
     if (!/^de_[a-z0-9_]+$/.test(map) || !detected.csdm) return "";
@@ -986,12 +1003,14 @@ export async function createCompanion({
           pet: pet.state(),
           games: games.state(),
           clips: clips.state(),
+          overlay: overlayState(),
           downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
         });
       if (req.method === "GET" && url.pathname === "/api/pet/quiz") return json(res, 200, quizQuestion());
       if (req.method === "GET" && url.pathname === "/api/crosshair") return json(res, 200, crosshairState());
+      if (req.method === "GET" && url.pathname === "/api/cfgs") return json(res, 200, cfgs.state(detected.cs2));
       if (req.method === "GET" && url.pathname === "/api/clips")
         return json(res, 200, { clips: await clips.list(), buffer: clips.state(), folder: clips.dir });
       if (req.method === "GET" && url.pathname === "/api/clips/devices")
@@ -1064,6 +1083,8 @@ export async function createCompanion({
           await syncGsiConfig();
           await insights.clear();
           await crosshair.reset(detected.cs2);
+          await overlay.reset();
+          await cfgs.reset(detected.cs2);
         }
         await games.remove(id);
         if (id === "dota2") {
@@ -1099,7 +1120,7 @@ export async function createCompanion({
         await dotaGsi.setFeatures(update);
         return json(res, 200, { dota: dotaState() });
       }
-      if (url.pathname.startsWith("/api/gsi/") || url.pathname.startsWith("/api/crosshair/")) {
+      if (url.pathname.startsWith("/api/gsi/") || url.pathname.startsWith("/api/crosshair/") || url.pathname.startsWith("/api/cfgs/")) {
         if (!games.has("cs2")) throw new Error("Das CS2-Paket ist nicht installiert. Unter „Games“ installieren.");
       }
       if (url.pathname === "/api/gsi/enable") {
@@ -1124,6 +1145,29 @@ export async function createCompanion({
             ? `Fadenkreuz gespeichert. In CS2 einmal in die Konsole tippen: ${CROSSHAIR_EXEC}`
             : "Fadenkreuz gespeichert. CS2 wurde nicht gefunden: Befehle kopieren und in die CS2-Konsole einfügen.",
         });
+      }
+      if (url.pathname === "/api/crosshair/overlay") {
+        const state = await overlay.set(input.enabled === true, input.accept);
+        return json(res, 200, {
+          ...crosshairState(),
+          message: state.enabled
+            ? "Fadenkreuz-Overlay an. Es erscheint, sobald CS2 im Vollbild-Fenstermodus vorn liegt."
+            : "Fadenkreuz-Overlay aus.",
+        });
+      }
+      if (url.pathname === "/api/cfgs/install") {
+        const id = String(input.id || "").slice(0, 40);
+        const result = await cfgs.install(id, typeof input.key === "string" ? input.key.slice(0, 20) : "", detected.cs2);
+        return json(res, 200, {
+          ...cfgs.state(detected.cs2),
+          message: result.written
+            ? `cfg gespeichert. In CS2 einmal in die Konsole tippen: ${result.exec}`
+            : "cfg gemerkt. CS2 wurde nicht gefunden: Befehle kopieren und in die CS2-Konsole einfügen.",
+        });
+      }
+      if (url.pathname === "/api/cfgs/remove") {
+        await cfgs.remove(String(input.id || "").slice(0, 40), detected.cs2);
+        return json(res, 200, { ...cfgs.state(detected.cs2), message: "cfg-Datei entfernt. Schon gesetzte Werte bleiben in CS2, bis du sie änderst." });
       }
       if (url.pathname === "/api/crosshair/decode") {
         const decoded = decodeCrosshairCode(typeof input.code === "string" ? input.code.slice(0, 64) : "");

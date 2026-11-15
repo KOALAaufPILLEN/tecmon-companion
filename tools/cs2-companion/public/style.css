@@ -124,3 +124,20 @@ details>summary{cursor:pointer}
 .desktop-panel .card[hidden]{display:none}
 .desktop-panel #auto-note,.desktop-panel #tips-note{font-size:11px;color:var(--muted)}
 .pet-reply{display:block;margin-top:6px;color:var(--muted);font-style:italic}
+.overlay-box{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;display:grid;gap:6px}
+.overlay-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.overlay-status{font-size:11px;font-weight:700;color:var(--muted)}.overlay-status.on{color:var(--gold,#e8c573)}
+.overlay-consent{border-left:3px solid #a78bfa;padding:6px 10px;background:rgba(167,139,250,.08);border-radius:6px}
+.overlay-consent ul{margin:0 0 8px;padding-left:18px;font-size:12px;display:grid;gap:4px}
+.overlay-accept{display:flex;gap:8px;align-items:flex-start;font-size:12px;font-weight:700}.overlay-accept input{width:auto;margin:2px 0 0;accent-color:#a78bfa}
+.overlay-box button{justify-self:start;min-height:40px}
+.cfg-list{display:grid;gap:12px}
+.cfg-group h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#a78bfa;margin:4px 0 6px}
+.cfg-item{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;transition:border-color var(--tm-dur-press) ease}
+.cfg-item.on{border-color:var(--gold,#e8c573)}
+.cfg-item p{margin:0;font-size:12px;color:var(--muted)}.cfg-item small{font-size:11px;color:var(--muted)}
+.cfg-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.cfg-row strong{flex:1;min-width:140px}
+.cfg-row select{margin:0;padding:4px 6px;font-size:12px;width:auto}
+.cfg-row button{min-height:40px}
+.cfg-item code{color:var(--gold,#e8c573);font-size:12px}
+.cfg-item pre{font-size:11px;max-height:110px;overflow:auto;padding:6px 8px;border-radius:8px;margin:0}

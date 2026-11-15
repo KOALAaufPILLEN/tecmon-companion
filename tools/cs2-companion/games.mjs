@@ -15,8 +15,8 @@ export const GAME_CATALOG = [
     label: "Counter-Strike 2",
     short: "CS2",
     status: "available",
-    features: ["Rundentipps", "Fadenkreuz", "CS2-Quiz", "Webseiten-Daten aus „Meine Stats“"],
-    data: ["gamestate_integration_tecmon.cfg und tecmon_crosshair.cfg im CS2-Ordner", "crosshair.json und insights.json im Companion-Profil"],
+    features: ["Rundentipps", "Fadenkreuz", "Fadenkreuz-Overlay", "CFG-Sammlung", "CS2-Quiz", "Webseiten-Daten aus „Meine Stats“"],
+    data: ["gamestate_integration_tecmon.cfg, tecmon_crosshair.cfg und tecmon_cfg_*.cfg im CS2-Ordner", "crosshair.json, crosshair-overlay.json, cfgs.json und insights.json im Companion-Profil"],
   },
   { id: "valorant", label: "Valorant", short: "Valorant", status: "planned", features: [], data: [] },
   {

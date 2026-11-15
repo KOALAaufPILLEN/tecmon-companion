@@ -213,6 +213,30 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Hochladen zu YouTube/Discord macht nur die Webseite mit den Einstellungen im
   Browser. Der Companion bekommt dafür keine Zugangsdaten.
 
+## Fadenkreuz, Overlay und CFG-Sammlung (`crosshair.mjs`, `cfg-library.mjs`)
+
+- Fadenkreuz-Editor und CFG-Sammlung schreiben nur eigene cfg-Dateien
+  (`tecmon_crosshair.cfg`, `tecmon_cfg_<id>.cfg`) mit CS2-eigenen Befehlen in den
+  CS2-cfg-Ordner. Der Spieler lädt sie selbst per `exec`. Fremde cfgs (autoexec usw.)
+  nie ändern oder löschen.
+- Die Sammlung ist eine feste Liste in `CFG_CATALOG`. Kein freier Text aus der
+  Oberfläche in Befehlen; Bind-Tasten nur aus `BIND_KEYS`. Keine Sensitivity, keine
+  Aliase/Skripte, keine Binds mit mehreren Bewegungs- oder Schussbefehlen. Pro-Werte
+  mit Quelle und Stand angeben; Profis ändern sie, also nicht als „aktuell garantiert“
+  darstellen. `test/cfg-library.test.mjs` prüft die erlaubten Befehle.
+- Fadenkreuz-Overlay (`CrosshairOverlay` in `TecMon.cs`): eigenes, durchklickbares
+  Fenster (`WS_EX_TRANSPARENT`, nie aktiviert) außerhalb des CS2-Prozesses. Kein Hook,
+  keine Injektion, kein Speicherzugriff, keine Eingaben. Standardmäßig aus;
+  einschalten nur nach bestätigtem Hinweis (`OVERLAY_NOTICE`, Version
+  `OVERLAY_NOTICE_VERSION`: eigenes Risiko, keine Haftung, andere Anti-Cheats können
+  Overlays verbieten). Ändert sich der Hinweis inhaltlich, Version erhöhen, dann muss
+  neu bestätigt werden.
+- Sichtbar nur im Vollbild-Fenstermodus: Der Server liest den Modus aus CS2s
+  `cs2_video.txt` (`cs2WindowMode()`), die Figur prüft zusätzlich, dass CS2 vorn liegt
+  und sein Fenster rahmenlos bildschirmgroß ist. Im echten Vollbild oder Fenster bleibt
+  das Overlay aus. Beim Entfernen des CS2-Pakets werden Overlay-Einstellung und alle
+  Sammlungs-cfgs gelöscht.
+
 ## Oberfläche (Figurmenü, Fenster, Companion-Seite)
 
 - Gleiche UI-Regeln wie auf tecmon.online: TecMon-Farben (Schwarz, Lila, Gold),

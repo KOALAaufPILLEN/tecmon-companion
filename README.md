@@ -66,6 +66,21 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.30.0: CFG-Sammlung und Fadenkreuz-Overlay
+
+- **CFG-Sammlung** (Companion-Seite → Spiele → „Fertige CS2-Configs“): fertige
+  cfgs zum Speichern mit einem Klick, z. B. Pro-Viewmodel, NiKos Einstellungen,
+  alle stumm per Taste, Gegner stumm per Taste, Chat ausblenden, Springen aufs
+  Mausrad, Messer in der linken Hand, ohne Musik, Netzwerk-Anzeige, Radar und
+  Granaten-Training für den eigenen Server. Tasten für Binds wählst du aus einer
+  Liste. Jede cfg ist eine eigene Datei `tecmon_cfg_<name>.cfg`; in CS2 lädst du
+  sie einmal mit `exec tecmon_cfg_<name>`. Deine Sensitivity bleibt unverändert.
+- **Fadenkreuz-Overlay** (Karte „Dein CS2-Fadenkreuz“): zeigt dein Fadenkreuz als
+  eigenes, durchklickbares TecMon-Fenster in der Bildschirmmitte. Standardmäßig aus;
+  vor dem Einschalten bestätigst du einen Hinweis (eigenes Risiko, keine Haftung für
+  Sperren). Es erscheint nur, wenn CS2 im Vollbild-Fenstermodus vorn liegt, und
+  greift nicht in CS2 ein.
+
 ### Neu in 0.29.0: Deathcam mit Namen
 
 - **Deathcam-Schriftzug:** Bei einer Deathcam-Aufnahme steht oben mittig

@@ -142,12 +142,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.29.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.30.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.29.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.30.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -162,7 +162,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.29.0"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.30.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -291,7 +291,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.29.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.30.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -565,6 +565,78 @@ static class Layered {
     try{Point origin=Point.Empty;Size size=bitmap.Size;var blend=new Blend{alpha=255,format=1};UpdateLayeredWindow(form.Handle,screen,ref position,ref size,memory,ref origin,0,ref blend,2);}
     finally{SelectObject(memory,previous);DeleteObject(image);DeleteDC(memory);ReleaseDC(IntPtr.Zero,screen);}
   }
+}
+
+/*
+ * Fadenkreuz-Overlay: eigenes, durchklickbares Fenster (WS_EX_TRANSPARENT) außerhalb
+ * von CS2, nie aktiviert, nimmt keinen Fokus. Kein Hook, keine Injektion, keine Eingaben.
+ * Sichtbar nur, solange CS2 vorn liegt und im Vollbild-Fenstermodus läuft (Fenster ohne
+ * Rahmen, so groß wie der Bildschirm). Gezeichnet per Pixel-Alpha (Layered.Push).
+ */
+class CrosshairOverlay : Form {
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int GetWindowThreadProcessId(IntPtr window,out int process);
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int GetWindowLong(IntPtr window,int index);
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window,out Rect rect);
+  [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct Rect {public int Left,Top,Right,Bottom;}
+  const int Box=160;
+  Dictionary<string,object> settings;string drawn="";
+  readonly System.Windows.Forms.Timer check=new System.Windows.Forms.Timer{Interval=250};
+  public bool Wanted;
+  protected override bool ShowWithoutActivation {get{return true;}}
+  /* WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT */
+  protected override CreateParams CreateParams {get{var p=base.CreateParams;p.ExStyle|=0x08000000|0x80|0x8|0x80000|0x20;return p;}}
+  public CrosshairOverlay(){
+    Text="TecMon Fadenkreuz";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;TopMost=true;Size=new Size(Box,Box);
+    check.Tick+=(s,e)=>Update2();
+  }
+  public void Apply(bool wanted,Dictionary<string,object> crosshair){Wanted=wanted;if(crosshair!=null)settings=crosshair;if(Wanted)check.Start();else{check.Stop();if(Visible)Hide();}Update2();}
+  /* CS2 vorn, ohne Fensterrahmen und so groß wie sein Bildschirm: Vollbild-Fenstermodus. */
+  static bool Cs2Borderless(out Rectangle bounds){
+    bounds=Rectangle.Empty;
+    try{
+      IntPtr window=GetForegroundWindow();int id;GetWindowThreadProcessId(window,out id);if(id==0)return false;
+      using(var process=Process.GetProcessById(id))if(!process.ProcessName.Equals("cs2",StringComparison.OrdinalIgnoreCase))return false;
+      if((GetWindowLong(window,-16)&0x00C00000)!=0)return false;
+      Rect r;if(!GetWindowRect(window,out r))return false;
+      var rect=Rectangle.FromLTRB(r.Left,r.Top,r.Right,r.Bottom);var screen=Screen.FromRectangle(rect).Bounds;
+      if(rect!=screen)return false;bounds=screen;return true;
+    }catch(Exception){return false;}
+  }
+  void Update2(){
+    if(!Wanted||settings==null){if(Visible)Hide();return;}
+    Rectangle bounds;if(!Cs2Borderless(out bounds)){if(Visible)Hide();return;}
+    var at=new Point(bounds.Left+bounds.Width/2-Box/2,bounds.Top+bounds.Height/2-Box/2);
+    string key=TecMon.Json.Serialize(settings)+bounds;
+    if(!Visible){Location=at;Show();drawn="";}
+    if(key==drawn&&Location==at)return;
+    Location=at;drawn=key;Push(bounds.Height/1080f);
+  }
+  static double Num(Dictionary<string,object> d,string k,double fallback){object v;if(d!=null&&d.TryGetValue(k,out v)&&v!=null){try{return Convert.ToDouble(v,System.Globalization.CultureInfo.InvariantCulture);}catch(Exception){}}return fallback;}
+  static bool Flag(Dictionary<string,object> d,string k){object v;return d!=null&&d.TryGetValue(k,out v)&&v is bool&&(bool)v;}
+  void Push(float scale){
+    if(!IsHandleCreated)return;
+    using(var bitmap=new Bitmap(Box,Box,System.Drawing.Imaging.PixelFormat.Format32bppArgb)){
+      using(var g=Graphics.FromImage(bitmap)){g.Clear(Color.Transparent);Draw(g,scale);}
+      Layered.Push(this,bitmap,Location);
+    }
+  }
+  /* Gleiche Maße wie die Vorschau auf der Companion-Seite, bezogen auf 1080p. */
+  public void Draw(Graphics g,float scale){
+    var c=settings;int[] color={167,139,250};object raw;
+    if(c!=null&&c.TryGetValue("color",out raw)){var list=raw as System.Collections.IList;if(list!=null&&list.Count==3)for(int i=0;i<3;i++)color[i]=Math.Max(0,Math.Min(255,Convert.ToInt32(list[i])));}
+    int alpha=(int)Math.Max(0,Math.Min(255,Num(c,"alpha",255)));
+    float s=Math.Max(0.5f,scale);
+    int t=(int)Math.Max(1,Math.Round(Math.Max(1,Math.Round(Math.Max(0.5,Num(c,"thickness",1))*2))*s));
+    int len=(int)Math.Round(Math.Round(Num(c,"size",2)*2)*s),gap=(int)Math.Round(Math.Max(0,Math.Round(Num(c,"gap",-2)+4))*s),half=t/2;
+    int o=Flag(c,"outline")?(int)Math.Max(1,Math.Round(Math.Max(1,Math.Round(Num(c,"outlineThickness",1)))*s/2)):0;
+    var rects=new List<Rectangle>();int m=Box/2;
+    if(len>0){rects.Add(new Rectangle(m+gap,m-half,len,t));rects.Add(new Rectangle(m-gap-len,m-half,len,t));rects.Add(new Rectangle(m-half,m+gap,t,len));if(!Flag(c,"tStyle"))rects.Add(new Rectangle(m-half,m-gap-len,t,len));}
+    if(Flag(c,"dot"))rects.Add(new Rectangle(m-half,m-half,t,t));
+    if(o>0)using(var black=new SolidBrush(Color.FromArgb(alpha,0,0,0)))foreach(var r in rects)g.FillRectangle(black,r.X-o,r.Y-o,r.Width+2*o,r.Height+2*o);
+    using(var fill=new SolidBrush(Color.FromArgb(alpha,color[0],color[1],color[2])))foreach(var r in rects)g.FillRectangle(fill,r);
+  }
+  protected override void Dispose(bool disposing){if(disposing)check.Dispose();base.Dispose(disposing);}
 }
 
 /*
@@ -929,9 +1001,9 @@ class DesktopPet : Form {
     KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&panel!=null)panel.Hide();else if(e.KeyCode==Keys.Enter||e.KeyCode==Keys.Space)Toggle();};
     /* Etwa 60 Bilder pro Sekunde; Bewegung nach vergangener Zeit statt pro Takt, damit sie gleichmäßig bleibt. */
     animation.Interval=15;animation.Tick+=(s,e)=>Tick();
-    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowAuto(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
+    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowAuto(state);ShowOverlay(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
     Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
-    FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
+    FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(overlay!=null)overlay.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
   Bitmap model,canvas;Bitmap[] cells;double yaw,yawVel,clockLast,talkUntil,happyUntil,blinkAt=3,blinkUntil,pendingSince,frontSince=-1,moodAt=10,moodUntil,activeAt;int mood=-1,afterTalk=-1,forced=-1;double busyFrame;bool watching;Action pendingTip;
   readonly Stopwatch clock=Stopwatch.StartNew();readonly Random random=new Random();/* Bogen: 72 Drehwinkel in 5°-Schritten, danach die LED-Ausdrücke (Reihenfolge wie FACES in scripts/figure-3d/faces.py). */
@@ -1086,6 +1158,14 @@ class DesktopPet : Form {
   const int ClipHotkey=0x7C1;bool clipsEnabled,clipHotkey,savingClip;ToolStripMenuItem clipsOn;
   protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);if(!preview)clipHotkey=RegisterHotKey(Handle,ClipHotkey,0x0001|0x0002|0x4000,(uint)Keys.C);}
   protected override void OnHandleDestroyed(EventArgs e){if(clipHotkey)UnregisterHotKey(Handle,ClipHotkey);clipHotkey=false;base.OnHandleDestroyed(e);}
+  CrosshairOverlay overlay;
+  void ShowOverlay(Dictionary<string,object> state){
+    object raw;var o=state.TryGetValue("overlay",out raw)?raw as Dictionary<string,object>:null;
+    bool on=o!=null&&o.ContainsKey("enabled")&&Convert.ToBoolean(o["enabled"]);
+    if(!on&&overlay==null)return;
+    if(overlay==null){overlay=new CrosshairOverlay();overlay.CreateControl();var ignored=overlay.Handle;}
+    overlay.Apply(on,o!=null&&o.ContainsKey("crosshair")?o["crosshair"] as Dictionary<string,object>:null);
+  }
   void ShowClips(Dictionary<string,object> state){object raw;var clips=state.TryGetValue("clips",out raw)?raw as Dictionary<string,object>:null;if(clips==null)return;clipsEnabled=clips.ContainsKey("recording")&&Convert.ToBoolean(clips["recording"]);if(clipsOn!=null)clipsOn.Checked=clipsEnabled;}
   /* Highlight-Video nach dem Match: Frage erst, wenn CS2 geschlossen ist (der Companion prueft das), daher darf ein Dialog erscheinen. */
   bool autoEnabled,autoAsking;string autoOffer="",autoRun="",autoStatus="";ToolStripMenuItem autoOn;
