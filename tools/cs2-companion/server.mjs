@@ -28,6 +28,7 @@ import { cleanDotaPayload, dotaGsiConfigPath, installDotaGsiConfig, removeDotaGs
 import { createInsightsStore } from "./insights.mjs";
 import { createGamePackages } from "./games.mjs";
 import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
+import { workState } from "./work-status.mjs";
 import { createSkinSwap, cs2GameDir, hasSkins, SKIN_CAPABILITY, SKIN_KNIFE_CAPABILITY, SKIN_SETUP_CAPABILITY } from "./skin-swap.mjs";
 import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
@@ -1031,6 +1032,7 @@ export async function createCompanion({
           engine: { internal: ownEngine, available: !!installation },
           updates: { auto: autoInstall, available: !!installation },
           active,
+          work: workState(jobs),
           bridge: bridge.state(),
           gsi: gsiState(),
           auto: auto.state(),
