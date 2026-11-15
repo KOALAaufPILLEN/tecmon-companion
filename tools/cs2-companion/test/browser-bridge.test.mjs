@@ -125,6 +125,12 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
   }
   const grant = await pair();
   const second = await pair();
+  // Skin-Tausch braucht den installierten Companion; ohne ihn weder Capability noch Schalter.
+  assert.equal((await get("/bridge/skins", grant)).status, 409);
+  assert.equal((await post("/bridge/skins", { enabled: true, accept: 1 }, grant)).status, 409);
+  assert.equal((await get("/bridge/skins", "wrong")).status, 401);
+  const caps = (await (await get("/bridge/state", grant)).json()).capabilities;
+  assert.ok(!caps.includes("skin-swap-v1") && !caps.includes("skin-swap-setup-v1"));
   assert.equal((await post("/bridge/capture", { job, confirm: false }, grant)).status, 400);
   assert.equal(
     (await post("/bridge/capture", { job: { ...job, shareCode: undefined }, confirm: true }, grant))

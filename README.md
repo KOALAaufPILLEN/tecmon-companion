@@ -66,6 +66,12 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.31.1: Skin-Tausch von der Webseite einschalten
+
+- Der Skin-Tausch lässt sich jetzt auch direkt auf tecmon.online im Demo-Manager
+  einschalten (Capability `skin-swap-setup-v1`, `GET/POST /bridge/skins`). Den
+  Hinweis bestätigst du dort genauso wie auf der Companion-Seite.
+
 ### Neu in 0.31.0: Skin-Tausch für Videos (Zusatz-Addon)
 
 - **Skin-Tausch** (Companion-Seite → Spiele → „Skin-Tausch für Videos“): zeigt in
