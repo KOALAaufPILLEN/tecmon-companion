@@ -46,11 +46,11 @@ class Face:
     def frown(s, w=22): s.stroke(bez((CX - w, MY + 10), (CX, MY - 8), (CX + w, MY + 10)), 6)
     def o(s, r=11): s.top.d.ellipse([(CX - r) * S, (MY - r) * S, (CX + r) * S, (MY + r + 4) * S], outline=(255, 225, 252, 255), width=6 * S); s.glow.ell(CX, MY + 2, r + 8, r + 8, PINK + (200,))
     def wave(s, w=26): s.stroke([(CX - w + i * 2 * w / 24, MY + 5 * math.sin(i / 24 * 4 * math.pi)) for i in range(25)], 5)
-    def loading(s):
-        x, y = RX + 80, EY - 62
-        s.top.arc(x, y, 14, 300, 550, 4, CYAN + (255,)); s.glow.arc(x, y, 14, 300, 550, 10, CYAN + (255,))
-    def dots(s):
-        for k in range(3): s.top.ell(CX - 18 + k * 18, MY + 2, 4, 4, CYAN + (255,) if k < 2 else (255, 230, 255, 160))
+    def loading(s, phase=0):
+        x, y, a = RX + 80, EY - 62, 300 + phase * 90
+        s.top.arc(x, y, 14, a, a + 250, 4, CYAN + (255,)); s.glow.arc(x, y, 14, a, a + 250, 10, CYAN + (255,))
+    def dots(s, phase=0):
+        for k in range(3): s.top.ell(CX - 18 + k * 18, MY + 2, 4, 4, CYAN + (255,) if k == phase % 3 else (255, 230, 255, 140))
     def render(s):
         out = Image.new('RGBA', (GW, GH), (0, 0, 0, 0))
         g = s.glow.out().filter(ImageFilter.GaussianBlur(16)); g.putalpha(g.getchannel('A').point(lambda v: int(v * .9)))
@@ -67,7 +67,10 @@ def build(n):
     elif n == 'blink': [f.arc(x, EY + 8, up=False) for x in E]; f.smile()
     elif n == 'happy': [f.eye(x, EY, lid=.1, low=.42) for x in E]; f.smile(30, 18)
     elif n == 'focus': [f.eye(x, EY + 4, lid=.4) for x in E]; f.flat()
-    elif n == 'busy': [f.eye(x, EY + 2, lid=.36, look=(8, 4)) for x in E]; f.dots(); f.loading()
+    elif n.startswith('busy'):   # 4 Phasen: Ring dreht sich, Punkt läuft, Blick wandert leicht
+        k = int(n[4:] or 1) - 1
+        [f.eye(x, EY + 2, lid=.36, look=((8, 12, 8, 4)[k], 4)) for x in E]; f.dots(k); f.loading(k)
+    elif n in ('lookL', 'lookR'): [f.eye(x, EY, look=(-16 if n == 'lookL' else 16, 0)) for x in E]; f.smile()
     elif n == 'wink': f.eye(LX, EY); f.arc(RX, EY + 4); f.smile(24)
     elif n == 'surprised': [f.eye(x, EY, w=64, h=78, lid=0) for x in E]; f.o(12)
     elif n == 'dizzy': [f.x_eye(x, EY) for x in E]; f.wave()

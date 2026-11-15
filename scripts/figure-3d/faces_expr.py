@@ -221,6 +221,7 @@ def tears(c):
 
 # ---------- Ausdrücke ----------
 def build(name):
+    name = F.BASE.get(name, name)
     c = Canvas()
     both = ((-1, LX), (1, RX))
     if name == 'idle':

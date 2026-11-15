@@ -5,7 +5,8 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const work = process.env.TECMON_3D_WORK, frames = process.argv[2];
 // Ausdrücke in der Reihenfolge von FACES in faces.py (ohne idle); Bildnummer ab TURNS.
 const faces = ['blink', 'happy', 'talkA', 'talkB', 'focus', 'busy', 'wink', 'surprised', 'dizzy', 'laugh', 'love', 'kiss',
-  'angry', 'sleepy', 'tongue', 'sad', 'cool', 'star', 'confused'];
+  'angry', 'sleepy', 'tongue', 'sad', 'cool', 'star', 'confused',
+  'busy2', 'busy3', 'busy4', 'lookL', 'lookR'];
 const TURNS = 72, STEP = 360 / TURNS;
 const jobs = [];
 for (let i = 0; i < TURNS; i++) jobs.push(['idle', i * STEP, `${frames}/${String(i).padStart(2, '0')}.png`]);

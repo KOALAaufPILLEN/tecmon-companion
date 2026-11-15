@@ -59,7 +59,12 @@ FACES = {'idle': ('open', ''), 'blink': ('blink', ''), 'happy': ('happy', 'smile
          'wink': ('wink', 'smile'), 'surprised': ('ring', 'o'), 'dizzy': ('cross', 'wave'), 'laugh': ('squeeze', 'grin'),
          'love': ('heart', 'smile'), 'kiss': ('happy', 'kiss'), 'angry': ('angry', 'frown'), 'sleepy': ('sleepy', 'zz'),
          'tongue': ('happy', 'tongue'), 'sad': ('sad', 'frown'), 'cool': ('shades', 'smirk'), 'star': ('star', 'smile'),
-         'confused': ('confused', 'wave')}
+         'confused': ('confused', 'wave'),
+         # Animationsbilder (seit 0.32.3): Lade-Ring beim Video in 4 Phasen, Blick nach links/rechts im Leerlauf.
+         'busy2': ('scan', 'dots'), 'busy3': ('scan', 'dots'), 'busy4': ('scan', 'dots'),
+         'lookL': ('open', ''), 'lookR': ('open', '')}
+# Andere Stile zeichnen die Animationsbilder wie ihren Grundausdruck.
+BASE = {'busy2': 'busy', 'busy3': 'busy', 'busy4': 'busy', 'lookL': 'idle', 'lookR': 'idle'}
 def face(name):
     e, m = FACES[name]
     lit = Image.new('L', (W, H), 0); dim = Image.new('L', (W, H), 0)

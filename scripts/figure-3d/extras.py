@@ -30,8 +30,10 @@ def draw(name):
     p = Pen()
     if name == 'blink': p.z(150, 10, 4, 1.3); p.z(157, 5, 5, 1.5); p.z(166, 1.5, 6, 1.7)
     elif name == 'sleepy': p.z(149, 20, 5, 1.5); p.z(155, 10, 7, 1.8); p.z(164, 1.5, 9, 2.1)
-    elif name == 'busy':
-        for x, y, r in ((148, 12, 1.6), (156, 7, 2.0), (165, 9, 2.4)): p.dot(x, y, r)
+    elif name.startswith('busy'):   # busy, busy2..busy4: ein Punkt mehr je Phase, dann von vorn
+        k = int(name[4:] or 1)
+        for x, y, r in ((148, 12, 1.6), (156, 7, 2.0), (165, 9, 2.4))[:k if k < 4 else 0]: p.dot(x, y, r)
+        if k == 4: p.dot(148, 12, 1.2)
     elif name == 'wink': p.spark(157, 10, 6.5); p.spark(167, 4, 3.2); p.spark(148, 4, 2.6)
     elif name == 'surprised': p.bang(44, 2, -1.2); p.bang(156, 2, 1.2)
     elif name == 'dizzy': p.spark(42, 10, 4.5); p.spark(158, 8, 5.5); p.spark(168, 17, 3)

@@ -2,7 +2,7 @@
 
 Die Desktop-Figur (`windows/TecMon.cs`) hat keinen 3D-Renderer (nur .NET
 Framework 4, C# 5). Das 3D-Modell wird darum vorab gerendert: 72 Drehwinkel (5°)
-plus 19 LED-Ausdrücke, zusammen in `tools/cs2-companion/public/desktop-bot-3d.png`.
+plus 24 LED-Ausdrücke (seit 0.32.3 mit Animationsbildern `busy2`–`busy4`, `lookL`, `lookR`), zusammen in `tools/cs2-companion/public/desktop-bot-3d.png`.
 Das Bild wird als Ressource `TecMonBot3D` in die EXE eingebaut.
 
 Das Modell (`base.glb`, ~26 MB) und seine Texturen liegen nicht im Repository.
