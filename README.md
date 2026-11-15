@@ -66,6 +66,12 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.32.3: Animierte Augen
+
+- Während ein Video entsteht, dreht sich neben den Augen ein Lade-Ring, die Punkte
+  laufen mit und der Blick wandert leicht (4 Einzelbilder, wie ein GIF).
+- Im Leerlauf schaut die Figur ab und zu ruhig nach links und rechts.
+
 ### Neu in 0.32.2: Neue Augen für die Figur
 
 - Die Figur hat ruhige, leuchtende Roboter-Augen statt der bisherigen

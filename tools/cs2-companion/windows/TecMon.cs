@@ -142,12 +142,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.32.2",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.32.3",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.32.2");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.32.3");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -162,7 +162,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.32.2"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.32.3"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -291,7 +291,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.32.2 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.32.3 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -1009,7 +1009,7 @@ class DesktopPet : Form {
   }
   Bitmap model,canvas;Bitmap[] cells;double yaw,yawVel,clockLast,talkUntil,happyUntil,blinkAt=3,blinkUntil,pendingSince,frontSince=-1,moodAt=10,moodUntil,activeAt;int mood=-1,afterTalk=-1,forced=-1;double busyFrame;bool watching;Action pendingTip;
   readonly Stopwatch clock=Stopwatch.StartNew();readonly Random random=new Random();/* Bogen: 72 Drehwinkel in 5°-Schritten, danach die LED-Ausdrücke (Reihenfolge wie FACES in scripts/figure-3d/faces.py). */
-  const int CellW=200,CellH=130,Cols=8,Turns=72,Blink=72,Happy=73,TalkA=74,TalkB=75,FocusFace=76,Busy=77,Wink=78,Surprised=79,Dizzy=80,Laugh=81,Love=82,Kiss=83,Angry=84,Sleepy=85,Tongue=86,Sad=87,Cool=88,Star=89,Confused=90,Faces=91;
+  const int CellW=200,CellH=130,Cols=8,Turns=72,Blink=72,Happy=73,TalkA=74,TalkB=75,FocusFace=76,Busy=77,Wink=78,Surprised=79,Dizzy=80,Laugh=81,Love=82,Kiss=83,Angry=84,Sleepy=85,Tongue=86,Sad=87,Cool=88,Star=89,Confused=90,Busy2=91,Busy3=92,Busy4=93,LookL=94,LookR=95,Faces=96;
   const double Step=360.0/Turns,SleepAfter=180;
   static readonly int[] Moods={Wink,Love,Star,Tongue,Cool,Laugh,Kiss,Happy,Confused};
   void Tick(){
@@ -1046,7 +1046,9 @@ class DesktopPet : Form {
   }
   /* Welcher LED-Ausdruck gerade gilt; -1 = normales Drehbild. */
   int FaceIndex(double now){
-    if(forced>=0)return forced;if(busy)return Busy;
+    if(forced>=0)return forced;
+    /* Beim Video: Lade-Ring in 4 Phasen (Einzelbilder statt GIF). */
+    if(busy){int k=(int)(now*4)%4;return k==0?Busy:k==1?Busy2:k==2?Busy3:Busy4;}
     if(Math.Abs(Turn(0))>=4)return -1;
     if(pendingTip!=null)return Surprised;
     if(Talking(now)){int m=(int)(now*9)%4;return m==1?TalkB:m==3?-1:TalkA;}
@@ -1054,6 +1056,8 @@ class DesktopPet : Form {
     if(petAsleep||(!watching&&now-activeAt>SleepAfter))return Sleepy;
     if(now<blinkUntil)return Blink;
     if(now<moodUntil&&mood>=0)return mood;
+    /* Ab und zu ruhig nach links und rechts schauen. */
+    double glance=now%13;if(glance<0.8)return LookL;if(glance>6.5&&glance<7.3)return LookR;
     return -1;
   }
   /* Zeichnet die Figur im jeweils nächsten der 72 Blickwinkel. */
