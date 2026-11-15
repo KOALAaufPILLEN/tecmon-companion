@@ -183,6 +183,10 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Kill-Anzeige (`kill-badge-v1`): je Szene `kills` als `[Tick, Kill-Nummer in der Runde,
   Kopfschuss 0/1]`, höchstens 10, aufsteigend, innerhalb der Szene (`killMarks()` in
   `job.mjs`). Die Wörter kommen nur aus `killWords()`, nie aus dem Auftrag.
+- Deathcam-Schriftzug (`deathcam-label-v1`): je Szene optional `deathcam` mit dem Namen des
+  Sterbenden (höchstens 32 Zeichen, bereinigt in `validateJob()`). `deathcamBar()` in
+  `cyber-hud.mjs` zeichnet das feste Wort „DEATHCAM:“; der Name kommt nur aus einer gesperrten
+  Textdatei, nie als Filterausdruck.
 
 ## Highlight-Video nach dem Match (`auto-highlights.mjs`)
 

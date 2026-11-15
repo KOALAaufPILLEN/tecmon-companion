@@ -41,8 +41,27 @@ export function killBadges(kills,n,input,plain,multi){
  return parts.join(';');
 }
 
-/** `kills`: Kill-Anzeige, braucht die Eingänge 3 (kill-badge.png) und 4 (kill-badge-multi.png). */
-export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLength,hud2=false,filter=null,kills=null}){
+/** Lage des Deathcam-Schriftzugs: oben mittig, über dem CS2-HUD (Runde/Zeit liegt darunter). */
+export const DEATHCAM_BAR={w:760,y:118,h:58};
+/**
+ * „DEATHCAM: Name“ oben mittig (deathcam-label-v1). Das Wort ist fest, der Name kommt nur aus
+ * einer gesperrten Textdatei, nie als Filterausdruck.
+ */
+export function deathcamBar(file,n){
+ const {w,y,h}=DEATHCAM_BAR;
+ return [
+  `drawbox=x=(iw-${n(w)})/2:y=${n(y)}:w=${n(w)}:h=${n(h)}:color=0x0b0612@0.78:t=fill`,
+  `drawbox=x=(iw-${n(w)})/2:y=${n(y+h-3)}:w=${n(w)}:h=${n(3)}:color=0xff3d6e@0.95:t=fill`,
+  `drawtext=fontfile=font.ttf:text='DEATHCAM\\:':fontsize=${n(28)}:fontcolor=0xff5c86:shadowcolor=black@0.8:shadowx=2:shadowy=2:x=(w-${n(w)})/2+${n(26)}:y=${n(y+14)}`,
+  `drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(28)}:fontcolor=0xf3d48c:shadowcolor=black@0.8:shadowx=2:shadowy=2:x=(w-${n(w)})/2+${n(236)}:y=${n(y+14)}`,
+ ].join(',');
+}
+
+/**
+ * `kills`: Kill-Anzeige, braucht die Eingänge 3 (kill-badge.png) und 4 (kill-badge-multi.png).
+ * `deathcamFile`: gesperrte Textdatei mit dem Namen des Sterbenden (deathcam-label-v1).
+ */
+export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLength,hud2=false,filter=null,kills=null,deathcamFile=null}){
  const n=v=>Math.max(1,Math.round(v*width/1920));
  const text=(file,size,x,y,color,extra='')=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:shadowcolor=black@0.8:shadowx=1:shadowy=1:x=${n(x)}:y=${n(y)}${extra}`;
  const size=Math.min(44,Math.max(20,Math.floor(700/Math.max(playerLength,16))));
@@ -56,7 +75,8 @@ export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLe
   `[1:v]scale=${n(56)}:${n(56)}[logo];[base][logo]overlay=${n(1660)}:${n(30)},`+
   [text('hud-brand.txt',26,1727,38,'0xefc96d'),text('hud-site.txt',14,1727,70,'0x9cefff'),
    text(mapFile,14,64,932,'0xb7efff'),text('hud-mode.txt',16,64,854,'0x85e8ef'),
-   text(sceneFile,16,348,854,'0xb6a3ff'),text(playerFile,size,64,885,'0xf3d48c')].join(',')+
+   text(sceneFile,16,348,854,'0xb6a3ff'),text(playerFile,size,64,885,'0xf3d48c'),
+   ...(deathcamFile?[deathcamBar(deathcamFile,n)]:[])].join(',')+
   (kills&&kills.length?'[hudtext];'+killBadges(kills,n,'hudtext','3:v','4:v'):'[v]');
 }
 
