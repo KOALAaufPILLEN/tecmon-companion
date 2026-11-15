@@ -66,6 +66,21 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.25.0: Animiertes Overlay, Filter und bessere Bildqualität
+
+- **Animiertes Gameplay-Overlay (HUD v2):** Der Rahmen oben liegt eng an den
+  Spielerbildern und umfasst jetzt auch die Waffenzeile. Kräftigere Farben,
+  dickere Linien mit Leuchten, Lichtstreifen laufen über Rahmen und Seitenleisten,
+  Marken blinken. Kommt aus dem Video-Paket `TecMon-Motion-v3.json` (feste
+  Prüfsummen); ohne Paket bleibt das bisherige Overlay.
+- **24 voreingestellte Filter** (Capability `video-filter-v1`): je Szene ein
+  Filter nur auf das Gameplay, das Overlay bleibt unverändert. Optional ein eigener
+  Filter für Intro, Titelbild, Spielerwechsel und Outro. Die Webseite schickt nur
+  die Kennung, die Filterketten stehen fest im Companion.
+- **Bessere Bildqualität:** Aufnahme mit CRF 16, Zwischenschritte mit CRF 16
+  (`fast`), Endmontage mit CRF 17 (`medium`). Alle Videos tragen ihren Farbraum
+  (BT.601-Matrix), damit YouTube die Farben nicht blasser umrechnet.
+
 ### Neu in 0.24.0: Esport-Titelbild und Esport-Spielerwechsel
 
 - **Animiertes Esport-Titelbild:** Nach dem TecMon-Intro schlagen Seitenpaneele
@@ -100,7 +115,7 @@ Neueste Version zuerst.
   Ton). Dafür wird das fertige Video einmal neu kodiert. Ohne Video-Paket bleibt
   die bisherige Montage.
 - **Geprüft wie das übrige Branding:** Alle Videos kommen als eigenes Paket
-  `TecMon-Motion-v1.json` (rund 11,5 MB) von einer festen Release-Adresse und haben
+  `TecMon-Motion-v1.json` (rund 11,5 MB, heute v3) von einer festen Release-Adresse und haben
   feste SHA256-Prüfsummen. Weicht etwas ab, bricht der Auftrag ab. Ist das Paket
   offline nicht erreichbar, nutzt der Companion das bisherige statische Intro.
 

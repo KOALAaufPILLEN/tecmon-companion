@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+ <linearGradient id="neon"><stop stop-color="#00e8ff"/><stop offset=".5" stop-color="#5f7bff"/><stop offset="1" stop-color="#b44dff"/></linearGradient>
+ <linearGradient id="neonV" x2="0" y2="1"><stop stop-color="#00e8ff"/><stop offset="1" stop-color="#b44dff"/></linearGradient>
+ <linearGradient id="glass"><stop stop-color="#050d1c" stop-opacity=".92"/><stop offset="1" stop-color="#120b26" stop-opacity=".6"/></linearGradient>
+ <linearGradient id="fade"><stop stop-color="#00e8ff" stop-opacity=".9"/><stop offset="1" stop-color="#00e8ff" stop-opacity="0"/></linearGradient>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>
+</defs>
+<!-- Radar: Rahmen außen, Radar selbst bleibt frei -->
+<g fill="none" stroke="url(#neon)" stroke-width="10" opacity=".55" filter="url(#glow)"><path d="M6 96V6h90M214 6h90v90M304 216v90h-90M96 306H6v-90"/></g>
+<g fill="none" stroke-width="4"><path stroke="#ffcf5a" d="M6 84V6h78M6 256v50h56"/><path stroke="#00e8ff" d="M228 6h76v66M304 238v68h-68"/><path stroke="#b44dff" d="M2 108v96M308 100v110"/></g>
+<g fill="#00e8ff"><path d="M8 315h44l-8 7H8z"/><path d="M58 315h10l-8 7H50z"/><path d="M73 315h10l-8 7H65z"/></g>
+<path d="M90 318h214" stroke="url(#fade)" stroke-width="2"/>
+<!-- Oben: Rahmen eng um Spielerbilder UND Waffenzeile -->
+<g fill="none" stroke="url(#neon)" stroke-width="10" opacity=".55" filter="url(#glow)"><path d="M622 0v176l16 16h300M1304 0v176l-16 16h-300"/></g>
+<g fill="none" stroke-width="3.5"><path stroke="#00e8ff" d="M622 0v176l16 16h300"/><path stroke="#b44dff" d="M1304 0v176l-16 16h-300"/></g>
+<path d="M622 94h8M1296 94h8" stroke="#ffcf5a" stroke-width="4"/>
+<path d="M606 0v40M1320 0v40" stroke="#ffcf5a" stroke-width="4"/>
+<path d="M606 0h40M1280 0h40" stroke="#ffcf5a" stroke-width="5"/>
+<path d="M878 192h170l-16 16H894z" fill="url(#glass)"/><path d="M878 192l16 16h138l16-16" fill="none" stroke="#ffcf5a" stroke-width="3"/>
+<g fill="#ffcf5a"><path d="M946 197h34l-5 6h-24z"/></g>
+<g fill="#00e8ff"><path d="M650 198h22l-5 6h-22zM678 198h10l-5 6h-10z"/></g><g fill="#b44dff"><path d="M1254 198h22l5 6h-22zM1238 198h10l5 6h-10z"/></g>
+<!-- Logo-Tab oben rechts -->
+<path d="M1638 24h254v57l-16 16h-177l-61-38z" fill="url(#glass)"/>
+<path d="M1640 24h252v38M1704 97h172l16-16" fill="none" stroke="url(#neon)" stroke-width="3"/>
+<path d="M1640 24h252v38M1704 97h172l16-16" fill="none" stroke="url(#neon)" stroke-width="9" opacity=".5" filter="url(#glow)"/>
+<path d="M1640 24h70" stroke="#ffcf5a" stroke-width="4"/>
+<!-- Spielerkarte unten links -->
+<path d="M26 848h389l30 30v80H58l-32-32z" fill="url(#glass)"/>
+<path d="M26 882v-34h116M272 848h143l30 30v23M445 934v24H257M145 958H58l-32-32" fill="none" stroke="url(#neon)" stroke-width="4"/>
+<path d="M26 882v-34h116M272 848h143l30 30v23M445 934v24H257M145 958H58l-32-32" fill="none" stroke="url(#neon)" stroke-width="14" opacity=".55" filter="url(#glow)"/>
+<path d="M18 840h120M440 966H250" stroke="#ffcf5a" stroke-width="4"/><path d="M18 840v26M448 966v-22" stroke="#ffcf5a" stroke-width="4"/>
+<path d="M30 884v38l24 24h10l-25-28v-34z" fill="#ffcf5a"/><path d="M30 884v38l24 24h10l-25-28v-34z" fill="#ffcf5a" opacity=".7" filter="url(#glow)"/>
+<path d="M377 852h30l33 32v13h-4v-12l-31-29h-28z" fill="#b44dff"/>
+<path d="M54 875h337M54 938h199" stroke="#00e8ff" opacity=".35"/>
+<g fill="#ffcf5a"><path d="M184 952h40l-6 6h-40z"/><path d="M230 952h9l-6 6h-9z"/></g>
+<!-- Seitenleisten: vom Radar bis zur Spielerkarte, rechts vom Logo bis zur Waffenliste -->
+<path d="M6 340v180l10 10v140M6 690v140" fill="none" stroke="#00e8ff" stroke-width="8" opacity=".5" filter="url(#glow)"/>
+<path d="M6 340v180l10 10v140M6 690v140" fill="none" stroke="#00e8ff" stroke-width="3"/>
+<g fill="#ffcf5a"><path d="M2 332h16v5H2zM2 832h16v5H2z"/></g>
+<path d="M1914 120v300l-10 10v140M1914 590v110" fill="none" stroke="#b44dff" stroke-width="8" opacity=".55" filter="url(#glow)"/>
+<path d="M1914 120v300l-10 10v140M1914 590v110" fill="none" stroke="#b44dff" stroke-width="3"/>
+<g fill="#ffcf5a"><path d="M1902 112h16v5h-16zM1902 702h16v5h-16z"/></g>
+<g fill="#b44dff"><path d="M1895 450h6v6h-6zM1895 462h6v6h-6zM1895 474h6v6h-6z"/></g>
+<!-- Unten -->
+<path d="M18 1066h394l12-12h130M1366 1054h136l12 12h388" fill="none" stroke="url(#neon)" stroke-width="3"/>
+<path d="M18 1066h394l12-12h130M1366 1054h136l12 12h388" fill="none" stroke="url(#neon)" stroke-width="9" opacity=".45" filter="url(#glow)"/>
+<path d="M18 1066h129M1778 1066h124" stroke="#ffcf5a" stroke-width="4"/>
+<g fill="#00e8ff" opacity=".8"><path d="M154 1063h14l-4 6h-14zM175 1063h14l-4 6h-14zM196 1063h14l-4 6h-14z"/></g>
+</svg>

@@ -66,7 +66,7 @@ test("Aktionsdatei folgt der CSDM-Befehlsfolge, sortiert nach Starttick", () => 
   assert.deepEqual(first.at(-1), { tick: 3704, cmd: "go_to_next_sequence" });
   assert.ok(first.some((a) => a.cmd === "demo_gototick 2935" && a.tick === 96));
   assert.ok(first.some((a) => a.cmd === "pause_playback" && a.tick === 2996));
-  assert.ok(first.some((a) => a.cmd.startsWith("mirv_streams settings add ffmpeg csdmPreset2 \"-c:v libx264 -pix_fmt yuv420p -crf 20 {QUOTE}C:/Out/job/2-sequence\\\\video.mp4{QUOTE}\"")));
+  assert.ok(first.some((a) => a.cmd.startsWith("mirv_streams settings add ffmpeg csdmPreset2 \"-c:v libx264 -pix_fmt yuv420p -crf 16 -colorspace smpte170m -color_primaries bt709 -color_trc bt709 -color_range tv {QUOTE}C:/Out/job/2-sequence\\\\video.mp4{QUOTE}\"")));
   assert.ok(first.some((a) => a.cmd === `mirv_deathmsg filter add attackerMatch=x${STEAM} attackerIsLocal=0 block=0`));
   assert.ok(first.some((a) => a.cmd === "spec_show_xray 1"));
   assert.ok(first.some((a) => a.cmd === "mirv_streams record fps 60"));

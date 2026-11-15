@@ -1,4 +1,5 @@
 import { shareCode } from "./share-code.mjs";
+import { filterId } from "./video-filters.mjs";
 /** Versioned, data-only exchange format. Never accept game commands or paths here. */
 export function validateJob(value) {
   const fail = () => {
@@ -21,6 +22,8 @@ export function validateJob(value) {
     subtitle: text(style.subtitle, 100),
     // Video-Stil aus dem geprüften Paket: "a" (Neon-Raster) oder "b" (Hologramm). Unbekannt = "a".
     style: style.style === "b" ? "b" : "a",
+    // Filter für Intro, Titel, Spielerwechsel und Outro (video-filter-v1); unbekannt = keiner.
+    ...(filterId(style.filter) ? { filter: style.filter } : {}),
   };
   // X-Ray (Gegner durch Waende) ist Standard; nur ein ausdrueckliches false schaltet es ab.
   if (value.xray !== undefined && typeof value.xray !== "boolean") fail();
@@ -50,6 +53,8 @@ export function validateJob(value) {
       playerName: text(s.playerName, 64) || "Spieler",
       ...(s.slot === undefined ? {} : { slot: s.slot }),
       ...(cuts.length ? { cuts } : {}),
+      // Filter nur für das Gameplay dieser Szene (video-filter-v1); unbekannt = keiner.
+      ...(filterId(s.filter) ? { filter: s.filter } : {}),
     };
   });
   if (ticks / value.tickRate > 1200)
@@ -160,7 +165,7 @@ export function recordingConfig(job, demoPath, outputFolderPath, quality, camera
     concatenateSequences: true,
     ffmpegSettings: {
       audioBitrate: 192,
-      constantRateFactor: 20,
+      constantRateFactor: 16,
       customLocationEnabled: false,
       customExecutableLocation: "",
       videoContainer: "mp4",

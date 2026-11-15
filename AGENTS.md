@@ -165,6 +165,15 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   für fertige Clips, nur mit dem eigenen API-Schlüssel des Nutzers und nur
   nach ausdrücklichem Einschalten.
 
+## Filter und HUD v2 (`video-filters.mjs`, `cyber-hud.mjs`)
+
+- Filter kommen nur als Kennung aus `VIDEO_FILTERS`; `filterId()` verwirft alles
+  andere. Keine Filterketten oder Ausdrücke aus dem Auftrag übernehmen. Die Liste
+  muss zu `lib/videoFilters.ts` der Webseite passen (Capability `video-filter-v1`).
+- Szenenfilter wirken nur auf das Gameplay vor dem HUD; `branding.filter` nur auf
+  Intro, Titelbild, Spielerwechsel und Outro.
+- HUD v2 nur, wenn das geprüfte Video-Paket `hud-v2.png` enthält.
+
 ## Prüfen und veröffentlichen
 
 - Vor jedem Push `npm test` und `node scripts/version.mjs check` im Repo-Stamm.

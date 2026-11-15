@@ -1,9 +1,36 @@
-/** Code-owned positions. Dynamic names stay in locked text files, never filter expressions. */
-export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLength}){
+/** Lichtpunkte, die über die Linien des HUD v2 laufen: [x0,y0,x1,y1,Sekunden je Durchlauf,Farbe]. */
+const RUNNERS=[
+ [638,192,938,192,2.4,'0x00e8ff'],[1288,192,988,192,2.4,'0xb44dff'],
+ [6,6,304,6,3.1,'0xffcf5a'],[6,340,6,830,3.6,'0x00e8ff'],[1914,700,1914,120,4.2,'0xb44dff'],
+ [26,848,415,848,2.8,'0x00e8ff'],[18,1066,412,1066,3.3,'0x00e8ff'],[1902,1066,1514,1066,3.3,'0xb44dff'],
+];
+/** Code-owned positions. Dynamic names stay in locked text files, never filter expressions.
+ * hud2 = animiertes HUD v2 (Eingang 2 = hud-v2.png aus dem Video-Paket) mit laufenden Lichtpunkten,
+ * filter = fertiger Teilgraph [game0] -> [game] (video-filters.mjs), nur auf das Gameplay, nie auf das HUD.
+ */
+export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLength,hud2=false,filter=null}){
  const n=v=>Math.max(1,Math.round(v*width/1920));
  const text=(file,size,x,y,color,extra='')=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:shadowcolor=black@0.8:shadowx=1:shadowy=1:x=${n(x)}:y=${n(y)}${extra}`;
  const size=Math.min(44,Math.max(20,Math.floor(700/Math.max(playerLength,16))));
- return `[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game];[2:v]scale=${width}:${height}[hud];[game][hud]overlay=0:0[base];`+
+ const game=filter?`[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game0];${filter};`:`[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game];`;
+ let hud=`[2:v]scale=${width}:${height}[hud];[game][hud]overlay=0:0[base];`;
+ if(hud2){
+  // Leuchtender Lichtstreif, im Graphen erzeugt (keine Datei): waagerecht 120x14, senkrecht 14x120.
+  const dot=(w,h,label,color)=>`color=c=${color}:s=${n(w)}x${n(h)}:r=${fps},format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='min(255,420*exp(-pow((X-W/2)/(W/5),2))*exp(-pow((Y-H/2)/(H/5),2)))'[${label}]`;
+  const parts=[];let last='hudbase';
+  RUNNERS.forEach(([x0,y0,x1,y1,period,color],i)=>{
+   const flat=y0===y1;const w=flat?120:14,h=flat?14:120;
+   parts.push(dot(w,h,`dot${i}`,color));
+   const p=`mod(t\,${period})/${period}`;
+   const x=`${n(x0)}+(${n(x1)}-${n(x0)})*${p}-${n(w)}/2`,y=`${n(y0)}+(${n(y1)}-${n(y0)})*${p}-${n(h)}/2`;
+   parts.push(`[${last}][dot${i}]overlay=x='${x}':y='${y}':shortest=1[hr${i}]`);last=`hr${i}`;
+  });
+  // Blinkende Marken am Rahmen oben und an der Spielerkarte.
+  const blink=(x,y,w,h,color,on)=>`drawbox=x=${n(x)}:y=${n(y)}:w=${n(w)}:h=${n(h)}:color=${color}:t=fill:enable='lt(mod(t\,1.6)\,${on})'`;
+  hud=`[2:v]scale=${width}:${height}[hud];[game][hud]overlay=0:0[hudbase];`+parts.join(';')+
+   `;[${last}]`+[blink(944,197,36,6,'0xffcf5a',0.8),blink(606,0,8,40,'0xffcf5a',0.4),blink(1312,0,8,40,'0xffcf5a',0.4),blink(1895,450,6,30,'0xb44dff',1.0)].join(',')+'[base];';
+ }
+ return game+hud+
   `[1:v]scale=${n(56)}:${n(56)}[logo];[base][logo]overlay=${n(1660)}:${n(30)},`+
   [text('hud-brand.txt',26,1727,38,'0xefc96d'),text('hud-site.txt',14,1727,70,'0x9cefff'),
    text(mapFile,14,64,932,'0xb7efff'),text('hud-mode.txt',16,64,854,'0x85e8ef'),

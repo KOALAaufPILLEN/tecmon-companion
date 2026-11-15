@@ -94,7 +94,7 @@ export function buildActions(recording, { tickRate, slots, cameras = [], script 
     add(setup, `mp_display_kill_assists ${s.showAssists ? 1 : 0}`);
     add(
       setup,
-      `mirv_streams settings add ffmpeg ${preset} "-c:v ${ff.videoCodec} -pix_fmt yuv420p -crf ${ff.constantRateFactor} {QUOTE}${folder}\\\\video.${ff.videoContainer}{QUOTE}"`,
+      `mirv_streams settings add ffmpeg ${preset} "-c:v ${ff.videoCodec} -pix_fmt yuv420p -crf ${ff.constantRateFactor} -colorspace smpte170m -color_primaries bt709 -color_trc bt709 -color_range tv {QUOTE}${folder}\\\\video.${ff.videoContainer}{QUOTE}"`,
     );
     add(setup, `mirv_streams record screen settings ${preset}`);
     add(setup, `mirv_streams record fps ${recording.framerate}`);
