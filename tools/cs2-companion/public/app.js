@@ -50,6 +50,8 @@ function databaseState(pg) {
 }
 async function api(url, body) {
   const response = await fetch(url, { method: body === undefined ? 'GET' : 'POST', headers: { 'x-tecmon-token': token, ...(body === undefined ? {} : { 'content-type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  // Neuer Sitzungsschlüssel nach Neustart des Dienstes (z. B. Update): Seite einmal neu laden.
+  if (response.status === 401) { let last = 0; try { last = Number(sessionStorage.getItem('tecmon-reload') || 0); sessionStorage.setItem('tecmon-reload', String(Date.now())); } catch {} if (Date.now() - last > 30000) { location.reload(); return new Promise(() => {}); } }
   const result = await response.json(); if (!response.ok) throw new Error(result.error); return result;
 }
 function notice(error) { $('notice').textContent = error.message || String(error); }
