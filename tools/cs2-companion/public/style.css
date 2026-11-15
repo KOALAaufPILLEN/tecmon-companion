@@ -123,3 +123,4 @@ details>summary{cursor:pointer}
 @media (hover:hover) and (pointer:fine){.panel-tabs button:not([aria-selected="true"]):hover{color:#f1eef7!important;background:#a78bfa22!important}}
 .desktop-panel .card[hidden]{display:none}
 .desktop-panel #auto-note,.desktop-panel #tips-note{font-size:11px;color:var(--muted)}
+.pet-reply{display:block;margin-top:6px;color:var(--muted);font-style:italic}

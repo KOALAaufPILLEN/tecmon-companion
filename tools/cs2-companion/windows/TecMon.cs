@@ -468,7 +468,7 @@ class DesktopPanel : Form {
   /* Zu einem Bereich der Seite springen (feste IDs), optional ein Spiel starten. */
   string startHash="";
   public void Jump(string id,string game){
-    if(!System.Text.RegularExpressions.Regex.IsMatch(id,"^[a-z]+$")||!System.Text.RegularExpressions.Regex.IsMatch(game??"","^[a-z]*$"))return;
+    if(!System.Text.RegularExpressions.Regex.IsMatch(id,"^[a-z0-9-]+$")||!System.Text.RegularExpressions.Regex.IsMatch(game??"","^[a-z]*$"))return;
     string script="document.getElementById('"+id+"')?.scrollIntoView({behavior:'smooth'});"+(string.IsNullOrEmpty(game)?"":"document.querySelector('[data-game="+game+"]')?.click();");
     if(web==null){startHash="#"+id;return;}
     try{dynamic view=web;if(view.CoreWebView2!=null)view.CoreWebView2.ExecuteScriptAsync(script);}catch(Exception){}
@@ -509,6 +509,16 @@ class TecMonMenu : ToolStripProfessionalRenderer {
   /* Jeder Eintrag sieht aus wie ein Button: eigene Flaeche, Hover-Zustand, beim Druecken gibt er sichtbar nach. Mindesthoehe 32 px. */
   public static void Apply(ToolStripDropDown menu){menu.Renderer=new TecMonMenu();menu.Font=new Font("Segoe UI",10f);menu.Padding=new Padding(6,8,6,8);menu.ForeColor=Text;foreach(ToolStripItem item in menu.Items){if(item is ToolStripMenuItem){item.Padding=new Padding(4,6,4,6);item.Margin=new Padding(0,2,0,2);}}}
   static System.Drawing.Drawing2D.GraphicsPath Cut(RectangleF r,float c){var p=new System.Drawing.Drawing2D.GraphicsPath();p.AddPolygon(new[]{new PointF(r.Left+c,r.Top),new PointF(r.Right,r.Top),new PointF(r.Right,r.Bottom-c),new PointF(r.Right-c,r.Bottom),new PointF(r.Left,r.Bottom),new PointF(r.Left,r.Top+c)});return p;}
+  static readonly Color Danger=Color.FromArgb(251,113,133);
+  /* Ein-/Aus-Schalter (CheckOnClick oder Tag "toggle") schließen ihr Untermenü nicht. */
+  public static void KeepOpenOnCheck(ToolStripMenuItem parent){
+    if(parent==null)return;
+    parent.DropDown.Closing+=(s,e)=>{
+      if(e.CloseReason!=ToolStripDropDownCloseReason.ItemClicked)return;
+      var hit=parent.DropDown.GetItemAt(parent.DropDown.PointToClient(Cursor.Position)) as ToolStripMenuItem;
+      if(hit!=null&&!hit.HasDropDownItems&&(hit.CheckOnClick||Convert.ToString(hit.Tag)=="toggle"))e.Cancel=true;
+    };
+  }
   protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e){using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(e.AffectedBounds,Top,Bottom,90f))e.Graphics.FillRectangle(fill,e.AffectedBounds);}
   protected override void OnRenderImageMargin(ToolStripRenderEventArgs e){}
   protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e){
@@ -529,7 +539,7 @@ class TecMonMenu : ToolStripProfessionalRenderer {
     }
     if(hot)using(var bar=new SolidBrush(TecMon.Gold))g.FillRectangle(bar,r.Left+1,r.Top+5,3,r.Height-10);
   }
-  protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e){e.TextColor=!e.Item.Enabled?Muted:e.Item.Selected?Color.White:Text;base.OnRenderItemText(e);}
+  protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e){bool danger=Convert.ToString(e.Item.Tag)=="danger";e.TextColor=!e.Item.Enabled?Muted:danger?Danger:e.Item.Selected?Color.White:Text;base.OnRenderItemText(e);}
   protected override void OnRenderArrow(ToolStripArrowRenderEventArgs e){e.ArrowColor=TecMon.Gold;base.OnRenderArrow(e);}
   protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e){int y=e.Item.Height/2;using(var line=new Pen(Color.FromArgb(70,TecMon.Gold)))e.Graphics.DrawLine(line,12,y,e.Item.Width-12,y);}
   protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e){
@@ -867,7 +877,7 @@ class DesktopPet : Form {
     foreach(var pair in new[]{new[]{"Reaktionstest","reaction"},new[]{"Ziele treffen","aim"},new[]{"Muster merken","memory"},new[]{"Schere, Stein, Papier","rps"},new[]{"Zahl raten","guess"}}){string game=pair[1];games.DropDownItems.Add(pair[0],null,(s,e)=>OpenPanel("spiele",game));}
     menu.Items.Add(games);
     personality=new ToolStripMenuItem("Persönlichkeit");
-    foreach(var pair in new[]{new[]{"Super nett","nett"},new[]{"Normal","normal"},new[]{"Nerdy","nerdy"},new[]{"HUAN-Modus","huan"}}){string mode=pair[1];var item=new ToolStripMenuItem(pair[0]){Tag=mode,Checked=mode=="normal"};item.Click+=async(s,e)=>await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");personality.DropDownItems.Add(item);}
+    foreach(var pair in new[]{new[]{"Super nett","nett"},new[]{"Normal","normal"},new[]{"Nerdy","nerdy"},new[]{"HUAN-Modus (18+)","huan"}}){string mode=pair[1];var item=new ToolStripMenuItem(pair[0]){Tag=mode,Checked=mode=="normal"};item.Click+=async(s,e)=>{if(mode=="huan"&&!ConfirmHuan())return;await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");};personality.DropDownItems.Add(item);}
     menu.Items.Add(personality);menu.Items.Add(new ToolStripSeparator());
     menu.Items.Add("Einstellungen öffnen",null,(s,e)=>{Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();});
     menu.Items.Add("TecMon öffnen",null,(s,e)=>DesktopPanel.OpenExternal("https://tecmon.online"));
@@ -904,7 +914,9 @@ class DesktopPet : Form {
     var more=new ToolStripMenuItem("Mehr");more.DropDownItems.Add("Studio im Browser öffnen",null,(s,e)=>Process.Start(new ProcessStartInfo("http://127.0.0.1:31977"){UseShellExecute=true}));
     var webview=new ToolStripMenuItem("WebView2 von Microsoft installieren",null,(s,e)=>DesktopPanel.OpenExternal("https://developer.microsoft.com/microsoft-edge/webview2/"));more.DropDownItems.Add(webview);menu.Items.Add(more);
     menu.Opening+=(s,e)=>webview.Visible=!DesktopPanel.WebViewInstalled();
-    menu.Items.Add(new ToolStripSeparator());menu.Items.Add("Companion beenden",null,async(s,e)=>await Quit());fullMenu=menu;
+    menu.Items.Add(new ToolStripSeparator());menu.Items.Add(new ToolStripMenuItem("Companion beenden",null,async(s,e)=>await Quit()){Tag="danger"});fullMenu=menu;
+    /* Schalter in Untermenüs bleiben nach dem Klick offen. */
+    TecMonMenu.KeepOpenOnCheck(figure);TecMonMenu.KeepOpenOnCheck(tipsItem);
     /* Rechtsklick auf die Figur: Schnellmenü. Das vollständige Menü bleibt unter „Alle Optionen“ und am Tray-Symbol. */
     MouseUp+=(s,e)=>{if(e.Button==MouseButtons.Right)OpenQuick(Cursor.Position);};
     /* Gleicher Look für alle Untermenüs. */
@@ -917,7 +929,7 @@ class DesktopPet : Form {
     KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&panel!=null)panel.Hide();else if(e.KeyCode==Keys.Enter||e.KeyCode==Keys.Space)Toggle();};
     /* Etwa 60 Bilder pro Sekunde; Bewegung nach vergangener Zeit statt pro Takt, damit sie gleichmäßig bleibt. */
     animation.Interval=15;animation.Tick+=(s,e)=>Tick();
-    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowAuto(state);if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
+    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowAuto(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
     Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
     FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
@@ -1020,6 +1032,11 @@ class DesktopPet : Form {
   static readonly Dictionary<string,int> FaceNames=new Dictionary<string,int>{{"happy",Happy},{"laugh",Laugh},{"love",Love},{"star",Star},{"sleepy",Sleepy},{"surprised",Surprised},{"wink",Wink},{"sad",Sad},{"cool",Cool},{"angry",Angry},{"confused",Confused},{"tongue",Tongue},{"kiss",Kiss},{"dizzy",Dizzy}};
   static void StyleSubmenus(ToolStripItemCollection items){foreach(ToolStripItem item in items){var sub=item as ToolStripMenuItem;if(sub!=null&&sub.HasDropDownItems){TecMonMenu.Apply(sub.DropDown);StyleSubmenus(sub.DropDownItems);}}}
   ContextMenuStrip fullMenu;QuickMenu quick;ToolStripMenuItem flyItem,topItem;string petMode="normal";
+  /* HUAN ist ab 18: vor dem Einschalten einmal bestätigen lassen. */
+  bool ConfirmHuan(){
+    if(petMode=="huan")return true;
+    return MessageBox.Show(this,"HUAN-Modus (ab 18) einschalten?\n\nTecMon wird derb: Flüche und harter Trashtalk über dein Aim, deine Waffenwahl, dein Quiz-Wissen und deine Spielweise. Keine Beleidigungen von Menschen.","TecMon · HUAN-Modus (18+)",MessageBoxButtons.YesNo,MessageBoxIcon.Warning)==DialogResult.Yes;
+  }
   bool MenuOpen(){return (fullMenu!=null&&fullMenu.Visible)||(quick!=null&&!quick.IsDisposed&&quick.Visible);}
   void OpenQuick(Point at){
     if(quick!=null&&!quick.IsDisposed)quick.Close();
@@ -1042,13 +1059,22 @@ class DesktopPet : Form {
     q.Toggle("Figur fliegt umher",()=>wandering,()=>{if(flyItem!=null)flyItem.Checked=!flyItem.Checked;});
     q.Toggle("Figur im Vordergrund",()=>foreground,()=>{if(topItem!=null)topItem.Checked=!topItem.Checked;});
     q.Heading("PERSÖNLICHKEIT");
-    q.Chips(new[]{"Nett","Normal","Nerdy","HUAN"},new[]{"nett","normal","nerdy","huan"},()=>petMode,async mode=>{petMode=mode;await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");});
+    q.Chips(new[]{"Nett","Normal","Nerdy","HUAN"},new[]{"nett","normal","nerdy","huan"},()=>petMode,async mode=>{if(mode=="huan"&&!ConfirmHuan())return;petMode=mode;await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");});
     if(offeredUpdate!="")q.Footer("Update "+offeredUpdate+" installieren",async()=>await CheckUpdate(false),false);
     q.Footer("Alle Optionen …",()=>fullMenu.Show(at),false);
     q.Footer("Companion beenden",async()=>await Quit(),true);
     return q;
   }
   void OpenPanel(string id,string game){Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();if(panel!=null)panel.Jump(id,game);}
+  /* Leerlauf-Sprüche: nur ohne Aufnahme, wach und ohne Spiel im Vordergrund; alle 4–7 Minuten, Fehler still. */
+  double nextIdleChat=180;
+  async void IdleChat(){
+    if(busy||petAsleep||MenuOpen()||clock.Elapsed.TotalSeconds<nextIdleChat)return;
+    nextIdleChat=clock.Elapsed.TotalSeconds+240+random.Next(180);
+    if(GameInFront()||ForegroundIs("dota2"))return;
+    try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/pet/interact",true,"{\"action\":\"idle\"}"));var wrap=new Dictionary<string,object>();wrap["pet"]=result.ContainsKey("pet")?result["pet"]:null;ShowPet(wrap);}catch(Exception){}
+  }
+  static bool ForegroundIs(string name){try{int id;GetWindowThreadProcessId(GetForegroundWindow(),out id);if(id==0)return false;using(var process=Process.GetProcessById(id))return process.ProcessName.Equals(name,StringComparison.OrdinalIgnoreCase);}catch(Exception){return false;}}
   async Task PetAction(string action){await PetRequest("/api/pet/interact","{\"action\":\""+action+"\"}");}
   async Task PetRequest(string route,string body){
     try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request(route,true,body));var wrap=new Dictionary<string,object>();wrap["pet"]=result.ContainsKey("pet")?result["pet"]:null;ShowPet(wrap);if(result.ContainsKey("games"))ShowGames(result);}
@@ -1132,7 +1158,7 @@ class DesktopPet : Form {
     var signature=TecMon.Json.Serialize(list);if(signature==featureSignature)return;featureSignature=signature;
     while(tipsItem.DropDownItems.Count>2)tipsItem.DropDownItems.RemoveAt(2);
     foreach(var entry in list){var feature=entry as Dictionary<string,object>;if(feature==null)continue;string id=Convert.ToString(feature["id"]);bool on=Convert.ToBoolean(feature["enabled"]);
-      var item=new ToolStripMenuItem(Convert.ToString(feature["label"])){Checked=on};
+      var item=new ToolStripMenuItem(Convert.ToString(feature["label"])){Checked=on,Tag="toggle"};
       item.Click+=async(s,e)=>{try{await Request("/api/gsi/features",true,"{\"features\":{\""+id+"\":"+(on?"false":"true")+"}}");}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}};
       tipsItem.DropDownItems.Add(item);}
   }

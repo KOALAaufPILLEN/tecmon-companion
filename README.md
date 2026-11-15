@@ -76,6 +76,20 @@ Neueste Version zuerst.
 - **Linksklick-Fenster** mit Reitern (Start, Spiele, Clips, TecMon, Pakete)
   statt einer langen Liste. Sprünge aus dem Menü öffnen den passenden Reiter.
 
+#### Mehr Persönlichkeit
+
+- Neue Sprüche je Modus, eigene Sprüche zu Waffen in den Spray-Tipps und zu
+  Quiz und Preisfrage (direkt unter dem Ergebnis). Gleiche Sprüche kommen nicht
+  direkt hintereinander.
+- **HUAN-Modus ab 18:** derber Trashtalk über dein eigenes Spiel, ohne
+  Beleidigungen von Menschen. Vor dem Einschalten fragt TecMon einmal nach.
+- Ab und zu ein Spruch, wenn du gerade nicht spielst. Läuft CS2 oder Dota 2 im
+  Vordergrund oder eine Aufnahme, bleibt TecMon still.
+- Neue Spray-Hinweise für P90, SSG 08 und Negev, Kartentipps für Anubis und
+  Vertigo.
+- Im Menü „Alle Optionen …“ bleiben Untermenüs bei Schaltern offen, „Companion
+  beenden“ ist rot markiert.
+
 #### Update-Knopf mit Rückmeldung
 
 - Nach „Ja“ beim Update zeigt die Figur „Update wird geladen …“ und danach das

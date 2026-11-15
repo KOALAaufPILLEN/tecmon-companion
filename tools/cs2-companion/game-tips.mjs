@@ -84,6 +84,12 @@ const SPRAY = {
     "AWP: Nach dem Schuss nicht stehen bleiben. Position wechseln oder hinter Deckung, bevor du wieder peekst.",
   weapon_deagle:
     "Desert Eagle: Zwischen den Schüssen kurz warten, bis das Fadenkreuz wieder ruhig ist. Spammen trifft selten.",
+  weapon_p90:
+    "P90: 50 Schuss und hohe Feuerrate. Auf kurze Distanz auch aus der Bewegung stark, auf Distanz nur in kurzen Bursts.",
+  weapon_ssg08:
+    "SSG 08: Ein Kopftreffer reicht auch gegen Helm. Nutze die hohe Laufgeschwindigkeit für schnelle Peeks und geh danach sofort zurück in Deckung.",
+  weapon_negev:
+    "Negev: Die ersten Schüsse streuen stark, im Dauerfeuer wird sie sehr genau. Gut, um einen Engpass zu sperren.",
 };
 
 function sprayText(name) {
@@ -157,6 +163,26 @@ const MAP_TIPS = {
     CT: [
       "Ancient: Auf A Main früh Utility werfen, die Ts kommen dort oft schnell.",
       "Ancient: Mid nicht kampflos abgeben. Von dort kommen Splits auf beide Plätze.",
+    ],
+  },
+  de_anubis: {
+    T: [
+      "Anubis: Mid-Kontrolle über die Kanäle öffnet Splits auf A und B.",
+      "Anubis: Auf B erst die typischen CT-Positionen smoken und flashen, dann gemeinsam über Main rein.",
+    ],
+    CT: [
+      "Anubis: Mid nicht kampflos abgeben, sonst kommen Splits auf beide Plätze.",
+      "Anubis: B Main früh mit Molotov verzögern und erst mit Unterstützung peeken.",
+    ],
+  },
+  de_vertigo: {
+    T: [
+      "Vertigo: Wer A Ramp kontrolliert, drängt die CTs zurück. Smokes auf die CT-Positionen am Ende der Ramp.",
+      "Vertigo: Auf B erst die Treppe mit Utility klären, dann geschlossen hoch.",
+    ],
+    CT: [
+      "Vertigo: A Ramp früh mit HE und Molotov verzögern.",
+      "Vertigo: Die Wege zwischen A und B sind kurz. Utility für den späten Push aufheben.",
     ],
   },
 };

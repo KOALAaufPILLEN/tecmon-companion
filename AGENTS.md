@@ -129,7 +129,14 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   (`flavorTip()` setzt einen Satzanfang vor den Tipp). Inhalt, Kategorien,
   Zeitpunkte und `BRIEFING_LIMIT` der Rundentipps bleiben unverändert.
 - Der HUAN-Modus stichelt nur über das eigene Spiel, keine Beleidigungen von
-  Personen oder Gruppen.
+  Personen oder Gruppen. Derbe Sprache über Aim, Waffenwahl, Quiz-Wissen und
+  Spielweise ist erlaubt, weil HUAN als „ab 18“ markiert ist und vor dem
+  Einschalten bestätigt werden muss (Figurmenü, Schnellmenü und Seite). Keine
+  Witze über Krankheiten, Behinderungen, Herkunft, Geschlecht oder soziale Lage.
+- Waffen-Sprüche (`WEAPON_OPENERS`) erkennen die Waffe nur am Anfang des
+  Spray-Tipps; `pick()` vermeidet direkte Wiederholungen.
+- Leerlauf-Sprüche (`idle`) kommen nur ohne Aufnahme, wach, bei geschlossenem
+  Menü und ohne CS2 oder Dota 2 im Vordergrund, höchstens alle 4–7 Minuten.
 - Werte und Zähler bleiben lokal in `pet.json`; Spiele laufen nur in der
   Companion-Oberfläche, nie im Spiel.
 

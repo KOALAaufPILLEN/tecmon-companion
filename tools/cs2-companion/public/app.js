@@ -312,7 +312,7 @@ function showPet(state){
   for(const k of ['mood','energy','friendship']){$('pet-'+k).value=state[k];$(`pet-${k}-text`).textContent=state[k];}
   if(state.event)$('pet-says').textContent=`„${state.event.text}“`;
   $('pet-sleep').textContent=state.asleep?'Aufwecken':'Schlafen';$('pet-sleep').dataset.pet=state.asleep?'wake':'sleep';
-  const modes=$('pet-modes');if(modes.childElementCount!==state.modes.length)modes.replaceChildren(...state.modes.map(m=>{const b=el('button',m.label);b.type='button';b.dataset.mode=m.id;b.setAttribute('role','radio');b.addEventListener('click',()=>petCall('/api/pet/mode',{mode:m.id}));return b;}));
+  const modes=$('pet-modes');if(modes.childElementCount!==state.modes.length)modes.replaceChildren(...state.modes.map(m=>{const b=el('button',m.label);b.type='button';b.dataset.mode=m.id;b.setAttribute('role','radio');b.addEventListener('click',()=>{if(m.id==='huan'&&pet&&pet.mode!=='huan'&&!confirm('HUAN-Modus (ab 18) einschalten?\n\nTecMon wird derb: Flüche und harter Trashtalk über dein Aim, deine Waffenwahl, dein Quiz-Wissen und deine Spielweise. Keine Beleidigungen von Menschen.'))return;petCall('/api/pet/mode',{mode:m.id});});return b;}));
   for(const b of modes.children){const on=b.dataset.mode===state.mode;b.className=on?'':'subtle';b.setAttribute('aria-checked',on);}
   const c=state.counts||{},games=['reaction','rps','quiz','guess','memory','price','aim'].reduce((n,g)=>n+(c['game_'+g]||0),0);
   $('pet-counts').textContent=`Angestupst ${c.poke||0}× · Witze ${c.joke||0} · Tricks ${c.trick||0} · Spiele ${games}`;
@@ -357,7 +357,9 @@ function showGames(list){
     row.append(info,button);return row;}));
 }
 let gameArea=$('game-area');const area=()=>gameArea;
-function gameDone(game,win,score){petCall('/api/pet/game',{game,win,score});}
+function gameDone(game,win,score){return petCall('/api/pet/game',{game,win,score});}
+/* Quiz und Preisfrage: TecMons Spruch direkt unter dem Ergebnis zeigen. */
+function petReply(result,game,ok){gameDone(game,ok,ok?1:0).then(p=>{if(p&&p.event&&p.event.text&&result.isConnected)result.append(el('small',`TecMon: „${p.event.text}“`,'pet-reply'));});}
 /* Reaktionstest: warten, bis das Feld lila wird, dann so schnell wie möglich klicken. */
 function reactionGame(){
   const box=el('button','Warte auf Lila …','reaction-box');box.type='button';let ready=0,timer=0,over=false;
@@ -377,7 +379,7 @@ function rpsGame(){
 /* Callout-Quiz: auf welcher Map liegt der Ort? */
 async function quizGame(){
   try{const q=await api('/api/pet/quiz');const result=el('p','');const row=el('div','','pet-buttons');
-    row.append(...q.options.map((o,i)=>{const b=el('button',o);b.type='button';b.addEventListener('click',()=>{for(const x of row.children)x.disabled=true;const ok=i===q.answer;b.className=ok?'':'subtle';result.textContent=ok?'Richtig!':`Falsch, richtig ist ${q.options[q.answer]}.`;gameDone('quiz',ok,ok?1:0);const next=el('button','Nächste Frage','subtle');next.type='button';next.addEventListener('click',quizGame);result.append(' ',next);});return b;}));
+    row.append(...q.options.map((o,i)=>{const b=el('button',o);b.type='button';b.addEventListener('click',()=>{for(const x of row.children)x.disabled=true;const ok=i===q.answer;b.className=ok?'':'subtle';result.textContent=ok?'Richtig!':`Falsch, richtig ist ${q.options[q.answer]}.`;petReply(result,'quiz',ok);const next=el('button','Nächste Frage','subtle');next.type='button';next.addEventListener('click',quizGame);result.append(' ',next);});return b;}));
     area().replaceChildren(el('p',q.question,'quiz-question'),row,result);}catch(error){notice(error);}
 }
 /* Waffenpreis-Quiz: was kostet die Waffe in CS2? */
@@ -386,7 +388,7 @@ function priceGame(){
   const [name,price]=PRICES[Math.floor(Math.random()*PRICES.length)];const set=new Set([price]);
   while(set.size<4)set.add(PRICES[Math.floor(Math.random()*PRICES.length)][1]);
   const options=[...set].sort(()=>Math.random()-.5);const result=el('p','');const row=el('div','','pet-buttons');
-  row.append(...options.map(o=>{const b=el('button',`$${o}`);b.type='button';b.addEventListener('click',()=>{for(const x of row.children)x.disabled=true;const ok=o===price;b.className=ok?'':'subtle';result.textContent=ok?'Richtig!':`Falsch, ${name} kostet $${price}.`;gameDone('price',ok,ok?1:0);const next=el('button','Nächste Waffe','subtle');next.type='button';next.addEventListener('click',priceGame);result.append(' ',next);});return b;}));
+  row.append(...options.map(o=>{const b=el('button',`$${o}`);b.type='button';b.addEventListener('click',()=>{for(const x of row.children)x.disabled=true;const ok=o===price;b.className=ok?'':'subtle';result.textContent=ok?'Richtig!':`Falsch, ${name} kostet $${price}.`;petReply(result,'price',ok);const next=el('button','Nächste Waffe','subtle');next.type='button';next.addEventListener('click',priceGame);result.append(' ',next);});return b;}));
   area().replaceChildren(el('p',`Was kostet ${name}?`,'quiz-question'),row,result);
 }
 /* Ziele treffen: 10 Ziele so schnell wie möglich anklicken. */
