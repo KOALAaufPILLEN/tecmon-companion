@@ -14,13 +14,14 @@ Quellen und Reproduktion: `scripts/build-branding-pack.mjs`.
 
 Barlow Condensed Bold: Copyright 2017 The Barlow Project Authors, SIL Open Font License 1.1. OFL.txt ist im Paket sowie neben dieser Datei enthalten. Markenrechte am TecMon-Logo werden durch die Quellcode-Lizenz nicht übertragen.
 
-## Video-Paket Motion v3 (ab 0.25.0)
+## Video-Paket Motion v4 (ab 0.25.0)
 
-`TecMon-Motion-v3.json` (9,7 MB, `version: 3`). Paket-SHA256:
-`1d2a0543c47c2ee9ee3123a9a54d594c5d2fc5f7a59f8563cedbb8e04622f699`. Inhalt wie v2
-plus `hud-v2.png` (1920×1080, transparent), gerendert aus `source/hud-v2.svg`. Die
-Lichtstreifen und blinkenden Marken erzeugt der Companion selbst im FFmpeg-Graphen
-(`RUNNERS` in `cyber-hud.mjs`), es gibt dafür keine weitere Datei.
+`TecMon-Motion-v4.json` (9,7 MB, `version: 4`). Paket-SHA256:
+`c047f5f2cc741f57f94964fe9f8d6c4166c4b5cc8c8819aef8f3c450663064c4`. Inhalt wie v2
+plus `hud-v2.png` (1920×1080, transparent, aus `source/hud-v2.svg`) und die
+Kill-Anzeige `kill-badge.png` / `kill-badge-multi.png` (264×84, aus
+`source/kill-badge*.svg`, gleiche Form wie der Logo-Tab). Der Farbwechsel des HUD
+entsteht im FFmpeg-Graphen (`hue` in `cyber-hud.mjs`). v3 wurde nie veröffentlicht.
 
 ## Video-Paket Motion v2 (0.24.x)
 

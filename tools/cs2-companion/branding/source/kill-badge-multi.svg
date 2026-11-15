@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="264" height="84" viewBox="0 0 264 84">
+<defs>
+ <linearGradient id="neon"><stop stop-color="#ff2bd6"/><stop offset=".5" stop-color="#c13dff"/><stop offset="1" stop-color="#7b4dff"/></linearGradient>
+ <linearGradient id="glass"><stop stop-color="#050d1c" stop-opacity=".92"/><stop offset="1" stop-color="#120b26" stop-opacity=".72"/></linearGradient>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<path d="M6 6h252v52l-16 16H58L6 44z" fill="url(#glass)"/>
+<path d="M8 6h250v38M68 74h174l16-16" fill="none" stroke="url(#neon)" stroke-width="9" opacity=".5" filter="url(#glow)"/>
+<path d="M8 6h250v38M68 74h174l16-16" fill="none" stroke="url(#neon)" stroke-width="3"/>
+<path d="M8 6h66" stroke="#ffcf5a" stroke-width="4"/>
+<path d="M6 44l14 9" stroke="#ff2bd6" stroke-width="3" opacity=".8"/>
+</svg>

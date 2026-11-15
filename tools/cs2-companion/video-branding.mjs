@@ -345,16 +345,20 @@ export async function renderBranding({
       }
       const filter=sequence.filter?filterGraph(sequence.filter,'game0','game',w,h):null;
       // Kills als Sekunden ab Szenenbeginn (kill-badge-v1).
-      const kills=(sequence.kills||[]).map(([tick,count,hs])=>({t:(tick-sequence.startTick)/job.tickRate,n:count,hs:hs===1}));
+      // Nur mit den geprüften Bildern aus dem Video-Paket (ab Motion v4).
+      const badges=Boolean(motion && motion["kill-badge.png"] && motion["kill-badge-multi.png"]);
+      const kills=badges?(sequence.kills||[]).map(([tick,count,hs])=>({t:(tick-sequence.startTick)/job.tickRate,n:count,hs:hs===1})):[];
+      const badgeInputs=kills.length?["-loop","1","-i","motion-kill-badge.png","-loop","1","-i","motion-kill-badge-multi.png"]:[];
       let graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length,hud2,filter,kills});
       progress(`Cyberpunk-HUD mit dauerhaftem Spielername: Szene ${i + 1}/${sources.length} …`);
       await encode(
         `scene-${i}`,
-        ["-i", source.file, "-loop", "1", "-i", "logo.webp", "-loop", "1", "-i", hud2 ? "motion-hud-v2.png" : "cyber-hud.png"],
+        ["-i", source.file, "-loop", "1", "-i", "logo.webp", "-loop", "1", "-i", hud2 ? "motion-hud-v2.png" : "cyber-hud.png", ...badgeInputs],
         graph,
-        source.info.audio ? "0:a:0" : "3:a:0",
+        source.info.audio ? "0:a:0" : (kills.length ? "5:a:0" : "3:a:0"),
         source.info.duration,
         [label, caption, counter, hud2 ? "motion-hud-v2.png" : "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt",
+          ...(kills.length ? ["motion-kill-badge.png", "motion-kill-badge-multi.png"] : []),
           { path: source.file, sha256: source.sha256 }],
       );
     }

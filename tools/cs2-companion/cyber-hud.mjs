@@ -1,38 +1,47 @@
-/** Lichtpunkte, die über die Linien des HUD v2 laufen: [x0,y0,x1,y1,Sekunden je Durchlauf,Farbe]. */
-const RUNNERS=[
- [638,192,938,192,2.4,'0x00e8ff'],[1288,192,988,192,2.4,'0xb44dff'],
- [6,6,304,6,3.1,'0xffcf5a'],[6,340,6,830,3.6,'0x00e8ff'],[1914,700,1914,120,4.2,'0xb44dff'],
- [26,848,415,848,2.8,'0x00e8ff'],[18,1066,412,1066,3.3,'0x00e8ff'],[1902,1066,1514,1066,3.3,'0xb44dff'],
-];
 /** Code-owned positions. Dynamic names stay in locked text files, never filter expressions.
- * hud2 = animiertes HUD v2 (Eingang 2 = hud-v2.png aus dem Video-Paket) mit laufenden Lichtpunkten,
+ * hud2 = HUD v2 (Eingang 2 = hud-v2.png aus dem Video-Paket), dessen Farben langsam wechseln,
  * filter = fertiger Teilgraph [game0] -> [game] (video-filters.mjs), nur auf das Gameplay, nie auf das HUD.
  */
 /** Name des Mehrfach-Kills nach der Kill-Nummer in der Runde (feste Wörter, kein Text aus dem Auftrag). */
 export function killWords(n){
- return n>=5?['ACE','ALLE 5 GEGNER']:n===4?['4K','QUAD KILL']:n===3?['3K','TRIPLE KILL']:n===2?['2K','DOUBLE KILL']:['1K','KILL'];
+ return n>=5?['ACE','ALL 5 ENEMIES']:n===4?['4K','QUAD KILL']:n===3?['3K','TRIPLE KILL']:n===2?['2K','DOUBLE KILL']:['1K','KILL'];
 }
-/** Kill-Anzeige links neben dem TecMon-Logo oben rechts: je Kill 2,6 s, Mehrfach-Kills in Magenta. */
-export function killBadges(kills,n,fps){
- if(!kills||!kills.length)return '';
- const out=[];
+/** Lage der Kill-Anzeige: links neben dem Logo-Tab oben rechts (1920er Raster), gleiche Form wie der Tab. */
+export const KILL_BADGE={x:1372,y:18,w:264,h:84};
+/**
+ * Kill-Anzeige aus den geprüften Bildern kill-badge.png (Eingang `plain`) und kill-badge-multi.png
+ * (Eingang `multi`): je Kill 2,6 s bzw. bis zum nächsten Kill. Gibt den Teilgraphen von [input] nach [v].
+ */
+export function killBadges(kills,n,input,plain,multi){
+ if(!kills||!kills.length)return `[${input}]null[v]`;
+ const {x,y,w,h}=KILL_BADGE;
+ // Jedes Bild nur so oft teilen, wie es gebraucht wird (FFmpeg verlangt verbundene Ausgänge).
+ const pick=kills.map(k=>k.n>=2?'km':'kp');
+ const parts=[];
+ for(const [src,tag] of [[plain,'kp'],[multi,'km']]){
+  const ids=pick.map((p,i)=>p===tag?i:-1).filter(i=>i>=0);
+  if(ids.length)parts.push(`[${src}]scale=${n(w)}:${n(h)},split=${ids.length}${ids.map(i=>`[${tag}${i}]`).join('')}`);
+ }
+ let last=input;
  kills.forEach(({t,n:count,hs},i)=>{
-  const next=kills[i+1]?Math.min(kills[i+1].t,t+2.6):t+2.6;
-  const on=`between(t\,${t.toFixed(2)}\,${next.toFixed(2)})`;
-  const fade=`alpha='min(1\,(t-${t.toFixed(2)})/0.12)'`;
+  const end=kills[i+1]?Math.min(kills[i+1].t,t+2.6):t+2.6;
+  const on=`between(t,${t.toFixed(2)},${end.toFixed(2)})`;
+  const fade=`alpha='min(1,(t-${t.toFixed(2)})/0.12)'`;
   const [big,small]=killWords(count);
-  const multi=count>=2;
-  const edge=multi?'0xff2bd6':'0x22e6ff';
-  out.push(`drawbox=x=${n(1418)}:y=${n(24)}:w=${n(222)}:h=${n(70)}:color=0x0b0716@0.82:t=fill:enable='${on}'`);
-  out.push(`drawbox=x=${n(1418)}:y=${n(24)}:w=${n(222)}:h=${n(70)}:color=${edge}@0.95:t=${n(3)}:enable='${on}'`);
-  out.push(`drawbox=x=${n(1418)}:y=${n(24)}:w=${n(8)}:h=${n(70)}:color=0xffcf5a:t=fill:enable='${on}'`);
-  out.push(`drawtext=fontfile=font.ttf:text='${big}':fontsize=${n(46)}:fontcolor=${multi?'0xff9bed':'0x9cefff'}:shadowcolor=black@0.8:shadowx=2:shadowy=2:x=${n(1436)}:y=${n(32)}:${fade}:enable='${on}'`);
-  out.push(`drawtext=fontfile=font.ttf:text='${small}${hs?' · HS':''}':fontsize=${n(16)}:fontcolor=0xefc96d:x=${n(1530)}:y=${n(40)}:${fade}:enable='${on}'`);
-  out.push(`drawtext=fontfile=font.ttf:text='KILL ${Math.min(count,10)} DER RUNDE':fontsize=${n(12)}:fontcolor=0xb6a3ff:x=${n(1530)}:y=${n(66)}:${fade}:enable='${on}'`);
+  const isMulti=count>=2;
+  parts.push(`[${last}][${pick[i]}${i}]overlay=${n(x)}:${n(y)}:enable='${on}'[kb${i}]`);
+  const label=`[kb${i}]`+[
+   `drawtext=fontfile=font.ttf:text='${big}':fontsize=${n(44)}:fontcolor=${isMulti?'0xff9bed':'0x9cefff'}:shadowcolor=black@0.8:shadowx=2:shadowy=2:x=${n(x+30)}:y=${n(y+16)}:${fade}:enable='${on}'`,
+   `drawtext=fontfile=font.ttf:text='${small}':fontsize=${n(22)}:fontcolor=0xefc96d:x=${n(x+112)}:y=${n(y+16)}:${fade}:enable='${on}'`,
+   `drawtext=fontfile=font.ttf:text='${hs?'HEADSHOT':'KILL '+Math.min(count,10)+' THIS ROUND'}':fontsize=${n(13)}:fontcolor=${hs?'0xff9bed':'0x9cefff'}:x=${n(x+112)}:y=${n(y+46)}:${fade}:enable='${on}'`,
+  ].join(',')+`[kt${i}]`;
+  parts.push(label);last=`kt${i}`;
  });
- return ','+out.join(',');
+ parts.push(`[${last}]null[v]`);
+ return parts.join(';');
 }
 
+/** `kills`: Kill-Anzeige, braucht die Eingänge 3 (kill-badge.png) und 4 (kill-badge-multi.png). */
 export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLength,hud2=false,filter=null,kills=null}){
  const n=v=>Math.max(1,Math.round(v*width/1920));
  const text=(file,size,x,y,color,extra='')=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:shadowcolor=black@0.8:shadowx=1:shadowy=1:x=${n(x)}:y=${n(y)}${extra}`;
@@ -40,26 +49,15 @@ export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLe
  const game=filter?`[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game0];${filter};`:`[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game];`;
  let hud=`[2:v]scale=${width}:${height}[hud];[game][hud]overlay=0:0[base];`;
  if(hud2){
-  // Leuchtender Lichtstreif, im Graphen erzeugt (keine Datei): waagerecht 120x14, senkrecht 14x120.
-  const dot=(w,h,label,color)=>`color=c=${color}:s=${n(w)}x${n(h)}:r=${fps},format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='min(255,420*exp(-pow((X-W/2)/(W/5),2))*exp(-pow((Y-H/2)/(H/5),2)))'[${label}]`;
-  const parts=[];let last='hudbase';
-  RUNNERS.forEach(([x0,y0,x1,y1,period,color],i)=>{
-   const flat=y0===y1;const w=flat?120:14,h=flat?14:120;
-   parts.push(dot(w,h,`dot${i}`,color));
-   const p=`mod(t\,${period})/${period}`;
-   const x=`${n(x0)}+(${n(x1)}-${n(x0)})*${p}-${n(w)}/2`,y=`${n(y0)}+(${n(y1)}-${n(y0)})*${p}-${n(h)}/2`;
-   parts.push(`[${last}][dot${i}]overlay=x='${x}':y='${y}':shortest=1[hr${i}]`);last=`hr${i}`;
-  });
-  // Blinkende Marken am Rahmen oben und an der Spielerkarte.
-  const blink=(x,y,w,h,color,on)=>`drawbox=x=${n(x)}:y=${n(y)}:w=${n(w)}:h=${n(h)}:color=${color}:t=fill:enable='lt(mod(t\,1.6)\,${on})'`;
-  hud=`[2:v]scale=${width}:${height}[hud];[game][hud]overlay=0:0[hudbase];`+parts.join(';')+
-   `;[${last}]`+[blink(944,197,36,6,'0xffcf5a',0.8),blink(606,0,8,40,'0xffcf5a',0.4),blink(1312,0,8,40,'0xffcf5a',0.4),blink(1895,450,6,30,'0xb44dff',1.0)].join(',')+'[base];';
+  // HUD v2: nur die Farben wandern langsam (Cyan → Lila → Cyan), keine bewegten Teile.
+  hud=`[2:v]scale=${width}:${height},format=yuva444p,hue=h='22*sin(2*PI*t/7)':s='1+0.12*sin(2*PI*t/7)'[hud];[game][hud]overlay=0:0[base];`;
  }
  return game+hud+
   `[1:v]scale=${n(56)}:${n(56)}[logo];[base][logo]overlay=${n(1660)}:${n(30)},`+
   [text('hud-brand.txt',26,1727,38,'0xefc96d'),text('hud-site.txt',14,1727,70,'0x9cefff'),
    text(mapFile,14,64,932,'0xb7efff'),text('hud-mode.txt',16,64,854,'0x85e8ef'),
-   text(sceneFile,16,348,854,'0xb6a3ff'),text(playerFile,size,64,885,'0xf3d48c')].join(',')+killBadges(kills,n,fps)+'[v]';
+   text(sceneFile,16,348,854,'0xb6a3ff'),text(playerFile,size,64,885,'0xf3d48c')].join(',')+
+  (kills&&kills.length?'[hudtext];'+killBadges(kills,n,'hudtext','3:v','4:v'):'[v]');
 }
 
 export const SWITCH_SECONDS=1.1;

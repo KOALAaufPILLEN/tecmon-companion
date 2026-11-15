@@ -69,13 +69,13 @@ Neueste Version zuerst.
 ### Neu in 0.25.0: Animiertes Overlay, Filter und bessere Bildqualität
 
 - **Animiertes Gameplay-Overlay (HUD v2):** Der Rahmen oben liegt eng an den
-  Spielerbildern und umfasst jetzt auch die Waffenzeile. Kräftigere Farben,
-  dickere Linien mit Leuchten, Lichtstreifen laufen über Rahmen und Seitenleisten,
-  Marken blinken. Kommt aus dem Video-Paket `TecMon-Motion-v3.json` (feste
-  Prüfsummen); ohne Paket bleibt das bisherige Overlay.
+  Spielerbildern und umfasst jetzt auch die Waffenzeile. Kräftigere Farben und
+  dickere Linien mit Leuchten; die Farben wechseln langsam zwischen Cyan und Lila,
+  sonst bewegt sich nichts. Kommt aus dem Video-Paket `TecMon-Motion-v4.json`
+  (feste Prüfsummen); ohne Paket bleibt das bisherige Overlay.
 - **Kill-Anzeige im Video** (Capability `kill-badge-v1`): links neben dem TecMon-Logo
-  oben erscheint bei jedem Kill des Szenen-Spielers „1K“, „2K · DOUBLE KILL“ bis „ACE“,
-  mit Kopfschuss-Hinweis. Die Webseite schickt nur Ticks und Zahlen, die Wörter stehen fest im Companion.
+  erscheint bei jedem Kill des Szenen-Spielers ein Tab in derselben Form wie das Logo:
+  „1K · KILL“, „2K · DOUBLE KILL“ bis „ACE · ALL 5 ENEMIES“ (englisch), mit „HEADSHOT“. Die Webseite schickt nur Ticks und Zahlen, die Wörter stehen fest im Companion.
 - **36 voreingestellte Filter** (Capability `video-filter-v1`): je Szene ein
   Filter nur auf das Gameplay, das Overlay bleibt unverändert. Optional ein eigener
   Filter für Intro, Titelbild, Spielerwechsel und Outro. Die Webseite schickt nur
