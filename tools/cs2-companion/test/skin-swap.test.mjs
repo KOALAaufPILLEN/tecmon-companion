@@ -108,6 +108,9 @@ test("Messer und Handschuhe ersetzen die Standard-Gegenstände (skin-swap-v2)", 
   const value = job([knife]);
   value.sequences[1] = { ...value.sequences[1], steamId: STEAM, skins: [{ ...knife, weapon: 515 }] };
   assert.throws(() => rewriteRequest(validateJob(value), "a.dem", "b.dem", "x"), /verschiedene Messer/);
+  // Gleiches Messer wie in der Demo, nur neue Lackierung: das eigene Messer muss mit in die Liste.
+  const own = rewriteRequest(validateJob(job([{ ...knife, weapon: 515, paintKit: 38 }])), "a.dem", "b.dem", "x");
+  assert.deepEqual(own.passes[0].items.map((i) => i.definition_index), [...DEFAULT_KNIVES, 515]);
   assert.equal(cs2GameDir(""), "");
   assert.match(cs2GameDir(path.join("C:", "cs2", "game", "bin", "win64", "cs2.exe")), /game[\\/]csgo$/);
 });

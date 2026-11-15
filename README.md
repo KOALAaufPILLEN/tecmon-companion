@@ -66,6 +66,11 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.32.5: Messer-Tausch korrigiert
+
+- Hat der Spieler in der Demo schon ein besonderes Messer und bekommt dasselbe
+  Messer mit neuer Lackierung, wird es jetzt auch wirklich getauscht.
+
 ### Neu in 0.32.4: Augenbrauen und Augenfarben
 
 - Die Augen der Figur haben Brauen, eine feine Kontur, einen hellen Kern und
