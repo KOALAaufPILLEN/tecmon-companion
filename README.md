@@ -66,6 +66,14 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.27.1: Update-Knopf mit Rückmeldung
+
+- Nach „Ja“ beim Update zeigt die Figur „Update wird geladen …“ und danach das
+  Ergebnis oder den Fehler, statt still zu bleiben.
+- Jeder Update-Schritt und jeder Fehler steht im Protokoll
+  (`%LOCALAPPDATA%\TecMon\Logs\companion.log`). Die Statusabfrage der Datenbank
+  hat ein Zeitlimit, damit das Update nicht hängen bleibt.
+
 ### Neu in 0.27.0: Frage schon im Hauptmenü, Menü mit Buttons
 
 - **Highlight-Frage direkt nach dem Match:** Ist „Nach dem Match Highlight-Video

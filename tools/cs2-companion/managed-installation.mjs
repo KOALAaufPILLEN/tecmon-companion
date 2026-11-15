@@ -126,7 +126,7 @@ export async function ensureManagedDatabase(config) {
 
 export async function stopManagedDatabase(config, run = runTool) {
   try {
-    await run(path.join(config.postgresBin, "pg_ctl.exe"), ["status", "-D", config.clusterDir]);
+    await run(path.join(config.postgresBin, "pg_ctl.exe"), ["status", "-D", config.clusterDir], { timeout: 15000 });
   } catch (error) {
     if (error.exitCode === 3) return;
     throw error;
@@ -169,7 +169,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     );
   const config = previous || {
     format: "tecmon-installation-v1",
-    version: "0.27.0",
+    version: "0.27.1",
     installationId: randomUUID(),
     dataDir: options.dataDir,
     clusterDir: path.join(privateDir, "postgres", "data"),

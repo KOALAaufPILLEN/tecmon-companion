@@ -1196,6 +1196,7 @@ export async function createCompanion({
           });
         } catch (error) {
           active = false;
+          console.error("Update:", error instanceof Error ? error.message : error);
           throw error;
         }
       }
@@ -1401,14 +1402,20 @@ export async function createCompanion({
 
   /** Geprüftes Update herunterladen und den Updater starten; danach muss dieser Dienst enden. */
   async function startUpdate(update) {
+    // Jeder Schritt landet im Protokoll (companion.log), damit ein hängendes Update nachvollziehbar ist.
+    console.log(`Update ${update.latest}: lade Paket (${update.size} Bytes) …`);
     const executable = await fetchUpdate(root, update);
+    console.log(`Update ${update.latest}: Paket geprüft, beende Datenbank …`);
     await stopDatabase(installation);
+    console.log(`Update ${update.latest}: starte Updater …`);
     const child = launchUpdate(executable);
     await new Promise((resolve, reject) => {
-      child.once("spawn", resolve);
-      child.once("error", reject);
+      const timer = setTimeout(() => reject(new Error("Updater startet nicht.")), 30000);
+      child.once("spawn", () => (clearTimeout(timer), resolve()));
+      child.once("error", (error) => (clearTimeout(timer), reject(error)));
     });
     child.unref();
+    console.log(`Update ${update.latest}: Updater läuft, Dienst beendet sich.`);
   }
   /**
    * Automatische Updates: gleiche Prüfung wie der Knopf (stabiles Release,
