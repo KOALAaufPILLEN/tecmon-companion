@@ -36,6 +36,7 @@ rest=ImageChops.subtract(m,main).filter(ImageFilter.MaxFilter(7)).filter(ImageFi
 # Nur die Hauptfläche einziehen, damit das LED-Gesicht nicht an den Goldrand stößt.
 m=ImageChops.lighter(main.filter(ImageFilter.MinFilter(9)).filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(3)),rest)
 
+GLOW=float(os.environ.get('TECMON_FACE_GLOW','0.6' if STYLE=='robot' else '1'))
 TILT=float(os.environ.get('TECMON_TILT','-7'))
 CX,CY=int(os.environ.get('TECMON_CX','850')),int(os.environ.get('TECMON_CY','1185'))
 def bake(name):
@@ -48,6 +49,8 @@ def bake(name):
     from PIL import ImageStat
     # Visierreste außerhalb des Gesichts in der mittleren Visierfarbe (mit LED-Raster gemittelt) füllen.
     fe=Image.new('RGBA',f.size,(0,0,0,255)); fe.alpha_composite(f)
+    # Kräftige Augenfarben (robot) leuchten sonst durch emissiveIntensity und Tonemapping fast weiß.
+    if GLOW!=1: fe=Image.eval(fe.convert('RGB'),lambda v:int(v*GLOW)).convert('RGBA')
     avg_d=tuple(int(v) for v in ImageStat.Stat(base.convert('RGB')).mean); avg_e=tuple(int(v) for v in ImageStat.Stat(fe.convert('RGB')).mean)
     vd=Image.new('RGB',D.size,avg_d); vd.paste(base.convert('RGB'),(px0,py0))
     ve=Image.new('RGB',D.size,avg_e); ve.paste(fe.convert('RGB'),(px0,py0))
