@@ -66,6 +66,12 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.32.2: Neue Augen für die Figur
+
+- Die Figur hat ruhige, leuchtende Roboter-Augen statt der bisherigen
+  Holo-Gesichter: abgerundete Visier-Augen mit leicht gesenktem Lid, kleiner Mund.
+  Beim Video-Erstellen schaut sie konzentriert mit Lade-Ring, fertig mit Sternenaugen.
+
 ### Neu in 0.32.1: Figur sagt, was sie gerade am Video macht
 
 - Während ein Video entsteht, zeigt die Figur eine Sprechblase mit dem aktuellen
