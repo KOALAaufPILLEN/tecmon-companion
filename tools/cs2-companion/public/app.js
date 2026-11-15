@@ -293,7 +293,7 @@ async function loadCrosshair(){
   try{crosshairInfo=await api('/api/crosshair');crosshair=crosshairInfo.crosshair;$('crosshair-exec').textContent=crosshairInfo.exec;
     $('crosshair-style').replaceChildren(...crosshairInfo.styles.map(s=>{const o=el('option',s.label);o.value=s.id;return o;}));
     $('crosshair-presets').replaceChildren(...crosshairInfo.presets.map(p=>{const b=el('button',p.label,'subtle');b.type='button';b.addEventListener('click',()=>{crosshair={...p.crosshair,color:[...p.crosshair.color]};showCrosshair();});return b;}));
-    if(!crosshairInfo.available)$('crosshair-save').textContent='Speichern';showCrosshair();}catch(error){notice(error);}
+    if(!crosshairInfo.available)$('crosshair-save').textContent='Speichern';showCrosshair();showOverlay(crosshairInfo.overlay);}catch(error){notice(error);}
 }
 for(const k of crossKeys)$('crosshair-'+k)?.addEventListener('input',e=>{crosshair[k]=Number(e.target.value);showCrosshair();});
 for(const k of ['outline','dot','tStyle'])$('crosshair-'+k)?.addEventListener('change',e=>{crosshair[k]=e.target.checked;showCrosshair();});
@@ -303,6 +303,52 @@ $('crosshair-import')?.addEventListener('click',async()=>{try{const result=await
 $('crosshair-copy')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(crossCommands(crosshair).join('; '));notice({message:'Befehle kopiert. In der CS2-Konsole einfügen.'});}catch(error){notice(error);}});
 $('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/save',{crosshair});crosshair=result.crosshair;showCrosshair();notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
 loadCrosshair();
+/* Fadenkreuz-Overlay: erst nach gelesenem und bestätigtem Hinweis. */
+function showOverlay(o){
+  if(!o||!$('overlay-toggle'))return;crosshairInfo.overlay=o;
+  const status=$('overlay-status');status.textContent=!o.enabled?'Aus':o.mode==='fullscreen'?'An · CS2 läuft im Vollbild, bitte Vollbild-Fenstermodus wählen':o.mode==='windowed'?'An · CS2 läuft im Fenster, bitte Vollbild-Fenstermodus wählen':'An';status.classList.toggle('on',o.enabled);
+  $('overlay-notice').replaceChildren(...o.notice.map(t=>el('li',t)));
+  $('overlay-toggle').textContent=o.enabled?'Overlay ausschalten':o.accepted?'Overlay einschalten':'Overlay einschalten …';
+  if(o.enabled||o.accepted)$('overlay-consent').hidden=true;
+}
+$('overlay-toggle')?.addEventListener('click',async()=>{
+  const o=crosshairInfo&&crosshairInfo.overlay;if(!o)return;const button=$('overlay-toggle');
+  if(!o.enabled&&!o.accepted){
+    const box=$('overlay-consent');
+    if(box.hidden){box.hidden=false;button.textContent='Zustimmen und einschalten';$('overlay-accept').focus();return;}
+    if(!$('overlay-accept').checked){notice({message:'Bitte erst den Hinweis bestätigen.'});$('overlay-accept').focus();return;}
+  }
+  button.disabled=true;
+  try{const result=await api('/api/crosshair/overlay',{enabled:!o.enabled,accept:o.noticeVersion});showOverlay(result.overlay);notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('overlay-consent')&&!$('overlay-consent').hidden&&!(crosshairInfo&&crosshairInfo.overlay.accepted)){$('overlay-consent').hidden=true;$('overlay-accept').checked=false;showOverlay(crosshairInfo.overlay);}});
+
+/* CFG-Sammlung: feste Einträge vom Companion, Tasten nur aus der Liste. */
+function showCfgs(info){
+  const list=$('cfg-list');if(!list||!info)return;
+  list.replaceChildren(...info.groups.map(g=>{
+    const items=info.items.filter(i=>i.group===g.id);if(!items.length)return el('div','');
+    const box=el('div','','cfg-group');box.append(el('h3',g.label));
+    for(const item of items){
+      const card=el('div','','cfg-item'+(item.installed?' on':''));
+      const row=el('div','','cfg-row');row.append(el('strong',item.label));
+      let select=null;
+      if(item.bind){select=document.createElement('select');select.setAttribute('aria-label','Taste für '+item.label);select.replaceChildren(...info.keys.map(k=>{const o=el('option',k.toUpperCase());o.value=k;return o;}));select.value=item.key||item.defaultKey;row.append(select);}
+      const install=el('button',item.installed?'Neu speichern':'In CS2 speichern');install.type='button';
+      install.addEventListener('click',async()=>{install.disabled=true;try{const r=await api('/api/cfgs/install',{id:item.id,key:select?select.value:''});showCfgs(r);notice({message:r.message});}catch(error){notice(error);}finally{install.disabled=false;}});
+      row.append(install);
+      if(item.installed){const remove=el('button','Entfernen','subtle');remove.type='button';remove.addEventListener('click',async()=>{remove.disabled=true;try{const r=await api('/api/cfgs/remove',{id:item.id});showCfgs(r);notice({message:r.message});}catch(error){notice(error);}finally{remove.disabled=false;}});row.append(remove);}
+      card.append(row,el('p',item.description));
+      if(item.source)card.append(el('small','Quelle: '+item.source+'. Profis ändern ihre Einstellungen öfter.'));
+      const exec=el('p','');exec.append('Laden in CS2: ',el('code',item.exec));card.append(exec);
+      const details=document.createElement('details');details.append(el('summary','Befehle ansehen'),el('pre',item.commands.join('\n')));card.append(details);
+      box.append(card);
+    }
+    return box;
+  }));
+}
+async function loadCfgs(){if(!$('cfg-list'))return;try{showCfgs(await api('/api/cfgs'));}catch(error){notice(error);}}
+loadCfgs();
 /* TecMon: Werte, Persönlichkeit, Interaktionen und Mini-Spiele. Alles lokal; die Figur zeigt die Antworten. */
 let pet=null;
 function showPet(state){
@@ -495,7 +541,7 @@ $('auto-toggle').addEventListener('click',()=>api('/api/auto/settings',{enabled:
   if(!document.body.classList.contains('desktop-panel'))return;
   const groups=[
     ['start','Start',['.connection-summary','.activity-summary','#videos']],
-    ['cs2','Spiele',['#auto-highlights','#rundentipps','#dota-tipps','#fadenkreuz','#quiz']],
+    ['cs2','Spiele',['#auto-highlights','#rundentipps','#dota-tipps','#fadenkreuz','#cfgs','#quiz']],
     ['clips','Clips',['#clips']],
     ['tecmon','TecMon',['#tecmon','#spiele']],
     ['pakete','Pakete',['#games']],

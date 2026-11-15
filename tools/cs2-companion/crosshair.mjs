@@ -1,10 +1,11 @@
-import { readFile, writeFile, rename, mkdir, unlink } from "node:fs/promises";
+import { readFile, writeFile, rename, mkdir, unlink, readdir, stat } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
 /**
  * Fadenkreuz-Editor: erzeugt nur CS2-eigene Einstellungen (cl_crosshair*-Befehle
- * als cfg-Datei). Kein Overlay, keine Eingaben an das Spiel. Die cfg lädt der
+ * als cfg-Datei), keine Eingaben an das Spiel. Das optionale Overlay (unten) ist ein
+ * eigenes Fenster der Figur außerhalb von CS2. Die cfg lädt der
  * Spieler selbst mit "exec tecmon_crosshair" in der Konsole.
  */
 export const CROSSHAIR_FILE = "tecmon_crosshair.cfg";
@@ -166,4 +167,85 @@ export async function createCrosshairSettings(dir) {
       }
     },
   };
+}
+
+/*
+ * Fadenkreuz-Overlay: eigenes, durchklickbares Windows-Fenster der Figur über dem
+ * Bildschirm, außerhalb des CS2-Prozesses (kein Hook, keine Injektion, kein
+ * Speicherzugriff, keine Eingaben). Standardmäßig aus; einschalten nur, nachdem der
+ * Hinweis in OVERLAY_NOTICE bestätigt wurde. Sichtbar nur, solange CS2 im
+ * Vollbild-Fenstermodus vorn liegt (prüft die Figur).
+ */
+export const OVERLAY_NOTICE_VERSION = 1;
+export const OVERLAY_NOTICE = [
+  "Das Overlay ist ein eigenes Fenster von TecMon über dem Bildschirm. Es greift nicht in CS2 ein: kein Hook, keine Injektion, kein Speicherzugriff, keine Eingaben.",
+  "Es erscheint nur, wenn CS2 im Modus „Vollbild-Fenstermodus“ läuft und im Vordergrund ist. Im echten Vollbild bleibt es aus.",
+  "Valve hat solche Fadenkreuz-Overlays bisher nicht mit VAC-Banns belegt. Eine Garantie gibt es dafür nicht, und andere Anti-Cheats oder Ligen (z. B. FACEIT, ESEA, Turniere) können Overlays verbieten. Dort schaltest du es bitte aus.",
+  "Du nutzt das Overlay auf eigenes Risiko. TecMon haftet nicht für Sperren, Banns oder andere Folgen.",
+];
+
+export async function createOverlaySettings(dir) {
+  const file = path.join(dir, "crosshair-overlay.json");
+  let current = { enabled: false, accepted: 0 };
+  try {
+    const saved = JSON.parse(await readFile(file, "utf8"));
+    current = { enabled: saved?.enabled === true, accepted: Number.isInteger(saved?.accepted) ? saved.accepted : 0 };
+  } catch { /* noch nichts gespeichert */ }
+  if (current.accepted !== OVERLAY_NOTICE_VERSION) current.enabled = false;
+  const persist = async () => {
+    await mkdir(dir, { recursive: true });
+    await writeAtomic(file, JSON.stringify(current));
+  };
+  return {
+    get: () => ({ enabled: current.enabled, accepted: current.accepted === OVERLAY_NOTICE_VERSION }),
+    /** Einschalten nur mit bestätigtem Hinweis (accept === OVERLAY_NOTICE_VERSION). */
+    async set(enabled, accept) {
+      if (enabled) {
+        if (accept !== OVERLAY_NOTICE_VERSION && current.accepted !== OVERLAY_NOTICE_VERSION)
+          throw new Error("Bitte erst den Hinweis zum Overlay lesen und bestätigen.");
+        current.accepted = OVERLAY_NOTICE_VERSION;
+      }
+      current.enabled = Boolean(enabled);
+      await persist();
+      return this.get();
+    },
+    async reset() {
+      current = { enabled: false, accepted: 0 };
+      try { await unlink(file); } catch (error) { if (error.code !== "ENOENT") throw error; }
+    },
+  };
+}
+
+/**
+ * Anzeigemodus aus CS2s eigener cs2_video.txt (Steam\userdata\<id>\730\local\cfg),
+ * jüngste Datei gewinnt: "fullscreen", "borderless" (Vollbild-Fenstermodus),
+ * "windowed" oder "unknown". Nur lesen; die Konto-ID wird nicht weitergegeben.
+ */
+export function windowModeFromVideo(text) {
+  const value = (key) => {
+    const m = String(text || "").match(new RegExp(`"${key.replace(".", "\\.")}"\\s+"(\\d+)"`));
+    return m ? Number(m[1]) : null;
+  };
+  const fullscreen = value("setting.fullscreen");
+  if (fullscreen === null) return "unknown";
+  if (fullscreen === 1) return "fullscreen";
+  return value("setting.nowindowborder") === 1 ? "borderless" : "windowed";
+}
+
+export async function cs2WindowMode(steamRoot = path.join(process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)", "Steam")) {
+  let best = null;
+  try {
+    for (const id of await readdir(path.join(steamRoot, "userdata"))) {
+      if (!/^\d+$/.test(id)) continue;
+      const file = path.join(steamRoot, "userdata", id, "730", "local", "cfg", "cs2_video.txt");
+      try {
+        const info = await stat(file);
+        if (!best || info.mtimeMs > best.time) best = { file, time: info.mtimeMs };
+      } catch { /* kein CS2 für dieses Konto */ }
+    }
+    if (!best) return "unknown";
+    return windowModeFromVideo(await readFile(best.file, "utf8"));
+  } catch {
+    return "unknown";
+  }
 }
