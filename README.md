@@ -73,7 +73,7 @@ Neueste Version zuerst.
   dickere Linien mit Leuchten, Lichtstreifen laufen über Rahmen und Seitenleisten,
   Marken blinken. Kommt aus dem Video-Paket `TecMon-Motion-v3.json` (feste
   Prüfsummen); ohne Paket bleibt das bisherige Overlay.
-- **24 voreingestellte Filter** (Capability `video-filter-v1`): je Szene ein
+- **36 voreingestellte Filter** (Capability `video-filter-v1`): je Szene ein
   Filter nur auf das Gameplay, das Overlay bleibt unverändert. Optional ein eigener
   Filter für Intro, Titelbild, Spielerwechsel und Outro. Die Webseite schickt nur
   die Kennung, die Filterketten stehen fest im Companion.

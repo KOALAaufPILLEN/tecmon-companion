@@ -41,6 +41,24 @@ export const VIDEO_FILTERS = Object.freeze({
   nachtsicht: "hue=s=0,colorchannelmixer=rr=0.25:gg=1.2:bb=0.25,eq=contrast=1.2,noise=alls=18:allf=t,vignette=PI/3",
   abend: "colorbalance=rs=-0.05:bs=0.15:rh=0.12:gh=-0.02:bh=0.06,eq=contrast=1.08:saturation=1.15:gamma=0.96",
   scharf: "unsharp=7:7:1.4,eq=contrast=1.08:saturation=1.1",
+  // Ab 0.25.0 zusätzlich
+  lebendig: "vibrance=intensity=0.4,eq=contrast=1.05",
+  hell: "eq=brightness=0.05:gamma=1.1:saturation=1.1",
+  bleach: "eq=saturation=0.5:contrast=1.3,curves=preset=increase_contrast",
+  lila: "colorbalance=rs=0.08:gs=-0.08:bs=0.16:rm=0.06:gm=-0.06:bm=0.1,eq=saturation=1.2:contrast=1.06",
+  blutrot: "colorbalance=rs=0.16:gs=-0.04:bs=-0.04:rm=0.1:gm=-0.04:bm=-0.04,eq=contrast=1.12:saturation=1.1",
+  gold: "colorbalance=rs=0.12:gs=0.06:bs=-0.12:rh=0.1:gh=0.06:bh=-0.1,eq=saturation=1.12:contrast=1.04",
+  lomo: "curves=preset=cross_process,vignette=PI/4",
+  // Formate fest vorgeben, sonst handelt FFmpeg für beide Zweige Graustufen aus.
+  comic: (input, output, id) =>
+    `[${input}]format=yuv444p,split[${id}a][${id}b];` +
+    `[${id}b]edgedetect=low=0.05:high=0.15,negate,format=rgb24[${id}e];` +
+    `[${id}a]eq=saturation=1.5,format=rgb24,lutrgb=r='bitand(val,192)+32':g='bitand(val,192)+32':b='bitand(val,192)+32'[${id}c];` +
+    `[${id}c][${id}e]blend=all_mode=multiply[${output}]`,
+  thermal: "pseudocolor=p=heat",
+  negativ: "negate",
+  scanlines: "drawgrid=w=iw:h=4:t=1:c=black@0.35,eq=contrast=1.08:saturation=1.15",
+  poster: "lutrgb=r='bitand(val,224)':g='bitand(val,224)':b='bitand(val,224)'",
 });
 
 export const FILTER_IDS = Object.freeze(Object.keys(VIDEO_FILTERS));
