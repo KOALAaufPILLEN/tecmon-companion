@@ -165,6 +165,18 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   für fertige Clips, nur mit dem eigenen API-Schlüssel des Nutzers und nur
   nach ausdrücklichem Einschalten.
 
+## Filter und HUD v2 (`video-filters.mjs`, `cyber-hud.mjs`)
+
+- Filter kommen nur als Kennung aus `VIDEO_FILTERS`; `filterId()` verwirft alles
+  andere. Keine Filterketten oder Ausdrücke aus dem Auftrag übernehmen. Die Liste
+  muss zu `lib/videoFilters.ts` der Webseite passen (Capability `video-filter-v1`).
+- Szenenfilter wirken nur auf das Gameplay vor dem HUD; `branding.filter` nur auf
+  Intro, Titelbild, Spielerwechsel und Outro.
+- HUD v2 nur, wenn das geprüfte Video-Paket `hud-v2.png` enthält.
+- Kill-Anzeige (`kill-badge-v1`): je Szene `kills` als `[Tick, Kill-Nummer in der Runde,
+  Kopfschuss 0/1]`, höchstens 10, aufsteigend, innerhalb der Szene (`killMarks()` in
+  `job.mjs`). Die Wörter kommen nur aus `killWords()`, nie aus dem Auftrag.
+
 ## Prüfen und veröffentlichen
 
 - Vor jedem Push `npm test` und `node scripts/version.mjs check` im Repo-Stamm.

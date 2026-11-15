@@ -59,14 +59,14 @@ export async function loadBrandingPack(directory, request = fetch) {
 }
 
 /**
- * Animiertes Intro, Esport-Titelbild, Szenenwechsel und Outro (v2 ab 0.24.0, v1 ab 0.23.0). Eigenes Paket, damit das kleine
+ * Animiertes Intro, Esport-Titelbild, Szenenwechsel und Outro (v4 mit HUD v2 und Kill-Anzeige ab 0.25.0, v2 ab 0.24.0, v1 ab 0.23.0). Eigenes Paket, damit das kleine
  * v3-Paket gleich bleibt. Feste URL und feste SHA256 wie bei v3: Bei Abweichung
  * wird nichts verwendet und der Auftrag bricht ab.
  */
 export const MOTION_URL =
-  "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.24.0/TecMon-Motion-v2.json";
-export const MOTION_SHA256 = "5ce1817e13a61ba26df41a105734d79693058b01d926a3f0c0ba9ac7e7cac2ba";
-export const MOTION_FILE = "TecMon-Motion-v2.json";
+  "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/v0.25.0/TecMon-Motion-v4.json";
+export const MOTION_SHA256 = "c047f5f2cc741f57f94964fe9f8d6c4166c4b5cc8c8819aef8f3c450663064c4";
+export const MOTION_FILE = "TecMon-Motion-v4.json";
 export const MOTION_FILES = Object.freeze({
   "intro.mp4": "c29e4a6f7c9f3e1b110ae5710bb80625b1e965f105dc8ea48536ad8ea247d72b",
   "outro.mp4": "5a2b145dc5eb093470e1be1471987622ed005ea21549e490b3bf047a334cbcfd",
@@ -74,6 +74,9 @@ export const MOTION_FILES = Object.freeze({
   "outro-b.mp4": "bd59ab6e01d936901fc1324ae99884679793839a8ec0eccf3e0a6fd08e87ba8d",
   "title.mp4": "f6f2b5371fb86586e2768754b48e62d81d8320c320a6ecef83cba55ea96b5a65",
   "switch.mp4": "8199031876571fb5aff434750d7602729241b8af679f7bcafd82fd6d956dc35a",
+  "hud-v2.png": "3d73cab453d201dc2592eefca6ea08bdceec30cc4732aee369337224b84378c8",
+  "kill-badge.png": "5878bc46f4dc28b85a09b36afc0af5073903b10bbe0560cca33db3cc71f9fe6b",
+  "kill-badge-multi.png": "61c05c84d6cc093222c50e1ed773a35cfc2d9d68646506368d37c8e1ce8372d4",
 });
 const MOTION_LIMIT = 16 * 1024 * 1024;
 export function verifyMotionPack(bytes) {
@@ -82,7 +85,7 @@ export function verifyMotionPack(bytes) {
   const pack = JSON.parse(bytes.toString("utf8"));
   if (
     pack.format !== "tecmon-motion" ||
-    pack.version !== 2 ||
+    pack.version !== 4 ||
     !pack.files ||
     Object.keys(pack.files).length !== Object.keys(MOTION_FILES).length
   )
@@ -103,8 +106,9 @@ export function verifyMotionPack(bytes) {
 export async function loadMotionPack(directory, request = fetch) {
   await mkdir(directory, { recursive: true });
   const target = path.join(directory, MOTION_FILE);
-  // Älteres Paket (v1) wird nicht mehr gebraucht.
-  await rm(path.join(directory, "TecMon-Motion-v1.json"), { force: true }).catch(() => {});
+  // Ältere Pakete (v1 bis v3) werden nicht mehr gebraucht.
+  for (const old of ["TecMon-Motion-v1.json", "TecMon-Motion-v2.json", "TecMon-Motion-v3.json"])
+    await rm(path.join(directory, old), { force: true }).catch(() => {});
   try {
     return verifyMotionPack(await readFile(target));
   } catch (error) {

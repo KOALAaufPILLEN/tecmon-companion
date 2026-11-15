@@ -5,7 +5,11 @@ import { createHash } from "node:crypto";
 import { sha256, BRANDING_FILES, MOTION_FILES } from "./branding-assets.mjs";
 import { validateJob } from "./job.mjs";
 import { runTool } from "./managed-installation.mjs";
+import { filterGraph, withFilter } from "./video-filters.mjs";
 import { cyberHud, playerSwitch, SWITCH_SECONDS, playerStinger, MOTION_STYLES, crossfadeGraph, keyColor, unmixGreen } from "./cyber-hud.mjs";
+/** Farbraum-Kennzeichnung: Alle Umrechnungen hier laufen nach BT.601 (Standard von FFmpeg);
+ * ohne Kennzeichnung nimmt YouTube bei HD BT.709 an und das Bild wirkt blasser. */
+const COLOR_TAGS = ["-colorspace", "smpte170m", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];
 
 /** Länge von intro.mp4 aus dem Video-Paket (5,78 s), knapp darunter geschnitten. */
 
@@ -170,7 +174,10 @@ export async function renderBranding({
     await artifact("switch-label.txt", "POV SWITCH // NEXT PLAYER");
     await artifact("switch-footer.txt", "TEC / MON     ·     DEIN MATCH. DEINE MOMENTE.");
     const parts = [];
+    const hud2 = Boolean(motion && motion["hud-v2.png"]);
     async function encode(name, inputs, graph, audio, duration, files) {
+      // Branding-Teile (Intro, Titel, Spielerwechsel, Outro) nur mit Filter, wenn er gewählt ist.
+      if (job.branding.filter && !name.startsWith("scene-")) graph = withFilter(graph, job.branding.filter, w, h);
       const graphName = await artifact(name + ".graph", graph);
       const output = path.join(work, name + ".mp4");
       const required = [
@@ -209,9 +216,10 @@ export async function renderBranding({
           "-c:v",
           "libx264",
           "-preset",
-          "veryfast",
+          "fast",
           "-crf",
-          "20",
+          "16",
+          ...COLOR_TAGS,
           "-pix_fmt",
           "yuv420p",
           "-c:a",
@@ -335,15 +343,22 @@ export async function renderBranding({
           playerSwitch({width:w,height:h,fps,nextFile:label,playerLength:displayName.length}), '4:a:0',SWITCH_SECONDS,
           [label,'cyber-stinger.png','switch-label.txt','switch-footer.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);
       }
-      let graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length});
+      const filter=sequence.filter?filterGraph(sequence.filter,'game0','game',w,h):null;
+      // Kills als Sekunden ab Szenenbeginn (kill-badge-v1).
+      // Nur mit den geprüften Bildern aus dem Video-Paket (ab Motion v4).
+      const badges=Boolean(motion && motion["kill-badge.png"] && motion["kill-badge-multi.png"]);
+      const kills=badges?(sequence.kills||[]).map(([tick,count,hs])=>({t:(tick-sequence.startTick)/job.tickRate,n:count,hs:hs===1})):[];
+      const badgeInputs=kills.length?["-loop","1","-i","motion-kill-badge.png","-loop","1","-i","motion-kill-badge-multi.png"]:[];
+      let graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length,hud2,filter,kills});
       progress(`Cyberpunk-HUD mit dauerhaftem Spielername: Szene ${i + 1}/${sources.length} …`);
       await encode(
         `scene-${i}`,
-        ["-i", source.file, "-loop", "1", "-i", "logo.webp", "-loop", "1", "-i", "cyber-hud.png"],
+        ["-i", source.file, "-loop", "1", "-i", "logo.webp", "-loop", "1", "-i", hud2 ? "motion-hud-v2.png" : "cyber-hud.png", ...badgeInputs],
         graph,
-        source.info.audio ? "0:a:0" : "3:a:0",
+        source.info.audio ? "0:a:0" : (kills.length ? "5:a:0" : "3:a:0"),
         source.info.duration,
-        [label, caption, counter, "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt",
+        [label, caption, counter, hud2 ? "motion-hud-v2.png" : "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt",
+          ...(kills.length ? ["motion-kill-badge.png", "motion-kill-badge-multi.png"] : []),
           { path: source.file, sha256: source.sha256 }],
       );
     }
@@ -406,7 +421,7 @@ export async function renderBranding({
           "-filter_complex_script", graphName,
           "-map", "[v]", "-map", "[a]",
           "-t", duration.toFixed(6), "-r", String(fps),
-          "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p",
+          "-c:v", "libx264", "-preset", "medium", "-crf", "17", "-pix_fmt", "yuv420p", ...COLOR_TAGS,
           "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
           "-movflags", "+faststart",
           partial,

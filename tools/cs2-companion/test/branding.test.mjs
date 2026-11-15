@@ -24,7 +24,7 @@ import {
 } from "../video-branding.mjs";
 import { validateJob } from "../job.mjs";
 const packed = await readFile(new URL("../branding/TecMon-Branding-v3.json", import.meta.url));
-const motionPacked = await readFile(new URL("../branding/TecMon-Motion-v2.json", import.meta.url));
+const motionPacked = await readFile(new URL("../branding/TecMon-Motion-v4.json", import.meta.url));
 const job = {
   format: "tecmon-cs2-job",
   version: 1,
@@ -211,7 +211,7 @@ test("motion pack is pinned: offline falls back to null, changed bytes always fa
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-motion-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   assert.equal(sha256(motionPacked), MOTION_SHA256);
-  assert.match(MOTION_URL, /releases\/download\/v\d+\.\d+\.\d+\/TecMon-Motion-v2\.json$/);
+  assert.match(MOTION_URL, /releases\/download\/v\d+\.\d+\.\d+\/TecMon-Motion-v4\.json$/);
   assert.equal(await loadMotionPack(path.join(dir, "offline"), async () => { throw new Error("offline"); }), null);
   assert.equal(await loadMotionPack(path.join(dir, "missing"), async () => new Response("nope", { status: 404 })), null);
   let calls = 0;
@@ -312,5 +312,83 @@ test("style b uses the hologram intro and outro; unknown styles fall back to a",
       await writeFile(request.args.at(-1), "encoded fixture");
     },
   });
-  assert.deepEqual([...used].sort(), ["motion-intro-b.mp4", "motion-outro-b.mp4", "motion-switch.mp4", "motion-title.mp4"]);
+  assert.deepEqual([...used].sort(), ["motion-hud-v2.png", "motion-intro-b.mp4", "motion-outro-b.mp4", "motion-switch.mp4", "motion-title.mp4"]);
+});
+
+test("filters: only known ids pass, scene filter hits only the gameplay, branding filter is optional", async (t) => {
+  const { FILTER_IDS, filterGraph } = await import("../video-filters.mjs");
+  assert.ok(FILTER_IDS.length >= 20);
+  const checked = validateJob({
+    ...job,
+    branding: { filter: "noir" },
+    sequences: [{ ...job.sequences[0], filter: "kino" }, { ...job.sequences[1], filter: "x;rm -rf" }],
+  });
+  assert.equal(checked.branding.filter, "noir");
+  assert.equal(checked.sequences[0].filter, "kino");
+  assert.equal(checked.sequences[1].filter, undefined);
+  assert.equal(validateJob({ ...job, branding: { filter: "evil'" } }).branding.filter, undefined);
+  for (const id of FILTER_IDS) assert.match(filterGraph(id, "a", "b", 1920, 1080), /^\[a\].*\[b\]$/);
+  for (const brandFilter of [undefined, "noir"]) {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-brand-filter-"));
+    t.after(() => rm(dir, { recursive: true, force: true }));
+    const spec = validateJob({
+      ...job,
+      branding: { enabled: true, intro: true, outro: true, ...(brandFilter ? { filter: brandFilter } : {}) },
+      sequences: [{ ...job.sequences[0], filter: "kino" }, job.sequences[1]],
+    });
+    for (let i = 0; i < spec.sequences.length; i++)
+      await writeFile(path.join(dir, sequenceFile(spec.sequences[i], i)), "source " + i);
+    const graphs = {};
+    const tags = [];
+    await renderBranding({
+      job: spec,
+      directory: dir,
+      assets: verifyBrandingPack(packed),
+      motion: verifyMotionPack(motionPacked),
+      probe: async () => ({ width: 1920, height: 1080, fps: 60, duration: 3, audio: true }),
+      execute: async (request) => {
+        const index = request.args.indexOf("-filter_complex_script");
+        graphs[path.basename(request.args.at(-1))] = await readFile(path.join(request.cwd, request.args[index + 1]), "utf8");
+        tags.push(request.args.includes("smpte170m"));
+        await writeFile(request.args.at(-1), "encoded fixture");
+      },
+    });
+    const scene0 = graphs["scene-0.mp4"];
+    // Filter vor dem HUD: [game0] -> Filter -> [game] -> HUD
+    assert.ok(scene0.indexOf("colorbalance") < scene0.indexOf("[2:v]"), "filter runs before the HUD overlay");
+    assert.ok(!graphs["scene-1.mp4"].includes("colorbalance"));
+    assert.ok(scene0.includes("hue=h="), "HUD v2: Farben wechseln");
+    assert.ok(!scene0.includes("mod(t,"), "HUD v2: keine laufenden Lichtpunkte oder Blinken mehr");
+    assert.equal(graphs["outro.mp4"].includes("hue=s=0"), Boolean(brandFilter));
+    assert.equal(graphs["intro.mp4"].includes("hue=s=0"), Boolean(brandFilter));
+    assert.ok(tags.every(Boolean), "every encode is tagged with its colour space");
+  }
+});
+
+test("kill badges: only checked numbers pass, fixed words in the scene graph (kill-badge-v1)", async () => {
+  const { cyberHud, killWords } = await import("../cyber-hud.mjs");
+  const s = job.sequences[0];
+  const ok = validateJob({ ...job, sequences: [{ ...s, kills: [[s.startTick, 1, 1], [s.startTick + 64, 2, 0]] }] });
+  assert.deepEqual(ok.sequences[0].kills, [[s.startTick, 1, 1], [s.startTick + 64, 2, 0]]);
+  assert.equal(validateJob(job).sequences[0].kills, undefined);
+  for (const kills of [
+    [[s.startTick - 1, 1, 0]],
+    [[s.startTick, 0, 0]],
+    [[s.startTick, 1, 2]],
+    [[s.startTick + 64, 1, 0], [s.startTick, 2, 0]],
+    [["x';rm", 1, 0]],
+    Array.from({ length: 11 }, () => [s.startTick, 1, 0]),
+  ])
+    assert.throws(() => validateJob({ ...job, sequences: [{ ...s, kills }] }));
+  assert.deepEqual(killWords(5), ["ACE", "ALL 5 ENEMIES"]);
+  assert.deepEqual(killWords(2), ["2K", "DOUBLE KILL"]);
+  const graph = cyberHud({ width: 1920, height: 1080, fps: 30, playerFile: "p.txt", mapFile: "m.txt", sceneFile: "s.txt", playerLength: 5, kills: [{ t: 1, n: 1, hs: true }, { t: 2, n: 3, hs: false }] });
+  assert.match(graph, /text='1K'/);
+  assert.match(graph, /text='TRIPLE KILL'/);
+  assert.match(graph, /text='HEADSHOT'/);
+  assert.match(graph, /\[3:v\]scale=264:84/, "Form wie der Logo-Tab aus dem geprüften Paket");
+  assert.match(graph, /\[km1\]overlay/, "Mehrfach-Kill nutzt das Magenta-Bild");
+  assert.match(graph, /between\(t,1\.00,2\.00\)/, "erste Anzeige endet beim nächsten Kill");
+  assert.match(graph, /\[v\]$/);
+  assert.doesNotMatch(cyberHud({ width: 1920, height: 1080, fps: 30, playerFile: "p.txt", mapFile: "m.txt", sceneFile: "s.txt", playerLength: 5 }), /KILL/);
 });

@@ -1,4 +1,5 @@
 import { shareCode } from "./share-code.mjs";
+import { filterId } from "./video-filters.mjs";
 /** Versioned, data-only exchange format. Never accept game commands or paths here. */
 export function validateJob(value) {
   const fail = () => {
@@ -21,6 +22,8 @@ export function validateJob(value) {
     subtitle: text(style.subtitle, 100),
     // Video-Stil aus dem geprüften Paket: "a" (Neon-Raster) oder "b" (Hologramm). Unbekannt = "a".
     style: style.style === "b" ? "b" : "a",
+    // Filter für Intro, Titel, Spielerwechsel und Outro (video-filter-v1); unbekannt = keiner.
+    ...(filterId(style.filter) ? { filter: style.filter } : {}),
   };
   // X-Ray (Gegner durch Waende) ist Standard; nur ein ausdrueckliches false schaltet es ab.
   if (value.xray !== undefined && typeof value.xray !== "boolean") fail();
@@ -43,6 +46,7 @@ export function validateJob(value) {
     if (s.slot !== undefined && (!Number.isSafeInteger(s.slot) || s.slot < 1 || s.slot > 64)) fail();
     ticks += s.endTick - s.startTick;
     const cuts = cameraCuts(s.cuts, s.startTick, s.endTick, fail);
+    const kills = killMarks(s.kills, s.startTick, s.endTick, fail);
     return {
       startTick: s.startTick,
       endTick: s.endTick,
@@ -50,6 +54,10 @@ export function validateJob(value) {
       playerName: text(s.playerName, 64) || "Spieler",
       ...(s.slot === undefined ? {} : { slot: s.slot }),
       ...(cuts.length ? { cuts } : {}),
+      // Filter nur für das Gameplay dieser Szene (video-filter-v1); unbekannt = keiner.
+      ...(filterId(s.filter) ? { filter: s.filter } : {}),
+      // Mehrfach-Kill-Anzeige (kill-badge-v1): [Tick, Kill-Nummer in der Runde, Kopfschuss 0/1].
+      ...(kills.length ? { kills } : {}),
     };
   });
   if (ticks / value.tickRate > 1200)
@@ -65,6 +73,22 @@ export function validateJob(value) {
     branding,
     xray,
   };
+}
+
+/** Kills des Szenen-Spielers für die Anzeige im Video: nur Zahlen, aufsteigend, höchstens 10. */
+export const MAX_KILLS = 10;
+function killMarks(value, startTick, endTick, fail) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > MAX_KILLS) fail();
+  let last = -1;
+  return value.map((k) => {
+    if (!Array.isArray(k) || k.length !== 3) fail();
+    const [tick, n, hs] = k;
+    if (!Number.isSafeInteger(tick) || tick < startTick || tick > endTick || tick < last) fail();
+    if (!Number.isSafeInteger(n) || n < 1 || n > 10 || (hs !== 0 && hs !== 1)) fail();
+    last = tick;
+    return [tick, n, hs];
+  });
 }
 
 /**
@@ -160,7 +184,7 @@ export function recordingConfig(job, demoPath, outputFolderPath, quality, camera
     concatenateSequences: true,
     ffmpegSettings: {
       audioBitrate: 192,
-      constantRateFactor: 20,
+      constantRateFactor: 16,
       customLocationEnabled: false,
       customExecutableLocation: "",
       videoContainer: "mp4",

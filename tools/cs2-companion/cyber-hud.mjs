@@ -1,13 +1,63 @@
-/** Code-owned positions. Dynamic names stay in locked text files, never filter expressions. */
-export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLength}){
+/** Code-owned positions. Dynamic names stay in locked text files, never filter expressions.
+ * hud2 = HUD v2 (Eingang 2 = hud-v2.png aus dem Video-Paket), dessen Farben langsam wechseln,
+ * filter = fertiger Teilgraph [game0] -> [game] (video-filters.mjs), nur auf das Gameplay, nie auf das HUD.
+ */
+/** Name des Mehrfach-Kills nach der Kill-Nummer in der Runde (feste Wörter, kein Text aus dem Auftrag). */
+export function killWords(n){
+ return n>=5?['ACE','ALL 5 ENEMIES']:n===4?['4K','QUAD KILL']:n===3?['3K','TRIPLE KILL']:n===2?['2K','DOUBLE KILL']:['1K','KILL'];
+}
+/** Lage der Kill-Anzeige: links neben dem Logo-Tab oben rechts (1920er Raster), gleiche Form wie der Tab. */
+export const KILL_BADGE={x:1372,y:18,w:264,h:84};
+/**
+ * Kill-Anzeige aus den geprüften Bildern kill-badge.png (Eingang `plain`) und kill-badge-multi.png
+ * (Eingang `multi`): je Kill 2,6 s bzw. bis zum nächsten Kill. Gibt den Teilgraphen von [input] nach [v].
+ */
+export function killBadges(kills,n,input,plain,multi){
+ if(!kills||!kills.length)return `[${input}]null[v]`;
+ const {x,y,w,h}=KILL_BADGE;
+ // Jedes Bild nur so oft teilen, wie es gebraucht wird (FFmpeg verlangt verbundene Ausgänge).
+ const pick=kills.map(k=>k.n>=2?'km':'kp');
+ const parts=[];
+ for(const [src,tag] of [[plain,'kp'],[multi,'km']]){
+  const ids=pick.map((p,i)=>p===tag?i:-1).filter(i=>i>=0);
+  if(ids.length)parts.push(`[${src}]scale=${n(w)}:${n(h)},split=${ids.length}${ids.map(i=>`[${tag}${i}]`).join('')}`);
+ }
+ let last=input;
+ kills.forEach(({t,n:count,hs},i)=>{
+  const end=kills[i+1]?Math.min(kills[i+1].t,t+2.6):t+2.6;
+  const on=`between(t,${t.toFixed(2)},${end.toFixed(2)})`;
+  const fade=`alpha='min(1,(t-${t.toFixed(2)})/0.12)'`;
+  const [big,small]=killWords(count);
+  const isMulti=count>=2;
+  parts.push(`[${last}][${pick[i]}${i}]overlay=${n(x)}:${n(y)}:enable='${on}'[kb${i}]`);
+  const label=`[kb${i}]`+[
+   `drawtext=fontfile=font.ttf:text='${big}':fontsize=${n(44)}:fontcolor=${isMulti?'0xff9bed':'0x9cefff'}:shadowcolor=black@0.8:shadowx=2:shadowy=2:x=${n(x+30)}:y=${n(y+16)}:${fade}:enable='${on}'`,
+   `drawtext=fontfile=font.ttf:text='${small}':fontsize=${n(22)}:fontcolor=0xefc96d:x=${n(x+112)}:y=${n(y+16)}:${fade}:enable='${on}'`,
+   `drawtext=fontfile=font.ttf:text='${hs?'HEADSHOT':'KILL '+Math.min(count,10)+' THIS ROUND'}':fontsize=${n(13)}:fontcolor=${hs?'0xff9bed':'0x9cefff'}:x=${n(x+112)}:y=${n(y+46)}:${fade}:enable='${on}'`,
+  ].join(',')+`[kt${i}]`;
+  parts.push(label);last=`kt${i}`;
+ });
+ parts.push(`[${last}]null[v]`);
+ return parts.join(';');
+}
+
+/** `kills`: Kill-Anzeige, braucht die Eingänge 3 (kill-badge.png) und 4 (kill-badge-multi.png). */
+export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLength,hud2=false,filter=null,kills=null}){
  const n=v=>Math.max(1,Math.round(v*width/1920));
  const text=(file,size,x,y,color,extra='')=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:shadowcolor=black@0.8:shadowx=1:shadowy=1:x=${n(x)}:y=${n(y)}${extra}`;
  const size=Math.min(44,Math.max(20,Math.floor(700/Math.max(playerLength,16))));
- return `[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game];[2:v]scale=${width}:${height}[hud];[game][hud]overlay=0:0[base];`+
+ const game=filter?`[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game0];${filter};`:`[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game];`;
+ let hud=`[2:v]scale=${width}:${height}[hud];[game][hud]overlay=0:0[base];`;
+ if(hud2){
+  // HUD v2: nur die Farben wandern langsam (Cyan → Lila → Cyan), keine bewegten Teile.
+  hud=`[2:v]scale=${width}:${height},format=yuva444p,hue=h='22*sin(2*PI*t/7)':s='1+0.12*sin(2*PI*t/7)'[hud];[game][hud]overlay=0:0[base];`;
+ }
+ return game+hud+
   `[1:v]scale=${n(56)}:${n(56)}[logo];[base][logo]overlay=${n(1660)}:${n(30)},`+
   [text('hud-brand.txt',26,1727,38,'0xefc96d'),text('hud-site.txt',14,1727,70,'0x9cefff'),
    text(mapFile,14,64,932,'0xb7efff'),text('hud-mode.txt',16,64,854,'0x85e8ef'),
-   text(sceneFile,16,348,854,'0xb6a3ff'),text(playerFile,size,64,885,'0xf3d48c')].join(',')+'[v]';
+   text(sceneFile,16,348,854,'0xb6a3ff'),text(playerFile,size,64,885,'0xf3d48c')].join(',')+
+  (kills&&kills.length?'[hudtext];'+killBadges(kills,n,'hudtext','3:v','4:v'):'[v]');
 }
 
 export const SWITCH_SECONDS=1.1;
