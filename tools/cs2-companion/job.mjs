@@ -58,6 +58,8 @@ export function validateJob(value) {
       ...(filterId(s.filter) ? { filter: s.filter } : {}),
       // Mehrfach-Kill-Anzeige (kill-badge-v1): [Tick, Kill-Nummer in der Runde, Kopfschuss 0/1].
       ...(kills.length ? { kills } : {}),
+      // Deathcam (deathcam-label-v1): Name des Sterbenden für „DEATHCAM: Name“ oben im Video.
+      ...(text(s.deathcam, 32).trim() ? { deathcam: text(s.deathcam, 32).trim() } : {}),
     };
   });
   if (ticks / value.tickRate > 1200)

@@ -66,6 +66,14 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.29.0: Deathcam mit Namen
+
+- **Deathcam-Schriftzug:** Bei einer Deathcam-Aufnahme steht oben mittig
+  „DEATHCAM: Name“ des Spielers, der stirbt. Die Webseite schickt vorher immer
+  ein kurzes Intro von vorn auf den Sterbenden, danach folgt die Sicht des
+  Killers. Der Name kommt nur als gesperrte Textdatei ins Video
+  (Capability `deathcam-label-v1`).
+
 ### Neu in 0.28.0: Neues Schnellmenü und Fenster mit Reitern
 
 - **Rechtsklick auf die Figur** öffnet ein eigenes TecMon-Schnellmenü statt

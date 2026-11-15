@@ -392,3 +392,18 @@ test("kill badges: only checked numbers pass, fixed words in the scene graph (ki
   assert.match(graph, /\[v\]$/);
   assert.doesNotMatch(cyberHud({ width: 1920, height: 1080, fps: 30, playerFile: "p.txt", mapFile: "m.txt", sceneFile: "s.txt", playerLength: 5 }), /KILL/);
 });
+
+test("deathcam label: name only from a locked text file, fixed word (deathcam-label-v1)", async () => {
+  const { cyberHud } = await import("../cyber-hud.mjs");
+  const s = job.sequences[0];
+  const ok = validateJob({ ...job, sequences: [{ ...s, deathcam: "  s1mple<script>\u0007 " }] });
+  assert.equal(ok.sequences[0].deathcam, "s1mplescript");
+  assert.equal(validateJob({ ...job, sequences: [{ ...s, deathcam: "x".repeat(80) }] }).sequences[0].deathcam.length, 32);
+  assert.equal(validateJob(job).sequences[0].deathcam, undefined);
+  assert.equal(validateJob({ ...job, sequences: [{ ...s, deathcam: 42 }] }).sequences[0].deathcam, undefined);
+  const graph = cyberHud({ width: 1920, height: 1080, fps: 30, playerFile: "p.txt", mapFile: "m.txt", sceneFile: "s.txt", playerLength: 5, deathcamFile: "deathcam-0.txt" });
+  assert.match(graph, /text='DEATHCAM\\:'/);
+  assert.match(graph, /textfile=deathcam-0\.txt:expansion=none/);
+  assert.match(graph, /\[v\]$/);
+  assert.doesNotMatch(cyberHud({ width: 1920, height: 1080, fps: 30, playerFile: "p.txt", mapFile: "m.txt", sceneFile: "s.txt", playerLength: 5 }), /DEATHCAM/);
+});

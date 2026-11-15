@@ -349,7 +349,10 @@ export async function renderBranding({
       const badges=Boolean(motion && motion["kill-badge.png"] && motion["kill-badge-multi.png"]);
       const kills=badges?(sequence.kills||[]).map(([tick,count,hs])=>({t:(tick-sequence.startTick)/job.tickRate,n:count,hs:hs===1})):[];
       const badgeInputs=kills.length?["-loop","1","-i","motion-kill-badge.png","-loop","1","-i","motion-kill-badge-multi.png"]:[];
-      let graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length,hud2,filter,kills});
+      // Deathcam: „DEATHCAM: Name des Sterbenden“ oben (deathcam-label-v1), Name nur als gesperrte Datei.
+      const deathName=sequence.deathcam?visualPlayerName(sequence.deathcam):'';
+      const deathcamFile=deathName?await artifact(`deathcam-${i}.txt`,deathName.length>30?deathName.slice(0,29)+'…':deathName):null;
+      let graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length,hud2,filter,kills,deathcamFile});
       progress(`Cyberpunk-HUD mit dauerhaftem Spielername: Szene ${i + 1}/${sources.length} …`);
       await encode(
         `scene-${i}`,
@@ -357,7 +360,7 @@ export async function renderBranding({
         graph,
         source.info.audio ? "0:a:0" : (kills.length ? "5:a:0" : "3:a:0"),
         source.info.duration,
-        [label, caption, counter, hud2 ? "motion-hud-v2.png" : "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt",
+        [label, caption, counter, ...(deathcamFile ? [deathcamFile] : []), hud2 ? "motion-hud-v2.png" : "cyber-hud.png", "hud-brand.txt", "hud-mode.txt", "hud-site.txt",
           ...(kills.length ? ["motion-kill-badge.png", "motion-kill-badge-multi.png"] : []),
           { path: source.file, sha256: source.sha256 }],
       );
