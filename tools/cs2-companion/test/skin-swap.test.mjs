@@ -9,6 +9,9 @@ import { validateJob } from "../job.mjs";
 import {
   createSkinSwap,
   rewriteRequest,
+  cs2GameDir,
+  DEFAULT_KNIVES,
+  DEFAULT_GLOVES,
   hasSkins,
   REWRITER_SHA256,
   REWRITER_URL,
@@ -42,7 +45,11 @@ test("Auftrag übernimmt nur geprüfte Skin-Zahlen", () => {
   assert.equal(hasSkins(clean), true);
   assert.equal(hasSkins(validateJob(job())), false);
   const bad = [
-    [{ ...ak, weapon: 42 }], // Messer nicht erlaubt
+    [{ ...ak, weapon: 42 }], // Standard-Messer nie als Ziel
+    [{ weapon: 507, paintKit: 0, wear: 0, seed: 0, from: 7 }], // Quelle muss ein Messer sein
+    [{ weapon: 5030, paintKit: 0, wear: 0, seed: 0 }], // Handschuhe brauchen einen Skin
+    [{ weapon: 507, paintKit: 0, wear: 0, seed: 0 }, { weapon: 515, paintKit: 0, wear: 0, seed: 0 }], // nur ein Messer
+    [{ ...ak, from: 42 }], // from nur bei Messern
     [{ ...ak, weapon: "7" }],
     [{ ...ak, paintKit: 0 }],
     [{ ...ak, paintKit: 1.5 }],
@@ -79,6 +86,30 @@ test("Zwei Szenen desselben Spielers dürfen einer Waffe keine verschiedenen Ski
   assert.throws(() => rewriteRequest(validateJob(value), "a.dem", "b.dem"), /zwei Szenen verschiedene Skins/);
   value.sequences[1].skins = [ak];
   assert.equal(rewriteRequest(validateJob(value), "a.dem", "b.dem").passes[0].items.length, 1);
+});
+
+test("Messer und Handschuhe ersetzen die Standard-Gegenstände (skin-swap-v2)", () => {
+  const knife = { weapon: 507, paintKit: 0, wear: 0, seed: 0, from: 515 };
+  const glove = { weapon: 5030, paintKit: 10018, wear: 0.2, seed: 7 };
+  const clean = validateJob(job([ak, knife, glove]));
+  assert.deepEqual(clean.sequences[0].skins, [ak, knife, glove]);
+  assert.throws(() => rewriteRequest(clean, "a.dem", "b.dem"), /CS2-Ordner/);
+  const request = rewriteRequest(clean, "a.dem", "b.dem", "C:/cs2/game/csgo");
+  assert.equal(request.cs2_game_dir, "C:/cs2/game/csgo");
+  const items = request.passes[0].items;
+  const knives = items.filter((i) => i.replacement_definition_index === 507);
+  assert.deepEqual(knives.map((i) => i.definition_index), [...DEFAULT_KNIVES, 515]);
+  const gloves = items.filter((i) => i.replacement_definition_index === 5030);
+  assert.deepEqual(gloves.map((i) => i.definition_index), DEFAULT_GLOVES);
+  assert.ok(gloves.every((i) => i.paint_kit === 10018 && i.quality === 3 && i.custom_name === SKIN_TAG));
+  assert.equal(items.find((i) => i.definition_index === 7).replacement_definition_index, null);
+  // Ohne Messer kein Spielordner in der Anfrage
+  assert.equal(rewriteRequest(validateJob(job([glove])), "a.dem", "b.dem").cs2_game_dir, undefined);
+  const value = job([knife]);
+  value.sequences[1] = { ...value.sequences[1], steamId: STEAM, skins: [{ ...knife, weapon: 515 }] };
+  assert.throws(() => rewriteRequest(validateJob(value), "a.dem", "b.dem", "x"), /verschiedene Messer/);
+  assert.equal(cs2GameDir(""), "");
+  assert.match(cs2GameDir(path.join("C:", "cs2", "game", "bin", "win64", "cs2.exe")), /game[\\/]csgo$/);
 });
 
 const body = (bytes) => ({ ok: true, body: [bytes] });

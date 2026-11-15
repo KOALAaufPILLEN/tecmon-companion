@@ -205,6 +205,10 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Die Webseite darf den Schalter über `GET/POST /bridge/skins` bedienen (Capability
   `skin-swap-setup-v1`, nur mit installiertem Companion und eigener Engine). Einschalten
   nur mit `accept` gleich `SKIN_NOTICE_VERSION`; die Webseite zeigt dafür `SKIN_NOTICE`.
+- `skin-swap-v2` (nur zusammen mit `skin-swap-v1`): je Szene höchstens ein Messer aus
+  `SKIN_KNIVES` (Skin-ID 0 = ohne Lackierung, optional `from` = Messer aus der Demo) und ein
+  Handschuh aus `SKIN_GLOVES`. Ersetzt werden `DEFAULT_KNIVES`/`DEFAULT_GLOVES` (und `from`);
+  `cs2_game_dir` kommt nur aus dem erkannten CS2-Pfad (`cs2GameDir()`), nie aus dem Auftrag.
 
 ## Highlight-Video nach dem Match (`auto-highlights.mjs`)
 

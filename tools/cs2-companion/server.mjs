@@ -28,7 +28,7 @@ import { cleanDotaPayload, dotaGsiConfigPath, installDotaGsiConfig, removeDotaGs
 import { createInsightsStore } from "./insights.mjs";
 import { createGamePackages } from "./games.mjs";
 import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
-import { createSkinSwap, hasSkins, SKIN_CAPABILITY, SKIN_SETUP_CAPABILITY } from "./skin-swap.mjs";
+import { createSkinSwap, cs2GameDir, hasSkins, SKIN_CAPABILITY, SKIN_KNIFE_CAPABILITY, SKIN_SETUP_CAPABILITY } from "./skin-swap.mjs";
 import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { createPet, quizQuestion } from "./personality.mjs";
@@ -601,9 +601,14 @@ export async function createCompanion({
       else if (!skinSwap.enabled) job.log += "\nSkin-Tausch ist im Companion aus; das Video zeigt die echten Skins.";
       else {
         job.status = "preparing";
-        skinCopy = await skinSwap.rewrite(job.job, demo, (message) => {
-          job.log += `\n${message}`;
-        });
+        skinCopy = await skinSwap.rewrite(
+          job.job,
+          demo,
+          (message) => {
+            job.log += `\n${message}`;
+          },
+          { gameDir: cs2GameDir(detected.cs2) },
+        );
       }
     }
     const recordDemo = skinCopy || demo;
@@ -774,7 +779,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled ? [SKIN_CAPABILITY] : [])] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY] : [])] : [])] : [])],
       });
     // Skin-Tausch von der Webseite ein- und ausschalten (skin-swap-setup-v1); Einschalten nur mit bestätigtem Hinweis.
     if (url.pathname === "/bridge/skins" && (req.method === "GET" || req.method === "POST")) {

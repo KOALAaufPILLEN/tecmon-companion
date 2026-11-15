@@ -84,20 +84,69 @@ export const SKIN_WEAPONS = {
   64: "R8 Revolver",
 };
 
-/** Skins einer Szene prüfen: nur Zahlen, jede Waffe höchstens einmal. */
+/**
+ * Ab `skin-swap-v2`: Messer (Modell + Skin) und Handschuhe. Der Rewriter ersetzt
+ * dafür die Standard-Messer (42 CT, 59 T) und Standard-Handschuhe (5028 T,
+ * 5029 CT) des Spielers; ein eigenes Messer aus der Demo kommt als `from` mit.
+ */
+export const SKIN_KNIFE_CAPABILITY = "skin-swap-v2";
+export const SKIN_KNIVES = {
+  500: "Bayonet",
+  503: "Classic Knife",
+  505: "Flip Knife",
+  506: "Gut Knife",
+  507: "Karambit",
+  508: "M9 Bayonet",
+  509: "Huntsman Knife",
+  512: "Falchion Knife",
+  514: "Bowie Knife",
+  515: "Butterfly Knife",
+  516: "Shadow Daggers",
+  517: "Paracord Knife",
+  518: "Survival Knife",
+  519: "Ursus Knife",
+  520: "Navaja Knife",
+  521: "Nomad Knife",
+  522: "Stiletto Knife",
+  523: "Talon Knife",
+  525: "Skeleton Knife",
+  526: "Kukri Knife",
+};
+export const SKIN_GLOVES = {
+  4725: "Broken Fang Gloves",
+  5027: "Bloodhound Gloves",
+  5030: "Sport Gloves",
+  5031: "Driver Gloves",
+  5032: "Hand Wraps",
+  5033: "Moto Gloves",
+  5034: "Specialist Gloves",
+  5035: "Hydra Gloves",
+};
+/** Standard-Messer und -Handschuhe in Demos, die der Rewriter ersetzt. */
+export const DEFAULT_KNIVES = [42, 59];
+export const DEFAULT_GLOVES = [5028, 5029];
+const isKnife = (id) => Boolean(SKIN_KNIVES[id]);
+const isGlove = (id) => Boolean(SKIN_GLOVES[id]);
+const itemName = (id) => SKIN_WEAPONS[id] || SKIN_KNIVES[id] || SKIN_GLOVES[id] || `Waffe ${id}`;
+
+/** Skins einer Szene prüfen: nur Zahlen, jede Waffe höchstens einmal, je höchstens ein Messer und ein Handschuh. */
 export function cleanSkins(value, fail) {
   if (value === undefined) return [];
   if (!Array.isArray(value) || value.length > MAX_SKINS) fail();
   const seen = new Set();
   return value.map((s) => {
     if (!s || typeof s !== "object" || Array.isArray(s)) fail();
-    const { weapon, paintKit, wear, seed } = s;
-    if (!Number.isSafeInteger(weapon) || !SKIN_WEAPONS[weapon] || seen.has(weapon)) fail();
-    if (!Number.isSafeInteger(paintKit) || paintKit < 1 || paintKit > 4000) fail();
+    const { weapon, paintKit, wear, seed, from } = s;
+    const knife = isKnife(weapon);
+    const glove = isGlove(weapon);
+    const slot = knife ? "knife" : glove ? "glove" : weapon;
+    if (!Number.isSafeInteger(weapon) || !(SKIN_WEAPONS[weapon] || knife || glove) || seen.has(slot)) fail();
+    if (!Number.isSafeInteger(paintKit) || paintKit < (knife ? 0 : 1) || paintKit > 100000) fail();
     if (typeof wear !== "number" || !Number.isFinite(wear) || wear < 0 || wear > 1) fail();
     if (!Number.isSafeInteger(seed) || seed < 0 || seed > 1000) fail();
-    seen.add(weapon);
-    return { weapon, paintKit, wear: Math.round(wear * 1e6) / 1e6, seed };
+    if (from !== undefined && !(knife && Number.isSafeInteger(from) && (DEFAULT_KNIVES.includes(from) || isKnife(from)))) fail();
+    seen.add(slot);
+    return { weapon, paintKit, wear: Math.round(wear * 1e6) / 1e6, seed, ...(from !== undefined ? { from } : {}) };
   });
 }
 
@@ -108,40 +157,64 @@ export const hasSkins = (job) => job.sequences.some((s) => s.skins?.length);
  * ganze Demo; zwei Szenen desselben Spielers dürfen derselben Waffe also keine
  * unterschiedlichen Skins geben.
  */
-export function rewriteRequest(job, inputDem, outputDem) {
+export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
   const players = new Map();
   for (const s of job.sequences) {
     if (!s.skins?.length) continue;
     const items = players.get(s.steamId) || new Map();
     for (const skin of s.skins) {
-      const known = items.get(skin.weapon);
-      if (known && (known.paintKit !== skin.paintKit || known.wear !== skin.wear || known.seed !== skin.seed))
+      const slot = isKnife(skin.weapon) ? "knife" : isGlove(skin.weapon) ? "glove" : skin.weapon;
+      const known = items.get(slot);
+      if (
+        known &&
+        (known.weapon !== skin.weapon || known.paintKit !== skin.paintKit || known.wear !== skin.wear || known.seed !== skin.seed)
+      )
         throw new Error(
-          `${s.playerName}: ${SKIN_WEAPONS[skin.weapon]} hat in zwei Szenen verschiedene Skins. Pro Spieler und Waffe geht nur ein Skin je Video.`,
+          typeof slot === "string"
+            ? `${s.playerName}: In zwei Szenen sind verschiedene ${slot === "knife" ? "Messer" : "Handschuhe"} gewählt. Pro Spieler geht nur eins je Video.`
+            : `${s.playerName}: ${itemName(skin.weapon)} hat in zwei Szenen verschiedene Skins. Pro Spieler und Waffe geht nur ein Skin je Video.`,
         );
-      items.set(skin.weapon, skin);
+      items.set(slot, known?.from !== undefined && skin.from === undefined ? { ...skin, from: known.from } : skin);
     }
     players.set(s.steamId, items);
   }
+  const item = (source, skin, replace) => ({
+    definition_index: source,
+    replacement_definition_index: replace ? skin.weapon : null,
+    paint_kit: skin.paintKit,
+    quality: replace ? 3 : 0,
+    pattern_seed: skin.seed,
+    wear: Math.max(skin.wear, 0.0000001),
+    custom_name: SKIN_TAG,
+    team: "ANY",
+  });
+  const knives = [...players.values()].some((items) => items.has("knife"));
+  if (knives && !gameDir) throw new Error("Für den Messer-Tausch wurde der CS2-Ordner nicht gefunden.");
   return {
     schema_version: 2,
     input_dem: inputDem,
     output_dem: outputDem,
+    ...(knives ? { cs2_game_dir: gameDir } : {}),
     passes: [...players].map(([steamId, items]) => ({
       // SteamID64 bleibt Text, nie über Number runden.
       steam_id64: steamId,
-      items: [...items.values()].map((skin) => ({
-        definition_index: skin.weapon,
-        replacement_definition_index: null,
-        paint_kit: skin.paintKit,
-        quality: 0,
-        pattern_seed: skin.seed,
-        wear: Math.max(skin.wear, 0.0000001),
-        custom_name: SKIN_TAG,
-        team: "ANY",
-      })),
+      items: [...items].flatMap(([slot, skin]) => {
+        if (slot === "knife") {
+          const sources = new Set(DEFAULT_KNIVES);
+          if (skin.from !== undefined && skin.from !== skin.weapon) sources.add(skin.from);
+          return [...sources].map((source) => item(source, skin, true));
+        }
+        if (slot === "glove") return DEFAULT_GLOVES.map((source) => item(source, skin, true));
+        return [item(skin.weapon, skin, false)];
+      }),
     })),
   };
+}
+
+/** CS2-Spielordner mit `pak01_dir.vpk` (game/csgo) aus dem Pfad der cs2.exe (game/bin/win64). */
+export function cs2GameDir(cs2Exe) {
+  if (!cs2Exe || typeof cs2Exe !== "string") return "";
+  return path.join(path.dirname(cs2Exe), "..", "..", "csgo");
 }
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -227,14 +300,14 @@ export async function createSkinSwap({ dir, cacheDir, request = fetch, run = run
      * Demo-Kopie mit getauschten Skins schreiben. Gibt den Pfad der Kopie zurück;
      * der Aufrufer löscht sie nach der Aufnahme mit `cleanup()`.
      */
-    async rewrite(job, demo, log = () => {}) {
+    async rewrite(job, demo, log = () => {}, { gameDir = "" } = {}) {
       if (!enabled) throw new Error("Skin-Tausch ist im Companion ausgeschaltet.");
       const program = await rewriter();
       const base = demo.replace(/\.dem$/i, "");
       const output = `${base}.tecmon-skins.dem`;
       const requestFile = `${base}.tecmon-skins.request.json`;
       const responseFile = `${base}.tecmon-skins.response.json`;
-      await writeFile(requestFile, JSON.stringify(rewriteRequest(job, demo, output)));
+      await writeFile(requestFile, JSON.stringify(rewriteRequest(job, demo, output, gameDir)));
       log("Skins in einer Kopie der Demo tauschen (CS2-nskinz von Lyan-edit) …");
       try {
         await run(program, ["--request", requestFile, "--response", responseFile]).catch(() => {});
@@ -251,7 +324,9 @@ export async function createSkinSwap({ dir, cacheDir, request = fetch, run = run
         }
         if (!result.matched_player_count)
           log("Hinweis: Der Spieler mit Skin-Wunsch wurde in der Demo nicht gefunden; das Video zeigt die echten Skins.");
-        log(`Skins getauscht: ${result.weapon_count ?? 0} Waffen in der Demo-Kopie.`);
+        log(
+          `Skins getauscht: ${result.weapon_count ?? 0} Waffen, ${result.knife_count ?? 0} Messer, ${result.glove_count ?? 0} Handschuhe in der Demo-Kopie.`,
+        );
         return output;
       } finally {
         await rm(requestFile, { force: true }).catch(() => {});
