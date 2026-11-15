@@ -66,6 +66,16 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.32.0: Messer und Handschuhe im Skin-Tausch (Versuch)
+
+- Mit eingeschaltetem Skin-Tausch meldet der Companion `skin-swap-v2`: Auf
+  tecmon.online lassen sich je Szene auch ein Messer (Modell und Skin) und
+  Handschuhe wählen. Der Rewriter ersetzt dafür die Standard-Messer und
+  -Handschuhe beider Seiten in der Demo-Kopie; ein eigenes Messer aus der Demo
+  wird mit ersetzt. Für Messer liest er die Modelle aus der installierten CS2
+  (`game/csgo`). Versuchsfunktion: bitte im fertigen Video prüfen.
+- Agenten-Skins kann der Rewriter nicht tauschen.
+
 ### Neu in 0.31.1: Skin-Tausch von der Webseite einschalten
 
 - Der Skin-Tausch lässt sich jetzt auch direkt auf tecmon.online im Demo-Manager
