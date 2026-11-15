@@ -66,6 +66,12 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.26.1: Kein „401 Nicht autorisiert“ nach Updates
+
+- Startet der lokale Dienst neu, etwa nach einem automatischen Update, holt sich
+  die Figur den neuen Sitzungsschlüssel selbst und wiederholt die Aktion. Die
+  Companion-Seite im Fenster lädt sich dabei einmal neu.
+
 ### Neu in 0.26.0: Highlight-Video nach dem Match
 
 - **Automatisches Highlight-Video** (Capability `auto-highlights-v1`, standardmäßig
