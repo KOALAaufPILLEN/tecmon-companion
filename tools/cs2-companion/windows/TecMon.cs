@@ -140,12 +140,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.26.1",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.27.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.26.1");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.27.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -160,7 +160,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.26.1"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.27.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -288,7 +288,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.26.1 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.27.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -503,7 +503,9 @@ class TecMonMenu : ToolStripProfessionalRenderer {
     public override Color SeparatorDark {get{return Color.FromArgb(90,TecMon.Gold);}}
     public override Color SeparatorLight {get{return Color.Transparent;}}
   }
-  public static void Apply(ToolStripDropDown menu){menu.Renderer=new TecMonMenu();menu.Font=new Font("Segoe UI",10f);menu.Padding=new Padding(4,8,4,8);menu.ForeColor=Text;}
+  /* Jeder Eintrag sieht aus wie ein Button: eigene Flaeche, Hover-Zustand, beim Druecken gibt er sichtbar nach. Mindesthoehe 32 px. */
+  public static void Apply(ToolStripDropDown menu){menu.Renderer=new TecMonMenu();menu.Font=new Font("Segoe UI",10f);menu.Padding=new Padding(6,8,6,8);menu.ForeColor=Text;foreach(ToolStripItem item in menu.Items){if(item is ToolStripMenuItem){item.Padding=new Padding(4,6,4,6);item.Margin=new Padding(0,2,0,2);}}}
+  static System.Drawing.Drawing2D.GraphicsPath Cut(RectangleF r,float c){var p=new System.Drawing.Drawing2D.GraphicsPath();p.AddPolygon(new[]{new PointF(r.Left+c,r.Top),new PointF(r.Right,r.Top),new PointF(r.Right,r.Bottom-c),new PointF(r.Right-c,r.Bottom),new PointF(r.Left,r.Bottom),new PointF(r.Left,r.Top+c)});return p;}
   protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e){using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(e.AffectedBounds,Top,Bottom,90f))e.Graphics.FillRectangle(fill,e.AffectedBounds);}
   protected override void OnRenderImageMargin(ToolStripRenderEventArgs e){}
   protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e){
@@ -512,9 +514,17 @@ class TecMonMenu : ToolStripProfessionalRenderer {
     using(var gold=new Pen(TecMon.Gold,1.4f))e.Graphics.DrawRectangle(gold,r);
   }
   protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e){
-    if(!e.Item.Selected||!e.Item.Enabled)return;var r=new Rectangle(3,1,e.Item.Width-6,e.Item.Height-2);
-    using(var fill=new SolidBrush(Color.FromArgb(55,Violet)))e.Graphics.FillRectangle(fill,r);
-    using(var bar=new SolidBrush(Violet))e.Graphics.FillRectangle(bar,r.Left,r.Top+3,3,r.Height-6);
+    var item=e.Item as ToolStripMenuItem;if(item==null||!item.Enabled||item.Owner is MenuStrip)return;
+    var g=e.Graphics;g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+    RectangleF r=new RectangleF(3,1,item.Width-7,item.Height-3);
+    bool down=item.Pressed&&!item.HasDropDownItems,hot=item.Selected;
+    /* Gedrueckt: 2 % kleiner (entspricht scale 0.96), nie weniger. */
+    if(down)r=new RectangleF(r.X+r.Width*0.02f,r.Y+r.Height*0.04f,r.Width*0.96f,r.Height*0.92f);
+    using(var path=Cut(r,6)){
+      using(var fill=new SolidBrush(down?Color.FromArgb(95,Violet):hot?Color.FromArgb(60,Violet):Color.FromArgb(16,255,255,255)))g.FillPath(fill,path);
+      using(var pen=new Pen(hot?Color.FromArgb(200,TecMon.Gold):Color.FromArgb(55,Violet),1f))g.DrawPath(pen,path);
+    }
+    if(hot)using(var bar=new SolidBrush(TecMon.Gold))g.FillRectangle(bar,r.Left+1,r.Top+5,3,r.Height-10);
   }
   protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e){e.TextColor=!e.Item.Enabled?Muted:e.Item.Selected?Color.White:Text;base.OnRenderItemText(e);}
   protected override void OnRenderArrow(ToolStripArrowRenderEventArgs e){e.ArrowColor=TecMon.Gold;base.OnRenderArrow(e);}
@@ -541,6 +551,53 @@ static class Layered {
     IntPtr screen=GetDC(IntPtr.Zero),memory=CreateCompatibleDC(screen),image=bitmap.GetHbitmap(Color.FromArgb(0)),previous=SelectObject(memory,image);
     try{Point origin=Point.Empty;Size size=bitmap.Size;var blend=new Blend{alpha=255,format=1};UpdateLayeredWindow(form.Handle,screen,ref position,ref size,memory,ref origin,0,ref blend,2);}
     finally{SelectObject(memory,previous);DeleteObject(image);DeleteDC(memory);ReleaseDC(IntPtr.Zero,screen);}
+  }
+}
+
+/*
+ * Frage nach dem Match ("Neues Highlight-Video erstellen?") im TecMon-Stil.
+ * Wird nie aktiviert (WS_EX_NOACTIVATE), nimmt also auch einem offenen CS2 keinen
+ * Fokus. Buttons nach den UI-Regeln: Hover nur mit Maus, beim Druecken geben sie
+ * sichtbar nach (96 %), Trefferflaeche mindestens 40 px hoch.
+ */
+class AutoPrompt : Form {
+  public Action<bool> Answered;
+  readonly string map;readonly Font eyebrow=new Font("Segoe UI",8.5f,FontStyle.Bold),title=new Font("Segoe UI",14f,FontStyle.Bold),body=new Font("Segoe UI",10f),button=new Font("Segoe UI",10.5f,FontStyle.Bold);
+  Rectangle yes,no;int hot=-1,pressed=-1;bool done;
+  static readonly Color Top=Color.FromArgb(27,22,38),Bottom=Color.FromArgb(11,10,17),Text2=Color.FromArgb(232,230,240),Muted=Color.FromArgb(170,166,190),Violet=Color.FromArgb(167,139,250);
+  protected override bool ShowWithoutActivation {get{return true;}}
+  /* WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST */
+  protected override CreateParams CreateParams {get{var p=base.CreateParams;p.ExStyle|=0x08000000|0x80|0x8;return p;}}
+  public AutoPrompt(string mapName){
+    map=mapName;Text="TecMon Highlights";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;TopMost=true;DoubleBuffered=true;BackColor=Bottom;ClientSize=new Size(440,186);AccessibleName="Neues Highlight-Video erstellen?";
+    yes=new Rectangle(22,128,232,42);no=new Rectangle(266,128,152,42);
+    var area=Screen.PrimaryScreen.WorkingArea;Location=new Point(area.Right-Width-24,area.Bottom-Height-24);
+    MouseMove+=(s,e)=>{int h=yes.Contains(e.Location)?0:no.Contains(e.Location)?1:-1;Cursor=h<0?Cursors.Default:Cursors.Hand;if(h!=hot){hot=h;Invalidate();}};
+    MouseLeave+=(s,e)=>{hot=-1;pressed=-1;Invalidate();};
+    MouseDown+=(s,e)=>{if(e.Button!=MouseButtons.Left)return;pressed=yes.Contains(e.Location)?0:no.Contains(e.Location)?1:-1;Invalidate();};
+    MouseUp+=(s,e)=>{int was=pressed;pressed=-1;Invalidate();if(was==0&&yes.Contains(e.Location))Finish(true);else if(was==1&&no.Contains(e.Location))Finish(false);};
+  }
+  void Finish(bool answer){if(done)return;done=true;if(Answered!=null)Answered(answer);Close();}
+  static System.Drawing.Drawing2D.GraphicsPath Cut(RectangleF r,float c){var p=new System.Drawing.Drawing2D.GraphicsPath();p.AddPolygon(new[]{new PointF(r.Left+c,r.Top),new PointF(r.Right,r.Top),new PointF(r.Right,r.Bottom-c),new PointF(r.Right-c,r.Bottom),new PointF(r.Left,r.Bottom),new PointF(r.Left,r.Top+c)});return p;}
+  void Button(Graphics g,Rectangle r,string label,bool primary,int index){
+    RectangleF box=r;if(pressed==index){float dx=r.Width*0.02f,dy=r.Height*0.02f;box=new RectangleF(r.X+dx,r.Y+dy,r.Width-2*dx,r.Height-2*dy);}
+    bool over=hot==index;
+    using(var path=Cut(box,10)){
+      if(primary){using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(box,over?Color.FromArgb(248,220,150):TecMon.Gold,over?Color.FromArgb(222,176,82):Color.FromArgb(201,160,74),90f))g.FillPath(fill,path);}
+      else{using(var fill=new SolidBrush(over?Color.FromArgb(70,Violet):Color.FromArgb(28,Violet)))g.FillPath(fill,path);using(var pen=new Pen(over?Violet:Color.FromArgb(150,Violet),1.5f))g.DrawPath(pen,path);}
+    }
+    TextRenderer.DrawText(g,label,button,Rectangle.Round(box),primary?Color.FromArgb(20,16,28):Text2,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.NoPadding);
+  }
+  protected override void OnPaint(PaintEventArgs e){
+    var g=e.Graphics;g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;g.TextRenderingHint=System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+    var bounds=new RectangleF(1,1,ClientSize.Width-3,ClientSize.Height-3);
+    using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Top,Bottom,90f))g.FillRectangle(fill,ClientRectangle);
+    using(var path=Cut(bounds,16))using(var pen=new Pen(TecMon.Gold,1.5f))g.DrawPath(pen,path);
+    using(var pen=new Pen(Violet,3f))g.DrawLine(pen,22,20,64,20);
+    TextRenderer.DrawText(g,"TECMON · HIGHLIGHTS",eyebrow,new Point(70,13),TecMon.Gold);
+    TextRenderer.DrawText(g,"Neues Highlight-Video erstellen?",title,new Point(20,36),Text2);
+    TextRenderer.DrawText(g,"Dein Match auf "+map.Replace("de_","")+" ist vorbei. TecMon lädt die Demo, sobald CS2 zu ist, nimmt deine besten Szenen auf und lädt das Video hoch.",body,new Rectangle(22,68,396,52),Muted,TextFormatFlags.WordBreak);
+    Button(g,yes,"Ja, Video erstellen",true,0);Button(g,no,"Nein",false,1);
   }
 }
 
@@ -904,14 +961,18 @@ class DesktopPet : Form {
     if(status=="ready")tray.ShowBalloonTip(6000,"TecMon Highlights","Demo geladen. Die TecMon-Seite öffnet sich und erstellt das Video.",ToolTipIcon.Info);
     else if(status=="error")tray.ShowBalloonTip(8000,"TecMon Highlights",Convert.ToString(run["error"]),ToolTipIcon.Warning);
   }
-  async Task AskAuto(string id,string map){
-    autoAsking=true;
-    try{
-      var answer=MessageBox.Show("Dein Match auf "+map.Replace("de_","")+" ist vorbei.\n\nNeues Highlight-Video erstellen? TecMon lädt die Demo über dein Steam, nimmt deine besten Szenen in CS2 auf und lädt das Video hoch, wenn YouTube und Discord im Browser eingerichtet sind.","TecMon Highlights",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button1,MessageBoxOptions.DefaultDesktopOnly);
-      var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/auto/answer",true,"{\"id\":\""+id+"\",\"yes\":"+(answer==DialogResult.Yes?"true":"false")+"}"));
-      if(tray!=null)tray.ShowBalloonTip(5000,"TecMon Highlights",Convert.ToString(result["message"]),ToolTipIcon.Info);
-    }catch(Exception error){if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Highlights",error.Message,ToolTipIcon.Warning);}
-    finally{autoAsking=false;}
+  /* Eigenes TecMon-Fenster statt Windows-Dialog: nimmt CS2 keinen Fokus. */
+  AutoPrompt autoPrompt;
+  Task AskAuto(string id,string map){
+    if(autoPrompt!=null&&!autoPrompt.IsDisposed)autoPrompt.Close();
+    autoAsking=true;autoPrompt=new AutoPrompt(map);
+    autoPrompt.Answered=async yes=>{
+      try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/auto/answer",true,"{\"id\":\""+id+"\",\"yes\":"+(yes?"true":"false")+"}"));if(tray!=null)tray.ShowBalloonTip(5000,"TecMon Highlights",Convert.ToString(result["message"]),ToolTipIcon.Info);}
+      catch(Exception error){if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Highlights",error.Message,ToolTipIcon.Warning);}
+    };
+    autoPrompt.FormClosed+=(s,e)=>{autoAsking=false;};
+    autoPrompt.Show();
+    return Task.FromResult(0);
   }
   async Task ToggleAuto(){
     try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/auto/settings",true,autoEnabled?"{\"enabled\":false}":"{\"enabled\":true}"));autoEnabled=!autoEnabled;if(autoOn!=null)autoOn.Checked=autoEnabled;if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Highlights",Convert.ToString(result["message"]),ToolTipIcon.Info);}

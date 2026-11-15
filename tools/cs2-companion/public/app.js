@@ -195,6 +195,8 @@ $('download-start').addEventListener('click',async()=>{
   catch(error){notice(error);}
 });
 function askShutdown(show){$('shutdown').hidden=show;$('shutdown-confirm').hidden=!show;}
+/* Esc schließt offene Rückfragen und aufgeklappte Optionen. */
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('shutdown-confirm').hidden){askShutdown(false);return;}const open=document.querySelector('details[open]');if(open)open.open=false;});
 $('shutdown').addEventListener('click',()=>askShutdown(true));
 $('shutdown-no').addEventListener('click',()=>askShutdown(false));
 $('shutdown-yes').addEventListener('click', async () => { askShutdown(false); try { await api('/api/shutdown', {}); clearInterval(timer); $('notice').textContent = 'Companion beendet. Du kannst dieses Fenster schließen.'; } catch (err) { notice(err); } });
@@ -463,12 +465,23 @@ loadClips().catch(()=>{});setInterval(()=>{if(!restarting)loadClips().catch(()=>
 
 /* Highlight-Video nach dem Match (standardmäßig aus). */
 let autoState=null;
-const AUTO_STATUS={downloading:'Lade die Demo deines letzten Matches …',ready:'Demo bereit. Die TecMon-Seite erstellt das Video.',done:'Aufnahme gestartet. Fortschritt auf der TecMon-Seite.'};
+const AUTO_STATUS={waiting:'Wartet, bis CS2 geschlossen ist. Danach lädt TecMon die Demo.',downloading:'Lade die Demo deines letzten Matches …',ready:'Demo bereit. Die TecMon-Seite erstellt das Video.',done:'Aufnahme gestartet. Fortschritt auf der TecMon-Seite.'};
 function showAuto(auto){
   autoState=auto;
   $('auto-heading').textContent=auto.enabled?'Highlight-Video nach dem Match ist an':'Highlight-Video nach dem Match ist aus';
   $('auto-toggle').textContent=auto.enabled?'Ausschalten':'Einschalten';
   const run=auto.run;
   $('auto-status').textContent=auto.offer?`Match auf ${auto.offer.map} vorbei: Antworte auf die Frage der Figur.`:run?(run.status==='error'?run.error:AUTO_STATUS[run.status]||''):'';
+  $('auto-check').textContent=auto.enabled?autoCheck(auto):'';
+}
+/* Zeigt, ob CS2 überhaupt Daten schickt und was der Companion erkannt hat. */
+function autoCheck(auto){
+  if(auto.gsiAgo==null)return 'Noch keine Daten von CS2 empfangen. CS2 nach dem Einschalten einmal neu starten.';
+  const ago=auto.gsiAgo<90?`vor ${auto.gsiAgo} s`:`vor ${Math.round(auto.gsiAgo/60)} min`;
+  const s=auto.seen;let what='';
+  if(s&&s.phase==='menu')what='Hauptmenü';
+  else if(s)what=`${s.map||'Map'} · ${s.mode||'Modus unbekannt'} · ${s.phase||'?'}${s.demo?'':' (für diesen Modus gibt es keine Demo, daher keine Frage)'}`;
+  const match=auto.match?` Erkanntes Match: ${auto.match.map}, ${auto.match.finished?'fertig gespielt':'läuft noch'}.`:'';
+  return `Letzte Daten von CS2 ${ago}: ${what}.${match}`;
 }
 $('auto-toggle').addEventListener('click',()=>api('/api/auto/settings',{enabled:!autoState?.enabled}).then(r=>{showAuto(r.auto);if(r.message)$('notice').textContent=r.message;}).catch(notice));

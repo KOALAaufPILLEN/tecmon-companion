@@ -17,7 +17,7 @@ html:has(.holo){background:#041420;scrollbar-color:#22b8ce #082c3c;scrollbar-wid
 .holo ::-webkit-scrollbar-track,html:has(.holo)::-webkit-scrollbar-track{background:#082c3c;border-radius:8px}
 .holo ::-webkit-scrollbar-thumb,html:has(.holo)::-webkit-scrollbar-thumb{background:linear-gradient(#67e8f9,#16869e);border:2px solid #082c3c;border-radius:8px}
 .holo ::-webkit-scrollbar-thumb:hover,html:has(.holo)::-webkit-scrollbar-thumb:hover{background:#a5f3fc}
-.holo main{padding:10px 8px 16px}.holo h1,.holo h2{text-shadow:0 0 12px #22d3ee44}.holo .card{background:linear-gradient(135deg,#082f49bc,#041420d9);border:1px solid #67e8f966;box-shadow:inset 0 0 18px #22d3ee0d,0 0 14px #22d3ee0b}.holo button,.holo .button{border:1px solid #67e8f988;color:#cffafe;background:linear-gradient(135deg,#0c5268,#082b3e);box-shadow:inset 0 0 12px #22d3ee18;border-radius:9px}.holo button:hover,.holo .button:hover{background:#10536a;border-color:#a5f3fc;box-shadow:0 0 13px #22d3ee33}.holo input,.holo select,.holo textarea,.holo pre{background:#041824;border-color:#246276;color:#cffafe}.holo .badge{border-color:#22d3ee77;color:#a5f3fc}.holo .status-orb{background:#22d3ee;box-shadow:0 0 12px #22d3ee66}.holo #notice:not(:empty){background:#123343;border-color:#67e8f9}.holo a:not(.button){color:#a5f3fc}.holo #advanced-panel{border-color:#226576}.holo .minimal-hero>img{filter:drop-shadow(0 0 9px #22d3ee55)}.holo .activity-progress{background:#0c394b}.holo .activity-progress span{background:linear-gradient(90deg,#0b7895,#a5f3fc)}
+.holo main{padding:10px 8px 16px}.holo h1,.holo h2{text-shadow:0 0 12px #22d3ee44}.holo .card{background:linear-gradient(135deg,#082f49bc,#041420d9);border:1px solid #67e8f966;box-shadow:inset 0 0 18px #22d3ee0d,0 0 14px #22d3ee0b}.holo button,.holo .button{border:1px solid #67e8f988;color:#cffafe;background:linear-gradient(135deg,#0c5268,#082b3e);box-shadow:inset 0 0 12px #22d3ee18;border-radius:9px}.holo input,.holo select,.holo textarea,.holo pre{background:#041824;border-color:#246276;color:#cffafe}.holo .badge{border-color:#22d3ee77;color:#a5f3fc}.holo .status-orb{background:#22d3ee;box-shadow:0 0 12px #22d3ee66}.holo #notice:not(:empty){background:#123343;border-color:#67e8f9}.holo a:not(.button){color:#a5f3fc}.holo #advanced-panel{border-color:#226576}.holo .minimal-hero>img{filter:drop-shadow(0 0 9px #22d3ee55)}.holo .activity-progress{background:#0c394b}.holo .activity-progress span{background:linear-gradient(90deg,#0b7895,#a5f3fc)}
 
 /* 0.11: kompakte Ansicht, Update-Hinweis, letzte Videos, Tabs */
 .minimal-hero{padding:18px 0 6px}.minimal-hero>img{width:88px;height:88px}.minimal-hero h1{font-size:clamp(24px,2.6vw,32px);margin:6px 0}.minimal-hero p{margin:4px 0 12px}
@@ -50,7 +50,6 @@ html:has(.desktop-panel){background:#0e0b16;scrollbar-color:#a78bfa #1b1626}
 .desktop-panel h2{font-size:15px;margin:2px 0 4px;text-shadow:none!important}
 .desktop-panel .card p{font-size:12px;margin:4px 0}
 .desktop-panel.holo button,.desktop-panel.holo .button{border:1px solid #e8c57388;color:#f6e7c1;background:linear-gradient(135deg,#2a2036,#17121f);box-shadow:none;border-radius:8px;padding:5px 12px;font-size:12px}
-.desktop-panel.holo button:hover,.desktop-panel.holo .button:hover{border-color:var(--gold);background:#2f2440;box-shadow:0 0 10px #a78bfa33}
 .desktop-panel.holo .badge{border-color:#a78bfa77;color:#d8cbff}
 .desktop-panel.holo .status-orb{background:var(--violet);box-shadow:0 0 10px #a78bfa66}
 .desktop-panel.holo .connection-summary.is-connected .status-orb{background:#84d6ac;box-shadow:0 0 10px #84d6ac66}
@@ -108,3 +107,12 @@ meter::-webkit-meter-bar{background:#1b1626;border:1px solid #3a2f4d;border-radi
 .clip-settings label{display:flex;flex-direction:column;gap:.25rem}
 .clips-card .recent-item .actions{flex-wrap:wrap}
 .clips-card .recent-item input{min-width:12rem}
+/* UI-Regeln (wie tecmon.online): Hover nur mit Maus. */
+@media (hover:hover) and (pointer:fine){.holo button:hover,.holo .button:hover{background:#10536a;border-color:#a5f3fc;box-shadow:0 0 13px #22d3ee33}.desktop-panel.holo button:hover,.desktop-panel.holo .button:hover{border-color:var(--gold);background:#2f2440;box-shadow:0 0 10px #a78bfa33}}
+/* UI-Regeln: Bewegung nur über transform/opacity bzw. benannte Eigenschaften, nie "all". Buttons geben beim Drücken nach (0.96), breite Karten ändern nur die Farbe. */
+:root{--tm-dur-press:150ms;--tm-dur-tooltip:125ms;--tm-dur-popover:200ms;--tm-dur-overlay:250ms;--tm-ease-enter:cubic-bezier(.32,.72,0,1);--tm-ease-exit:cubic-bezier(.55,0,1,.45)}
+button,.button{transition:transform var(--tm-dur-press) var(--tm-ease-enter),background-color var(--tm-dur-press) ease,border-color var(--tm-dur-press) ease,box-shadow var(--tm-dur-press) ease;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:not(:disabled):active,.button:active{transform:scale(.96)}
+.game-row:active,.recent-item:active{transform:none}
+details>summary{cursor:pointer}
+@media (prefers-reduced-motion:reduce){button,.button{transition:background-color var(--tm-dur-press) ease,border-color var(--tm-dur-press) ease}button:not(:disabled):active,.button:active{transform:none;filter:brightness(.9)}}

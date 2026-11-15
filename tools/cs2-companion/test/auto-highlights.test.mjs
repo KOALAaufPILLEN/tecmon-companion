@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import { mkdtemp, mkdir, writeFile, readFile, readdir, rm } from "node:fs/promises";
-import { createAutoHighlights, QUIET_MS, RECHECK_MS, GAME_EXES, AUTO_CAPABILITY } from "../auto-highlights.mjs";
+import { createAutoHighlights, QUIET_MS, MENU_MS, RECHECK_MS, GAME_EXES, AUTO_CAPABILITY } from "../auto-highlights.mjs";
 import { matchList, downloadLatestDemo, BOILER } from "../valve-download.mjs";
 
 const STEAM = "76561198000000001";
@@ -14,7 +14,7 @@ const gsi = (phase, extra = {}) => ({
   player: { steamid: STEAM, team: "CT" },
 });
 
-test("fragt erst nach Matchende, ohne GSI und mit geschlossener Exe", async () => {
+test("fragt nach Matchende im Hauptmenü und lädt erst, wenn CS2 zu ist", async () => {
   const dir = await temp();
   let time = 1_000_000;
   let running = true;
@@ -35,47 +35,67 @@ test("fragt erst nach Matchende, ohne GSI und mit geschlossener Exe", async () =
   });
   assert.equal(AUTO_CAPABILITY, "auto-highlights-v1");
   assert.equal(GAME_EXES.cs2, "cs2.exe");
+  const menu = { provider: { steamid: STEAM }, player: { steamid: STEAM, activity: "menu" } };
   // Standardmäßig aus: nichts merken, nichts fragen.
   auto.observe(gsi("gameover"));
+  auto.observe(menu);
   time += QUIET_MS * 2;
   await auto.tick();
   assert.equal(auto.state().offer, null);
-  assert.deepEqual(checks, []);
 
   await auto.setEnabled(true);
   assert.equal(JSON.parse(await readFile(path.join(dir, "auto-highlights.json"), "utf8")).enabled, true);
-  // Casual hat keine Valve-Demo.
+  assert.equal(auto.state().gsiAgo, null);
+  // Casual hat keine Valve-Demo; die Seite zeigt das an.
   auto.observe(gsi("gameover", { mode: "casual" }));
-  time += QUIET_MS * 2;
+  assert.deepEqual(auto.state().seen, { map: "de_mirage", mode: "casual", phase: "gameover", demo: false });
+  assert.equal(auto.state().gsiAgo, 0);
+  auto.observe(menu);
+  time += MENU_MS * 2;
+  auto.observe(menu);
   await auto.tick();
   assert.equal(auto.state().offer, null);
 
+  // Mitten im Match verlassen: keine Frage.
   auto.observe(gsi("live"));
-  time += QUIET_MS * 2;
+  auto.observe(menu);
+  time += MENU_MS * 2;
+  auto.observe(menu);
   await auto.tick();
   assert.equal(auto.state().offer, null, "nicht fertig gespielt: keine Frage");
-  assert.deepEqual(checks, []);
 
+  auto.observe(gsi("live"));
   auto.observe(gsi("gameover"));
+  time += 30_000;
+  auto.observe(gsi("gameover"));
+  await auto.tick();
+  assert.equal(auto.state().offer, null, "Endbildschirm: noch nicht fragen");
+  auto.observe(menu);
+  time += 3000;
+  auto.observe(menu);
+  await auto.tick();
+  assert.equal(auto.state().offer, null, "gerade erst im Menü");
+  time += MENU_MS;
+  auto.observe(menu);
+  await auto.tick();
+  const offer = auto.state().offer;
+  assert.equal(offer.map, "de_mirage", "zurück im Hauptmenü: fragen, CS2 läuft noch");
+  assert.deepEqual(checks, [], "zum Fragen wird die Exe nicht gebraucht");
+  await assert.rejects(auto.answer("falsch", true, dir), /nicht mehr aktuell/);
+
+  // Ja bei offenem CS2: warten, bis die Exe beendet ist.
+  const result = await auto.answer(offer.id, true, path.join(dir, "Auto"));
+  assert.match(result.message, /Sobald du CS2 schließt/);
+  assert.equal(auto.state().run.status, "waiting");
+  await auto.tick();
+  assert.equal(auto.state().run.status, "waiting");
+  const before = checks.length;
   time += 1000;
   await auto.tick();
-  assert.deepEqual(checks, [], "GSI kommt noch: Exe nicht prüfen");
-  time += QUIET_MS;
-  await auto.tick();
-  assert.deepEqual(checks, ["cs2.exe"]);
-  assert.equal(auto.state().offer, null, "CS2 läuft noch (Hauptmenü)");
-  time += 10_000;
-  await auto.tick();
-  assert.equal(checks.length, 1, "erst nach einer Minute erneut prüfen");
+  assert.equal(checks.length, before, "nicht ständig nachsehen");
   running = false;
   time += RECHECK_MS;
   await auto.tick();
-  const offer = auto.state().offer;
-  assert.equal(offer.map, "de_mirage");
-  await assert.rejects(auto.answer("falsch", true, dir), /nicht mehr aktuell/);
-
-  const result = await auto.answer(offer.id, true, path.join(dir, "Auto"));
-  assert.match(result.message, /TecMon-Seite/);
   for (let i = 0; i < 50 && auto.state().run.status !== "ready"; i++) await new Promise((r) => setTimeout(r, 5));
   assert.equal(auto.state().run.status, "ready");
   assert.deepEqual(opened, [offer.id]);
@@ -88,11 +108,12 @@ test("fragt erst nach Matchende, ohne GSI und mit geschlossener Exe", async () =
   assert.equal(auto.demoPath(offer.id), "", "nur einmal verwendbar");
   assert.throws(() => auto.consume(offer.id));
 
-  // Nein: keine Demo, keine Seite.
+  // CS2 direkt geschlossen (keine Daten mehr): fragen; Nein = keine Demo, keine Seite.
   auto.observe(gsi("gameover"));
-  time += QUIET_MS * 2;
+  time += QUIET_MS;
   await auto.tick();
   const second = auto.state().offer;
+  assert.ok(second);
   assert.match((await auto.answer(second.id, false, dir)).message, /kein Video/);
   assert.equal(opened.length, 1);
   await auto.setEnabled(false);
