@@ -177,6 +177,25 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Kopfschuss 0/1]`, höchstens 10, aufsteigend, innerhalb der Szene (`killMarks()` in
   `job.mjs`). Die Wörter kommen nur aus `killWords()`, nie aus dem Auftrag.
 
+## Highlight-Video nach dem Match (`auto-highlights.mjs`)
+
+- Standardmäßig aus (`auto-highlights.json`). Eingeschaltet braucht es die
+  GSI-Datei; sie bleibt, solange Rundentipps oder Auto-Highlights an sind.
+  Gelesen werden nur `map.name`, `map.mode`, `map.phase` und
+  `provider.steamid`; während einer Aufnahme nichts annehmen.
+- Gefragt wird nur nach einem fertigen Match (`gameover`) in `DEMO_MODES`,
+  frühestens `QUIET_MS` nach den letzten GSI-Daten und nur, wenn die Spiel-Exe
+  aus `GAME_EXES` nicht mehr läuft (`tasklist`, höchstens alle `RECHECK_MS`).
+  Kein Zugriff auf den Spielprozess. Ein neues Spiel braucht einen Eintrag in
+  `GAME_EXES`.
+- Erst nach „Ja“: `downloadLatestDemo()` (boiler-writter ohne Match-Angaben =
+  letzte Matches des angemeldeten Kontos), dann die zuletzt verbundene
+  TecMon-Seite öffnen. Bridge: `GET /bridge/auto?id=` (Status, Map, eigene
+  SteamID, keine Pfade), `GET /bridge/auto/demo?id=`, `POST /bridge/capture`
+  mit `autoId` statt `demoId`; die Demo gilt danach als verbraucht.
+- Hochladen zu YouTube/Discord macht nur die Webseite mit den Einstellungen im
+  Browser. Der Companion bekommt dafür keine Zugangsdaten.
+
 ## Prüfen und veröffentlichen
 
 - Vor jedem Push `npm test` und `node scripts/version.mjs check` im Repo-Stamm.

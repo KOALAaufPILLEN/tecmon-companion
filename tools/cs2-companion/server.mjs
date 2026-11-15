@@ -12,7 +12,8 @@ import { cameraSql, cleanupSql, runCameraSql } from "./custom-cameras.mjs";
 import { matchDownloadRequest, shareCode } from "./share-code.mjs";
 import { ensureRecordingPlugin, recordingFailure, crashSince } from "./recording-engine.mjs";
 import { recordInternal, internalReady, cameraSession, ENGINE_CAPABILITY } from "./internal-recorder.mjs";
-import { downloadValveDemo, decodeShareCode } from "./valve-download.mjs";
+import { downloadValveDemo, decodeShareCode, downloadLatestDemo, isProcessRunning } from "./valve-download.mjs";
+import { createAutoHighlights, AUTO_CAPABILITY } from "./auto-highlights.mjs";
 import { ANGLE_CAPABILITY, SCRIPT_CAPABILITY, SESSION_CAPABILITY } from "./camera-script.mjs";
 import { needsScript } from "./job.mjs";
 import { updateHandoff } from "./update-handoff.mjs";
@@ -293,17 +294,40 @@ export async function createCompanion({
       ...dotaTips.state(),
     };
   }
+  /* Highlight-Video nach dem Match: standardmäßig aus, fragt erst nach Matchende und geschlossenem CS2. */
+  const auto = await createAutoHighlights({
+    dir: installation?.profileDir || dataDir,
+    ...(now ? { now } : {}),
+    isRunning: engineSystem.auto?.isRunning || (process.platform === "win32" ? isProcessRunning : async () => false),
+    busy: () => active,
+    fetchLatest: (options) => {
+      if (!ownDownload()) throw new Error("Das automatische Video braucht den installierten Windows-Companion.");
+      return (engineSystem.auto?.fetchLatest || downloadLatestDemo)({ ...options, cacheDir: engineCache, system: engineSystem.download });
+    },
+    openPage: (id) => {
+      // Zuletzt verbundene TecMon-Seite öffnen; sie holt die Demo über die Bridge.
+      const device = bridge.state().devices.at(-1);
+      const page = `${device?.origin || "https://tecmon.online"}/demo-replay?companion-auto=${id}#replay-load`;
+      if (engineSystem.auto?.openPage) return engineSystem.auto.openPage(page);
+      if (process.platform === "win32") spawn("explorer.exe", [page], { windowsHide: true, stdio: "ignore" }).unref();
+    },
+  });
+  const autoTimer = setInterval(() => {
+    if (games.has("cs2")) auto.tick().catch(() => {});
+  }, engineSystem.auto?.every || 10_000);
+  autoTimer.unref?.();
   let gsiError = "";
   async function syncGsiConfig() {
     gsiError = "";
     try {
-      if (gsi.enabled) await installGsiConfig(detected.cs2, gsi.token);
+      // Rundentipps und Auto-Highlights lesen dieselbe GSI-Datei; sie bleibt, solange eins davon an ist.
+      if (gsi.enabled || auto.enabled) await installGsiConfig(detected.cs2, gsi.token);
       else await removeGsiConfig(detected.cs2);
     } catch (error) {
       gsiError = error.message;
     }
   }
-  if (gsi.enabled) await syncGsiConfig();
+  if (gsi.enabled || auto.enabled) await syncGsiConfig();
   function gsiState() {
     const cs = tips.state();
     const dota = dotaGsi.enabled ? dotaTips.state() : null;
@@ -371,6 +395,7 @@ export async function createCompanion({
     if (!gsi.matches(payload?.auth?.token)) return json(res, 401, { error: "Falsches Token." });
     // Während einer Demo-Aufnahme sendet CS2 die Daten des aufgenommenen Spielers: ignorieren.
     if (gsi.enabled && !active) tips.ingest(payload);
+    if (!active && games.has("cs2")) auto.observe(payload);
     return json(res, 200, { ok: true });
   }
   let postgres = installation ? {installed:true,supported:true,ready:false,version:"18",port:installation.port,lazy:true} : await checkPostgres();
@@ -710,7 +735,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY] : [])] : [])],
       });
     if (req.method === "POST" && url.pathname === "/bridge/insights") {
       const input = await readInput(req, 262144);
@@ -729,6 +754,17 @@ export async function createCompanion({
       const input = await readInput(req, 4096);
       brandClip(String(input.id || ""), String(input.game || ""), String(input.title || ""));
       return json(res, 202, { id: input.id, status: "branding" });
+    }
+    if (req.method === "GET" && url.pathname === "/bridge/auto") {
+      const item = auto.ready(String(url.searchParams.get("id") || ""));
+      return item ? json(res, 200, item) : json(res, 404, { error: "Kein automatisches Video vorbereitet." });
+    }
+    if (req.method === "GET" && url.pathname === "/bridge/auto/demo") {
+      const demo = auto.demoPath(String(url.searchParams.get("id") || ""));
+      const info = demo ? await stat(demo).catch(() => null) : null;
+      if (!info?.isFile()) return json(res, 404, { error: "Demo nicht vorhanden." });
+      res.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Length": info.size });
+      return createReadStream(demo).on("error", () => res.destroy()).pipe(res);
     }
     if(req.method === "POST" && url.pathname === "/bridge/demo/start"){
       if(active || jobs.size>=100)throw new Error("Zuerst den laufenden Auftrag abschließen.");
@@ -765,7 +801,7 @@ export async function createCompanion({
     if (jobs.size >= 100) throw new Error("Auftragsliste voll. Companion neu starten.");
     const capture = url.pathname === "/bridge/capture";
     const specification = capture ? validateJob(input.job) : null;
-    if (capture && !specification.shareCode && typeof input.demoId!=="string")
+    if (capture && !specification.shareCode && typeof input.demoId!=="string" && typeof input.autoId!=="string")
       throw new Error("Sharecode oder die Originaldemo aus dem Browser fehlt.");
     const codes = capture ? (specification.shareCode ? [specification.shareCode] : []) : matchDownloadRequest(input);
     if (downloads.size + codes.length > 100)
@@ -781,7 +817,8 @@ export async function createCompanion({
     active = true;
     try {
       const exe = await csdmIfPresent();
-      const browserDemo=capture && !specification.shareCode ? browserFiles.consume(owner,input.demoId) : null;
+      const browserDemo = !capture || specification.shareCode ? null
+        : typeof input.autoId === "string" ? auto.consume(input.autoId) : browserFiles.consume(owner,input.demoId);
       jobs.set(job.id, job);
       void (async () => {
         try {
@@ -944,6 +981,7 @@ export async function createCompanion({
           active,
           bridge: bridge.state(),
           gsi: gsiState(),
+          auto: auto.state(),
           dota: dotaState(),
           pet: pet.state(),
           games: games.state(),
@@ -1022,6 +1060,7 @@ export async function createCompanion({
         const id = String(input.id || "");
         if (id === "cs2") {
           await gsi.setEnabled(false);
+          await auto.setEnabled(false);
           await syncGsiConfig();
           await insights.clear();
           await crosshair.reset(detected.cs2);
@@ -1102,6 +1141,27 @@ export async function createCompanion({
       if (url.pathname === "/api/gsi/insights/clear") {
         await insights.clear();
         return json(res, 200, { message: "Übertragene Match-Auswertung gelöscht.", gsi: gsiState() });
+      }
+      if (url.pathname === "/api/auto/settings") {
+        if (input.enabled === true && !games.has("cs2")) throw new Error("Das CS2-Paket ist nicht installiert.");
+        if (input.enabled === true && !gsiConfigPath(detected.cs2)) throw new Error("CS2 wurde auf diesem PC nicht gefunden.");
+        let state = await auto.setEnabled(input.enabled === true);
+        await syncGsiConfig();
+        if (state.enabled && gsiError) {
+          state = await auto.setEnabled(false);
+          await syncGsiConfig();
+          throw new Error(`GSI-Datei konnte nicht angelegt werden: ${gsiError}`);
+        }
+        return json(res, 200, {
+          auto: state,
+          message: state.enabled
+            ? "Nach jedem fertigen Match fragt TecMon, ob ein Highlight-Video entstehen soll. Falls CS2 gerade läuft, das Spiel einmal neu starten."
+            : "Automatisches Highlight-Video aus.",
+        });
+      }
+      if (url.pathname === "/api/auto/answer") {
+        const result = await auto.answer(String(input.id || ""), input.yes === true, path.join(dataDir, "Auto-Demos"));
+        return json(res, 200, { ...result, auto: auto.state() });
       }
       if (url.pathname === "/api/gsi/disable") {
         await gsi.setEnabled(false);
@@ -1390,6 +1450,7 @@ export async function createCompanion({
   }
   if (installation) clips.resume();
   server.on("close", () => {
+    clearInterval(autoTimer);
     clips.stop().catch(() => {});
     if (updateTimer) clearTimeout(updateTimer);
   });

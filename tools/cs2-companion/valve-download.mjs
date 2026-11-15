@@ -78,26 +78,35 @@ function* fields(buf) {
 }
 
 /**
- * CMsgGCCStrike15_v2_MatchList.matches (4) → CDataGCCStrike15_v2_MatchInfo;
- * darin roundstatsall (5, sonst roundstats_legacy 4) → .map (3) = Demo-Link
- * der letzten Runde. Gibt je Match den Link oder null zurück.
+ * CMsgGCCStrike15_v2_MatchList.matches (4) → CDataGCCStrike15_v2_MatchInfo:
+ * matchid (1), matchtime (2, Unix-Sekunden), roundstatsall (5, sonst
+ * roundstats_legacy 4) → .map (3) = Demo-Link der letzten Runde.
  */
-export function demoLinks(buf) {
-  const links = [];
+export function matchList(buf) {
+  const matches = [];
   for (const m of fields(buf)) {
     if (m.field !== 4 || m.type !== 2) continue;
     let link = null;
+    let matchId = "";
+    let time = 0;
     for (const r of fields(m.bytes)) {
-      if ((r.field !== 5 && r.field !== 4) || r.type !== 2) continue;
-      for (const f of fields(r.bytes))
-        if (f.field === 3 && f.type === 2) {
-          const text = Buffer.from(f.bytes).toString("utf8");
-          if (REPLAY_URL.test(text)) link = text;
-        }
+      if (r.field === 1 && r.type === 0) matchId = r.value.toString();
+      else if (r.field === 2 && r.type === 0) time = Number(r.value);
+      else if ((r.field === 5 || r.field === 4) && r.type === 2)
+        for (const f of fields(r.bytes))
+          if (f.field === 3 && f.type === 2) {
+            const text = Buffer.from(f.bytes).toString("utf8");
+            if (REPLAY_URL.test(text)) link = text;
+          }
     }
-    links.push(link);
+    matches.push({ matchId, time, link });
   }
-  return links;
+  return matches;
+}
+
+/** Je Match den Demo-Link oder null. */
+export function demoLinks(buf) {
+  return matchList(buf).map((m) => m.link);
 }
 
 /* ---------- boiler-writter einmalig laden und prüfen ---------- */
@@ -199,10 +208,14 @@ export async function downloadValveDemo({ code, directory, cacheDir, log = () =>
   await rm(infoFile, { force: true });
   if (!link) throw new Error("Für dieses Match gibt es keinen Demo-Link mehr. Valve löscht Demos nach einigen Wochen.");
   log("Demo von Valve laden und entpacken …");
+  return fetchDemoFile(link, path.join(directory, `match730_${info.matchId}.dem`), request);
+}
+
+/** Valve-Link laden, beim Laden entpacken und als CS2-Demo prüfen. */
+async function fetchDemoFile(link, demo, request) {
   const response = await request(link, { redirect: "error", signal: AbortSignal.timeout(30 * 60 * 1000) });
   if (response.status === 404) throw new Error("Die Demo liegt nicht mehr bei Valve.");
   if (!response.ok || !response.body) throw new Error(`Valves Replay-Server antwortet mit Fehler ${response.status}.`);
-  const demo = path.join(directory, `match730_${info.matchId}.dem`);
   const partial = `${demo}.${randomUUID()}.part`;
   const out = createWriteStream(partial);
   const write = (bytes) =>
@@ -244,3 +257,34 @@ export async function downloadValveDemo({ code, directory, cacheDir, log = () =>
   }
   return demo;
 }
+
+/**
+ * Neuestes eigenes Match über dein Steam holen, ganz ohne Sharecode:
+ * boiler-writter ohne Match-Angaben liefert die letzten Matches des
+ * angemeldeten Kontos. Nur Matches ab `after` (ms) zählen.
+ */
+export async function downloadLatestDemo({ directory, cacheDir, after = 0, log = () => {}, system = {} }) {
+  const isRunning = system.isRunning || tasklist;
+  const runBoiler = system.runBoiler || runBoilerProcess;
+  const request = system.request || fetch;
+  if (!(await isRunning("steam.exe"))) throw new Error("Steam läuft nicht. Steam starten und anmelden.");
+  if (await isRunning("cs2.exe")) throw new Error("Bitte CS2 schließen; Steam kann sonst keine Match-Infos abfragen.");
+  await mkdir(directory, { recursive: true });
+  const boiler = await ensureBoiler(cacheDir, system.request);
+  const infoFile = path.join(directory, "matches.info");
+  log("Letzte Matches über dein Steam abfragen …");
+  const exit = await runBoiler(boiler, [infoFile]);
+  if (exit !== 0) throw new Error(BOILER_ERRORS[exit] || `boiler-writter wurde mit Code ${exit} beendet.`);
+  const list = matchList(await readFile(infoFile));
+  await rm(infoFile, { force: true });
+  const latest = list
+    .filter((m) => m.link && /^\d{1,24}$/.test(m.matchId) && m.time * 1000 >= after)
+    .sort((a, b) => b.time - a.time)[0];
+  if (!latest) throw new Error("Steam kennt noch keine Demo zu deinem letzten Match. In ein paar Minuten erneut versuchen.");
+  log("Demo von Valve laden und entpacken …");
+  const demo = await fetchDemoFile(latest.link, path.join(directory, `match730_${latest.matchId}.dem`), request);
+  return { demo, matchId: latest.matchId, time: latest.time * 1000 };
+}
+
+/** Läuft ein Windows-Prozess? (tasklist, ohne Shell) */
+export const isProcessRunning = tasklist;

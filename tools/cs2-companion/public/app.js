@@ -102,6 +102,7 @@ async function refresh() {
     if(state.bridge?.devices?.length) container.append(connections);
   }
   gameTips(state.gsi);
+  if(state.auto)showAuto(state.auto);
   dotaTips(state.dota);
   databaseState(state.postgres);
   $('auto-update-row').hidden=!state.updates?.available; $('auto-update').checked=!!state.updates?.auto; $('auto-update-note').textContent=state.updates?.auto?'Neue Versionen werden nach der Prüfung von Größe und Prüfsumme selbst installiert, nie während eines Downloads oder einer Aufnahme. Danach startet der Companion neu.':'Aus: Neue Versionen erscheinen als Hinweis und werden erst nach deinem Klick installiert.';
@@ -457,3 +458,15 @@ $('clips-devices').addEventListener('click',()=>api('/api/clips/devices').then((
 $('clips-save').addEventListener('click',()=>api('/api/clips/save',{}).then(r=>{$('notice').textContent=r.message;clipSignature='';loadClips();}).catch(notice));
 $('clips-folder').addEventListener('click',()=>api('/api/clips/folder',{}).catch(notice));
 loadClips().catch(()=>{});setInterval(()=>{if(!restarting)loadClips().catch(()=>{});},4000);
+
+/* Highlight-Video nach dem Match (standardmäßig aus). */
+let autoState=null;
+const AUTO_STATUS={downloading:'Lade die Demo deines letzten Matches …',ready:'Demo bereit. Die TecMon-Seite erstellt das Video.',done:'Aufnahme gestartet. Fortschritt auf der TecMon-Seite.'};
+function showAuto(auto){
+  autoState=auto;
+  $('auto-heading').textContent=auto.enabled?'Highlight-Video nach dem Match ist an':'Highlight-Video nach dem Match ist aus';
+  $('auto-toggle').textContent=auto.enabled?'Ausschalten':'Einschalten';
+  const run=auto.run;
+  $('auto-status').textContent=auto.offer?`Match auf ${auto.offer.map} vorbei: Antworte auf die Frage der Figur.`:run?(run.status==='error'?run.error:AUTO_STATUS[run.status]||''):'';
+}
+$('auto-toggle').addEventListener('click',()=>api('/api/auto/settings',{enabled:!autoState?.enabled}).then(r=>{showAuto(r.auto);if(r.message)$('notice').textContent=r.message;}).catch(notice));

@@ -66,6 +66,22 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.26.0: Highlight-Video nach dem Match
+
+- **Automatisches Highlight-Video** (Capability `auto-highlights-v1`, standardmäßig
+  aus): Rechtsklick auf die Figur → Games → CS2 → „Nach dem Match Highlight-Video
+  anbieten“ oder auf der Companion-Seite einschalten. Nach einem fertig gespielten
+  Premier-, Wettkampf- oder Wingman-Match prüft der Companion, sobald eine Minute
+  lang keine Spieldaten mehr kommen, ob `cs2.exe` noch läuft (danach jede Minute).
+  Ist CS2 zu, fragt die Figur: „Neues Highlight-Video erstellen?“
+- Bei „Ja“ holt der Companion die Demo deines letzten Matches über dein Steam,
+  **ohne Sharecode**, und öffnet die TecMon-Seite. Sie wählt deine besten Szenen,
+  startet die Aufnahme mit deinem zuletzt benutzten Stil und lädt das fertige Video
+  zu YouTube hoch und postet es in Discord, wenn beides im Browser eingerichtet ist.
+- Genutzt werden nur Map, Modus, Matchphase und die eigene SteamID aus der
+  offiziellen CS2-Schnittstelle. Die Funktion legt dieselbe GSI-Datei an wie die
+  Rundentipps und entfernt sie beim Ausschalten wieder, wenn die Tipps aus sind.
+
 ### Neu in 0.25.0: Animiertes Overlay, Filter und bessere Bildqualität
 
 - **Animiertes Gameplay-Overlay (HUD v2):** Der Rahmen oben liegt eng an den

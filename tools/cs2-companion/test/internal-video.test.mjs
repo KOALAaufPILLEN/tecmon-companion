@@ -5,16 +5,17 @@ import { EventEmitter, once } from "node:events";
 import os from "node:os";
 import path from "node:path";
 import { createCompanion } from "../server.mjs";
+import { gsiConfigPath } from "../gsi-config.mjs";
 
 /** Regression: Mit der eigenen Engine fehlte job.output, /bridge/video brach mit "path ... undefined" ab. */
-test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", async (t) => {
+async function scenario(t, mode) {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-internal-video-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const root = path.join(dir, "cs2");
   const cs2Exe = path.join(root, "game", "bin", "win64", "cs2.exe");
   await mkdir(path.dirname(cs2Exe), { recursive: true });
   await writeFile(cs2Exe, "");
-  await mkdir(path.join(root, "game", "csgo"), { recursive: true });
+  await mkdir(path.join(root, "game", "csgo", "cfg"), { recursive: true });
   await writeFile(path.join(root, "game", "csgo", "gameinfo.gi"), "\t\t\tGame\tcsgo\n");
   const tools = path.join(dir, "tools");
   await mkdir(path.join(tools, "hlae"), { recursive: true });
@@ -33,6 +34,8 @@ test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", async 
   await writeFile(installation.csdmExe, "fixture");
   let cs2 = false;
   let naps = 0;
+  const opened = [];
+  let clock = Date.now();
   let recording = null;
   const system = {
     plugin: async () => Buffer.from("dll"),
@@ -41,7 +44,7 @@ test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", async 
       if (cs2 && ++naps > 1) {
         cs2 = false;
         const jobsDir = path.join(installation.dataDir, "Jobs");
-        const [id] = (await readdir(jobsDir)).filter((n) => n !== "Browser-Demos");
+        const [id] = (await readdir(jobsDir)).filter((n) => !["Browser-Demos", "Auto-Demos"].includes(n));
         recording = JSON.parse(await readFile(path.join(jobsDir, id, "recording.json"), "utf8"));
         for (const s of recording.sequences) {
           const folder = path.join(recording.outputFolderPath, `${s.number}-sequence`);
@@ -67,7 +70,22 @@ test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", async 
     runProcess: async () => {
       throw new Error("CS Demo Manager darf nicht laufen");
     },
-    engineSystem: { recorder: system },
+    engineSystem: {
+      recorder: system,
+      download: { isRunning: async () => false },
+      auto: {
+        isRunning: async () => false,
+        every: 5,
+        openPage: (page) => opened.push(page),
+        fetchLatest: async ({ directory }) => {
+          await mkdir(directory, { recursive: true });
+          const demo = path.join(directory, "match730_9.dem");
+          await writeFile(demo, Buffer.concat([Buffer.from("PBDEMS2\0"), Buffer.alloc(300, 79)]));
+          return { demo, matchId: "9", time: Date.now() };
+        },
+      },
+    },
+    ...(mode === "auto" ? { now: () => clock } : {}),
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -96,9 +114,53 @@ test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", async 
     body: JSON.stringify({ id: state.bridge.pending[0].id }),
   });
   grant = (await (await post("/bridge/pair/poll", { request: pending.request })).json()).token;
-  const bytes = Buffer.concat([Buffer.from("PBDEMS2\0"), Buffer.alloc(300, 79)]);
-  const upload = await (await post("/bridge/demo/start", { size: bytes.length })).json();
-  assert.equal((await post(`/bridge/demo/chunk?id=${upload.id}&offset=0`, bytes)).status, 200);
+  const local = (route, body) =>
+    fetch(base + route, {
+      method: "POST",
+      headers: { "x-tecmon-token": token, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  const headers = { Origin: origin, "x-tecmon-bridge-token": grant };
+  let source;
+  if (mode === "auto") {
+    const caps = (await (await fetch(base + "/bridge/state", { headers })).json()).capabilities;
+    assert.ok(caps.includes("auto-highlights-v1"));
+    assert.equal((await local("/api/auto/settings", { enabled: true })).status, 200);
+    // Einschalten legt die GSI-Datei an, auch ohne Rundentipps.
+    const gsiToken = (await readFile(gsiConfigPath(cs2Exe), "utf8")).match(/"token" "([a-f0-9]{64})"/)[1];
+    await fetch(base + "/gsi", {
+      method: "POST",
+      body: JSON.stringify({
+        auth: { token: gsiToken },
+        provider: { steamid: "76561197992597660" },
+        map: { name: "de_dust2", mode: "competitive", phase: "gameover" },
+      }),
+    });
+    clock += 5 * 60_000;
+    let offer = null;
+    for (let i = 0; i < 200 && !offer; i++) {
+      offer = (await (await fetch(base + "/api/state", { headers: { "x-tecmon-token": token } })).json()).auto.offer;
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    assert.ok(offer, "Frage nach dem Match");
+    assert.equal((await local("/api/auto/answer", { id: offer.id, yes: true })).status, 200);
+    let ready = null;
+    for (let i = 0; i < 200 && ready?.status !== "ready"; i++) {
+      ready = await (await fetch(base + `/bridge/auto?id=${offer.id}`, { headers })).json();
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    assert.equal(ready.steamId, "76561197992597660");
+    assert.deepEqual(opened, [`${origin}/demo-replay?companion-auto=${offer.id}#replay-load`]);
+    const demo = await fetch(base + `/bridge/auto/demo?id=${offer.id}`, { headers });
+    assert.equal((await demo.arrayBuffer()).byteLength, 308);
+    assert.equal((await fetch(base + `/bridge/auto/demo?id=${offer.id}`, { headers: { Origin: origin } })).status, 401);
+    source = { autoId: offer.id };
+  } else {
+    const bytes = Buffer.concat([Buffer.from("PBDEMS2\0"), Buffer.alloc(300, 79)]);
+    const upload = await (await post("/bridge/demo/start", { size: bytes.length })).json();
+    assert.equal((await post(`/bridge/demo/chunk?id=${upload.id}&offset=0`, bytes)).status, 200);
+    source = { demoId: upload.id };
+  }
   const job = {
     format: "tecmon-cs2-job",
     version: 1,
@@ -107,9 +169,8 @@ test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", async 
     tickRate: 64,
     sequences: [{ startTick: 256, endTick: 384, steamId: "76561197992597660", playerName: "Player", slot: 3 }],
   };
-  const started = await (await post("/bridge/capture", { job, demoId: upload.id, confirm: true })).json();
+  const started = await (await post("/bridge/capture", { job, ...source, confirm: true })).json();
   assert.ok(started.id, JSON.stringify(started));
-  const headers = { Origin: origin, "x-tecmon-bridge-token": grant };
   let result;
   for (let i = 0; i < 300; i++) {
     result = await (await fetch(base + `/bridge/job?id=${started.id}`, { headers })).json();
@@ -123,4 +184,7 @@ test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", async 
   const video = await fetch(base + `/bridge/video?id=${started.id}&file=0`, { headers });
   assert.equal(video.status, 200);
   assert.equal(await video.text(), "fertiges video");
-});
+}
+
+test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", (t) => scenario(t, "browser"));
+test("Auto-Highlights: nach dem Match fragen, Demo bereitstellen, damit aufnehmen", (t) => scenario(t, "auto"));
