@@ -16,10 +16,12 @@ import { readFile, writeFile, rename, rm, mkdir, stat } from "node:fs/promises";
 export const AUTO_CAPABILITY = "auto-highlights-v1";
 /** Nur Modi, zu denen Valve eine Demo bereitstellt. */
 export const DEMO_MODES = new Set(["competitive", "scrimcomp2v2", "premier"]);
-/** So lange ohne Spieldaten, dann wird geprüft, ob die Spiel-Exe noch läuft. */
+/** So lange ohne Spieldaten gilt das Spiel als beendet. */
 export const QUIET_MS = 60_000;
-/** Läuft die Exe noch (z. B. Hauptmenü), erst nach dieser Zeit wieder nachsehen. */
-export const RECHECK_MS = 60_000;
+/** So lange zurück im CS2-Hauptmenü (GSI ohne Map) nach Matchende, dann wird gefragt. */
+export const MENU_MS = 10_000;
+/** Nach „Ja“ bei offenem CS2: so oft nachsehen, ob die Exe beendet ist. */
+export const RECHECK_MS = 15_000;
 /**
  * Spiele, deren Ende der Companion an der beendeten Exe erkennt. Ein neues
  * Spiel braucht hier einen Eintrag; nur `tasklist`, kein Zugriff auf den Prozess.
@@ -55,6 +57,10 @@ export async function createAutoHighlights({
   let run = null;
   let checking = false;
   let checkedAt = 0;
+  /** Seit wann GSI ohne Map kommt (Hauptmenü), 0 = im Match. */
+  let menuSince = 0;
+  /** Nur zur Anzeige: was zuletzt aus CS2 ankam (Map, Modus, Phase). */
+  let seen = null;
 
   async function save() {
     const temporary = `${file}.${randomUUID()}.tmp`;
@@ -66,11 +72,21 @@ export async function createAutoHighlights({
   function observe(payload) {
     if (!enabled) return;
     lastGsi = now();
-    checkedAt = 0;
     const map = payload?.map;
     const steamId = String(payload?.provider?.steamid || "");
-    if (!map || !MAP.test(String(map.name || "")) || !DEMO_MODES.has(map.mode) || !STEAM.test(steamId)) return;
+    if (!map?.name) {
+      if (!menuSince) menuSince = lastGsi;
+      seen = { map: "", mode: "", phase: "menu" };
+      return;
+    }
+    menuSince = 0;
     const phase = String(map.phase || "");
+    seen = {
+      map: MAP.test(String(map.name)) ? map.name : "",
+      mode: /^[a-z0-9_]{1,30}$/.test(String(map.mode || "")) ? map.mode : "",
+      phase: /^[a-z]{1,20}$/.test(phase) ? phase : "",
+    };
+    if (!MAP.test(String(map.name || "")) || !DEMO_MODES.has(map.mode) || !STEAM.test(steamId)) return;
     if (!["live", "intermission", "gameover"].includes(phase)) return;
     const finished = phase === "gameover";
     if (!match || match.map !== map.name || (match.finished && !finished))
@@ -79,49 +95,54 @@ export async function createAutoHighlights({
     match.seenAt = lastGsi;
   }
 
-  /** Alle paar Sekunden: Match vorbei und CS2 zu? Dann einmal fragen. */
+  /**
+   * Alle paar Sekunden: Match fertig und zurück im Hauptmenü (oder keine
+   * Spieldaten mehr)? Dann einmal fragen. Die Frage nimmt CS2 keinen Fokus;
+   * geladen wird erst, wenn die Spiel-Exe beendet ist.
+   */
   async function tick() {
-    if (!enabled || checking || offer || (run && !["done", "error"].includes(run.status))) return;
+    if (!enabled || checking) return;
+    if (run?.status === "waiting") return waitForGame();
+    if (offer || (run && !["done", "error"].includes(run.status))) return;
     if (run?.status === "done" && now() - run.at > READY_TTL) await clear();
-    if (!match?.finished || now() - lastGsi < QUIET_MS) return;
+    if (!match?.finished) return;
+    const inMenu = menuSince && now() - menuSince >= MENU_MS;
+    if (!inMenu && now() - lastGsi < QUIET_MS) return;
     if (now() - match.seenAt > OFFER_TTL) {
       match = null;
       return;
     }
+    offer = { id: randomUUID(), map: match.map, mode: match.mode, steamId: match.steamId, startedAt: match.startedAt, at: now() };
+    match = null;
+  }
+
+  /** Steam kann die Match-Infos nur ohne laufendes CS2 abfragen: bis dahin warten. */
+  async function waitForGame() {
     if (checkedAt && now() - checkedAt < RECHECK_MS) return;
     checking = true;
     checkedAt = now();
     try {
       if (await isRunning(GAME_EXES.cs2)) return;
-      offer = { id: randomUUID(), map: match.map, mode: match.mode, steamId: match.steamId, startedAt: match.startedAt, at: now() };
-      match = null;
+      if (busy()) {
+        run.status = "error";
+        run.error = "Auf deinem PC läuft bereits eine Aufnahme oder ein Download.";
+        return;
+      }
       checkedAt = 0;
+      download(run);
     } finally {
       checking = false;
     }
   }
 
-  async function clear() {
-    if (run?.directory) await rm(run.directory, { recursive: true, force: true }).catch(() => {});
-    run = null;
-  }
-
-  async function answer(id, yes, directory) {
-    if (!offer || offer.id !== id) throw new Error("Diese Frage ist nicht mehr aktuell.");
-    const asked = offer;
-    offer = null;
-    if (!yes) return { message: "Alles klar, diesmal kein Video." };
-    if (busy()) throw new Error("Auf deinem PC läuft bereits eine Aufnahme oder ein Download.");
-    await clear();
-    const folder = path.join(directory, asked.id);
-    run = { id: asked.id, map: asked.map, steamId: asked.steamId, status: "downloading", error: "", log: "", demo: "", directory: folder, at: now() };
-    const current = run;
+  function download(current) {
+    current.status = "downloading";
     void (async () => {
       try {
         const result = await fetchLatest({
-          directory: folder,
+          directory: current.directory,
           // Etwas Spielraum: die Matchzeit von Valve ist der Start des Matches.
-          after: asked.startedAt - 30 * 60_000,
+          after: current.startedAt - 30 * 60_000,
           log: (message) => {
             current.log += `\n${message}`;
           },
@@ -137,6 +158,36 @@ export async function createAutoHighlights({
         current.error = error.message || "Demo konnte nicht geladen werden.";
       }
     })();
+  }
+
+  async function clear() {
+    if (run?.directory) await rm(run.directory, { recursive: true, force: true }).catch(() => {});
+    run = null;
+  }
+
+  async function answer(id, yes, directory) {
+    if (!offer || offer.id !== id) throw new Error("Diese Frage ist nicht mehr aktuell.");
+    const asked = offer;
+    offer = null;
+    if (!yes) return { message: "Alles klar, diesmal kein Video." };
+    if (busy()) throw new Error("Auf deinem PC läuft bereits eine Aufnahme oder ein Download.");
+    await clear();
+    run = {
+      id: asked.id,
+      map: asked.map,
+      steamId: asked.steamId,
+      startedAt: asked.startedAt,
+      status: "waiting",
+      error: "",
+      log: "",
+      demo: "",
+      directory: path.join(directory, asked.id),
+      at: now(),
+    };
+    checkedAt = 0;
+    if (await isRunning(GAME_EXES.cs2))
+      return { message: "Alles klar. Sobald du CS2 schließt, lädt TecMon die Demo und erstellt das Video." };
+    download(run);
     return { message: "Demo deines letzten Matches wird geladen. Danach öffnet sich die TecMon-Seite." };
   }
 
@@ -172,6 +223,10 @@ export async function createAutoHighlights({
       enabled,
       offer: offer ? { id: offer.id, map: offer.map } : null,
       run: run ? { id: run.id, map: run.map, status: run.status, error: run.error } : null,
+      // Zur Fehlersuche auf der Companion-Seite: kommt überhaupt etwas aus CS2 an?
+      gsiAgo: lastGsi ? Math.round((now() - lastGsi) / 1000) : null,
+      seen: seen ? { ...seen, demo: DEMO_MODES.has(seen.mode) } : null,
+      match: match ? { map: match.map, finished: match.finished } : null,
     };
   }
 

@@ -183,18 +183,34 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   GSI-Datei; sie bleibt, solange Rundentipps oder Auto-Highlights an sind.
   Gelesen werden nur `map.name`, `map.mode`, `map.phase` und
   `provider.steamid`; während einer Aufnahme nichts annehmen.
-- Gefragt wird nur nach einem fertigen Match (`gameover`) in `DEMO_MODES`,
-  frühestens `QUIET_MS` nach den letzten GSI-Daten und nur, wenn die Spiel-Exe
-  aus `GAME_EXES` nicht mehr läuft (`tasklist`, höchstens alle `RECHECK_MS`).
-  Kein Zugriff auf den Spielprozess. Ein neues Spiel braucht einen Eintrag in
-  `GAME_EXES`.
-- Erst nach „Ja“: `downloadLatestDemo()` (boiler-writter ohne Match-Angaben =
+- Gefragt wird nur nach einem fertigen Match (`gameover`) in `DEMO_MODES`:
+  sobald GSI seit `MENU_MS` ohne Map kommt (Hauptmenü) oder `QUIET_MS` lang
+  gar nichts mehr kommt. Die Frage (`AutoPrompt` in `TecMon.cs`) ist ein
+  eigenes TecMon-Fenster, das nie aktiviert wird und CS2 keinen Fokus nimmt;
+  kein `MessageBox`.
+- Nach „Ja“ wartet der Lauf (`waiting`), bis die Spiel-Exe aus `GAME_EXES`
+  nicht mehr läuft (`tasklist`, höchstens alle `RECHECK_MS`), weil Steam die
+  Match-Infos nur ohne CS2 liefert. Kein Zugriff auf den Spielprozess. Ein
+  neues Spiel braucht einen Eintrag in `GAME_EXES`.
+- `state()` zeigt zur Fehlersuche nur `gsiAgo`, zuletzt gesehene Map/Modus/Phase
+  und das erkannte Match, keine weiteren Spieldaten.
+- Dann: `downloadLatestDemo()` (boiler-writter ohne Match-Angaben =
   letzte Matches des angemeldeten Kontos), dann die zuletzt verbundene
   TecMon-Seite öffnen. Bridge: `GET /bridge/auto?id=` (Status, Map, eigene
   SteamID, keine Pfade), `GET /bridge/auto/demo?id=`, `POST /bridge/capture`
   mit `autoId` statt `demoId`; die Demo gilt danach als verbraucht.
 - Hochladen zu YouTube/Discord macht nur die Webseite mit den Einstellungen im
   Browser. Der Companion bekommt dafür keine Zugangsdaten.
+
+## Oberfläche (Figurmenü, Fenster, Companion-Seite)
+
+- Gleiche UI-Regeln wie auf tecmon.online: TecMon-Farben (Schwarz, Lila, Gold),
+  Buttons mit Hover nur bei Maus und sichtbarem Nachgeben beim Drücken
+  (`scale(0.96)`, nie unter 0.95), breite Karten ändern nur die Farbe.
+  Übergänge nur mit benannten Eigenschaften und den `--tm-dur-*`-Zeiten, nie
+  `transition: all`. Esc schließt Rückfragen; Trefferflächen mindestens 40 px.
+- Einträge im Figurmenü zeichnet `TecMonMenu` als Buttons (Fläche, Hover,
+  gedrückt). Keine Windows-Standarddialoge für Fragen während des Spiels.
 
 ## Prüfen und veröffentlichen
 

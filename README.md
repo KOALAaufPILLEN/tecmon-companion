@@ -66,6 +66,20 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.27.0: Frage schon im Hauptmenü, Menü mit Buttons
+
+- **Highlight-Frage direkt nach dem Match:** Ist „Nach dem Match Highlight-Video
+  anbieten“ an, fragt TecMon jetzt schon, sobald du nach einem fertigen Match
+  wieder im CS2-Hauptmenü bist. Die Frage ist ein eigenes TecMon-Fenster unten
+  rechts mit „Ja, Video erstellen“ und „Nein“ und nimmt CS2 keinen Fokus. Nach
+  „Ja“ lädt der Companion die Demo, sobald du CS2 schließt.
+- **Prüfanzeige:** Die Companion-Seite zeigt unter „Nach dem Match“, wann zuletzt
+  Daten von CS2 kamen und welches Match erkannt wurde. Kommt nichts an, CS2 nach
+  dem Einschalten einmal neu starten.
+- **Figurmenü und Companion-Seite im TecMon-Stil:** Menüeinträge sehen aus wie
+  Buttons und geben beim Klick sichtbar nach, Hover nur mit Maus, Esc schließt
+  Rückfragen.
+
 ### Neu in 0.26.1: Kein „401 Nicht autorisiert“ nach Updates
 
 - Startet der lokale Dienst neu, etwa nach einem automatischen Update, holt sich
