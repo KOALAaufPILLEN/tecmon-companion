@@ -28,6 +28,7 @@ import { cleanDotaPayload, dotaGsiConfigPath, installDotaGsiConfig, removeDotaGs
 import { createInsightsStore } from "./insights.mjs";
 import { createGamePackages } from "./games.mjs";
 import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
+import { createSkinSwap, hasSkins, SKIN_CAPABILITY } from "./skin-swap.mjs";
 import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { createPet, quizQuestion } from "./personality.mjs";
@@ -428,6 +429,12 @@ export async function createCompanion({
    */
   const engineFile = path.join(installation?.profileDir || dataDir, "engine.json");
   const engineCache = installation ? path.join(path.dirname(installation.profileDir), "engine") : path.join(dataDir, "engine");
+  /** Skin-Tausch für Video-Szenen (skin-swap-v1): freiwilliges Addon, standardmäßig aus. */
+  const skinSwap = await createSkinSwap({
+    dir: installation?.profileDir || dataDir,
+    cacheDir: engineCache,
+    ...(engineSystem.skinSwap || {}),
+  });
   let ownEngine = true;
   try {
     ownEngine = JSON.parse(await readFile(engineFile, "utf8")).internal !== false;
@@ -587,11 +594,24 @@ export async function createCompanion({
       });
     const output = path.join(dataDir, job.id);
     await mkdir(output, { recursive: true });
+    // Skin-Tausch: Aufnahme aus einer umgeschriebenen Kopie, das Original bleibt unverändert.
+    let skinCopy = "";
+    if (hasSkins(job.job)) {
+      if (!own) job.log += "\nSkin-Tausch gibt es nur mit der eigenen TecMon-Engine; das Video zeigt die echten Skins.";
+      else if (!skinSwap.enabled) job.log += "\nSkin-Tausch ist im Companion aus; das Video zeigt die echten Skins.";
+      else {
+        job.status = "preparing";
+        skinCopy = await skinSwap.rewrite(job.job, demo, (message) => {
+          job.log += `\n${message}`;
+        });
+      }
+    }
+    const recordDemo = skinCopy || demo;
     const config = path.join(output, "recording.json");
     const cameras = jobCameras(job.job, randomUUID);
     if (cameras.length && !installation)
       throw new Error("Freecam-Kamerapunkte benötigen den installierten Windows-Companion.");
-    const recording = recordingConfig(job.job, demo, output, input.quality, cameras);
+    const recording = recordingConfig(job.job, recordDemo, output, input.quality, cameras);
     if (branding) recording.concatenateSequences = false; // Keep exact scene boundaries for player labels.
     if (installation)
       recording.ffmpegSettings = {
@@ -610,7 +630,7 @@ export async function createCompanion({
         await recordInternal({
           recording,
           job: job.job,
-          demo,
+          demo: recordDemo,
           installation,
           cs2Exe: detected.cs2,
           cameras,
@@ -628,6 +648,8 @@ export async function createCompanion({
           /* optional diagnostics */
         }
         throw new Error(recordingFailure(error, pluginLog, await crashSince(detected.cs2, startedAt)));
+      } finally {
+        await skinSwap.cleanup(skinCopy);
       }
       return finishRecording(job, output, branding, assets);
     }
@@ -752,7 +774,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,...(skinSwap.enabled ? [SKIN_CAPABILITY] : [])] : [])] : [])],
       });
     if (req.method === "POST" && url.pathname === "/bridge/insights") {
       const input = await readInput(req, 262144);
@@ -999,6 +1021,7 @@ export async function createCompanion({
           bridge: bridge.state(),
           gsi: gsiState(),
           auto: auto.state(),
+          skins: skinSwap.state(),
           dota: dotaState(),
           pet: pet.state(),
           games: games.state(),
@@ -1201,6 +1224,16 @@ export async function createCompanion({
           message: state.enabled
             ? "Nach jedem fertigen Match fragt TecMon, ob ein Highlight-Video entstehen soll. Falls CS2 gerade läuft, das Spiel einmal neu starten."
             : "Automatisches Highlight-Video aus.",
+        });
+      }
+      if (url.pathname === "/api/skins/settings") {
+        if (input.enabled === true && !installation) throw new Error("Skin-Tausch braucht den installierten Windows-Companion.");
+        const state = await skinSwap.set(input.enabled === true, input.accept);
+        return json(res, 200, {
+          skins: state,
+          message: state.enabled
+            ? "Skin-Tausch an. Auf tecmon.online lassen sich jetzt im Demo-Manager Skins je Szene eintragen."
+            : "Skin-Tausch aus. Das geladene Programm wurde entfernt.",
         });
       }
       if (url.pathname === "/api/auto/answer") {

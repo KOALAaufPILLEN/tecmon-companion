@@ -188,6 +188,21 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   `cyber-hud.mjs` zeichnet das feste Wort „DEATHCAM:“; der Name kommt nur aus einer gesperrten
   Textdatei, nie als Filterausdruck.
 
+## Skin-Tausch für Videos (`skin-swap.mjs`)
+
+- Freiwilliges Addon, standardmäßig aus (`skin-swap.json`), Einschalten nur nach
+  bestätigtem Hinweis (`SKIN_NOTICE`, Version `SKIN_NOTICE_VERSION`). Capability
+  `skin-swap-v1` nur, wenn es an ist und die eigene Engine läuft.
+- Nutzt nur den eigenständigen Demo-Rewriter aus CS2-nskinz (Lyan-edit, AGPL-3.0):
+  Download vom festen Commit `REWRITER_REVISION`, Prüfung gegen `REWRITER_SHA256`,
+  bei Abweichung abbrechen. Keinen Code des Projekts in den MIT-Companion kopieren,
+  keine DLL in CS2 laden. Credits mit Autor, Link und Lizenz in Seite und README.
+- Aus dem Auftrag nur `sequences[].skins` mit Zahlen (`cleanSkins()`: Waffe aus
+  `SKIN_WEAPONS`, Paintkit, Abnutzung, Muster, höchstens `MAX_SKINS`). SteamID64
+  bleibt Text. Aufgenommen wird aus einer Kopie `*.tecmon-skins.dem`, die danach
+  gelöscht wird; die Original-Demo bleibt unverändert.
+- Getauschte Waffen tragen das Namensschild `SKIN_TAG` („TecMon Skin“).
+
 ## Highlight-Video nach dem Match (`auto-highlights.mjs`)
 
 - Standardmäßig aus (`auto-highlights.json`). Eingeschaltet braucht es die

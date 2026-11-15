@@ -66,6 +66,22 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.31.0: Skin-Tausch für Videos (Zusatz-Addon)
+
+- **Skin-Tausch** (Companion-Seite → Spiele → „Skin-Tausch für Videos“): zeigt in
+  einer Video-Szene einen anderen Waffenskin. Auf tecmon.online trägst du im
+  Demo-Manager je Szene Waffe, Skin-ID, Abnutzung und Muster ein. Vor der Aufnahme
+  schreibt der Companion eine Kopie der Demo um und nimmt daraus auf; die
+  Original-Demo bleibt unverändert, nichts läuft im Spiel oder im Live-Match.
+- Standardmäßig aus, Einschalten nach bestätigtem Hinweis. Getauschte Waffen tragen
+  das Namensschild „TecMon Skin“, damit niemand den Skin für echten Besitz hält.
+- **Credits:** Der Demo-Rewriter stammt aus
+  [CS2-nskinz von Lyan-edit](https://github.com/Lyan-edit/CS2-nskinz) (AGPL-3.0).
+  Der Companion lädt `nskinz-demo-rewriter.exe` erst beim Einschalten unverändert
+  vom festen Stand des Autors (v0.7.4), prüft die SHA-256-Prüfsumme und startet ihn
+  als eigenes Programm. Ausschalten löscht ihn wieder. Nach einem CS2-Update kann
+  eine neue Version nötig sein.
+
 ### Neu in 0.30.0: CFG-Sammlung und Fadenkreuz-Overlay
 
 - **CFG-Sammlung** (Companion-Seite → Spiele → „Fertige CS2-Configs“): fertige
