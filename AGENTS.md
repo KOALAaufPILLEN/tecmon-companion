@@ -202,6 +202,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   bleibt Text. Aufgenommen wird aus einer Kopie `*.tecmon-skins.dem`, die danach
   gelöscht wird; die Original-Demo bleibt unverändert.
 - Getauschte Waffen tragen das Namensschild `SKIN_TAG` („TecMon Skin“).
+- Die Webseite darf den Schalter über `GET/POST /bridge/skins` bedienen (Capability
+  `skin-swap-setup-v1`, nur mit installiertem Companion und eigener Engine). Einschalten
+  nur mit `accept` gleich `SKIN_NOTICE_VERSION`; die Webseite zeigt dafür `SKIN_NOTICE`.
 
 ## Highlight-Video nach dem Match (`auto-highlights.mjs`)
 

@@ -23,6 +23,8 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile, rename, rm, mkdir } from "node:fs/promises";
 
 export const SKIN_CAPABILITY = "skin-swap-v1";
+/** Webseite darf Skin-Tausch über `GET/POST /bridge/skins` ein- und ausschalten (mit bestätigtem Hinweis). */
+export const SKIN_SETUP_CAPABILITY = "skin-swap-setup-v1";
 /** Unveränderlicher Stand im Repository des Autors (Release v0.7.4). */
 export const REWRITER_REVISION = "68cff11fc316bb6767dd381f1b2369e4b930ca4a";
 export const REWRITER_SHA256 = "165b323f5d4cbed59d3d52ac69f1f9fd2269a33ab2b2e26e9f085024c3754c94";
