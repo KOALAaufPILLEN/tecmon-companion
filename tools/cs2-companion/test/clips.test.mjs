@@ -85,6 +85,10 @@ test("Clip-Puffer: fällt auf den nächsten Encoder zurück, speichert die letzt
   assert.equal(state.encoder, ENCODERS[1], "NVENC fehlt → nächster Encoder");
   assert.equal(JSON.parse(await readFile(path.join(dir, "clips.json"), "utf8")).enabled, true);
 
+  // Warten, bis der Fake alle sechs Stücke geschrieben hat; auf langsamen
+  // Windows-Runnern dauert das länger als settleMs (Timer-Raster ~15 ms).
+  const ring = path.join(dir, "Clips", "puffer");
+  for (let i = 0; i < 400 && !(await readdir(ring).catch(() => [])).includes("seg005.ts"); i++) await new Promise((r) => setTimeout(r, 10));
   const saved = await clips.save();
   assert.equal(saved.id, "clip-20261113-123005.mp4");
   const concat = ff.calls.find((c) => c.args.includes("concat"));
@@ -95,7 +99,6 @@ test("Clip-Puffer: fällt auf den nächsten Encoder zurück, speichert die letzt
   assert.equal(list[0].status, "raw");
   assert.throws(() => clips.clipPath("../geheim.mp4"), /nicht gefunden/);
 
-  const ring = path.join(dir, "Clips", "puffer");
   assert.equal((await readdir(ring)).length > 0, true);
   await clips.setSettings({ enabled: false });
   assert.equal(await exists(ring), false, "Ausschalten löscht den Zwischenspeicher");
