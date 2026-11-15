@@ -74,6 +74,8 @@ static class TecMon {
     var data=Path.GetFullPath(Convert.ToString(config["dataDir"]));
     var cluster=Path.GetFullPath(Convert.ToString(config["clusterDir"]));
     var bin=Path.GetFullPath(Convert.ToString(config["postgresBin"]));
+    /* PostgreSQL oder Datenbank vom Nutzer entfernt: nichts zu beenden, das Update muss trotzdem laufen. */
+    if(!File.Exists(Path.Combine(cluster,"PG_VERSION")) || !File.Exists(Path.Combine(bin,"pg_ctl.exe"))) return;
     if(!bin.Equals(Path.Combine(target,@"tools\postgresql\bin"),StringComparison.OrdinalIgnoreCase) ||
        !cluster.Equals(Path.Combine(data,@"TecMon-Private\postgres\data"),StringComparison.OrdinalIgnoreCase) ||
        !File.Exists(Path.Combine(data,@"TecMon-Private\tecmon-data.marker")))

@@ -73,6 +73,8 @@ Neueste Version zuerst.
 - Jeder Update-Schritt und jeder Fehler steht im Protokoll
   (`%LOCALAPPDATA%\TecMon\Logs\companion.log`). Die Statusabfrage der Datenbank
   hat ein Zeitlimit, damit das Update nicht hängen bleibt.
+- Update und Beenden funktionieren auch, wenn PostgreSQL oder CS Demo Manager
+  vom PC entfernt wurden. Die eigene TecMon-Engine braucht beides nicht.
 
 ### Neu in 0.27.0: Frage schon im Hauptmenü, Menü mit Buttons
 
