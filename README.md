@@ -66,7 +66,17 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
-### Neu in 0.27.1: Update-Knopf mit Rückmeldung
+### Neu in 0.28.0: Neues Schnellmenü und Fenster mit Reitern
+
+- **Rechtsklick auf die Figur** öffnet ein eigenes TecMon-Schnellmenü statt
+  verschachtelter Windows-Menüs: Kacheln für Einstellungen, Highlights, Clip
+  speichern, Letzte Videos, Minispiele und TecMon.online, Schalter für
+  Highlight-Video nach dem Match, Rundentipps, Clip-Puffer und Figur, dazu die
+  Persönlichkeit. Alles Weitere unter „Alle Optionen …“. Esc schließt.
+- **Linksklick-Fenster** mit Reitern (Start, Spiele, Clips, TecMon, Pakete)
+  statt einer langen Liste. Sprünge aus dem Menü öffnen den passenden Reiter.
+
+#### Update-Knopf mit Rückmeldung
 
 - Nach „Ja“ beim Update zeigt die Figur „Update wird geladen …“ und danach das
   Ergebnis oder den Fehler, statt still zu bleiben.

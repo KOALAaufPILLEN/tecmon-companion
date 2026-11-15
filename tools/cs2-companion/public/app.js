@@ -485,3 +485,38 @@ function autoCheck(auto){
   return `Letzte Daten von CS2 ${ago}: ${what}.${match}`;
 }
 $('auto-toggle').addEventListener('click',()=>api('/api/auto/settings',{enabled:!autoState?.enabled}).then(r=>{showAuto(r.auto);if(r.message)$('notice').textContent=r.message;}).catch(notice));
+/*
+ * Fenster der Figur (Linksklick): statt einer langen Liste Bereiche mit Reitern.
+ * Sprünge aus dem Figurmenü (scrollIntoView auf eine Karte) öffnen den passenden Reiter.
+ */
+(function desktopSections(){
+  if(!document.body.classList.contains('desktop-panel'))return;
+  const groups=[
+    ['start','Start',['.connection-summary','.activity-summary','#videos']],
+    ['cs2','Spiele',['#auto-highlights','#rundentipps','#dota-tipps','#fadenkreuz','#quiz']],
+    ['clips','Clips',['#clips']],
+    ['tecmon','TecMon',['#tecmon','#spiele']],
+    ['pakete','Pakete',['#games']],
+  ];
+  const owner=new Map();
+  for(const [id,,selectors] of groups)for(const s of selectors){const el=document.querySelector(s);if(el){el.dataset.section=id;owner.set(el,id);}}
+  const nav=document.createElement('nav');nav.className='panel-tabs';nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Bereiche');
+  const buttons={};
+  for(const [id,label] of groups){const b=document.createElement('button');b.type='button';b.role='tab';b.textContent=label;b.dataset.target=id;b.addEventListener('click',()=>show(id));nav.append(b);buttons[id]=b;}
+  document.querySelector('.minimal-hero')?.after(nav);
+  function show(id){
+    for(const [el,group] of owner)el.hidden=group!==id;
+    for(const [key,b] of Object.entries(buttons))b.setAttribute('aria-selected',String(key===id));
+    try{sessionStorage.setItem('tecmon-panel-section',id);}catch{}
+  }
+  nav.addEventListener('keydown',e=>{
+    if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;
+    const ids=groups.map(g=>g[0]);const now=ids.findIndex(k=>buttons[k].getAttribute('aria-selected')==='true');
+    const next=ids[(now+(e.key==='ArrowRight'?1:ids.length-1))%ids.length];show(next);buttons[next].focus();
+  });
+  const scroll=Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView=function(options){const group=owner.get(this)||owner.get(this.closest?.('[data-section]'));if(group)show(group);return scroll.call(this,options);};
+  let start='start';try{start=sessionStorage.getItem('tecmon-panel-section')||'start';}catch{}
+  const fromHash=location.hash&&document.querySelector(location.hash);
+  show(fromHash&&owner.get(fromHash)||(buttons[start]?start:'start'));
+})();

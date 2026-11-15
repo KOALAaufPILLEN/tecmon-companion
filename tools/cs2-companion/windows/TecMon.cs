@@ -142,12 +142,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.27.1",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.28.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.27.1");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.28.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -162,7 +162,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.27.1"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.28.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -270,7 +270,8 @@ static class TecMon {
       if(args.Length > 0 && args[0] == "--apply-update-cli") {
         try {ApplyUpdate(args[1],"",false);return 0;} catch(Exception error) {WriteUpdateResult(args[1],"error",error.Message);Console.Error.WriteLine(error.Message);return 1;}
       }
-      if(args.Length>1 && args[0]=="--desktop-preview-3d") {using(var pet=new DesktopPet(true)){if(!pet.HasModel)throw new Exception("3D-Figur fehlt");int n=0;foreach(var spec in new[]{"0,-1","32.5,-1","90,-1","150,-1","180,-1","0,72","0,73","0,74","0,75","0,77","0,78","0,79","0,85","0,88","0,89"}){var parts=spec.Split(',');using(var frame=pet.Preview(double.Parse(parts[0]),int.Parse(parts[1])))frame.Save(Path.Combine(args[1],"pet-"+(n++)+".png"),System.Drawing.Imaging.ImageFormat.Png);}}using(var bubble=new TipBubble())using(var image=bubble.Preview("Kauf-Check","Volle Ausrüstung möglich: Rifle, Kevlar + Helm und zwei Granaten."))image.Save(Path.Combine(args[1],"bubble.png"),System.Drawing.Imaging.ImageFormat.Png);using(var pet=new DesktopPet(true)){var menu=pet.ContextMenuStrip;menu.Show(new Point(0,0));if(menu.Items.Count>2)((ToolStripMenuItem)menu.Items[2]).Select();using(var shot=new Bitmap(menu.Width,menu.Height)){menu.DrawToBitmap(shot,new Rectangle(0,0,menu.Width,menu.Height));shot.Save(Path.Combine(args[1],"menu.png"),System.Drawing.Imaging.ImageFormat.Png);}menu.Close();}using(var panel=new DesktopPanel()){panel.ClientSize=new Size(520,640);using(var shot=new Bitmap(panel.Width,panel.Height)){panel.DrawToBitmap(shot,new Rectangle(0,0,panel.Width,panel.Height));shot.Save(Path.Combine(args[1],"panel.png"),System.Drawing.Imaging.ImageFormat.Png);}}return 0;}
+      if(args.Length>1 && args[0]=="--desktop-preview-3d") {using(var pet=new DesktopPet(true)){if(!pet.HasModel)throw new Exception("3D-Figur fehlt");int n=0;foreach(var spec in new[]{"0,-1","32.5,-1","90,-1","150,-1","180,-1","0,72","0,73","0,74","0,75","0,77","0,78","0,79","0,85","0,88","0,89"}){var parts=spec.Split(',');using(var frame=pet.Preview(double.Parse(parts[0]),int.Parse(parts[1])))frame.Save(Path.Combine(args[1],"pet-"+(n++)+".png"),System.Drawing.Imaging.ImageFormat.Png);}}using(var bubble=new TipBubble())using(var image=bubble.Preview("Kauf-Check","Volle Ausrüstung möglich: Rifle, Kevlar + Helm und zwei Granaten."))image.Save(Path.Combine(args[1],"bubble.png"),System.Drawing.Imaging.ImageFormat.Png);using(var pet=new DesktopPet(true))using(var menu=pet.BuildQuick(Point.Empty)){menu.Fit();using(var shot=new Bitmap(menu.Width,menu.Height)){menu.DrawToBitmap(shot,new Rectangle(0,0,menu.Width,menu.Height));shot.Save(Path.Combine(args[1],"menu.png"),System.Drawing.Imaging.ImageFormat.Png);}}using(var panel=new DesktopPanel()){panel.ClientSize=new Size(520,640);using(var shot=new Bitmap(panel.Width,panel.Height)){panel.DrawToBitmap(shot,new Rectangle(0,0,panel.Width,panel.Height));shot.Save(Path.Combine(args[1],"panel.png"),System.Drawing.Imaging.ImageFormat.Png);}}return 0;}
+      if(args.Length>1 && args[0]=="--quick-preview") {using(var pet=new DesktopPet(true))using(var menu=pet.BuildQuick(Point.Empty)){menu.Status="● Mit TecMon verbunden";menu.Fit();using(var shot=new Bitmap(menu.Width,menu.Height)){menu.DrawToBitmap(shot,new Rectangle(0,0,menu.Width,menu.Height));shot.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);}}return 0;}
       if(args.Length>1 && args[0]=="--desktop-preview") {using(var pet=new DesktopPet(true))using(var frame=pet.Frame())frame.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);return 0;}
       if(args.Length>0 && args[0]=="--desktop-self-test") {var result=DesktopPet.Fit(new Point(5000,-5000),new Rectangle(-1920,0,1920,1080),new Size(144,164));if(result.X!=-144||result.Y!=0)throw new Exception("Desktop bounds failed");return 0;}
       if(args.Length > 1 && args[0] == "--splash-preview") {using(var form=new SplashWindow(true)) using(var bitmap=new Bitmap(form.ClientSize.Width,form.ClientSize.Height)) {using(var graphics=Graphics.FromImage(bitmap))graphics.Clear(form.BackColor);foreach(Control control in form.Controls)control.DrawToBitmap(bitmap,control.Bounds);bitmap.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);}return 0;}
@@ -290,7 +291,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.27.1 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.28.0 aktualisieren?\n\nVorher Companion und CS Demo Manager schließen. Nur Programmdateien werden ersetzt. PostgreSQL, Tools, Demos, Videos und Passwörter bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -603,6 +604,84 @@ class AutoPrompt : Form {
   }
 }
 
+/*
+ * Rechtsklick auf die Figur: eigenes Schnellmenü im TecMon-Stil statt verschachtelter
+ * Windows-Menüs. Kacheln für häufige Aktionen, Schalter, Persönlichkeit; alles Weitere
+ * unter „Alle Optionen“. Hover nur mit Maus, gedrückte Buttons geben 4 % nach, Esc schließt.
+ */
+class QuickMenu : Form {
+  class Item {public string Kind,Label,Sub;public Rectangle Box;public Action Run;public Func<bool> On;public string Value;public bool Danger;}
+  readonly List<Item> items=new List<Item>();int hot=-1,pressed=-1;int y;
+  public string Status="";
+  static readonly Color Top=Color.FromArgb(27,22,38),Bottom=Color.FromArgb(11,10,17),Violet=Color.FromArgb(167,139,250),Text2=Color.FromArgb(236,233,244),Muted=Color.FromArgb(160,154,182),Red=Color.FromArgb(251,113,133);
+  readonly Font eyebrow=new Font("Segoe UI",7.5f,FontStyle.Bold),label=new Font("Segoe UI",9.5f,FontStyle.Bold),small=new Font("Segoe UI",8f),body=new Font("Segoe UI",9.5f);
+  const int W=320,Pad=14,Gap=6;
+  readonly List<KeyValuePair<int,string>> headings=new List<KeyValuePair<int,string>>();
+  protected override CreateParams CreateParams {get{var p=base.CreateParams;p.ExStyle|=0x80|0x8;p.ClassStyle|=0x20000;return p;}}
+  public QuickMenu(){
+    FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;TopMost=true;DoubleBuffered=true;KeyPreview=true;BackColor=Bottom;Text="TecMon Menü";y=58;
+    Deactivate+=(s,e)=>Close();KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape)Close();};
+    MouseMove+=(s,e)=>{int h=Hit(e.Location);Cursor=h<0?Cursors.Default:Cursors.Hand;if(h!=hot){hot=h;Invalidate();}};
+    MouseLeave+=(s,e)=>{hot=-1;pressed=-1;Invalidate();};
+    MouseDown+=(s,e)=>{if(e.Button!=MouseButtons.Left)return;pressed=Hit(e.Location);Invalidate();};
+    MouseUp+=(s,e)=>{int was=pressed;pressed=-1;Invalidate();if(was<0||Hit(e.Location)!=was)return;var item=items[was];if(item.Kind=="toggle"){if(item.Run!=null)item.Run();Invalidate();return;}if(item.Kind=="chip"){if(item.Run!=null)item.Run();Invalidate();return;}Close();if(item.Run!=null)item.Run();};
+  }
+  int Hit(Point p){for(int i=0;i<items.Count;i++)if(items[i].Box.Contains(p))return i;return -1;}
+  public void Heading(string text){y+=4;headings.Add(new KeyValuePair<int,string>(y,text));y+=18;}
+  /* Kacheln immer paarweise: zwei Spalten. */
+  int column;
+  public void Tile(string text,string sub,Action run){int w=(W-2*Pad-Gap)/2;var box=new Rectangle(Pad+column*(w+Gap),y,w,46);items.Add(new Item{Kind="tile",Label=text,Sub=sub,Run=run,Box=box});if(column==1){column=0;y+=46+Gap;}else column=1;}
+  public void EndTiles(){if(column==1){column=0;y+=46+Gap;}}
+  public void Toggle(string text,Func<bool> on,Action run){items.Add(new Item{Kind="toggle",Label=text,On=on,Run=run,Box=new Rectangle(Pad,y,W-2*Pad,34)});y+=36;}
+  public void Chips(string[] labels,string[] values,Func<string> current,Action<string> pick){int w=(W-2*Pad-Gap*(labels.Length-1))/labels.Length;for(int i=0;i<labels.Length;i++){string v=values[i];items.Add(new Item{Kind="chip",Label=labels[i],Value=v,On=()=>current()==v,Run=()=>pick(v),Box=new Rectangle(Pad+i*(w+Gap),y,w,32)});}y+=32+Gap;}
+  public void Footer(string text,Action run,bool danger){items.Add(new Item{Kind="link",Label=text,Run=run,Danger=danger,Box=new Rectangle(Pad,y,W-2*Pad,34)});y+=36;}
+  public void Fit(){ClientSize=new Size(W,y+Pad-4);}
+  public void Open(Point at){
+    Fit();var area=Screen.FromPoint(at).WorkingArea;
+    int x=Math.Min(Math.Max(area.Left+8,at.X-W/2),area.Right-Width-8),top=Math.Min(Math.Max(area.Top+8,at.Y-Height-8),area.Bottom-Height-8);
+    Location=new Point(x,top);Show();Activate();
+  }
+  static System.Drawing.Drawing2D.GraphicsPath Cut(RectangleF r,float c){var p=new System.Drawing.Drawing2D.GraphicsPath();p.AddPolygon(new[]{new PointF(r.Left+c,r.Top),new PointF(r.Right,r.Top),new PointF(r.Right,r.Bottom-c),new PointF(r.Right-c,r.Bottom),new PointF(r.Left,r.Bottom),new PointF(r.Left,r.Top+c)});return p;}
+  RectangleF Press(Rectangle r,int i){if(pressed!=i)return r;return new RectangleF(r.X+r.Width*0.02f,r.Y+r.Height*0.02f,r.Width*0.96f,r.Height*0.96f);}
+  protected override void OnPaint(PaintEventArgs e){
+    var g=e.Graphics;g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;g.TextRenderingHint=System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+    using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Top,Bottom,90f))g.FillRectangle(fill,ClientRectangle);
+    using(var frame=Cut(new RectangleF(1,1,ClientSize.Width-3,ClientSize.Height-3),14))using(var pen=new Pen(TecMon.Gold,1.4f))g.DrawPath(pen,frame);
+    using(var bar=new Pen(Violet,3f))g.DrawLine(bar,Pad,18,Pad+30,18);
+    TextRenderer.DrawText(g,"TECMON",eyebrow,new Point(Pad+36,11),TecMon.Gold);
+    bool good=Status.StartsWith("●");string status=Status.TrimStart('●','○',' ');
+    using(var orb=new SolidBrush(good?Color.FromArgb(132,214,172):Violet))g.FillEllipse(orb,Pad,32,9,9);
+    TextRenderer.DrawText(g,status,body,new Rectangle(Pad+16,27,W-2*Pad-16,22),Text2,TextFormatFlags.EndEllipsis|TextFormatFlags.NoPadding|TextFormatFlags.NoPrefix);
+    foreach(var h in headings)TextRenderer.DrawText(g,h.Value,eyebrow,new Point(Pad,h.Key),Violet);
+    for(int i=0;i<items.Count;i++){
+      var item=items[i];bool over=hot==i;var box=Press(item.Box,i);
+      if(item.Kind=="tile"){
+        using(var path=Cut(box,8)){using(var fill=new SolidBrush(over?Color.FromArgb(62,Violet):Color.FromArgb(26,255,255,255)))g.FillPath(fill,path);using(var pen=new Pen(over?TecMon.Gold:Color.FromArgb(70,Violet),1f))g.DrawPath(pen,path);}
+        TextRenderer.DrawText(g,item.Label,label,new Rectangle((int)box.X+10,(int)box.Y+6,(int)box.Width-14,18),Text2,TextFormatFlags.EndEllipsis|TextFormatFlags.NoPadding|TextFormatFlags.NoPrefix);
+        TextRenderer.DrawText(g,item.Sub??"",small,new Rectangle((int)box.X+10,(int)box.Y+25,(int)box.Width-14,16),Muted,TextFormatFlags.EndEllipsis|TextFormatFlags.NoPadding|TextFormatFlags.NoPrefix);
+      } else if(item.Kind=="toggle"){
+        bool on=item.On!=null&&item.On();
+        if(over)using(var fill=new SolidBrush(Color.FromArgb(34,Violet)))using(var path=Cut(box,6))g.FillPath(fill,path);
+        TextRenderer.DrawText(g,item.Label,body,new Rectangle((int)box.X+8,(int)box.Y,(int)box.Width-60,(int)box.Height),Text2,TextFormatFlags.VerticalCenter|TextFormatFlags.EndEllipsis|TextFormatFlags.NoPadding|TextFormatFlags.NoPrefix);
+        var track=new RectangleF(box.Right-46,box.Y+box.Height/2-9,36,18);
+        using(var path=new System.Drawing.Drawing2D.GraphicsPath()){path.AddArc(track.X,track.Y,18,18,90,180);path.AddArc(track.Right-18,track.Y,18,18,270,180);path.CloseFigure();
+          using(var fill=new SolidBrush(on?TecMon.Gold:Color.FromArgb(58,52,74)))g.FillPath(fill,path);}
+        using(var knob=new SolidBrush(on?Color.FromArgb(20,16,28):Color.FromArgb(200,196,214)))g.FillEllipse(knob,on?track.Right-16:track.X+2,track.Y+2,14,14);
+      } else if(item.Kind=="chip"){
+        bool on=item.On!=null&&item.On();
+        using(var path=Cut(box,6)){
+          if(on)using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(box,TecMon.Gold,Color.FromArgb(201,160,74),90f))g.FillPath(fill,path);
+          else{using(var fill=new SolidBrush(over?Color.FromArgb(60,Violet):Color.FromArgb(22,255,255,255)))g.FillPath(fill,path);using(var pen=new Pen(Color.FromArgb(80,Violet)))g.DrawPath(pen,path);}
+        }
+        TextRenderer.DrawText(g,item.Label,small,Rectangle.Round(box),on?Color.FromArgb(20,16,28):Text2,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.EndEllipsis|TextFormatFlags.NoPrefix);
+      } else {
+        if(over)using(var fill=new SolidBrush(Color.FromArgb(item.Danger?40:34,item.Danger?Red:Violet)))using(var path=Cut(box,6))g.FillPath(fill,path);
+        TextRenderer.DrawText(g,item.Label,body,new Rectangle((int)box.X+8,(int)box.Y,(int)box.Width-16,(int)box.Height),item.Danger?Red:Text2,TextFormatFlags.VerticalCenter|TextFormatFlags.NoPadding|TextFormatFlags.NoPrefix);
+      }
+    }
+  }
+}
+
 class TipBubble : Form {
   readonly System.Windows.Forms.Timer hide=new System.Windows.Forms.Timer(),runner=new System.Windows.Forms.Timer();
   readonly Font titleFont=new Font("Segoe UI",9,FontStyle.Bold),bodyFont=new Font("Segoe UI",12),olderFont=new Font("Segoe UI",10.5f),smallFont=new Font("Segoe UI",8,FontStyle.Bold),brandFont=new Font("Segoe UI",17,FontStyle.Bold),statusFont=new Font("Segoe UI",10.5f),closeFont=new Font("Segoe UI",15);
@@ -818,14 +897,16 @@ class DesktopPet : Form {
     clipsRoot.DropDownItems.Add("Clips-Ordner öffnen",null,async(s,e)=>{try{await Request("/api/clips/folder",true);}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}});
     menu.Items.Add(clipsRoot);
     var figure=new ToolStripMenuItem("Figur");
-    var fly=new ToolStripMenuItem("Umherfliegen"){Checked=true,CheckOnClick=true};fly.CheckedChanged+=(s,e)=>wandering=fly.Checked;figure.DropDownItems.Add(fly);
+    var fly=new ToolStripMenuItem("Umherfliegen"){Checked=true,CheckOnClick=true};flyItem=fly;fly.CheckedChanged+=(s,e)=>wandering=fly.Checked;figure.DropDownItems.Add(fly);
     var motion=new ToolStripMenuItem("Animation"){Checked=true,CheckOnClick=true};motion.CheckedChanged+=(s,e)=>{animate=motion.Checked;Render();};figure.DropDownItems.Add(motion);
-    var top=new ToolStripMenuItem("Im Vordergrund"){Checked=true,CheckOnClick=true};top.CheckedChanged+=(s,e)=>{foreground=top.Checked;TopMost=OnTop();};figure.DropDownItems.Add(top);
+    var top=new ToolStripMenuItem("Im Vordergrund"){Checked=true,CheckOnClick=true};topItem=top;top.CheckedChanged+=(s,e)=>{foreground=top.Checked;TopMost=OnTop();};figure.DropDownItems.Add(top);
     figure.DropDownItems.Add(new ToolStripSeparator());figure.DropDownItems.Add("Figur ausblenden",null,(s,e)=>Hide());menu.Items.Add(figure);
     var more=new ToolStripMenuItem("Mehr");more.DropDownItems.Add("Studio im Browser öffnen",null,(s,e)=>Process.Start(new ProcessStartInfo("http://127.0.0.1:31977"){UseShellExecute=true}));
     var webview=new ToolStripMenuItem("WebView2 von Microsoft installieren",null,(s,e)=>DesktopPanel.OpenExternal("https://developer.microsoft.com/microsoft-edge/webview2/"));more.DropDownItems.Add(webview);menu.Items.Add(more);
     menu.Opening+=(s,e)=>webview.Visible=!DesktopPanel.WebViewInstalled();
-    menu.Items.Add(new ToolStripSeparator());menu.Items.Add("Companion beenden",null,async(s,e)=>await Quit());ContextMenuStrip=menu;
+    menu.Items.Add(new ToolStripSeparator());menu.Items.Add("Companion beenden",null,async(s,e)=>await Quit());fullMenu=menu;
+    /* Rechtsklick auf die Figur: Schnellmenü. Das vollständige Menü bleibt unter „Alle Optionen“ und am Tray-Symbol. */
+    MouseUp+=(s,e)=>{if(e.Button==MouseButtons.Right)OpenQuick(Cursor.Position);};
     /* Gleicher Look für alle Untermenüs. */
     TecMonMenu.Apply(menu);StyleSubmenus(menu.Items);tipsItem.DropDownOpening+=(s,e)=>TecMonMenu.Apply(tipsItem.DropDown);
     if(!preview){tray=new NotifyIcon{Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath),Text="TecMon Companion · Klick für Einstellungen",Visible=true,ContextMenuStrip=menu};tray.MouseClick+=(s,e)=>{if(e.Button==MouseButtons.Left){Show();Toggle();}};}
@@ -855,10 +936,10 @@ class DesktopPet : Form {
     /* Vorn angekommen: kurz staunen, dann sprechen. */
     bool facing=Math.Abs(Turn(0))<4;if(pendingTip==null||!facing)frontSince=-1;else if(frontSince<0)frontSince=now;
     if(pendingTip!=null&&(model==null||!animate||(frontSince>=0&&now-frontSince>0.45)||now-pendingSince>2.5)){var show=pendingTip;pendingTip=null;frontSince=-1;show();}
-    if(hover||dragging||(panel!=null&&panel.Visible)||ContextMenuStrip.Visible||Talking(now)||pendingTip!=null||watching)activeAt=now;
+    if(hover||dragging||(panel!=null&&panel.Visible)||MenuOpen()||Talking(now)||pendingTip!=null||watching)activeAt=now;
     /* Ab und zu ein anderer Ausdruck, wenn TecMon gerade nichts zu tun hat. */
     if(now>moodAt){moodAt=now+9+random.NextDouble()*9;if(facing&&!Talking(now)&&now>happyUntil&&pendingTip==null&&!watching&&now-activeAt<SleepAfter){mood=Moods[random.Next(Moods.Length)];moodUntil=now+1.7;}}
-    if(wandering&&animate&&!dragging&&!hover&&(panel==null||!panel.Visible)&&!ContextMenuStrip.Visible&&!Talking(now)&&pendingTip==null){var bounds=Screen.FromRectangle(Bounds).WorkingArea;x+=vx*dt*25;y+=vy*dt*25;if(x<bounds.Left||x+Width>bounds.Right)vx=-vx;if(y<bounds.Top||y+Height>bounds.Bottom)vy=-vy;var next=Fit(new Point((int)Math.Round(x),(int)Math.Round(y)),bounds,Size);if(next!=Location)Location=next;x=Math.Max(bounds.Left,Math.Min(bounds.Right-Width,x));y=Math.Max(bounds.Top,Math.Min(bounds.Bottom-Height,y));}
+    if(wandering&&animate&&!dragging&&!hover&&(panel==null||!panel.Visible)&&!MenuOpen()&&!Talking(now)&&pendingTip==null){var bounds=Screen.FromRectangle(Bounds).WorkingArea;x+=vx*dt*25;y+=vy*dt*25;if(x<bounds.Left||x+Width>bounds.Right)vx=-vx;if(y<bounds.Top||y+Height>bounds.Bottom)vy=-vy;var next=Fit(new Point((int)Math.Round(x),(int)Math.Round(y)),bounds,Size);if(next!=Location)Location=next;x=Math.Max(bounds.Left,Math.Min(bounds.Right-Width,x));y=Math.Max(bounds.Top,Math.Min(bounds.Bottom-Height,y));}
     if(model!=null&&animate){
       /* Gedämpfte Feder: weiches Anlaufen und Abbremsen beim Drehen. */
       /* Trick: eine schnelle ganze Drehung, danach federt die Figur wieder nach vorn. */
@@ -874,7 +955,7 @@ class DesktopPet : Form {
   double Target(double now){
     if(pendingTip!=null||Talking(now)||now<happyUntil)return 0;
     if(watching)return 180;
-    if(dragging||hover||(panel!=null&&panel.Visible)||ContextMenuStrip.Visible||!wandering)return 0;
+    if(dragging||hover||(panel!=null&&panel.Visible)||MenuOpen()||!wandering)return 0;
     return Math.Sin(now*0.31)>0.45?0:(vx>0?32:-32);
   }
   /* Welcher LED-Ausdruck gerade gilt; -1 = normales Drehbild. */
@@ -938,6 +1019,35 @@ class DesktopPet : Form {
   ToolStripMenuItem personality;bool petAsleep;long lastPetEvent=-1;double spinLeft;
   static readonly Dictionary<string,int> FaceNames=new Dictionary<string,int>{{"happy",Happy},{"laugh",Laugh},{"love",Love},{"star",Star},{"sleepy",Sleepy},{"surprised",Surprised},{"wink",Wink},{"sad",Sad},{"cool",Cool},{"angry",Angry},{"confused",Confused},{"tongue",Tongue},{"kiss",Kiss},{"dizzy",Dizzy}};
   static void StyleSubmenus(ToolStripItemCollection items){foreach(ToolStripItem item in items){var sub=item as ToolStripMenuItem;if(sub!=null&&sub.HasDropDownItems){TecMonMenu.Apply(sub.DropDown);StyleSubmenus(sub.DropDownItems);}}}
+  ContextMenuStrip fullMenu;QuickMenu quick;ToolStripMenuItem flyItem,topItem;string petMode="normal";
+  bool MenuOpen(){return (fullMenu!=null&&fullMenu.Visible)||(quick!=null&&!quick.IsDisposed&&quick.Visible);}
+  void OpenQuick(Point at){
+    if(quick!=null&&!quick.IsDisposed)quick.Close();
+    quick=BuildQuick(at);quick.Open(at);
+  }
+  public QuickMenu BuildQuick(Point at){
+    var q=new QuickMenu();q.Status=statusItem!=null?statusItem.Text:"";
+    q.Heading("SCHNELLZUGRIFF");
+    q.Tile("Einstellungen","Verbindung & Optionen",()=>{Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();});
+    q.Tile("Highlights","Aufnehmen auf TecMon",()=>OpenPanel("games",""));
+    q.Tile("Clip speichern","Strg+Alt+C",async()=>await SaveClip());
+    q.Tile("Letzte Videos","Fertige Aufnahmen",()=>OpenPanel("videos",""));
+    q.Tile("Mit TecMon spielen","Minispiele & Werte",()=>OpenPanel("tecmon",""));
+    q.Tile("TecMon.online","Im Browser öffnen",()=>DesktopPanel.OpenExternal("https://tecmon.online"));
+    q.EndTiles();
+    q.Heading("SCHALTER");
+    q.Toggle("Highlight-Video nach dem Match",()=>autoEnabled,async()=>await ToggleAuto());
+    q.Toggle("CS2-Rundentipps",()=>tipsEnabled,async()=>await ToggleTips());
+    q.Toggle("Clip-Puffer",()=>clipsEnabled,async()=>await ToggleClips());
+    q.Toggle("Figur fliegt umher",()=>wandering,()=>{if(flyItem!=null)flyItem.Checked=!flyItem.Checked;});
+    q.Toggle("Figur im Vordergrund",()=>foreground,()=>{if(topItem!=null)topItem.Checked=!topItem.Checked;});
+    q.Heading("PERSÖNLICHKEIT");
+    q.Chips(new[]{"Nett","Normal","Nerdy","HUAN"},new[]{"nett","normal","nerdy","huan"},()=>petMode,async mode=>{petMode=mode;await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");});
+    if(offeredUpdate!="")q.Footer("Update "+offeredUpdate+" installieren",async()=>await CheckUpdate(false),false);
+    q.Footer("Alle Optionen …",()=>fullMenu.Show(at),false);
+    q.Footer("Companion beenden",async()=>await Quit(),true);
+    return q;
+  }
   void OpenPanel(string id,string game){Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();if(panel!=null)panel.Jump(id,game);}
   async Task PetAction(string action){await PetRequest("/api/pet/interact","{\"action\":\""+action+"\"}");}
   async Task PetRequest(string route,string body){
@@ -1000,7 +1110,7 @@ class DesktopPet : Form {
   void ShowPet(Dictionary<string,object> state){
     object raw;var pet=state.TryGetValue("pet",out raw)?raw as Dictionary<string,object>:null;if(pet==null)return;
     petAsleep=pet.ContainsKey("asleep")&&Convert.ToBoolean(pet["asleep"]);
-    string mode=pet.ContainsKey("mode")?Convert.ToString(pet["mode"]):"normal",label="TecMon";
+    string mode=pet.ContainsKey("mode")?Convert.ToString(pet["mode"]):"normal",label="TecMon";petMode=mode;
     if(personality!=null)foreach(ToolStripItem item in personality.DropDownItems){var entry=item as ToolStripMenuItem;if(entry==null)continue;entry.Checked=Convert.ToString(entry.Tag)==mode;if(entry.Checked)label="TecMon · "+entry.Text;}
     var ev=pet.ContainsKey("event")?pet["event"] as Dictionary<string,object>:null;if(ev==null)return;
     long id=Convert.ToInt64(ev["id"]);if(id==lastPetEvent)return;bool first=lastPetEvent<0;lastPetEvent=id;

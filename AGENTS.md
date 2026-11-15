@@ -209,8 +209,14 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   (`scale(0.96)`, nie unter 0.95), breite Karten ändern nur die Farbe.
   Übergänge nur mit benannten Eigenschaften und den `--tm-dur-*`-Zeiten, nie
   `transition: all`. Esc schließt Rückfragen; Trefferflächen mindestens 40 px.
-- Einträge im Figurmenü zeichnet `TecMonMenu` als Buttons (Fläche, Hover,
-  gedrückt). Keine Windows-Standarddialoge für Fragen während des Spiels.
+- Rechtsklick auf die Figur öffnet `QuickMenu` (`OpenQuick()`/`BuildQuick()` in
+  `TecMon.cs`): Kacheln, Schalter, Persönlichkeit, „Alle Optionen …“ öffnet das
+  vollständige `ContextMenuStrip` (auch am Tray-Symbol). Neue häufige Funktionen
+  dort ergänzen, alles andere im vollständigen Menü. Dessen Einträge zeichnet
+  `TecMonMenu` als Buttons. Keine Windows-Standarddialoge für Fragen während
+  des Spiels.
+- Das Linksklick-Fenster (`?desktop=1`) gruppiert die Karten in Reiter
+  (`desktopSections()` in `public/app.js`). Neue Karten dort einer Gruppe zuordnen.
 
 ## Prüfen und veröffentlichen
 
