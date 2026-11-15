@@ -66,6 +66,13 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.32.4: Augenbrauen und Augenfarben
+
+- Die Augen der Figur haben Brauen, eine feine Kontur, einen hellen Kern und
+  zwei Glanzpunkte.
+- Jeder Ausdruck hat seine Farbe: fertig golden, böse rot, traurig blau, beim
+  Arbeiten cyan, verliebt pink, schwindelig grün, verwirrt orange, müde lila.
+
 ### Neu in 0.32.3: Animierte Augen
 
 - Während ein Video entsteht, dreht sich neben den Augen ein Lade-Ring, die Punkte

@@ -9,12 +9,32 @@ from faces_anime import L, bez, gradient, heart_pts, GW, GH, LX, RX, EY, MY, CX,
 
 TOP, BOT = (255, 200, 250), (230, 70, 220)
 
+# Augenfarbe je Ausdruck: (oben, unten, Glow). Fertig = Gold, böse = rot, traurig = blau usw.
+PALETTE = {
+    'idle': ((255, 200, 250), (230, 70, 220), PINK),
+    'star': ((255, 215, 90), (235, 150, 20), (255, 185, 50)),
+    'angry': ((255, 95, 85), (210, 20, 35), (255, 50, 60)),
+    'sad': ((120, 170, 255), (50, 95, 235), (90, 140, 255)),
+    'busy': ((110, 225, 255), (40, 150, 250), (70, 200, 255)),
+    'focus': ((110, 225, 255), (40, 150, 250), (70, 200, 255)),
+    'love': ((255, 120, 185), (235, 35, 125), (255, 70, 160)),
+    'kiss': ((255, 120, 185), (235, 35, 125), (255, 70, 160)),
+    'dizzy': ((110, 245, 170), (30, 190, 110), (60, 230, 150)),
+    'confused': ((255, 180, 100), (235, 120, 30), (255, 160, 60)),
+    'sleepy': ((170, 150, 255), (110, 80, 215), (140, 110, 240)),
+    'cool': ((190, 140, 255), (130, 55, 250), (160, 90, 255)),
+    'surprised': ((255, 240, 255), (255, 130, 235), PINK),
+}
+BASE = {'busy2': 'busy', 'busy3': 'busy', 'busy4': 'busy', 'lookL': 'idle', 'lookR': 'idle'}
+
 class Face:
-    def __init__(s): s.glow = L(); s.top = L(); s.body = Image.new('RGBA', (GW, GH), (0, 0, 0, 0))
+    def __init__(s, name='idle'):
+        s.glow = L(); s.top = L(); s.body = Image.new('RGBA', (GW, GH), (0, 0, 0, 0))
+        s.c1, s.c2, s.gc = PALETTE.get(BASE.get(name, name), PALETTE['idle'])
     def fill(s, m, y0, y1):
-        mask = m.out().getchannel('A'); s.add(gradient(mask, TOP, BOT, y0, y1)); return mask
+        mask = m.out().getchannel('A'); s.add(gradient(mask, s.c1, s.c2, y0, y1)); return mask
     def add(s, im): s.body.alpha_composite(im)
-    def stroke(s, pts, w=8): s.top.line(pts, w, (255, 225, 252, 255)); s.glow.line(pts, w * 2.4, PINK + (255,))
+    def stroke(s, pts, w=8): s.top.line(pts, w, (255, 225, 252, 255)); s.glow.line(pts, w * 2.4, s.gc + (255,))
     def eye(s, cx, cy, w=58, h=66, lid=.22, tilt=0, low=0, look=(0, 0), shine=True):
         cx += look[0]; cy += look[1]; w *= 1.55; h *= 1.55
         m = L(); m.d.rounded_rectangle([(cx - w / 2) * S, (cy - h / 2) * S, (cx + w / 2) * S, (cy + h / 2) * S], radius=int(min(w, h) * .46 * S), fill=(255,) * 4)
@@ -27,24 +47,39 @@ class Face:
         sc = Image.new('RGBA', (GW, GH)); d = ImageDraw.Draw(sc)
         for y in range(int(cy - h / 2), int(cy + h / 2), 6): d.line([(cx - w, y), (cx + w, y)], fill=(60, 0, 80, 34), width=2)
         sc.putalpha(ImageChops.multiply(sc.getchannel('A'), mask)); s.add(sc)
+        # Details: dunklerer Rand innen, heller Kern, feine helle Kontur
+        core = L(); core.ell(cx, cy + h * lid * .5 + h * .06, w * .3, (h * (1 - lid)) * .3, (255, 245, 255, 150))
+        o = core.out().filter(ImageFilter.GaussianBlur(7)); o.putalpha(ImageChops.multiply(o.getchannel('A'), mask)); s.add(o)
+        edge = ImageChops.subtract(mask, mask.filter(ImageFilter.MinFilter(9)))
+        rim = Image.new('RGBA', (GW, GH), (120, 20, 150, 0)); rim.putalpha(edge.point(lambda v: int(v * .55))); s.add(rim)
+        line = ImageChops.subtract(mask, mask.filter(ImageFilter.MinFilter(3)))
+        hi = Image.new('RGBA', (GW, GH), (255, 236, 255, 0)); hi.putalpha(line.point(lambda v: int(v * .9))); s.add(hi)
         if shine:
-            hl = L(); hl.ell(cx - w * .18, cy - h / 2 + h * lid + h * .2, w * .1, h * .07, (255, 255, 255, 200))
+            hl = L(); hl.ell(cx - w * .2, cy - h / 2 + h * lid + h * .2, w * .12, h * .08, (255, 255, 255, 220)); hl.ell(cx + w * .2, cy + h * .26, w * .05, w * .05, (255, 255, 255, 150))
             o = hl.out(); o.putalpha(ImageChops.multiply(o.getchannel('A'), mask)); s.add(o)
-        g = Image.new('RGBA', (GW, GH), PINK + (0,)); g.putalpha(mask.filter(ImageFilter.MaxFilter(9)))
+        g = Image.new('RGBA', (GW, GH), s.gc + (0,)); g.putalpha(mask.filter(ImageFilter.MaxFilter(9)))
         s.glow.im.alpha_composite(g.resize(s.glow.im.size))
+    def brow(s, cx, side, lift=0, tilt=0, w=40):
+        # side -1 links, 1 rechts; tilt > 0 hebt die Innenseite (traurig), < 0 senkt sie (böse)
+        y = EY - 78 + lift
+        inner, outer = (cx - side * w, y - tilt), (cx + side * w, y + tilt * .3)
+        pts = bez(inner, (cx, y - 9 - abs(tilt) * .2), outer, 20)
+        s.top.line(pts, 10, (255, 205, 250, 255)); s.top.line(pts, 4, (255, 245, 255, 255)); s.glow.line(pts, 22, s.gc + (230,))
+    def brows(s, lift=0, tilt=0):
+        for cx, side in ((LX, -1), (RX, 1)): s.brow(cx, side, lift, tilt)
     def arc(s, cx, cy, up=True, w=50):
         s.stroke(bez((cx - w, cy + 18), (cx, cy - 48), (cx + w, cy + 18)) if up else bez((cx - w, cy - 2), (cx, cy + 30), (cx + w, cy - 2)), 15)
     def x_eye(s, cx, cy):
         s.stroke([(cx - 32, cy - 32), (cx + 32, cy + 32)], 13); s.stroke([(cx + 32, cy - 32), (cx - 32, cy + 32)], 13)
     def heart(s, cx, cy):
-        m = L(); m.poly(heart_pts(cx, cy, 52), (255,) * 4); s.fill(m, cy - 34, cy + 30); s.glow.ell(cx, cy, 60, 60, PINK + (200,))
+        m = L(); m.poly(heart_pts(cx, cy, 52), (255,) * 4); s.fill(m, cy - 34, cy + 30); s.glow.ell(cx, cy, 60, 60, s.gc + (200,))
     def star(s, cx, cy, r=56):
         m = L(); pts = [(cx + math.cos(a) * (r if i % 2 == 0 else r * .42), cy + math.sin(a) * (r if i % 2 == 0 else r * .42)) for i, a in enumerate([-math.pi / 2 + k * math.pi / 4 for k in range(8)])]
-        m.poly(pts, (255,) * 4); s.fill(m, cy - r, cy + r); s.glow.ell(cx, cy, r + 8, r + 8, PINK + (210,))
+        m.poly(pts, (255,) * 4); s.fill(m, cy - r, cy + r); s.glow.ell(cx, cy, r + 8, r + 8, s.gc + (210,))
     def smile(s, w=34, d=18): s.stroke(bez((CX - w, MY - 4), (CX, MY + d), (CX + w, MY - 4)), 8)
     def flat(s, w=18): s.stroke([(CX - w, MY), (CX + w, MY)], 6)
     def frown(s, w=22): s.stroke(bez((CX - w, MY + 10), (CX, MY - 8), (CX + w, MY + 10)), 6)
-    def o(s, r=11): s.top.d.ellipse([(CX - r) * S, (MY - r) * S, (CX + r) * S, (MY + r + 4) * S], outline=(255, 225, 252, 255), width=6 * S); s.glow.ell(CX, MY + 2, r + 8, r + 8, PINK + (200,))
+    def o(s, r=11): s.top.d.ellipse([(CX - r) * S, (MY - r) * S, (CX + r) * S, (MY + r + 4) * S], outline=(255, 225, 252, 255), width=6 * S); s.glow.ell(CX, MY + 2, r + 8, r + 8, s.gc + (200,))
     def wave(s, w=26): s.stroke([(CX - w + i * 2 * w / 24, MY + 5 * math.sin(i / 24 * 4 * math.pi)) for i in range(25)], 5)
     def loading(s, phase=0):
         x, y, a = RX + 80, EY - 62, 300 + phase * 90
@@ -60,30 +95,30 @@ class Face:
 from faces_anime import S
 
 def build(n):
-    f = Face(); E = (LX, RX)
+    f = Face(n); E = (LX, RX)
     if n in ('idle', 'talkA', 'talkB'):
-        [f.eye(x, EY) for x in E]
+        f.brows(); [f.eye(x, EY) for x in E]
         f.smile() if n == 'idle' else f.o(12 if n == 'talkA' else 7)
-    elif n == 'blink': [f.arc(x, EY + 8, up=False) for x in E]; f.smile()
-    elif n == 'happy': [f.eye(x, EY, lid=.1, low=.42) for x in E]; f.smile(30, 18)
-    elif n == 'focus': [f.eye(x, EY + 4, lid=.4) for x in E]; f.flat()
+    elif n == 'blink': f.brows(4); [f.arc(x, EY + 8, up=False) for x in E]; f.smile()
+    elif n == 'happy': f.brows(-8); [f.eye(x, EY, lid=.1, low=.42) for x in E]; f.smile(30, 18)
+    elif n == 'focus': f.brows(10, -8); [f.eye(x, EY + 4, lid=.4) for x in E]; f.flat()
     elif n.startswith('busy'):   # 4 Phasen: Ring dreht sich, Punkt läuft, Blick wandert leicht
         k = int(n[4:] or 1) - 1
-        [f.eye(x, EY + 2, lid=.36, look=((8, 12, 8, 4)[k], 4)) for x in E]; f.dots(k); f.loading(k)
-    elif n in ('lookL', 'lookR'): [f.eye(x, EY, look=(-16 if n == 'lookL' else 16, 0)) for x in E]; f.smile()
-    elif n == 'wink': f.eye(LX, EY); f.arc(RX, EY + 4); f.smile(24)
-    elif n == 'surprised': [f.eye(x, EY, w=64, h=78, lid=0) for x in E]; f.o(12)
-    elif n == 'dizzy': [f.x_eye(x, EY) for x in E]; f.wave()
-    elif n == 'laugh': [f.arc(x, EY) for x in E]; f.smile(32, 24)
-    elif n == 'love': [f.heart(x, EY) for x in E]; f.smile()
-    elif n == 'kiss': [f.arc(x, EY) for x in E]; f.o(7)
-    elif n == 'angry': f.eye(LX, EY + 6, lid=.36, tilt=14); f.eye(RX, EY + 6, lid=.36, tilt=-14); f.frown()
-    elif n == 'sleepy': [f.eye(x, EY + 12, h=50, lid=.6, shine=False) for x in E]; f.flat(12)
-    elif n == 'tongue': f.eye(LX, EY); f.arc(RX, EY + 4); f.smile(26, 16); f.top.ell(CX + 6, MY + 12, 9, 9, (255, 140, 210, 255))
-    elif n == 'sad': f.eye(LX, EY + 8, lid=.34, tilt=-12); f.eye(RX, EY + 8, lid=.34, tilt=12); f.frown()
-    elif n == 'cool': [f.eye(x, EY + 6, w=78, h=40, lid=.0) for x in E]; f.stroke([(LX + 60, EY - 2), (RX - 60, EY - 2)], 6); f.smile(20, 8)
-    elif n == 'star': [f.star(x, EY) for x in E]; f.smile(30, 18)
-    elif n == 'confused': f.eye(LX, EY - 4, lid=.1); f.eye(RX, EY + 6, h=46, lid=.3); f.wave(22)
+        f.brows(8, -6); [f.eye(x, EY + 2, lid=.36, look=((8, 12, 8, 4)[k], 4)) for x in E]; f.dots(k); f.loading(k)
+    elif n in ('lookL', 'lookR'): f.brows(); [f.eye(x, EY, look=(-16 if n == 'lookL' else 16, 0)) for x in E]; f.smile()
+    elif n == 'wink': f.brow(LX, -1); f.brow(RX, 1, 8); f.eye(LX, EY); f.arc(RX, EY + 4); f.smile(24)
+    elif n == 'surprised': f.brows(-20); [f.eye(x, EY, w=64, h=78, lid=0) for x in E]; f.o(12)
+    elif n == 'dizzy': f.brow(LX, -1, -6, 8); f.brow(RX, 1, 4, -6); [f.x_eye(x, EY) for x in E]; f.wave()
+    elif n == 'laugh': f.brows(-10); [f.arc(x, EY) for x in E]; f.smile(32, 24)
+    elif n == 'love': f.brows(-10); [f.heart(x, EY) for x in E]; f.smile()
+    elif n == 'kiss': f.brows(-6); [f.arc(x, EY) for x in E]; f.o(7)
+    elif n == 'angry': f.brows(14, -18); f.eye(LX, EY + 6, lid=.36, tilt=14); f.eye(RX, EY + 6, lid=.36, tilt=-14); f.frown()
+    elif n == 'sleepy': f.brows(14); [f.eye(x, EY + 12, h=50, lid=.6, shine=False) for x in E]; f.flat(12)
+    elif n == 'tongue': f.brows(-6); f.eye(LX, EY); f.arc(RX, EY + 4); f.smile(26, 16); f.top.ell(CX + 6, MY + 12, 9, 9, (255, 140, 210, 255))
+    elif n == 'sad': f.brows(6, 16); f.eye(LX, EY + 8, lid=.34, tilt=-12); f.eye(RX, EY + 8, lid=.34, tilt=12); f.frown()
+    elif n == 'cool': f.brows(-2); [f.eye(x, EY + 6, w=78, h=40, lid=.0) for x in E]; f.stroke([(LX + 60, EY - 2), (RX - 60, EY - 2)], 6); f.smile(20, 8)
+    elif n == 'star': f.brows(-10); [f.star(x, EY) for x in E]; f.smile(30, 18)
+    elif n == 'confused': f.brow(LX, -1, -14); f.brow(RX, 1, 8, -8); f.eye(LX, EY - 4, lid=.1); f.eye(RX, EY + 6, h=46, lid=.3); f.wave(22)
     else: raise KeyError(n)
     return f
 
