@@ -105,6 +105,7 @@ async function refresh() {
   }
   gameTips(state.gsi);
   if(state.auto)showAuto(state.auto);
+  if(state.skins)showSkins(state.skins,!!state.managed);
   dotaTips(state.dota);
   databaseState(state.postgres);
   $('auto-update-row').hidden=!state.updates?.available; $('auto-update').checked=!!state.updates?.auto; $('auto-update-note').textContent=state.updates?.auto?'Neue Versionen werden nach der Prüfung von Größe und Prüfsumme selbst installiert, nie während eines Downloads oder einer Aufnahme. Danach startet der Companion neu.':'Aus: Neue Versionen erscheinen als Hinweis und werden erst nach deinem Klick installiert.';
@@ -537,11 +538,28 @@ $('auto-toggle').addEventListener('click',()=>api('/api/auto/settings',{enabled:
  * Fenster der Figur (Linksklick): statt einer langen Liste Bereiche mit Reitern.
  * Sprünge aus dem Figurmenü (scrollIntoView auf eine Karte) öffnen den passenden Reiter.
  */
+let skinState=null;
+function showSkins(skins,managed){
+  skinState=skins;
+  $('skin-tausch').hidden=!managed;
+  $('skins-heading').textContent=skins.enabled?'Skin-Tausch für Videos ist an':'Skin-Tausch für Videos ist aus';
+  $('skins-toggle').textContent=skins.enabled?'Ausschalten':(skins.needsNotice?'Einschalten …':'Einschalten');
+  $('skins-notice').textContent=skins.notice||'';
+  $('skins-status').textContent=skins.enabled?`Aktiv: ${skins.credit?.name||'CS2-nskinz'} ${skins.credit?.version||''}. Skins je Szene trägst du auf tecmon.online im Demo-Manager ein.`:'';
+}
+$('skins-toggle').addEventListener('click',async()=>{
+  const button=$('skins-toggle');const on=!skinState?.enabled;
+  if(on&&skinState?.needsNotice&&$('skins-consent').hidden){$('skins-consent').hidden=false;return;}
+  if(on&&skinState?.needsNotice&&!$('skins-accept').checked){notice({message:'Bitte zuerst den Hinweis bestätigen.'});return;}
+  button.disabled=true;
+  try{const r=await api('/api/skins/settings',{enabled:on,accept:on?skinState?.noticeVersion:undefined});$('skins-consent').hidden=true;showSkins(r.skins,true);if(r.message)$('notice').textContent=r.message;}
+  catch(error){notice(error);}finally{button.disabled=false;}
+});
 (function desktopSections(){
   if(!document.body.classList.contains('desktop-panel'))return;
   const groups=[
     ['start','Start',['.connection-summary','.activity-summary','#videos']],
-    ['cs2','Spiele',['#auto-highlights','#rundentipps','#dota-tipps','#fadenkreuz','#cfgs','#quiz']],
+    ['cs2','Spiele',['#auto-highlights','#skin-tausch','#rundentipps','#dota-tipps','#fadenkreuz','#cfgs','#quiz']],
     ['clips','Clips',['#clips']],
     ['tecmon','TecMon',['#tecmon','#spiele']],
     ['pakete','Pakete',['#games']],
@@ -568,3 +586,4 @@ $('auto-toggle').addEventListener('click',()=>api('/api/auto/settings',{enabled:
   const fromHash=location.hash&&document.querySelector(location.hash);
   show(fromHash&&owner.get(fromHash)||(buttons[start]?start:'start'));
 })();
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('skins-consent').hidden){$('skins-consent').hidden=true;$('skins-accept').checked=false;}});
