@@ -307,7 +307,7 @@ export async function createCompanion({
     openPage: (id) => {
       // Zuletzt verbundene TecMon-Seite öffnen; sie holt die Demo über die Bridge.
       const device = bridge.state().devices.at(-1);
-      const page = `${device?.origin || "https://tecmon.online"}/demo-replay?companion-auto=${id}#replay-load`;
+      const page = `${device?.origin || "https://tecmon.online"}/games/cs2/replay?companion-auto=${id}#replay-load`;
       if (engineSystem.auto?.openPage) return engineSystem.auto.openPage(page);
       if (process.platform === "win32") spawn("explorer.exe", [page], { windowsHide: true, stdio: "ignore" }).unref();
     },

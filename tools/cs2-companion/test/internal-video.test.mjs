@@ -150,7 +150,7 @@ async function scenario(t, mode) {
       await new Promise((r) => setTimeout(r, 5));
     }
     assert.equal(ready.steamId, "76561197992597660");
-    assert.deepEqual(opened, [`${origin}/demo-replay?companion-auto=${offer.id}#replay-load`]);
+    assert.deepEqual(opened, [`${origin}/games/cs2/replay?companion-auto=${offer.id}#replay-load`]);
     const demo = await fetch(base + `/bridge/auto/demo?id=${offer.id}`, { headers });
     assert.equal((await demo.arrayBuffer()).byteLength, 308);
     assert.equal((await fetch(base + `/bridge/auto/demo?id=${offer.id}`, { headers: { Origin: origin } })).status, 401);
