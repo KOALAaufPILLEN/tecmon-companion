@@ -43,6 +43,8 @@ test("stopping an idle private database is safe while other failures remain visi
   await stopManagedDatabase(config,async()=>{calls++;throw Object.assign(new Error("not running"),{exitCode:3});});
   assert.equal(calls,1);
   await assert.rejects(stopManagedDatabase(config,async()=>{throw Object.assign(new Error("permission denied"),{exitCode:1});}),/permission/);
+  // PostgreSQL vom Nutzer entfernt: Update und Beenden dürfen daran nicht scheitern.
+  await stopManagedDatabase(config,async()=>{throw Object.assign(new Error("spawn pg_ctl.exe ENOENT"),{code:"ENOENT"});});
 });
 
 test("update acknowledgement reaches client before service closes and signals process exit",async t=>{

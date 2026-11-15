@@ -66,6 +66,40 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.28.0: Neues Schnellmenü und Fenster mit Reitern
+
+- **Rechtsklick auf die Figur** öffnet ein eigenes TecMon-Schnellmenü statt
+  verschachtelter Windows-Menüs: Kacheln für Einstellungen, Highlights, Clip
+  speichern, Letzte Videos, Minispiele und TecMon.online, Schalter für
+  Highlight-Video nach dem Match, Rundentipps, Clip-Puffer und Figur, dazu die
+  Persönlichkeit. Alles Weitere unter „Alle Optionen …“. Esc schließt.
+- **Linksklick-Fenster** mit Reitern (Start, Spiele, Clips, TecMon, Pakete)
+  statt einer langen Liste. Sprünge aus dem Menü öffnen den passenden Reiter.
+
+#### Mehr Persönlichkeit
+
+- Neue Sprüche je Modus, eigene Sprüche zu Waffen in den Spray-Tipps und zu
+  Quiz und Preisfrage (direkt unter dem Ergebnis). Gleiche Sprüche kommen nicht
+  direkt hintereinander.
+- **HUAN-Modus ab 18:** derber Trashtalk über dein eigenes Spiel, ohne
+  Beleidigungen von Menschen. Vor dem Einschalten fragt TecMon einmal nach.
+- Ab und zu ein Spruch, wenn du gerade nicht spielst. Läuft CS2 oder Dota 2 im
+  Vordergrund oder eine Aufnahme, bleibt TecMon still.
+- Neue Spray-Hinweise für P90, SSG 08 und Negev, Kartentipps für Anubis und
+  Vertigo.
+- Im Menü „Alle Optionen …“ bleiben Untermenüs bei Schaltern offen, „Companion
+  beenden“ ist rot markiert.
+
+#### Update-Knopf mit Rückmeldung
+
+- Nach „Ja“ beim Update zeigt die Figur „Update wird geladen …“ und danach das
+  Ergebnis oder den Fehler, statt still zu bleiben.
+- Jeder Update-Schritt und jeder Fehler steht im Protokoll
+  (`%LOCALAPPDATA%\TecMon\Logs\companion.log`). Die Statusabfrage der Datenbank
+  hat ein Zeitlimit, damit das Update nicht hängen bleibt.
+- Update und Beenden funktionieren auch, wenn PostgreSQL oder CS Demo Manager
+  vom PC entfernt wurden. Die eigene TecMon-Engine braucht beides nicht.
+
 ### Neu in 0.27.0: Frage schon im Hauptmenü, Menü mit Buttons
 
 - **Highlight-Frage direkt nach dem Match:** Ist „Nach dem Match Highlight-Video

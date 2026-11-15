@@ -129,7 +129,14 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   (`flavorTip()` setzt einen Satzanfang vor den Tipp). Inhalt, Kategorien,
   Zeitpunkte und `BRIEFING_LIMIT` der Rundentipps bleiben unverändert.
 - Der HUAN-Modus stichelt nur über das eigene Spiel, keine Beleidigungen von
-  Personen oder Gruppen.
+  Personen oder Gruppen. Derbe Sprache über Aim, Waffenwahl, Quiz-Wissen und
+  Spielweise ist erlaubt, weil HUAN als „ab 18“ markiert ist und vor dem
+  Einschalten bestätigt werden muss (Figurmenü, Schnellmenü und Seite). Keine
+  Witze über Krankheiten, Behinderungen, Herkunft, Geschlecht oder soziale Lage.
+- Waffen-Sprüche (`WEAPON_OPENERS`) erkennen die Waffe nur am Anfang des
+  Spray-Tipps; `pick()` vermeidet direkte Wiederholungen.
+- Leerlauf-Sprüche (`idle`) kommen nur ohne Aufnahme, wach, bei geschlossenem
+  Menü und ohne CS2 oder Dota 2 im Vordergrund, höchstens alle 4–7 Minuten.
 - Werte und Zähler bleiben lokal in `pet.json`; Spiele laufen nur in der
   Companion-Oberfläche, nie im Spiel.
 
@@ -209,8 +216,14 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   (`scale(0.96)`, nie unter 0.95), breite Karten ändern nur die Farbe.
   Übergänge nur mit benannten Eigenschaften und den `--tm-dur-*`-Zeiten, nie
   `transition: all`. Esc schließt Rückfragen; Trefferflächen mindestens 40 px.
-- Einträge im Figurmenü zeichnet `TecMonMenu` als Buttons (Fläche, Hover,
-  gedrückt). Keine Windows-Standarddialoge für Fragen während des Spiels.
+- Rechtsklick auf die Figur öffnet `QuickMenu` (`OpenQuick()`/`BuildQuick()` in
+  `TecMon.cs`): Kacheln, Schalter, Persönlichkeit, „Alle Optionen …“ öffnet das
+  vollständige `ContextMenuStrip` (auch am Tray-Symbol). Neue häufige Funktionen
+  dort ergänzen, alles andere im vollständigen Menü. Dessen Einträge zeichnet
+  `TecMonMenu` als Buttons. Keine Windows-Standarddialoge für Fragen während
+  des Spiels.
+- Das Linksklick-Fenster (`?desktop=1`) gruppiert die Karten in Reiter
+  (`desktopSections()` in `public/app.js`). Neue Karten dort einer Gruppe zuordnen.
 
 ## Prüfen und veröffentlichen
 

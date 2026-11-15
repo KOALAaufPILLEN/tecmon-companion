@@ -116,3 +116,11 @@ button:not(:disabled):active,.button:active{transform:scale(.96)}
 .game-row:active,.recent-item:active{transform:none}
 details>summary{cursor:pointer}
 @media (prefers-reduced-motion:reduce){button,.button{transition:background-color var(--tm-dur-press) ease,border-color var(--tm-dur-press) ease}button:not(:disabled):active,.button:active{transform:none;filter:brightness(.9)}}
+/* Fenster der Figur: Reiter statt langer Liste. */
+.panel-tabs{position:sticky;top:0;z-index:5;display:flex;gap:4px;padding:6px;margin:4px 0 10px;background:#120e19f2;border:1px solid #3a2f4d;border-radius:12px;backdrop-filter:blur(6px)}
+.panel-tabs button{flex:1;min-height:36px;padding:6px 4px;border:1px solid transparent!important;background:transparent!important;color:#a49cb8!important;font-size:12px;font-weight:700;border-radius:8px;letter-spacing:.3px}
+.panel-tabs button[aria-selected="true"]{color:#15121a!important;background:linear-gradient(135deg,#e8c573,#c9a04a)!important;border-color:#f5d36b!important}
+@media (hover:hover) and (pointer:fine){.panel-tabs button:not([aria-selected="true"]):hover{color:#f1eef7!important;background:#a78bfa22!important}}
+.desktop-panel .card[hidden]{display:none}
+.desktop-panel #auto-note,.desktop-panel #tips-note{font-size:11px;color:var(--muted)}
+.pet-reply{display:block;margin-top:6px;color:var(--muted);font-style:italic}

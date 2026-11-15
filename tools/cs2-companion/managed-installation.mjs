@@ -126,9 +126,11 @@ export async function ensureManagedDatabase(config) {
 
 export async function stopManagedDatabase(config, run = runTool) {
   try {
-    await run(path.join(config.postgresBin, "pg_ctl.exe"), ["status", "-D", config.clusterDir]);
+    await run(path.join(config.postgresBin, "pg_ctl.exe"), ["status", "-D", config.clusterDir], { timeout: 15000 });
   } catch (error) {
-    if (error.exitCode === 3) return;
+    // 3 = läuft nicht. ENOENT = PostgreSQL wurde entfernt: dann gibt es nichts zu beenden,
+    // Update und Beenden müssen trotzdem funktionieren (die eigene Engine braucht keine Datenbank).
+    if (error.exitCode === 3 || error.code === "ENOENT") return;
     throw error;
   }
   await run(
@@ -169,7 +171,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     );
   const config = previous || {
     format: "tecmon-installation-v1",
-    version: "0.27.0",
+    version: "0.28.0",
     installationId: randomUUID(),
     dataDir: options.dataDir,
     clusterDir: path.join(privateDir, "postgres", "data"),
