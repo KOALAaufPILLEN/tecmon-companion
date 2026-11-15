@@ -344,7 +344,9 @@ export async function renderBranding({
           [label,'cyber-stinger.png','switch-label.txt','switch-footer.txt',{path:previous.file,sha256:previous.sha256},{path:source.file,sha256:source.sha256}]);
       }
       const filter=sequence.filter?filterGraph(sequence.filter,'game0','game',w,h):null;
-      let graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length,hud2,filter});
+      // Kills als Sekunden ab Szenenbeginn (kill-badge-v1).
+      const kills=(sequence.kills||[]).map(([tick,count,hs])=>({t:(tick-sequence.startTick)/job.tickRate,n:count,hs:hs===1}));
+      let graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length,hud2,filter,kills});
       progress(`Cyberpunk-HUD mit dauerhaftem Spielername: Szene ${i + 1}/${sources.length} …`);
       await encode(
         `scene-${i}`,

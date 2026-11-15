@@ -710,7 +710,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY] : [])] : [])],
       });
     if (req.method === "POST" && url.pathname === "/bridge/insights") {
       const input = await readInput(req, 262144);

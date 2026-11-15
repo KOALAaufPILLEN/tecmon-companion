@@ -46,6 +46,7 @@ export function validateJob(value) {
     if (s.slot !== undefined && (!Number.isSafeInteger(s.slot) || s.slot < 1 || s.slot > 64)) fail();
     ticks += s.endTick - s.startTick;
     const cuts = cameraCuts(s.cuts, s.startTick, s.endTick, fail);
+    const kills = killMarks(s.kills, s.startTick, s.endTick, fail);
     return {
       startTick: s.startTick,
       endTick: s.endTick,
@@ -55,6 +56,8 @@ export function validateJob(value) {
       ...(cuts.length ? { cuts } : {}),
       // Filter nur für das Gameplay dieser Szene (video-filter-v1); unbekannt = keiner.
       ...(filterId(s.filter) ? { filter: s.filter } : {}),
+      // Mehrfach-Kill-Anzeige (kill-badge-v1): [Tick, Kill-Nummer in der Runde, Kopfschuss 0/1].
+      ...(kills.length ? { kills } : {}),
     };
   });
   if (ticks / value.tickRate > 1200)
@@ -70,6 +73,22 @@ export function validateJob(value) {
     branding,
     xray,
   };
+}
+
+/** Kills des Szenen-Spielers für die Anzeige im Video: nur Zahlen, aufsteigend, höchstens 10. */
+export const MAX_KILLS = 10;
+function killMarks(value, startTick, endTick, fail) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > MAX_KILLS) fail();
+  let last = -1;
+  return value.map((k) => {
+    if (!Array.isArray(k) || k.length !== 3) fail();
+    const [tick, n, hs] = k;
+    if (!Number.isSafeInteger(tick) || tick < startTick || tick > endTick || tick < last) fail();
+    if (!Number.isSafeInteger(n) || n < 1 || n > 10 || (hs !== 0 && hs !== 1)) fail();
+    last = tick;
+    return [tick, n, hs];
+  });
 }
 
 /**

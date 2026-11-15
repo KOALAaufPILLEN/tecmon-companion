@@ -363,3 +363,27 @@ test("filters: only known ids pass, scene filter hits only the gameplay, brandin
     assert.ok(tags.every(Boolean), "every encode is tagged with its colour space");
   }
 });
+
+test("kill badges: only checked numbers pass, fixed words in the scene graph (kill-badge-v1)", async () => {
+  const { cyberHud, killWords } = await import("../cyber-hud.mjs");
+  const s = job.sequences[0];
+  const ok = validateJob({ ...job, sequences: [{ ...s, kills: [[s.startTick, 1, 1], [s.startTick + 64, 2, 0]] }] });
+  assert.deepEqual(ok.sequences[0].kills, [[s.startTick, 1, 1], [s.startTick + 64, 2, 0]]);
+  assert.equal(validateJob(job).sequences[0].kills, undefined);
+  for (const kills of [
+    [[s.startTick - 1, 1, 0]],
+    [[s.startTick, 0, 0]],
+    [[s.startTick, 1, 2]],
+    [[s.startTick + 64, 1, 0], [s.startTick, 2, 0]],
+    [["x';rm", 1, 0]],
+    Array.from({ length: 11 }, () => [s.startTick, 1, 0]),
+  ])
+    assert.throws(() => validateJob({ ...job, sequences: [{ ...s, kills }] }));
+  assert.deepEqual(killWords(5), ["ACE", "ALLE 5 GEGNER"]);
+  const graph = cyberHud({ width: 1920, height: 1080, fps: 30, playerFile: "p.txt", mapFile: "m.txt", sceneFile: "s.txt", playerLength: 5, kills: [{ t: 1, n: 1, hs: true }, { t: 2, n: 3, hs: false }] });
+  assert.match(graph, /text='1K'/);
+  assert.match(graph, /text='TRIPLE KILL'/);
+  assert.match(graph, /between\(t,1\.00,2\.00\)/, "erste Anzeige endet beim nächsten Kill");
+  assert.match(graph, /\[v\]$/);
+  assert.doesNotMatch(cyberHud({ width: 1920, height: 1080, fps: 30, playerFile: "p.txt", mapFile: "m.txt", sceneFile: "s.txt", playerLength: 5 }), /KILL/);
+});
