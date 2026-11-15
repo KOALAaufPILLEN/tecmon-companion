@@ -201,7 +201,8 @@ export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
       items: [...items].flatMap(([slot, skin]) => {
         if (slot === "knife") {
           const sources = new Set(DEFAULT_KNIVES);
-          if (skin.from !== undefined && skin.from !== skin.weapon) sources.add(skin.from);
+          // Auch wenn das Messer aus der Demo dasselbe ist (nur neue Lackierung), muss es in die Liste.
+          if (skin.from !== undefined) sources.add(skin.from);
           return [...sources].map((source) => item(source, skin, true));
         }
         if (slot === "glove") return DEFAULT_GLOVES.map((source) => item(source, skin, true));
