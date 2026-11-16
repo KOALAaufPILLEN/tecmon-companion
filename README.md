@@ -1,21 +1,93 @@
 # TecMon Companion
 
-Öffentlicher Quellcode des lokalen Windows-Programms zu [TecMon](https://tecmon.online). Der Companion läuft auf dem eigenen PC und verbindet sich auf Wunsch mit der Webseite:
+Das lokale Windows-Programm zu [TecMon](https://tecmon.online). Der Companion läuft auf deinem PC, macht aus deinen CS2-Demos fertige Highlight-Videos in echter Spielgrafik und begleitet dich als kleine TecMon-Figur auf dem Desktop: mit Rundentipps, Clip-Puffer, Fadenkreuz, Configs und Minispielen.
 
-- **CS2-Highlights in echter Spielgrafik:** Highlight-Aufträge aus dem TecMon-Replay übernehmen, die Demo per Sharecode lokal laden oder direkt aus dem Browser übernehmen, mit der eigenen TecMon-Engine (ab 0.17, Rückfall auf CS Demo Manager) über HLAE aufnehmen, mit Kamerafahrten, Verfolger-Kamera und im Spiel gesetzten Kamerapunkten, mit FFmpeg und TecMon-Branding (Intro, Radar-Rahmen, Spielernamen, Spielerwechsel) zu einer MP4 verarbeiten und an die Webseite zurückgeben. Die Veröffentlichung auf YouTube oder Discord läuft danach über die Webseite.
-- **CS2-Rundentipps:** VAC-sichere Hinweise über Valves offizielle Game State Integration, nur mit eigenen Spielerdaten, standardmäßig aus (siehe [Neu in 0.14.0](#neu-in-0140-cs2-rundentipps) und folgende).
-- **Tipps aus „Meine Stats“:** Die Webseite schickt auf Wunsch eine Zusammenfassung der eigenen analysierten Matches (`insights-v1`/`insights-v2`). Sie bleibt lokal in `insights.json`.
-- **Desktopfigur:** Der TecMon-Bot schwebt als transparente Windows-Figur über dem Desktop, öffnet per Klick Verbindung und Einstellungen und zeigt die Tipps in einer goldenen Holo-Sprechblase.
+Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die Webseite steuert nur und lädt das fertige Video auf Wunsch hoch.
 
-Der Quellcode steht unter der MIT-Lizenz. Beiträge, Fehlerberichte und Sicherheitsprüfungen sind willkommen. Dieses Repository enthält ausschließlich den Companion und seine Build-Werkzeuge. Es hat eine neue Git-Historie; der private Website-Code und dessen Historie werden nicht veröffentlicht.
+**Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
+
+- [Was der Companion kann](#was-der-companion-kann)
+- [So fängst du an](#so-fängst-du-an)
+- [Sicherheit und Daten](#sicherheit-und-daten)
+- [Windows herunterladen](#windows-herunterladen)
+- [Für Entwickler](#für-entwickler)
+- [Lizenzen und Herkunft](#lizenzen-und-herkunft)
+- [Versionsverlauf](#versionsverlauf)
+
+## Was der Companion kann
+
+### Highlight-Videos aus CS2-Demos
+
+- **„In CS2 aufnehmen“ auf tecmon.online:** Du wählst im Demo-Manager Szenen und Spieler, der Companion erledigt den Rest: Demo per Sharecode über dein Steam laden (oder direkt aus dem Browser übernehmen), in CS2 aufnehmen, mit TecMon-Branding zu einer MP4 verarbeiten und an die Webseite zurückgeben. Fortschritt und Fehler siehst du auf der Webseite, die Figur sagt dir nebenbei, an welchem Schritt sie gerade ist.
+- **Eigene TecMon-Engine:** Download und Aufnahme laufen ohne CS Demo Manager und ohne Datenbank. CS Demo Manager bleibt als Rückfall installiert.
+- **Kamera:** Egoansicht, feste Freikamera-Punkte, weiche Kamerafahrten über bis zu 8 Punkte, Verfolger-Kamera, Spieler-Intro von vorn und „Kamera im Spiel setzen“ (Punkte mit F8 direkt in CS2 merken).
+- **Branding:** Animiertes TecMon-Intro in zwei Stilen (Neon-Raster oder Hologramm), Esport-Titelbild, Spielerwechsel im Teamvideo, animiertes HUD am Radar, Outro und weiche Übergänge.
+- **Kill-Anzeige:** Neben dem TecMon-Logo erscheint bei jedem Kill „1K · KILL“ bis „ACE · ALL 5 ENEMIES“, mit Headshot-Hinweis.
+- **Deathcam:** Oben steht „DEATHCAM: Name“, vorher kommt ein kurzes Intro von vorn auf den Spieler, der stirbt.
+- **36 Filter:** je Szene ein Filter nur aufs Gameplay, auf Wunsch ein eigener für Intro, Spielerwechsel und Outro.
+- **Skin-Tausch für Videos (Zusatz-Addon):** zeigt in einer Szene andere Waffenskins, Messer und Handschuhe. Der Companion schreibt dafür eine Kopie der Demo um; die Original-Demo und dein Live-Spiel bleiben unberührt. Getauschte Waffen tragen das Namensschild „TecMon Skin“. Standardmäßig aus, Einschalten nur nach bestätigtem Hinweis.
+
+Grenzen: höchstens 40 Szenen und 20 Minuten Spielzeit pro Auftrag. Steam und CS2 müssen installiert sein, und CS2 darf während der Aufnahme nicht schon laufen.
+
+### Highlight-Video nach dem Match
+
+Standardmäßig aus. Eingeschaltet fragt TecMon nach einem fertigen Premier-, Wettkampf- oder Wingman-Match, sobald du wieder im Hauptmenü bist: „Neues Highlight-Video erstellen?“. Die Frage ist ein eigenes kleines Fenster und nimmt CS2 keinen Fokus. Nach „Ja“ lädt der Companion die Demo deines letzten Matches, sobald du CS2 schließt, ohne Sharecode. Die TecMon-Seite wählt deine besten Szenen (höchstens 3 Minuten), nimmt sie mit deinem zuletzt benutzten Stil auf und lädt das Video hoch:
+
+- angemeldet: öffentlich zu YouTube und zusätzlich in deinen gespeicherten Discord-Webhook,
+- nicht angemeldet: nur in den Discord-Webhook (bis 10 MB).
+
+Hochladen macht nur die Webseite mit den Einstellungen in deinem Browser. Der Companion bekommt keine YouTube- oder Discord-Zugangsdaten.
+
+### Clip-Puffer für alle Spiele
+
+Standardmäßig aus. Eingeschaltet nimmt TecMon den Bildschirm laufend auf und behält nur die letzten 10 bis 120 Sekunden. **Strg+Alt+C** speichert sie als Clip. Die Aufnahme nutzt wenn möglich die Grafikkarte (NVENC, AMF, Quick Sync). „Branding erstellen“ setzt Logo, Titel und Abspann; nur gebrandete Clips kann TecMon.online abholen und zu YouTube hochladen. Kein Hook, keine Injektion, kein Mitlesen der Tastatur.
+
+### Spiele-Reiter: CS2
+
+Diese Funktionen gehören zum Spiel-Paket CS2 (standardmäßig installiert, unter „Pakete“ entfernbar):
+
+- **Rundentipps:** Hinweise in der Kaufzeit (Wirtschaft, Kauf-Check, Spray-Muster der gekauften Waffe, Map-Übersicht mit Callouts), nach deinem Tod, zur Halbzeit und am Matchende. Höchstens 3 Tipps pro Kaufzeit; sobald die Runde läuft und du lebst, ist TecMon still. Jede Tippart lässt sich einzeln abschalten.
+- **Tipps aus „Meine Stats“:** Öffnest du auf der Webseite „Meine Stats“, schickt sie eine Zusammenfassung deiner eigenen Matches (pro Map, dazu Gewohnheiten wie Eröffnungsduelle, Trades, Kopftreffer, Granaten und deine 8 meistgenutzten Waffen). Daraus kommen persönliche Tipps. Die Daten bleiben lokal in `insights.json` und lassen sich löschen.
+- **Fadenkreuz-Editor:** Vorschau, Vorlagen, CS2-Fadenkreuz-Code übernehmen, speichern als `tecmon_crosshair.cfg`.
+- **Fadenkreuz-Overlay:** zeigt dein Fadenkreuz als eigenes, durchklickbares TecMon-Fenster, nur im Vollbild-Fenstermodus. Standardmäßig aus, Einschalten auf eigenes Risiko nach bestätigtem Hinweis.
+- **Fertige Configs:** 16 cfgs zum Speichern mit einem Klick, etwa Pro-Viewmodel, alle stumm per Taste, Springen aufs Mausrad oder Granaten-Training. Jede ist eine eigene Datei `tecmon_cfg_<name>.cfg`; deine Sensitivity und fremde cfgs bleiben unverändert.
+- **Quiz:** Callout-Quiz und Waffenpreis-Quiz.
+
+Die Rundentipps nutzen nur Valves offizielle Game State Integration und nur deine eigenen Werte. Keine Gegnerdaten, kein Bomben-Timer, keine Eingaben ans Spiel. Bei FACEIT oder in Turnieren können eigene Regeln für Zusatzprogramme gelten.
+
+### Spiele-Reiter: Dota 2
+
+Installierbares Paket mit Dota-2-Tipps über die offizielle Game State Integration: Last-Hit-Tempo, Gold für Buyback, beim Tod noch bereite Items, nicht ausgegebenes Gold und Match-Bilanz. Nur in Pausen, nach deinem Tod und am Matchende; nur eigene Werte, keine Karte, kein Roshan, keine Gegner. Dota 2 braucht dafür in Steam die Startoption `-gamestateintegration`. Valorant, Deadlock und Wardogs stehen als geplant in der Liste.
+
+### Die TecMon-Figur
+
+- **Desktopfigur:** TecMon schwebt als 3D-Figur über dem Desktop, mit Augen, die je Stimmung Farbe und Ausdruck wechseln. Tipps erscheinen in einer goldenen Holo-Sprechblase, die CS2 nie den Fokus nimmt.
+- **Rechtsklick: Schnellmenü** mit Kacheln (Einstellungen, Highlights, Clip speichern, Letzte Videos, Minispiele, TecMon.online), Schaltern für Highlight-Video nach dem Match, Rundentipps, Clip-Puffer und Figur sowie der Persönlichkeit. „Alle Optionen …“ öffnet das vollständige Menü.
+- **Linksklick: Fenster mit Reitern** Start, Spiele, Clips, TecMon und Pakete.
+- **Persönlichkeit:** Super nett, Normal, Nerdy oder **HUAN-Modus (ab 18)** mit derbem Trashtalk über dein eigenes Spiel, nie über Personen. HUAN muss vor dem Einschalten bestätigt werden. Der Modus ändert nur den Ton der Tipps, nicht Inhalt oder Zeitpunkt.
+- **Mit TecMon spielen:** Level, Laune, Energie und Freundschaft (lokal in `pet.json`), dazu Reaktionstest, Schere-Stein-Papier, Ziele treffen, Muster merken und Zahl raten.
+
+### Automatische Updates
+
+Der Companion sucht zwei Minuten nach dem Start und danach alle sechs Stunden nach einem neuen Release, prüft Manifest, Größe und SHA-256 und installiert es selbst. Nie während eines Downloads oder einer Aufnahme. Abschaltbar unter „Erweitert → Updates & Info“.
+
+## So fängst du an
+
+1. Setup von [tecmon.online/companion](https://tecmon.online/companion) installieren und den Companion starten. TecMon erscheint auf dem Desktop.
+2. Auf tecmon.online den Companion einmal verbinden und die Seite im Companion freigeben.
+3. Im Demo-Manager ein Match wählen, Szenen auswählen und „In CS2 aufnehmen“ klicken. Das fertige Video erscheint auf der Webseite und unter „Letzte Videos“.
+4. Optional: im Fenster unter „Spiele“ Rundentipps, Highlight-Video nach dem Match oder Skin-Tausch einschalten, unter „Clips“ den Clip-Puffer.
+
+Mehr Details zu Einrichtung, Aufnahme und Branding stehen in der [Anleitung](tools/cs2-companion/README.md). JSON-Import und manuelle Dateiauswahl gibt es weiter unter „Erweitert“.
 
 ## Sicherheit und Daten
 
-- Keine YouTube-/Google-OAuth-Secrets, Refresh-Tokens, Website-Umgebungsdateien oder persönlichen Installationsdaten werden mitgeliefert. Der Companion benötigt keinen Zugang zum TecMon-YouTube-Kanal.
-- Er erzeugt zur Laufzeit lokale Zugangsdaten: ein frei gewähltes PostgreSQL-Administratorpasswort, ein separates generiertes Datenbankkennwort und ein zufälliges Sitzungstoken für die lokale API. Diese Werte sind **keine öffentlichen Repository-Dateien**.
-- Datenbank und API binden an `127.0.0.1`. Die API prüft Host, Origin und Sitzungstoken. Ausgewählte Dateien bleiben unter den normalen Windows-Rechten zugänglich.
-- Demos, Aufnahme und Kodierung laufen lokal. Veröffentlichung einer MP4 erfolgt separat über die Website. Start der Aufnahme erfordert eine ausdrückliche Bestätigung. Webseiten müssen vorher einmal im lokalen Companion freigegeben werden.
-- Die Rundentipps lesen nur, was CS2 selbst per Game State Integration schickt, und nur eigene Spielerdaten. Kein Speicherzugriff, keine Injektion, keine Eingaben an das Spiel, kein Bomben-Timer.
+- Keine YouTube-/Google-OAuth-Secrets, Refresh-Tokens, Website-Umgebungsdateien oder persönlichen Installationsdaten werden mitgeliefert. Der Companion braucht keinen Zugang zum TecMon-YouTube-Kanal.
+- Zur Laufzeit erzeugt er lokale Zugangsdaten: ein zufälliges Sitzungstoken für die lokale API und, für den CS-Demo-Manager-Rückfall, ein frei gewähltes PostgreSQL-Administratorpasswort und ein separates generiertes Datenbankkennwort. Diese Werte sind **keine öffentlichen Repository-Dateien**.
+- Datenbank und API binden an `127.0.0.1`. Die API prüft Host, Origin und Sitzungstoken. Webseiten müssen einmal im Companion freigegeben werden.
+- Demos, Aufnahme und Kodierung laufen lokal. Eine Aufnahme startet nur nach ausdrücklicher Bestätigung. Rohclips ohne Branding gibt der Companion nicht heraus.
+- Fremde Programme (CS2-Aufnahme-Plugin, boiler-writter, HLAE, FFmpeg, Demo-Rewriter für den Skin-Tausch, Video-Pakete) werden nur mit fester Prüfsumme genutzt. Bei Abweichung bricht der Companion ab. Das schützt vor beschädigten oder ausgetauschten Downloads, nicht vor jemandem, der den eigenen PC selbst verändert.
+- Rundentipps und Dota-2-Tipps lesen nur, was das Spiel selbst per Game State Integration schickt, und nur eigene Spielerdaten. Kein Speicherzugriff, keine Injektion, keine Eingaben an das Spiel.
 
 Details, Grenzen und Hinweise für Reviewer: [SECURITY.md](SECURITY.md). Offener Code und bestandene Tests ersetzen kein unabhängiges Sicherheitsaudit.
 
@@ -24,15 +96,17 @@ Details, Grenzen und Hinweise für Reviewer: [SECURITY.md](SECURITY.md). Offener
 Die einfachste Quelle ist [tecmon.online/companion](https://tecmon.online/companion): Die Seite verlinkt automatisch die neueste Version. Im [aktuellen GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest) gibt es zwei getrennte EXE-Dateien:
 
 - **TecMon-Companion-Setup-X.Y.Z.exe**: für neue Nutzer ohne vorhandene Installation. Enthält Companion, Node.js, PostgreSQL und CS Demo Manager. Das Setup lädt HLAE und FFmpeg vom Originalanbieter mit SHA256-Prüfung nach, richtet eine private Datenbank ein und fragt nach einem frei wählbaren Administratorpasswort. Steam und CS2 müssen bereits installiert sein. Internetverbindung erforderlich.
-- **TecMon-Companion-Update-X.Y.Z.exe**: für bereits eingerichtete Installationen. Ersetzt nur Companion-Programmdateien und erhält Datenbank, Kennwörter, Tools, Demos, Videos und Einstellungen. Ab 0.17.1 installiert ein laufender Companion neue Versionen automatisch (abschaltbar unter „Erweitert → Updates & Info“); sonst per „Auf Updates prüfen“.
+- **TecMon-Companion-Update-X.Y.Z.exe**: für bestehende Installationen. Ersetzt nur Companion-Programmdateien und erhält Datenbank, Kennwörter, Tools, Demos, Videos und Einstellungen. Meist brauchst du sie nicht, weil der Companion sich selbst aktualisiert.
 
-Feste Links auf die jeweils neueste Version: [Setup](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Setup.exe) und [Update](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Update.exe). Der Release-Workflow lädt dafür zusätzlich Kopien ohne Versionsnummer hoch (seit 0.16.1; ältere Releases haben nur die Dateien mit Versionsnummer); Prüfsummen und Update-Manifest beziehen sich weiter auf die Dateien mit Versionsnummer.
+Feste Links auf die jeweils neueste Version: [Setup](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Setup.exe) und [Update](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Update.exe). Prüfsummen und Update-Manifest beziehen sich auf die Dateien mit Versionsnummer.
 
 Vor Installation oder Update den Companion und CS Demo Manager schließen. Die Prüfsumme des Installers steht neben der EXE als `.sha256`; das Update hat ein eigenes JSON-Manifest und `SHA256SUMS.txt`. WebView2 Evergreen Runtime muss vorhanden sein; siehe [Build- und Laufzeitvoraussetzungen](BUILDING.md).
 
-## Aus Quellcode starten
+## Für Entwickler
 
-Node.js ab Version 24; Steam und CS2 für echte Aufnahmen. Die Laufzeit selbst hat keine npm-Abhängigkeiten. Die Entwicklungsabhängigkeit TypeScript wird nur zum Erzeugen der CSDM-Konfigurationsvorlage benötigt.
+### Aus Quellcode starten
+
+Node.js ab Version 24; Steam und CS2 für echte Aufnahmen. Die Laufzeit hat keine npm-Abhängigkeiten. Die Entwicklungsabhängigkeiten werden nur für Build-Schritte gebraucht.
 
 ```sh
 npm ci
@@ -40,27 +114,37 @@ npm test
 npm start
 ```
 
-Ohne native Installation startet der Quellmodus das lokale Studio, richtet aber keine vollständige Toolchain ein. Native Dateiauswahldialoge, die Desktopfigur und die verwaltete Datenbank benötigen den Windows-Build. Eine vorhandene kompatible CS-Demo-Manager-/PostgreSQL-Installation kann im Quellmodus verwendet werden.
+Der Quellmodus startet die lokale Companion-Seite, richtet aber keine vollständige Toolchain ein. Native Dateiauswahl, Desktopfigur und verwaltete Installation brauchen den Windows-Build.
 
-## Windows-Installer bauen
+### Windows-Installer bauen
 
-Siehe [BUILDING.md](BUILDING.md). Alle Launcher-, Installer- und Serverquellen sind enthalten. Drittanbieterpakete werden über die dokumentierten Originalquellen bezogen und mit den hinterlegten SHA256-Werten geprüft. Es sind keine vorkonfigurierten Datenbanken oder fertigen Runtime-Binaries im Repository enthalten.
+Siehe [BUILDING.md](BUILDING.md). Alle Launcher-, Installer- und Serverquellen sind enthalten. Drittanbieterpakete werden aus den dokumentierten Originalquellen geladen und gegen hinterlegte SHA256-Werte geprüft. Es liegen keine vorkonfigurierten Datenbanken oder fertigen Runtime-Binaries im Repository. Jeder Merge auf `main` mit neuer Version veröffentlicht automatisch ein Release.
 
-## Verwendung und aktueller Stand
+### Browser-Bridge und Capabilities
 
-Siehe [Anleitung](tools/cs2-companion/README.md). Companion starten, einmal mit TecMon im Browser verbinden und im Replay „In CS2 aufnehmen“ wählen. Download oder Demo-Übergabe, Aufnahme, Branding und MP4-Rückgabe laufen automatisch. JSON-Import und manuelle Dateiauswahl bleiben unter „Erweitert“ als Alternative verfügbar.
+Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` meldet. Bestehende Capabilities werden nie geändert oder entfernt.
 
-Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` meldet. Aktuell sind das `browser-demo-v1`, `xray-v1`, `insights-v1` und `insights-v2`; mit verwalteter Installation zusätzlich `video-branding-v1`, `camera-points-v1` und `recorder-internal-v1`, und solange die eigene Engine eingeschaltet ist `camera-script-v1`, `camera-session-v1` und `camera-angle-v1`.
+| Gemeldet | Capabilities |
+| --- | --- |
+| immer | `browser-demo-v1`, `xray-v1`, `insights-v1`, `insights-v2` |
+| mit verwalteter Installation | `clips-v1`, `video-branding-v1`, `video-style-v1`, `video-filter-v1`, `kill-badge-v1`, `deathcam-label-v1`, `camera-points-v1`, `recorder-internal-v1` |
+| zusätzlich mit eigener Engine | `camera-script-v1`, `camera-session-v1`, `camera-angle-v1`, `auto-highlights-v1`, `skin-swap-setup-v1` |
+| zusätzlich mit eingeschaltetem Skin-Tausch | `skin-swap-v1`, `skin-swap-v2` |
 
-Aufgenommen werden Spieler-Egoansichten, feste Freecam-Punkte und mit der eigenen Engine auch Kamerafahrten über bis zu 8 Punkte oder eine Verfolger-Kamera, bei normalem Tempo mit Spielton ohne Voicechat, X-Ray standardmäßig an. Die eigene Engine braucht für Download und Aufnahme weder CS Demo Manager noch PostgreSQL; beide bleiben vorerst als Rückfall installiert. Browser-Kameras, automatische Killcam, Zeitlupe, Musik und Web-Overlays werden nicht übertragen. Maximal 40 Szenen / 20 Minuten pro Auftrag. HLAE ausschließlich für Demo-Aufnahmen einsetzen; Steam und CS2 werden nicht mitgeliefert.
+### Tests
 
-84 automatisierte Companion-Tests sind enthalten (`npm test`), darunter die Prüfung, dass die Rundentipps keine verbotenen GSI-Blöcke anfordern. Eine isolierte Windows-Einrichtung wird bei jedem Release mit PostgreSQL-Anmeldung, Sonderzeichen-Passwort, CSDM-Tabellenmigrationen, FFmpeg und nativem Launcher getestet. Diese Tests sind kein Nachweis einer vollständigen Aufnahme jeder Demo oder jeder CS2-Version. Ein realer Test auf CS2 1.41.9.6 erzeugte eine 2-Sekunden-MP4 sowie einen zusammengesetzten Clip aus zwei Spieleransichten mit dem korrigierten offiziellen CS2-Plugin.
+`npm test` führt über 130 automatisierte Tests aus, darunter die Prüfung, dass Rundentipps und Dota-2-Tipps keine verbotenen GSI-Blöcke anfordern und die CFG-Sammlung nur erlaubte Befehle enthält. Bei jedem Release wird zusätzlich eine isolierte Windows-Neuinstallation getestet. Die Tests sind kein Nachweis, dass jede Demo mit jeder CS2-Version aufgenommen werden kann. Regeln für Beiträge stehen in [AGENTS.md](AGENTS.md).
 
 ## Lizenzen und Herkunft
 
-Der ursprüngliche Companion wurde als eigenständiger Quell-Snapshot aus TecMon extrahiert. Die erste öffentliche Historie enthält nur die ausgewählten Companion-Dateien, keine Website-Commits. Das TecMon-Logo dient zur Kennzeichnung; die Lizenz gewährt keine Markenrechte.
+Der Companion-Quellcode steht unter der MIT-Lizenz. Beiträge, Fehlerberichte und Sicherheitsprüfungen sind willkommen. Dieses Repository enthält nur den Companion und seine Build-Werkzeuge, mit eigener Git-Historie; der private Website-Code wird nicht veröffentlicht. Das TecMon-Logo dient zur Kennzeichnung; die Lizenz gewährt keine Markenrechte.
 
-Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL License und GPL. Siehe [THIRD-PARTY-NOTICES.txt](tools/cs2-companion/windows/THIRD-PARTY-NOTICES.txt) und [dependency-manifest.json](tools/cs2-companion/windows/dependency-manifest.json). Diese MIT-Lizenz ersetzt keine Lizenz der gebündelten Drittanbieter. Wer Binärpakete weitergibt, muss deren jeweilige Lizenz- und Quellcodepflichten erfüllen. Dieses Repository veröffentlicht den Companion-Quellcode, die Build-Skripte und kleine Programm-Updates. Ein selbst gebauter Installer enthält Node.js, PostgreSQL und CS Demo Manager mit ihren Lizenzen; HLAE und FFmpeg lädt er bei Bedarf direkt von den Originalanbietern herunter. boiler-writter (MIT) lädt der Companion beim ersten eigenen Download vom npm-Paket und prüft dessen feste Prüfsumme. Radarbilder werden nicht mitgeliefert, sondern lokal aus CS Demo Manager gelesen.
+Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL License, GPL und AGPL. Siehe [THIRD-PARTY-NOTICES.txt](tools/cs2-companion/windows/THIRD-PARTY-NOTICES.txt) und [dependency-manifest.json](tools/cs2-companion/windows/dependency-manifest.json). Wer Binärpakete weitergibt, muss deren Lizenz- und Quellcodepflichten erfüllen.
+
+- Der Installer enthält Node.js, PostgreSQL und CS Demo Manager mit ihren Lizenzen; HLAE und FFmpeg lädt er bei Bedarf von den Originalanbietern.
+- boiler-writter (MIT) lädt der Companion beim ersten eigenen Download vom npm-Paket und prüft die feste Prüfsumme.
+- Der Demo-Rewriter für den Skin-Tausch stammt aus [CS2-nskinz von Lyan-edit](https://github.com/Lyan-edit/CS2-nskinz) (AGPL-3.0). Er wird erst beim Einschalten unverändert vom festen Stand des Autors geladen, geprüft und als eigenes Programm gestartet; sein Code ist nicht Teil des Companions. Danke an den Autor!
+- Radarbilder werden nicht mitgeliefert, sondern lokal aus CS Demo Manager gelesen.
 
 ## Versionsverlauf
 
@@ -473,7 +557,7 @@ Wichtig: Der Fehler steckt in den installierten Versionen bis 0.17.2. Auf
 0.17.3 darum einmal mit der Update-EXE von der Release-Seite aktualisieren
 (Doppelklick). Ab 0.17.3 klappen Updates aus dem Companion heraus.
 
-## Neu in 0.17.2: Fehlerbehebung Video-Übernahme
+### Neu in 0.17.2: Fehlerbehebung Video-Übernahme
 
 Mit der eigenen TecMon-Engine kam die fertige MP4 nicht auf die Webseite
 („The "path" argument must be of type string“). Das Video wurde aufgenommen,
