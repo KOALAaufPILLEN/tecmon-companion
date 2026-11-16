@@ -102,6 +102,13 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'npm ci failed'}
           npm test
           if($LASTEXITCODE -ne 0){throw 'Tests failed'}
+      - name: Build TecMon demo rewriter
+        working-directory: source
+        shell: pwsh
+        run: |
+          cargo build --release --locked --manifest-path native/tecmon-demo-rewriter/Cargo.toml
+          if($LASTEXITCODE -ne 0){throw 'Demo rewriter build failed'}
+          Copy-Item -LiteralPath native/tecmon-demo-rewriter/target/release/tecmon-demo-rewriter.exe -Destination tools/cs2-companion/tecmon-demo-rewriter.exe
       - name: Prepare original Node runtime and build-only 7-Zip
         shell: pwsh
         run: |

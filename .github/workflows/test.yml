@@ -19,6 +19,14 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npm test
+      - name: Test TecMon demo rewriter
+        if: runner.os == 'Linux'
+        run: |
+          cargo test --release --locked --manifest-path native/tecmon-demo-rewriter/Cargo.toml
+          cd native/tecmon-demo-rewriter/vendor/source2-demo && cargo test --lib --no-default-features --features cs2
+      - name: Build TecMon demo rewriter for Windows
+        if: runner.os == 'Windows'
+        run: cargo build --release --locked --manifest-path native/tecmon-demo-rewriter/Cargo.toml
       - name: Compile native launcher and run self-test
         if: runner.os == 'Windows'
         shell: pwsh

@@ -27,6 +27,9 @@ if(Test-Path -LiteralPath (Join-Path $stage 'installation.json')) { throw 'Build
 New-Item -ItemType Directory -Path $stage,(Join-Path $stage 'tools') -Force | Out-Null
 Copy-Item -Path (Join-Path $source '*.mjs') -Destination $stage -Force
 Copy-Item -LiteralPath (Join-Path $source 'unpack-tools.ps1') -Destination $stage -Force
+# Eigener Demo-Rewriter (Agenten-Tausch); die Release-Pipeline baut ihn vorher mit cargo.
+$rewriter=Join-Path $source 'tecmon-demo-rewriter.exe'
+if(Test-Path -LiteralPath $rewriter) { Copy-Item -LiteralPath $rewriter -Destination $stage -Force } else { Write-Warning 'tecmon-demo-rewriter.exe fehlt: Agenten-Tausch ist in diesem Paket nicht verfügbar.' }
 Copy-Item -LiteralPath (Join-Path $source 'public') -Destination $stage -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $source 'README.md'),(Join-Path $source 'windows/dependency-manifest.json'),(Join-Path $source 'windows/THIRD-PARTY-NOTICES.txt') -Destination $stage -Force
 Copy-Item -LiteralPath (Join-Path $DependenciesCache 'vc_redist.x64.exe') -Destination (Join-Path $stage 'tools/vc_redist.x64.exe') -Force

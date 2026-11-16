@@ -30,6 +30,7 @@ import { createGamePackages } from "./games.mjs";
 import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
 import { workState } from "./work-status.mjs";
 import { createSkinSwap, cs2GameDir, hasSkins, SKIN_CAPABILITY, SKIN_KNIFE_CAPABILITY, SKIN_SETUP_CAPABILITY } from "./skin-swap.mjs";
+import { AGENT_CAPABILITY, createAgentSwap, hasAgents } from "./agent-swap.mjs";
 import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { createPet, quizQuestion } from "./personality.mjs";
@@ -446,6 +447,11 @@ export async function createCompanion({
     cacheDir: engineCache,
     ...(engineSystem.skinSwap || {}),
   });
+  /** Agenten-Tausch (agent-swap-v1) mit dem mitgelieferten TecMon-Demo-Rewriter. */
+  const agentSwap = await createAgentSwap({
+    dir: installation?.profileDir || dataDir,
+    ...(engineSystem.agentSwap || {}),
+  });
   let ownEngine = true;
   try {
     ownEngine = JSON.parse(await readFile(engineFile, "utf8")).internal !== false;
@@ -622,7 +628,30 @@ export async function createCompanion({
         );
       }
     }
-    const recordDemo = skinCopy || demo;
+    // Agenten-Tausch und Handschuh-Bodygroups: zweite Kopie aus der Skin-Kopie oder dem Original.
+    let agentCopy = "";
+    if (hasAgents(job.job) && !own) job.log += "\nAgenten-Tausch gibt es nur mit der eigenen TecMon-Engine; das Video zeigt die echten Agenten.";
+    else if (own) {
+      try {
+        if (hasAgents(job.job)) job.status = "preparing";
+        agentCopy = await agentSwap.rewrite(job.job, {
+          input: skinCopy || demo,
+          original: demo,
+          skinsSwapped: Boolean(skinCopy),
+          log: (message) => {
+            job.log += `\n${message}`;
+          },
+        });
+      } catch (error) {
+        // Nur Handschuh-Reparatur: weiter mit der Skin-Kopie statt abzubrechen.
+        if (!hasAgents(job.job)) job.log += `\n${error.message} Das Video nutzt die Skin-Kopie ohne Handschuh-Anpassung.`;
+        else {
+          await skinSwap.cleanup(skinCopy);
+          throw error;
+        }
+      }
+    }
+    const recordDemo = agentCopy || skinCopy || demo;
     const config = path.join(output, "recording.json");
     const cameras = jobCameras(job.job, randomUUID);
     if (cameras.length && !installation)
@@ -666,6 +695,7 @@ export async function createCompanion({
         throw new Error(recordingFailure(error, pluginLog, await crashSince(detected.cs2, startedAt)));
       } finally {
         await skinSwap.cleanup(skinCopy);
+        await agentSwap.cleanup(agentCopy);
       }
       return finishRecording(job, output, branding, assets);
     }
@@ -795,7 +825,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY] : [])] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY] : [])] : [])] : [])],
       });
     // Skin-Tausch von der Webseite ein- und ausschalten (skin-swap-setup-v1); Einschalten nur mit bestätigtem Hinweis.
     if (url.pathname === "/bridge/skins" && (req.method === "GET" || req.method === "POST")) {
