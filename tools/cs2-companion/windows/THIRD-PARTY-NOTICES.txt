@@ -52,3 +52,8 @@ Quelle und Binärdatei: https://github.com/akiver/cs-demo-manager/tree/01f655f20
 SHA256 server.dll: 1ad610f84577d4e9ef22e2757858049420f86649cd89a1afcd4738358d054086
 
 Desktop UI: Microsoft.Web.WebView2 SDK 1.0.4314.35, original NuGet package SHA256 90778deb1b77e36292828b4b5833c9255c27533f40e0ddd55891ae718944edc4. Microsoft.Web.WebView2.Core.dll, WinForms.dll and x64 WebView2Loader.dll are redistributed with WebView2-LICENSE.txt and WebView2-NOTICE.txt. The separately installed Evergreen WebView2 Runtime is maintained by Microsoft. No Runtime binaries are bundled.
+
+TecMon-Demo-Rewriter (tecmon-demo-rewriter.exe)
+Eigenes Programm des TecMon Companion (MIT), Quellcode in native/tecmon-demo-rewriter.
+Enthält source2-demo 0.5.11 von Artem Rupasov, MIT OR Apache-2.0, mit TecMon-Änderungen.
+Quellcode: https://github.com/Rupas1k/source2-demo

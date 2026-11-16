@@ -15,6 +15,9 @@ New-Item -ItemType Directory -Path $stage,$OutputDirectory -Force | Out-Null
 Copy-Item -Path (Join-Path $source '*.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $source 'public') -Destination $stage -Recurse
 foreach($name in @('README.md','unpack-tools.ps1')) {Copy-Item -LiteralPath (Join-Path $source $name) -Destination $stage}
+# Eigener Demo-Rewriter (Agenten-Tausch); die Release-Pipeline baut ihn vorher mit cargo.
+$rewriter=Join-Path $source 'tecmon-demo-rewriter.exe'
+if(Test-Path -LiteralPath $rewriter) { Copy-Item -LiteralPath $rewriter -Destination $stage -Force } else { Write-Warning 'tecmon-demo-rewriter.exe fehlt: Agenten-Tausch ist in diesem Paket nicht verfügbar.' }
 foreach($name in @('dependency-manifest.json','THIRD-PARTY-NOTICES.txt')) {Copy-Item -LiteralPath (Join-Path $source ('windows/'+$name)) -Destination $stage}
 Copy-Item -LiteralPath (Join-Path $ApplicationDirectory 'csdm-defaults.json') -Destination $stage
 & (Join-Path $PSScriptRoot 'prepare-companion-desktop.ps1') -Stage $stage -Cache (Join-Path $BuildDirectory 'desktop-cache')

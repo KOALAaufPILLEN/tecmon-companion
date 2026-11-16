@@ -1,6 +1,7 @@
 import { shareCode } from "./share-code.mjs";
 import { filterId } from "./video-filters.mjs";
 import { cleanSkins } from "./skin-swap.mjs";
+import { cleanAgents } from "./agent-swap.mjs";
 /** Versioned, data-only exchange format. Never accept game commands or paths here. */
 export function validateJob(value) {
   const fail = () => {
@@ -49,6 +50,7 @@ export function validateJob(value) {
     const cuts = cameraCuts(s.cuts, s.startTick, s.endTick, fail);
     const kills = killMarks(s.kills, s.startTick, s.endTick, fail);
     const skins = cleanSkins(s.skins, fail);
+    const agents = cleanAgents(s.agents, fail);
     return {
       startTick: s.startTick,
       endTick: s.endTick,
@@ -64,6 +66,8 @@ export function validateJob(value) {
       ...(text(s.deathcam, 32).trim() ? { deathcam: text(s.deathcam, 32).trim() } : {}),
       // Skin-Tausch (skin-swap-v1): nur Zahlen, Waffe aus SKIN_WEAPONS.
       ...(skins.length ? { skins } : {}),
+      // Agenten-Tausch (agent-swap-v1): nur Nummern aus AGENTS, je Seite.
+      ...(agents ? { agents } : {}),
     };
   });
   if (ticks / value.tickRate > 1200)

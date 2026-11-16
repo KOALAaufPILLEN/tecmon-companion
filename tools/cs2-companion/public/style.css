@@ -159,7 +159,7 @@ details>summary{cursor:pointer}
 .game-fold:not(:has(>.card-fold>.card:not([hidden]))){display:none}
 @media (hover:hover) and (pointer:fine){.game-fold>summary:hover{background:rgba(167,139,250,.08)}.card-fold>summary:hover{color:#d8cbff}}
 
-/* 0.32.8: Linksklick-Fenster der Figur mit abgeschnittenen Ecken wie der Setup-Assistent auf tecmon.online.
+/* 0.33.2: Linksklick-Fenster der Figur mit abgeschnittenen Ecken wie der Setup-Assistent auf tecmon.online.
    Form per clip-path, die schrägen Kanten zeichnen Verläufe in den Ecken (gleiche Farbe wie --edge). */
 body.desktop-panel.holo :where(.card,.game-fold,.panel-tabs,.update-banner,.recent-item,.tip-item,.game-row,.overlay-box,.cfg-group,.cfg-item,.badge,.cfg-count,button,.button,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea,pre,.reaction-box,.aim-field,.crosshair-grid canvas){
   --cut:8px;--edge:#3a2f4d;--fill:#120e19;

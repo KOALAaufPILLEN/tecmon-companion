@@ -38,4 +38,5 @@ if((Get-Content -LiteralPath (Join-Path $private 'sentinel.txt') -Raw).Trim() -n
 if((Get-Content -LiteralPath (Join-Path $target 'runtime/sentinel.txt') -Raw).Trim() -ne 'keep runtime'){throw 'Runtime changed'}
 if((Get-Item -LiteralPath (Join-Path $target 'server.mjs')).LastWriteTimeUtc -ne $timestamp){throw 'Identical file was replaced'}
 if(-not(Test-Path -LiteralPath (Join-Path $target 'updater.mjs'))){throw 'New module missing'}
+if((Test-Path -LiteralPath (Join-Path $repo 'tools/cs2-companion/tecmon-demo-rewriter.exe')) -and -not(Test-Path -LiteralPath (Join-Path $target 'tecmon-demo-rewriter.exe'))){throw 'Demo rewriter missing after update'}
 Write-Output 'PASS: native update adds program files, preserves configuration/data/runtime and skips identical files. No real database or user installation touched.'

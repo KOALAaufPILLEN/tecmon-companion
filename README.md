@@ -145,12 +145,13 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 - boiler-writter (MIT) lädt der Companion beim ersten eigenen Download vom npm-Paket und prüft die feste Prüfsumme.
 - Der Demo-Rewriter für den Skin-Tausch stammt aus [CS2-nskinz von Lyan-edit](https://github.com/Lyan-edit/CS2-nskinz) (AGPL-3.0). Er wird erst beim Einschalten unverändert vom festen Stand des Autors geladen, geprüft und als eigenes Programm gestartet; sein Code ist nicht Teil des Companions. Danke an den Autor!
 - Radarbilder werden nicht mitgeliefert, sondern lokal aus CS Demo Manager gelesen.
+- Der eigene Demo-Rewriter für den Agenten-Tausch (`native/tecmon-demo-rewriter`, MIT) nutzt die Bibliothek [source2-demo von Artem Rupasov](https://github.com/Rupas1k/source2-demo) (MIT oder Apache-2.0). Danke!
 
 ## Versionsverlauf
 
 Neueste Version zuerst.
 
-### Neu in 0.32.8: Linksklick-Fenster mit abgeschnittenen Ecken
+### Neu in 0.33.2: Linksklick-Fenster mit abgeschnittenen Ecken
 
 - Das Fenster, das ein Linksklick auf die Figur oder das Tray-Symbol öffnet,
   hat jetzt denselben TecMon-Stil wie der Setup-Assistent auf tecmon.online:
@@ -158,6 +159,29 @@ Neueste Version zuerst.
   Kanten und goldenen Akzenten. Der aktive Reiter ist ein goldenes
   Parallelogramm, die Knöpfe × und − oben im Fenster haben ebenfalls
   abgeschnittene Ecken. Funktionen ändern sich nicht.
+
+### Neu in 0.33.1: Update mit Demo-Rewriter repariert
+
+- Die Update-Datei für 0.33.0 brach mit „Unzulässiger Update-Pfad.“ ab, weil
+  sie `tecmon-demo-rewriter.exe` nicht einspielen durfte. Die Datei ist jetzt
+  erlaubt.
+- Die Update-Datei prüft jetzt alle Pfade, bevor sie etwas schreibt; ein
+  abgelehnter Eintrag hinterlässt kein halbes Update mehr.
+
+### Neu in 0.33.0: Agenten-Tausch und reparierte Handschuhe
+
+- Neuer eigener TecMon-Demo-Rewriter (`tecmon-demo-rewriter.exe`, Quellcode in
+  `native/tecmon-demo-rewriter`). Er liegt dem Companion bei, nichts wird
+  nachgeladen.
+- Auf der Webseite lässt sich je Spieler ein Agent für T und CT wählen
+  (Capability `agent-swap-v1`). Aufgenommen wird aus einer Kopie der Demo, die
+  danach gelöscht wird.
+- Handschuhe aus dem Skin-Tausch änderten bei manchen Agenten Kopf oder
+  Variante, weil feste Bodygroups gesetzt wurden. Der Rewriter stellt die
+  Bodygroups jetzt so ein, wie CS2 sie für das jeweilige Modell selbst setzt.
+  Die Werte lernt er aus der Original-Demo und merkt sie sich in
+  `agent-looks.json`; für noch unbekannte Agenten schätzt er und sagt das im
+  Protokoll.
 
 ### Neu in 0.32.7: Echte cs2.exe wird geprüft
 
