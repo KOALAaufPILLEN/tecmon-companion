@@ -66,6 +66,17 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.32.6: Spiele-Reiter aufgeräumt
+
+- Im Companion-Fenster (Linksklick auf die Figur) zeigt der Reiter „Spiele“
+  jetzt je Spiel einen aufklappbaren Punkt. Unter „CS2“ liegen sortiert:
+  Highlights nach dem Match, Skin-Tausch für Videos, Rundentipps, Fadenkreuz &
+  Overlay, Configs und Quiz. Darunter folgt „Dota 2“. Was auf- oder zugeklappt
+  ist, merkt sich das Fenster.
+- In den Configs sind die Gruppen (Pro, Komfort & Binds, Sound, HUD & Radar,
+  Training) Dropdowns mit Anzeige, wie viele davon aktiv sind; die Einträge
+  sind alphabetisch sortiert.
+
 ### Neu in 0.32.5: Messer-Tausch korrigiert
 
 - Hat der Spieler in der Demo schon ein besonderes Messer und bekommt dasselbe

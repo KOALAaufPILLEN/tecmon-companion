@@ -132,7 +132,10 @@ details>summary{cursor:pointer}
 .overlay-accept{display:flex;gap:8px;align-items:flex-start;font-size:12px;font-weight:700}.overlay-accept input{width:auto;margin:2px 0 0;accent-color:#a78bfa}
 .overlay-box button{justify-self:start;min-height:40px}
 .cfg-list{display:grid;gap:12px}
-.cfg-group h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#a78bfa;margin:4px 0 6px}
+.cfg-group{border:1px solid var(--line);border-radius:10px;padding:0 12px}
+.cfg-group>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a78bfa}
+.cfg-group[open]>summary{margin-bottom:6px}.cfg-group[open]{padding-bottom:12px}.cfg-group .cfg-item+.cfg-item{margin-top:8px}
+.cfg-count{font-size:10px;letter-spacing:0;text-transform:none;color:var(--gold,#e8c573);border:1px solid currentColor;border-radius:999px;padding:1px 8px}
 .cfg-item{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;transition:border-color var(--tm-dur-press) ease}
 .cfg-item.on{border-color:var(--gold,#e8c573)}
 .cfg-item p{margin:0;font-size:12px;color:var(--muted)}.cfg-item small{font-size:11px;color:var(--muted)}
@@ -141,3 +144,17 @@ details>summary{cursor:pointer}
 .cfg-row button{min-height:40px}
 .cfg-item code{color:var(--gold,#e8c573);font-size:12px}
 .cfg-item pre{font-size:11px;max-height:110px;overflow:auto;padding:6px 8px;border-radius:8px;margin:0}
+
+/* Reiter „Spiele“: je Spiel ein Aufklapper, darin jede Karte als Unterpunkt. */
+.game-fold{border:1px solid var(--line);border-radius:14px 14px 4px 14px;margin:12px 0;background:var(--card)}
+.game-fold>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;padding:0 16px;font-size:16px;font-weight:800;color:var(--gold,#e8c573);transition:background-color var(--tm-dur-press) ease}
+.game-fold[open]>summary{border-bottom:1px solid var(--line)}
+.game-fold>.card-fold{margin:0 10px}.game-fold>.card-fold:last-child{margin-bottom:10px}
+.card-fold{border-bottom:1px solid var(--line)}.card-fold:last-child{border-bottom:0}
+.card-fold>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;padding:0 6px;font-size:13px;font-weight:700;color:#f1eef7;transition:color var(--tm-dur-press) ease}
+.card-fold[open]>summary{color:#a78bfa}
+.card-fold>.card{margin:0 0 10px;border:0;background:transparent;padding:4px 6px 8px}
+.card-fold>.card .section-head>div:first-child{display:none}
+.card-fold:has(>.card[hidden]){display:none}
+.game-fold:not(:has(>.card-fold>.card:not([hidden]))){display:none}
+@media (hover:hover) and (pointer:fine){.game-fold>summary:hover{background:rgba(167,139,250,.08)}.card-fold>summary:hover{color:#d8cbff}}
