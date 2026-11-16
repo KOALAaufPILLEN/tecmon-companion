@@ -1,7 +1,7 @@
 import { shareCode } from "./share-code.mjs";
 import { filterId } from "./video-filters.mjs";
 import { cleanSkins } from "./skin-swap.mjs";
-import { cleanAgents } from "./agent-swap.mjs";
+import { cleanAgents, cleanChicken } from "./agent-swap.mjs";
 /** Versioned, data-only exchange format. Never accept game commands or paths here. */
 export function validateJob(value) {
   const fail = () => {
@@ -51,6 +51,7 @@ export function validateJob(value) {
     const kills = killMarks(s.kills, s.startTick, s.endTick, fail);
     const skins = cleanSkins(s.skins, fail);
     const agents = cleanAgents(s.agents, fail);
+    const chicken = cleanChicken(s.chicken, fail);
     return {
       startTick: s.startTick,
       endTick: s.endTick,
@@ -68,6 +69,8 @@ export function validateJob(value) {
       ...(skins.length ? { skins } : {}),
       // Agenten-Tausch (agent-swap-v1): nur Nummern aus AGENTS, je Seite.
       ...(agents ? { agents } : {}),
+      // Huhn-Modus (chicken-v1): Größe des Huhns für diesen Spieler.
+      ...(chicken !== undefined ? { chicken } : {}),
     };
   });
   if (ticks / value.tickRate > 1200)

@@ -20,6 +20,8 @@ const BODYGROUP_PREFIX: &str = "CBodyComponent.m_skeletonInstance.m_modelState.m
 const BODYGROUP_LEN: &str = "CBodyComponent.m_skeletonInstance.m_modelState.m_nBodyGroupChoices";
 const MESH_FIELD: &str = "CBodyComponent.m_skeletonInstance.m_modelState.m_MeshGroupMask";
 const GLOVES_FIELD: &str = "m_EconGloves.m_iItemDefinitionIndex";
+const SCALE_FIELD: &str = "CBodyComponent.m_skeletonInstance.m_flScale";
+const CHICKEN_MODEL: &str = "models/chicken/chicken.vmdl";
 const RESOURCE_SEED: u64 = 0xEDAB_CDEF;
 const MAX_PLAYERS: usize = 10;
 
@@ -121,6 +123,9 @@ struct PlayerRequest {
     t: Option<String>,
     #[serde(default)]
     ct: Option<String>,
+    /// Versuch „Huhn-Modus“: Spieler als Huhn mit dieser Größe (0.25 bis 4).
+    #[serde(default)]
+    chicken: Option<f32>,
 }
 
 fn valid_model(path: &str) -> Result<String> {
@@ -193,6 +198,8 @@ pub fn wanted_look(looks: &Looks, model: u64, gloves: bool, fallback_len: usize)
 struct AgentSwap {
     /// SteamID64 -> Team (2 = T, 3 = CT) -> Ressourcen-ID
     models: HashMap<String, HashMap<u64, u64>>,
+    /// SteamID64 -> Größe als Huhn
+    chickens: HashMap<String, f32>,
     looks: Looks,
     changed: BTreeMap<String, usize>,
     guessed: BTreeSet<String>,
@@ -204,6 +211,16 @@ fn wanted_fields(swap: &mut AgentSwap, ctx: &Context, entity: &Entity) -> Option
     let team = prop(entity, "m_iTeamNum")?;
     if team != 2 && team != 3 {
         return None;
+    }
+    if let Some(&scale) = swap.chickens.get(&steamid) {
+        // Huhn: eigenes Modell, alle Meshes sichtbar, wie die Hühner auf der Karte.
+        return Some(vec![
+            (MODEL_FIELD.to_string(), FieldValue::Unsigned64(resource_id(CHICKEN_MODEL))),
+            (MESH_FIELD.to_string(), FieldValue::Unsigned64(u64::MAX)),
+            (BODYGROUP_LEN.to_string(), FieldValue::Unsigned32(1)),
+            (format!("{BODYGROUP_PREFIX}0000"), FieldValue::Signed32(0)),
+            (SCALE_FIELD.to_string(), FieldValue::Float(scale)),
+        ]);
     }
     let player = swap.models.get(&steamid)?;
     let current = prop(entity, MODEL_FIELD).filter(|m| *m != 0)?;
@@ -247,7 +264,7 @@ impl DemoRewriter for AgentSwap {
         field_name: &str,
         value: &FieldValue,
     ) -> Option<FieldValue> {
-        if !field_name.starts_with("CBodyComponent.m_skeletonInstance.m_modelState.m_") {
+        if !field_name.starts_with("CBodyComponent.m_skeletonInstance.m_modelState.m_") && field_name != SCALE_FIELD {
             return None;
         }
         let fields = wanted_fields(self, ctx, entity)?;
@@ -311,7 +328,14 @@ fn rewrite(request_path: &str) -> Result<()> {
         bail!("ungültige Spielerzahl");
     }
     let mut models: HashMap<String, HashMap<u64, u64>> = HashMap::new();
+    let mut chickens: HashMap<String, f32> = HashMap::new();
     for player in &request.players {
+        if let Some(scale) = player.chicken {
+            if !(0.25..=4.0).contains(&scale) {
+                bail!("ungültige Huhn-Größe");
+            }
+            chickens.insert(player.steamid.clone(), scale);
+        }
         if player.steamid.len() != 17 || !player.steamid.bytes().all(|b| b.is_ascii_digit()) {
             bail!("ungültige SteamID");
         }
@@ -348,6 +372,7 @@ fn rewrite(request_path: &str) -> Result<()> {
     {
         let mut swap = swap.borrow_mut();
         swap.models = models;
+        swap.chickens = chickens;
         swap.looks = looks;
     }
     writer.run().map_err(|e| anyhow!("{e}"))?;
@@ -472,7 +497,7 @@ impl Observer for Fingerprint {
         }
         if event != EntityEvents::Deleted {
             for field in entity.fields() {
-                if field.name.contains("m_modelState.m_") {
+                if field.name.contains("m_modelState.m_") || field.name == SCALE_FIELD {
                     continue;
                 }
                 let value = format!("{:?}", field.value);

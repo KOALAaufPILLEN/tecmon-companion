@@ -151,6 +151,17 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.35.0: Huhn-Modus (Experiment)
+
+- Auf der Webseite lässt sich ein Spieler für das ganze Video in ein Huhn
+  verwandeln, in Größe 0,5 bis 3 (Capability `chicken-v1`, je Szene
+  `chicken`). Der eigene Demo-Rewriter setzt dafür das Huhn-Modell
+  (`models/chicken/chicken.vmdl`) und die Größe in eine Kopie der Demo; die
+  Original-Demo bleibt unverändert. Zusammen mit „Intro als eigene Szene davor“
+  ergibt das ein Huhn-Intro.
+- Experiment: Ob Animationen und Kamera mit dem Huhn sauber aussehen, ist noch
+  nicht auf echten PCs geprüft.
+
 ### Neu in 0.34.0: Demos von Valve über den Companion laden
 
 - Valve liefert Demos nur über http, eine https-Seite darf sie nicht direkt

@@ -23,6 +23,10 @@ import { access, readFile, writeFile, rm } from "node:fs/promises";
 import { SKIN_GLOVES } from "./skin-swap.mjs";
 
 export const AGENT_CAPABILITY = "agent-swap-v1";
+/** Huhn-Modus (Experiment): Spieler als Huhn in wählbarer Größe, über denselben Rewriter. */
+export const CHICKEN_CAPABILITY = "chicken-v1";
+export const CHICKEN_MIN = 0.5;
+export const CHICKEN_MAX = 3;
 export const REWRITER_EXE = "tecmon-demo-rewriter.exe";
 
 /** Standard-Agenten (eigene Nummern, wie auf der Webseite). */
@@ -112,7 +116,14 @@ export function cleanAgents(value, fail) {
   return Object.keys(out).length ? out : undefined;
 }
 
-export const hasAgents = (job) => job.sequences.some((s) => s.agents);
+/** Huhn-Größe einer Szene prüfen: Zahl von CHICKEN_MIN bis CHICKEN_MAX, auf 0,05 gerundet. */
+export function cleanChicken(value, fail) {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < CHICKEN_MIN || value > CHICKEN_MAX) fail();
+  return Math.round(value * 20) / 20;
+}
+
+export const hasAgents = (job) => job.sequences.some((s) => s.agents || s.chicken !== undefined);
 const hasGloveSkins = (s) => (s.skins || []).some((skin) => Boolean(SKIN_GLOVES[skin.weapon]));
 
 /**
@@ -124,8 +135,13 @@ export function agentRequest(job, { input, output, original, cache, skinsSwapped
   const players = new Map();
   for (const s of job.sequences) {
     const wants = s.agents || {};
-    if (!s.agents && !(skinsSwapped && hasGloveSkins(s))) continue;
+    if (!s.agents && s.chicken === undefined && !(skinsSwapped && hasGloveSkins(s))) continue;
     const known = players.get(s.steamId) || {};
+    if (s.chicken !== undefined) {
+      if (known.chicken !== undefined && known.chicken !== s.chicken)
+        throw new Error(`${s.playerName}: In zwei Szenen sind verschiedene Huhn-Größen gewählt. Pro Spieler geht nur eine je Video.`);
+      known.chicken = s.chicken;
+    }
     for (const side of ["t", "ct"]) {
       if (wants[side] === undefined) continue;
       if (known[side] !== undefined && known[side] !== wants[side])
@@ -145,6 +161,8 @@ export function agentRequest(job, { input, output, original, cache, skinsSwapped
       steamid: steamId,
       ...(sides.t !== undefined ? { t: AGENTS[sides.t][1] } : {}),
       ...(sides.ct !== undefined ? { ct: AGENTS[sides.ct][1] } : {}),
+      // Huhn-Modus (chicken-v1): ersetzt für diesen Spieler den Agenten im ganzen Video.
+      ...(sides.chicken !== undefined ? { chicken: sides.chicken } : {}),
     })),
   };
 }
@@ -183,7 +201,7 @@ export async function createAgentSwap({
       }
       const requestFile = `${base}.tecmon-agents.request.json`;
       await writeFile(requestFile, JSON.stringify(request));
-      log(hasAgents(job) ? "Agenten in einer Kopie der Demo tauschen …" : "Handschuhe passend zum Agenten einstellen …");
+      log(job.sequences.some((s) => s.chicken !== undefined) ? "Hühner und Agenten in einer Kopie der Demo einsetzen …" : hasAgents(job) ? "Agenten in einer Kopie der Demo tauschen …" : "Handschuhe passend zum Agenten einstellen …");
       try {
         let result = null;
         try {
