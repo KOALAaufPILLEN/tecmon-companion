@@ -228,6 +228,10 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Skin-Tausch mit Handschuhen läuft der Rewriter auch ohne Agentenwunsch, um die
   Handschuh-Bodygroups zu reparieren; scheitert nur das, geht die Aufnahme mit
   der Skin-Kopie weiter.
+- Huhn-Modus (`chicken-v1`, Experiment): je Szene `chicken` als Zahl von `CHICKEN_MIN` bis
+  `CHICKEN_MAX` (`cleanChicken()`), pro Spieler eine Größe je Video. Der Rewriter setzt nur das feste
+  Modell `models/chicken/chicken.vmdl`, Mesh-Maske, Bodygroups wie die Hühner der Karte und
+  `m_flScale`; kein Modellpfad aus dem Auftrag.
 - Bodygroups und Mesh-Maske nie fest setzen: aus der Original-Demo lernen
   (`learn`), lokal in `agent-looks.json` merken, nur für unbekannte Modelle
   schätzen und das melden (`guessed`).

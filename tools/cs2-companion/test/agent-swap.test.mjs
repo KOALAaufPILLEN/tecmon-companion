@@ -125,3 +125,22 @@ test("a failing program reports a short reason", async () => {
   });
   await assert.rejects(swap.rewrite(job({ t: 4613 }), { input: path.join(dir, "a.dem"), original: path.join(dir, "a.dem") }), /Demo nicht lesbar/);
 });
+
+test("chicken mode: size is checked, one size per player and passed to the rewriter", async () => {
+  const { cleanChicken, CHICKEN_MIN, CHICKEN_MAX } = await import("../agent-swap.mjs");
+  const fail = () => {
+    throw new Error("bad");
+  };
+  assert.equal(cleanChicken(undefined, fail), undefined);
+  assert.equal(cleanChicken(1.53, fail), 1.55);
+  for (const bad of [CHICKEN_MIN - 0.1, CHICKEN_MAX + 0.1, "2", NaN, Infinity, null]) assert.throws(() => cleanChicken(bad, fail));
+  const base = { format: "tecmon-cs2-job", version: 1, title: "Test", map: "de_mirage", tickRate: 64, branding: { enabled: false } };
+  const scene = (start, chicken) => ({ startTick: start, endTick: start + 640, steamId: STEAM, playerName: "Eins", slot: 2, chicken });
+  const ok = validateJob({ ...base, sequences: [scene(1000, 2), scene(3000, 2)] });
+  assert.ok(hasAgents(ok));
+  const request = agentRequest(ok, { input: "a.dem", output: "b.dem", original: "a.dem", cache: "c.json" });
+  assert.deepEqual(request.players, [{ steamid: STEAM, chicken: 2 }]);
+  const mixed = validateJob({ ...base, sequences: [scene(1000, 2), scene(3000, 1)] });
+  assert.throws(() => agentRequest(mixed, { input: "a", output: "b", original: "a", cache: "c" }), /Huhn-Größen/);
+  assert.throws(() => validateJob({ ...base, sequences: [scene(1000, 9)] }));
+});
