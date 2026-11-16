@@ -171,6 +171,9 @@ struct PlayerRequest {
     /// Farbe = Nummer der Materialgruppe (0 = Standard).
     #[serde(default)]
     chicken_coat: Option<u32>,
+    /// Handschuhe kommen erst danach per Skin-Tausch dazu: Aussehen „mit Handschuhen“ wählen.
+    #[serde(default)]
+    force_gloves: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -252,6 +255,8 @@ struct AgentSwap {
     models: HashMap<String, HashMap<u64, u64>>,
     /// SteamID64 -> Huhn (Größe, Rasse, Farbe)
     chickens: HashMap<String, Chicken>,
+    /// SteamID64 der Spieler, die später Handschuhe per Skin-Tausch bekommen.
+    gloves: BTreeSet<String>,
     looks: Looks,
     changed: BTreeMap<String, usize>,
     guessed: BTreeSet<String>,
@@ -278,7 +283,7 @@ fn wanted_fields(swap: &mut AgentSwap, ctx: &Context, entity: &Entity) -> Option
     let player = swap.models.get(&steamid)?;
     let current = prop(entity, MODEL_FIELD).filter(|m| *m != 0)?;
     let model = player.get(&team).copied().unwrap_or(current);
-    let gloves = prop(entity, GLOVES_FIELD).unwrap_or(0) != 0;
+    let gloves = swap.gloves.contains(&steamid) || prop(entity, GLOVES_FIELD).unwrap_or(0) != 0;
     let len = prop(entity, BODYGROUP_LEN).unwrap_or(1) as usize;
     let (look, exact) = wanted_look(&swap.looks, model, gloves, len);
     if !exact {
@@ -399,7 +404,11 @@ fn rewrite(request_path: &str) -> Result<()> {
     }
     let mut models: HashMap<String, HashMap<u64, u64>> = HashMap::new();
     let mut chickens: HashMap<String, Chicken> = HashMap::new();
+    let mut gloves: BTreeSet<String> = BTreeSet::new();
     for player in &request.players {
+        if player.force_gloves {
+            gloves.insert(player.steamid.clone());
+        }
         if let Some(scale) = player.chicken {
             chickens.insert(player.steamid.clone(), chicken_of(scale, player.chicken_breed.as_deref(), player.chicken_coat)?);
         }
@@ -440,6 +449,7 @@ fn rewrite(request_path: &str) -> Result<()> {
         let mut swap = swap.borrow_mut();
         swap.models = models;
         swap.chickens = chickens;
+        swap.gloves = gloves;
         swap.looks = looks;
     }
     writer.run().map_err(|e| anyhow!("{e}"))?;

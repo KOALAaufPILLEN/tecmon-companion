@@ -149,12 +149,14 @@ const hasGloveSkins = (s) => (s.skins || []).some((skin) => Boolean(SKIN_GLOVES[
  * Spieler mit getauschten Handschuhen kommen ohne Agentenwunsch dazu, damit
  * nur ihre Handschuh-Bodygroups repariert werden.
  */
-export function agentRequest(job, { input, output, original, cache, skinsSwapped = false }) {
+export function agentRequest(job, { input, output, original, cache, skinsSwapped = false, gloveSkinsLater = false }) {
   const players = new Map();
   for (const s of job.sequences) {
     const wants = s.agents || {};
-    if (!s.agents && s.chicken === undefined && !(skinsSwapped && hasGloveSkins(s))) continue;
+    const gloves = (skinsSwapped || gloveSkinsLater) && hasGloveSkins(s);
+    if (!s.agents && s.chicken === undefined && !gloves) continue;
     const known = players.get(s.steamId) || {};
+    if (gloveSkinsLater && gloves) known.forceGloves = true;
     if (s.chicken !== undefined) {
       if (known.chicken !== undefined && known.chicken !== s.chicken)
         throw new Error(`${s.playerName}: In zwei Szenen sind verschiedene Huhn-Größen gewählt. Pro Spieler geht nur eine je Video.`);
@@ -188,8 +190,20 @@ export function agentRequest(job, { input, output, original, cache, skinsSwapped
       ...(sides.chicken !== undefined ? { chicken: sides.chicken } : {}),
       // Rasse und Farbe (chicken-breed-v1); ohne Angabe Catalana in Standardfarbe.
       ...(sides.chickenLook ? { chicken_breed: sides.chickenLook.breed, chicken_coat: sides.chickenLook.coat } : {}),
+      // Handschuhe kommen erst danach per Skin-Tausch: Bodygroups schon passend setzen.
+      ...(sides.forceGloves ? { force_gloves: true } : {}),
     })),
   };
+}
+
+/** Erste aussagekräftige Zeilen der Fehlerausgabe (Rust-Panics beginnen mit einer Leerzeile). */
+export function failureReason(error) {
+  const lines = String(error?.stderr || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !/^note: |^stack backtrace/.test(line));
+  const text = lines.slice(0, /panicked at/.test(lines[0] || "") ? 2 : 1).join(" ") || String(error?.message || "").split("\n")[0];
+  return text.slice(0, 240);
 }
 
 function runExe(exe, args) {
@@ -215,10 +229,10 @@ export async function createAgentSwap({
      * `input` ist die Demo für die Aufnahme (eventuell schon mit getauschten Skins),
      * `original` die unveränderte Demo zum Lernen der Bodygroups.
      */
-    async rewrite(job, { input, original, skinsSwapped = false, log = () => {} }) {
+    async rewrite(job, { input, original, skinsSwapped = false, gloveSkinsLater = false, log = () => {} }) {
       const base = original.replace(/\.dem$/i, "");
       const output = `${base}.tecmon-agents.dem`;
-      const request = agentRequest(job, { input, output, original, cache, skinsSwapped });
+      const request = agentRequest(job, { input, output, original, cache, skinsSwapped, gloveSkinsLater });
       if (!request) return "";
       if (!available) {
         if (hasAgents(job)) log("Agenten-Tausch braucht einen neueren Companion; das Video zeigt die echten Agenten.");
@@ -233,7 +247,7 @@ export async function createAgentSwap({
           result = JSON.parse((await run(exe, ["rewrite", requestFile])).trim().split("\n").pop());
         } catch (error) {
           await rm(output, { force: true }).catch(() => {});
-          const reason = String(error?.stderr || error?.message || "").split("\n")[0].slice(0, 200);
+          const reason = failureReason(error);
           throw new Error(`Agenten-Tausch fehlgeschlagen (${reason || "keine Antwort"}).`);
         }
         if (!result?.ok) throw new Error("Agenten-Tausch fehlgeschlagen.");

@@ -164,3 +164,19 @@ test("chicken breeds: breed and coat are checked, one chicken per player", async
   const { chicken: _size, ...noSize } = scene(1000, { breed: "silkie" });
   assert.throws(() => validateJob({ ...base, sequences: [noSize] }));
 });
+
+test("failure reason: Rust panics show the panic line, gloves can be prepared before the skin swap", async () => {
+  const { failureReason } = await import("../agent-swap.mjs");
+  const panic = { stderr: "\nthread 'main' (42) panicked at src/main.rs:10:5:\nindex out of bounds\nnote: run with `RUST_BACKTRACE=1`\n", message: "Command failed" };
+  assert.equal(failureReason(panic), "thread 'main' (42) panicked at src/main.rs:10:5: index out of bounds");
+  assert.equal(failureReason({ stderr: "", message: "spawn EACCES\nmore" }), "spawn EACCES");
+  assert.equal(failureReason({ stderr: "Error: Demo nicht lesbar\n" }), "Error: Demo nicht lesbar");
+  const base = { format: "tecmon-cs2-job", version: 1, title: "Test", map: "de_mirage", tickRate: 64, branding: { enabled: false } };
+  const job = validateJob({
+    ...base,
+    sequences: [{ startTick: 1000, endTick: 1640, steamId: STEAM, playerName: "Eins", slot: 2, skins: [{ weapon: 5030, paintKit: 10037, wear: 0.1, seed: 1 }] }],
+  });
+  const request = agentRequest(job, { input: "a.dem", output: "b.dem", original: "a.dem", cache: "c.json", gloveSkinsLater: true });
+  assert.deepEqual(request.players, [{ steamid: STEAM, force_gloves: true }]);
+  assert.equal(agentRequest(job, { input: "a.dem", output: "b.dem", original: "a.dem", cache: "c.json" }), null);
+});
