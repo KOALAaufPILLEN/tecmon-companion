@@ -210,6 +210,28 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Handschuh aus `SKIN_GLOVES`. Ersetzt werden `DEFAULT_KNIVES`/`DEFAULT_GLOVES` (und `from`);
   `cs2_game_dir` kommt nur aus dem erkannten CS2-Pfad (`cs2GameDir()`), nie aus dem Auftrag.
 
+## Agenten-Tausch (`agent-swap.mjs`, `native/tecmon-demo-rewriter`)
+
+- Eigener Rewriter in Rust (MIT) auf Basis von source2-demo (MIT/Apache-2.0,
+  Kopie in `native/tecmon-demo-rewriter/vendor`, Änderungen mit „TecMon:“
+  markiert). Kein Code aus CS2-nskinz übernehmen. Die Release-Pipeline baut ihn
+  mit `cargo build --locked`; er liegt als `tecmon-demo-rewriter.exe` neben den
+  `.mjs`-Dateien. Capability `agent-swap-v1` nur, wenn die Datei da ist und die
+  eigene Engine läuft.
+- Aus dem Auftrag nur `sequences[].agents` als `{ t?, ct? }` mit Nummern aus
+  `AGENTS` der passenden Seite (`cleanAgents()`); Modellpfade stehen nur im
+  Companion. Pro Spieler und Seite ein Agent je Video. SteamID64 bleibt Text.
+- Aufgenommen wird aus `*.tecmon-agents.dem`, danach gelöscht. Nach einem
+  Skin-Tausch mit Handschuhen läuft der Rewriter auch ohne Agentenwunsch, um die
+  Handschuh-Bodygroups zu reparieren; scheitert nur das, geht die Aufnahme mit
+  der Skin-Kopie weiter.
+- Bodygroups und Mesh-Maske nie fest setzen: aus der Original-Demo lernen
+  (`learn`), lokal in `agent-looks.json` merken, nur für unbekannte Modelle
+  schätzen und das melden (`guessed`).
+- Vor Änderungen am Rewriter mit einer echten Demo prüfen:
+  `tecmon-demo-rewriter compare original.dem umgeschrieben.dem` muss ohne
+  Abweichung außerhalb der Modellfelder enden.
+
 ## Highlight-Video nach dem Match (`auto-highlights.mjs`)
 
 - Standardmäßig aus (`auto-highlights.json`). Eingeschaltet braucht es die

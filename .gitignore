@@ -6,6 +6,8 @@ build/
 dist/
 cache/
 vendor/
+!native/tecmon-demo-rewriter/vendor/
+native/tecmon-demo-rewriter/target/
 runtime/
 coverage/
 *.log
