@@ -99,11 +99,11 @@ test("Messer und Handschuhe ersetzen die Standard-Gegenstände (skin-swap-v2)", 
   const items = request.passes[0].items;
   const knives = items.filter((i) => i.replacement_definition_index === 507);
   // Nur Standard-Quellen, je Seite: der Rewriter lehnt andere ab und nutzt Messer nur aus T/CT-Plänen.
-  assert.deepEqual(knives.map((i) => [i.definition_index, i.team]), [[42, "CT"], [59, "T"]]);
+  assert.deepEqual(knives.map((i) => [i.definition_index, i.team]).sort(), [[42, "CT"], [59, "T"]]);
   assert.deepEqual(items.filter((i) => i.replacement_definition_index === 5030).map((i) => i.team).sort(), ["CT", "T"]);
   assert.equal(items.find((i) => i.definition_index === 7).team, "ANY");
   const gloves = items.filter((i) => i.replacement_definition_index === 5030);
-  assert.deepEqual(gloves.map((i) => i.definition_index), DEFAULT_GLOVES);
+  assert.deepEqual(gloves.map((i) => i.definition_index).sort(), DEFAULT_GLOVES);
   assert.ok(gloves.every((i) => i.paint_kit === 10018 && i.quality === 3 && i.custom_name === SKIN_TAG));
   assert.equal(items.find((i) => i.definition_index === 7).replacement_definition_index, null);
   // Ohne Messer kein Spielordner in der Anfrage
@@ -113,9 +113,33 @@ test("Messer und Handschuhe ersetzen die Standard-Gegenstände (skin-swap-v2)", 
   assert.throws(() => rewriteRequest(validateJob(value), "a.dem", "b.dem", "x"), /verschiedene Messer/);
   // Gleiches Messer wie in der Demo: trotzdem nur Standard-Quellen (Rewriter ersetzt jedes Messer des Spielers).
   const own = rewriteRequest(validateJob(job([{ ...knife, weapon: 515, paintKit: 38 }])), "a.dem", "b.dem", "x");
-  assert.deepEqual(own.passes[0].items.map((i) => i.definition_index), DEFAULT_KNIVES);
+  assert.deepEqual(own.passes[0].items.map((i) => i.definition_index).sort(), DEFAULT_KNIVES);
   assert.equal(cs2GameDir(""), "");
   assert.match(cs2GameDir(path.join("C:", "cs2", "game", "bin", "win64", "cs2.exe")), /game[\\/]csgo$/);
+});
+
+test("Messer und Handschuhe je Seite (skin-side-v1)", () => {
+  const tKnife = { weapon: 507, paintKit: 0, wear: 0, seed: 0, side: "t" };
+  const ctKnife = { weapon: 515, paintKit: 38, wear: 0.01, seed: 3, side: "ct" };
+  const tGlove = { weapon: 5030, paintKit: 10018, wear: 0.2, seed: 7, side: "t" };
+  const value = job([tKnife, tGlove]);
+  value.sequences[1] = { ...value.sequences[1], steamId: STEAM, skins: [ctKnife] };
+  const clean = validateJob(value);
+  assert.equal(clean.sequences[1].skins[0].side, "ct");
+  const items = rewriteRequest(clean, "a.dem", "b.dem", "x").passes[0].items;
+  const by = (source) => items.filter((i) => i.definition_index === source).map((i) => i.replacement_definition_index);
+  assert.deepEqual(by(59), [507]);
+  assert.deepEqual(by(42), [515]);
+  assert.deepEqual(by(5028), [5030]);
+  assert.deepEqual(by(5029), []);
+  // Seite nur bei Messer/Handschuh und nur t/ct
+  assert.throws(() => validateJob(job([{ ...ak, side: "t" }])));
+  assert.throws(() => validateJob(job([{ ...tKnife, side: "x" }])));
+  // Messer ohne Seite gilt für beide: Widerspruch zu einem anderen T-Messer
+  const clash = job([{ ...tKnife, side: undefined }]);
+  delete clash.sequences[0].skins[0].side;
+  clash.sequences[1] = { ...clash.sequences[1], steamId: STEAM, skins: [{ ...ctKnife, side: "t" }] };
+  assert.throws(() => rewriteRequest(validateJob(clash), "a.dem", "b.dem", "x"), /verschiedene Messer für T/);
 });
 
 const body = (bytes) => ({ ok: true, body: [bytes] });
