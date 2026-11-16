@@ -735,7 +735,21 @@ fn inspect(demo: &str, scratch: &str) -> Result<()> {
     Ok(())
 }
 
+/// Stack für die eigentliche Arbeit. Windows gibt dem Hauptthread nur 1 MB; das
+/// Entpacken großer Demos (viele Entitäten, tiefe Feldpfade) braucht mehr.
+const WORK_STACK: usize = 256 * 1024 * 1024;
+
 fn main() -> Result<()> {
+    std::thread::Builder::new()
+        .name("tecmon-rewriter".into())
+        .stack_size(WORK_STACK)
+        .spawn(run)
+        .context("Arbeits-Thread nicht startbar")?
+        .join()
+        .map_err(|_| anyhow!("Rewriter abgestürzt"))?
+}
+
+fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
         Some("inspect") if args.len() == 4 => inspect(&args[2], &args[3]),
