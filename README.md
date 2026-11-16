@@ -151,6 +151,14 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.33.1: Update mit Demo-Rewriter repariert
+
+- Die Update-Datei für 0.33.0 brach mit „Unzulässiger Update-Pfad.“ ab, weil
+  sie `tecmon-demo-rewriter.exe` nicht einspielen durfte. Die Datei ist jetzt
+  erlaubt.
+- Die Update-Datei prüft jetzt alle Pfade, bevor sie etwas schreibt; ein
+  abgelehnter Eintrag hinterlässt kein halbes Update mehr.
+
 ### Neu in 0.33.0: Agenten-Tausch und reparierte Handschuhe
 
 - Neuer eigener TecMon-Demo-Rewriter (`tecmon-demo-rewriter.exe`, Quellcode in
