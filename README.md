@@ -151,6 +151,14 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.36.1: Agenten-Tausch nach Skin-Tausch
+
+- Scheitert der Agenten-Tausch auf der Skin-Kopie, versucht der Companion die
+  umgekehrte Reihenfolge: erst Agenten in der unveränderten Demo (Handschuh-
+  Bodygroups schon passend für die getauschten Handschuhe), dann die Skins.
+- Das Protokoll zeigt jetzt die echte Fehlerzeile des Rewriters statt
+  „keine Antwort“.
+
 ### Neu in 0.36.0: Hühner-Rassen und Zeus-Skins
 
 - Huhn-Modus mit den Rassen aus CS2s Haustier-Update: Catalana (13 Farben),

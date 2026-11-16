@@ -649,9 +649,23 @@ export async function createCompanion({
       } catch (error) {
         // Nur Handschuh-Reparatur: weiter mit der Skin-Kopie statt abzubrechen.
         if (!hasAgents(job.job)) job.log += `\n${error.message} Das Video nutzt die Skin-Kopie ohne Handschuh-Anpassung.`;
+        else if (!skinCopy) throw error;
         else {
+          // Umgekehrte Reihenfolge: erst Agenten in der unveränderten Demo, dann Skins darauf.
+          job.log += `\n${error.message} Neuer Versuch: erst Agenten, dann Skins.`;
           await skinSwap.cleanup(skinCopy);
-          throw error;
+          skinCopy = "";
+          const log = (message) => {
+            job.log += `\n${message}`;
+          };
+          agentCopy = await agentSwap.rewrite(job.job, { input: demo, original: demo, gloveSkinsLater: true, log });
+          try {
+            skinCopy = await skinSwap.rewrite(job.job, agentCopy || demo, log, { gameDir: cs2GameDir(detected.cs2) });
+          } finally {
+            // Die Skin-Kopie enthält die Agenten schon; die Zwischenkopie wird nicht mehr gebraucht.
+            await agentSwap.cleanup(agentCopy);
+            agentCopy = "";
+          }
         }
       }
     }
