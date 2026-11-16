@@ -38,6 +38,7 @@ import { createCrosshairSettings, crosshairCommands, crosshairConfigPath, decode
 import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { checkPostgres, postgresEnvironment } from "./postgresql.mjs";
+import { verifyCs2 } from "./cs2-verify.mjs";
 import {
   readInstallation,
   ensureManagedDatabase,
@@ -135,6 +136,8 @@ export async function createCompanion({
   runProcess,
   installation = null,
   detectTools = detect,
+  /** Prüft, ob die cs2.exe echt ist (Links, Steam-Ordner, Valve-Signatur); siehe cs2-verify.mjs. */
+  verifyGame = verifyCs2,
   loadAssets = loadBrandingPack,
   loadMotion = loadMotionPack,
   startDatabase = ensureManagedDatabase,
@@ -199,6 +202,13 @@ export async function createCompanion({
   if (installation) {
     detected.csdm = installation.csdmExe;
     detected.cs2 = installation.cs2Exe || detected.cs2;
+  }
+  // Nur eine echte cs2.exe von Valve benutzen; umbenannte Programme oder Links darauf nie starten.
+  let cs2Check = { ok: true, reason: "" };
+  if (detected.cs2) {
+    const check = await verifyGame(detected.cs2);
+    cs2Check = { ok: check.ok, reason: check.reason };
+    detected.cs2 = check.ok ? check.path : "";
   }
   // CS2 Game State Integration: offizielle, rein lesende Schnittstelle für Rundentipps.
   const games = await createGamePackages(installation?.profileDir || dataDir);
@@ -664,6 +674,11 @@ export async function createCompanion({
       job.log += "\nKamerafahrten und Verfolger-Kamera gibt es nur mit der eigenen TecMon-Engine. CS Demo Manager nutzt stattdessen feste Punkte und die Egoansicht.";
     job.status = "analyzing";
     job.output = output;
+    if (installation?.cs2Exe) {
+      // CS Demo Manager startet den eingetragenen Pfad selbst: vorher genauso prüfen.
+      const check = await verifyGame(installation.cs2Exe);
+      if (!check.ok) throw new Error(`CS2 wird nicht gestartet: ${check.reason}`);
+    }
     await prepareEngine();
     await run(exe, ["analyze", demo], job);
     // Nach der Analyse gibt es die CSDM-Tabellen sicher; die Punkte gelten nur fuer diesen Auftrag.
@@ -1027,6 +1042,7 @@ export async function createCompanion({
       if (req.method === "GET" && url.pathname === "/api/state")
         return json(res, 200, {
           detected,
+          cs2Check,
           postgres,
           managed: !!installation,
           engine: { internal: ownEngine, available: !!installation },
