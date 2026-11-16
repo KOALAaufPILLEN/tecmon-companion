@@ -151,6 +151,15 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.36.0: Hühner-Rassen und Zeus-Skins
+
+- Huhn-Modus mit den Rassen aus CS2s Haustier-Update: Catalana (13 Farben),
+  Polish (12), Silkie (9) und Küken (Capability `chicken-breed-v1`, je Szene
+  `chickenLook` mit `breed` und `coat`). Die Farbe ist die Nummer der
+  Materialgruppe des Modells; Farbnamen gibt es von Valve nicht. Modellpfade
+  stehen nur im Rewriter. Hüte und Accessoires der Haustiere sind nicht dabei.
+- Skin-Tausch kennt jetzt auch den Zeus x27.
+
 ### Neu in 0.35.0: Huhn-Modus (Experiment)
 
 - Auf der Webseite lässt sich ein Spieler für das ganze Video in ein Huhn

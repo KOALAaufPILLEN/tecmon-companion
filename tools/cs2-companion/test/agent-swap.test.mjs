@@ -144,3 +144,23 @@ test("chicken mode: size is checked, one size per player and passed to the rewri
   assert.throws(() => agentRequest(mixed, { input: "a", output: "b", original: "a", cache: "c" }), /Huhn-Größen/);
   assert.throws(() => validateJob({ ...base, sequences: [scene(1000, 9)] }));
 });
+
+test("chicken breeds: breed and coat are checked, one chicken per player", async () => {
+  const { cleanChickenLook, CHICKEN_BREEDS } = await import("../agent-swap.mjs");
+  const fail = () => {
+    throw new Error("bad");
+  };
+  assert.deepEqual(cleanChickenLook({ breed: "silkie", coat: 8 }, fail), { breed: "silkie", coat: 8 });
+  assert.deepEqual(cleanChickenLook({ breed: "polish" }, fail), { breed: "polish", coat: 0 });
+  for (const bad of [{ breed: "silkie", coat: CHICKEN_BREEDS.silkie }, { breed: "toString" }, { breed: "models/chicken/chicken.vmdl" }, { breed: "chick", coat: 1 }, { breed: "polish", coat: 1.5 }, [], "silkie"])
+    assert.throws(() => cleanChickenLook(bad, fail));
+  const base = { format: "tecmon-cs2-job", version: 1, title: "Test", map: "de_mirage", tickRate: 64, branding: { enabled: false } };
+  const scene = (start, chickenLook, chicken = 1.5) => ({ startTick: start, endTick: start + 640, steamId: STEAM, playerName: "Eins", slot: 2, chicken, chickenLook });
+  const ok = validateJob({ ...base, sequences: [scene(1000, { breed: "polish", coat: 3 }), scene(3000, { breed: "polish", coat: 3 })] });
+  const request = agentRequest(ok, { input: "a.dem", output: "b.dem", original: "a.dem", cache: "c.json" });
+  assert.deepEqual(request.players, [{ steamid: STEAM, chicken: 1.5, chicken_breed: "polish", chicken_coat: 3 }]);
+  const mixed = validateJob({ ...base, sequences: [scene(1000, { breed: "polish", coat: 3 }), scene(3000, undefined)] });
+  assert.throws(() => agentRequest(mixed, { input: "a", output: "b", original: "a", cache: "c" }), /verschiedene Hühner/);
+  const { chicken: _size, ...noSize } = scene(1000, { breed: "silkie" });
+  assert.throws(() => validateJob({ ...base, sequences: [noSize] }));
+});

@@ -70,6 +70,7 @@ export const SKIN_WEAPONS = {
   28: "Negev",
   29: "Sawed-Off",
   30: "Tec-9",
+  31: "Zeus x27",
   32: "P2000",
   33: "MP7",
   34: "MP9",
