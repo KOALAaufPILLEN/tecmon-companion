@@ -98,7 +98,10 @@ test("Messer und Handschuhe ersetzen die Standard-Gegenstände (skin-swap-v2)", 
   assert.equal(request.cs2_game_dir, "C:/cs2/game/csgo");
   const items = request.passes[0].items;
   const knives = items.filter((i) => i.replacement_definition_index === 507);
-  assert.deepEqual(knives.map((i) => i.definition_index), [...DEFAULT_KNIVES, 515]);
+  // Nur Standard-Quellen, je Seite: der Rewriter lehnt andere ab und nutzt Messer nur aus T/CT-Plänen.
+  assert.deepEqual(knives.map((i) => [i.definition_index, i.team]), [[42, "CT"], [59, "T"]]);
+  assert.deepEqual(items.filter((i) => i.replacement_definition_index === 5030).map((i) => i.team).sort(), ["CT", "T"]);
+  assert.equal(items.find((i) => i.definition_index === 7).team, "ANY");
   const gloves = items.filter((i) => i.replacement_definition_index === 5030);
   assert.deepEqual(gloves.map((i) => i.definition_index), DEFAULT_GLOVES);
   assert.ok(gloves.every((i) => i.paint_kit === 10018 && i.quality === 3 && i.custom_name === SKIN_TAG));
@@ -108,9 +111,9 @@ test("Messer und Handschuhe ersetzen die Standard-Gegenstände (skin-swap-v2)", 
   const value = job([knife]);
   value.sequences[1] = { ...value.sequences[1], steamId: STEAM, skins: [{ ...knife, weapon: 515 }] };
   assert.throws(() => rewriteRequest(validateJob(value), "a.dem", "b.dem", "x"), /verschiedene Messer/);
-  // Gleiches Messer wie in der Demo, nur neue Lackierung: das eigene Messer muss mit in die Liste.
+  // Gleiches Messer wie in der Demo: trotzdem nur Standard-Quellen (Rewriter ersetzt jedes Messer des Spielers).
   const own = rewriteRequest(validateJob(job([{ ...knife, weapon: 515, paintKit: 38 }])), "a.dem", "b.dem", "x");
-  assert.deepEqual(own.passes[0].items.map((i) => i.definition_index), [...DEFAULT_KNIVES, 515]);
+  assert.deepEqual(own.passes[0].items.map((i) => i.definition_index), DEFAULT_KNIVES);
   assert.equal(cs2GameDir(""), "");
   assert.match(cs2GameDir(path.join("C:", "cs2", "game", "bin", "win64", "cs2.exe")), /game[\\/]csgo$/);
 });

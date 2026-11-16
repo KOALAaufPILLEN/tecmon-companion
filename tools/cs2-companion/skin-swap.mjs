@@ -178,6 +178,10 @@ export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
     }
     players.set(s.steamId, items);
   }
+  // Wie die nSkinz-Oberfläche: Messer 59/Handschuhe 5028 nur für T, 42/5029 nur für CT. Der Rewriter
+  // wendet Messer nur aus dem Plan der eigenen Seite an ("ANY" wurde ignoriert) und ersetzt jedes
+  // Messer des Spielers, auch ein eigenes; andere Quell-Definitionen lehnt er ab (Auftrag scheitert).
+  const sideOf = { 59: "T", 42: "CT", 5028: "T", 5029: "CT" };
   const item = (source, skin, replace) => ({
     definition_index: source,
     replacement_definition_index: replace ? skin.weapon : null,
@@ -186,7 +190,7 @@ export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
     pattern_seed: skin.seed,
     wear: Math.max(skin.wear, 0.0000001),
     custom_name: SKIN_TAG,
-    team: "ANY",
+    team: sideOf[source] ?? "ANY",
   });
   const knives = [...players.values()].some((items) => items.has("knife"));
   if (knives && !gameDir) throw new Error("Für den Messer-Tausch wurde der CS2-Ordner nicht gefunden.");
@@ -199,12 +203,8 @@ export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
       // SteamID64 bleibt Text, nie über Number runden.
       steam_id64: steamId,
       items: [...items].flatMap(([slot, skin]) => {
-        if (slot === "knife") {
-          const sources = new Set(DEFAULT_KNIVES);
-          // Auch wenn das Messer aus der Demo dasselbe ist (nur neue Lackierung), muss es in die Liste.
-          if (skin.from !== undefined) sources.add(skin.from);
-          return [...sources].map((source) => item(source, skin, true));
-        }
+        // `from` (Messer aus der Demo) wird nicht mehr gebraucht: der Rewriter findet alle Messer des Spielers.
+        if (slot === "knife") return DEFAULT_KNIVES.map((source) => item(source, skin, true));
         if (slot === "glove") return DEFAULT_GLOVES.map((source) => item(source, skin, true));
         return [item(skin.weapon, skin, false)];
       }),
