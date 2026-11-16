@@ -232,6 +232,11 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   `CHICKEN_MAX` (`cleanChicken()`), pro Spieler eine Größe je Video. Der Rewriter setzt nur das feste
   Modell `models/chicken/chicken.vmdl`, Mesh-Maske, Bodygroups wie die Hühner der Karte und
   `m_flScale`; kein Modellpfad aus dem Auftrag.
+- Huhn-Rassen (`chicken-breed-v1`, nur zusammen mit `chicken`): je Szene `chickenLook`
+  als `{ breed, coat }`, `breed` aus `CHICKEN_BREEDS` (`cleanChickenLook()`), `coat` = Nummer der
+  Materialgruppe (0 = Standard, kleiner als die Farbzahl der Rasse). Der Rewriter kennt die
+  festen Modelle in `CHICKEN_BREEDS` (main.rs) und setzt `m_materialGroup` als String-Token der
+  Nummer; nie Pfade oder Gruppennamen aus dem Auftrag. Pro Spieler ein Huhn je Video.
 - Bodygroups und Mesh-Maske nie fest setzen: aus der Original-Demo lernen
   (`learn`), lokal in `agent-looks.json` merken, nur für unbekannte Modelle
   schätzen und das melden (`guessed`).

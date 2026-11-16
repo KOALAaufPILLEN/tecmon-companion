@@ -27,6 +27,13 @@ export const AGENT_CAPABILITY = "agent-swap-v1";
 export const CHICKEN_CAPABILITY = "chicken-v1";
 export const CHICKEN_MIN = 0.5;
 export const CHICKEN_MAX = 3;
+/**
+ * Huhn-Rassen aus CS2 (Haustier-Update, Sept. 2026): Kennung -> Anzahl Farben.
+ * Farben sind die Materialgruppen des Modells (0 = Standard). Modellpfade stehen
+ * nur im Rewriter (`CHICKEN_BREEDS` in main.rs), nie im Auftrag.
+ */
+export const CHICKEN_BREED_CAPABILITY = "chicken-breed-v1";
+export const CHICKEN_BREEDS = { catalana: 13, polish: 12, silkie: 9, chick: 1 };
 export const REWRITER_EXE = "tecmon-demo-rewriter.exe";
 
 /** Standard-Agenten (eigene Nummern, wie auf der Webseite). */
@@ -123,6 +130,17 @@ export function cleanChicken(value, fail) {
   return Math.round(value * 20) / 20;
 }
 
+/** Rasse und Farbe einer Szene prüfen: `{ breed, coat }`, nur zusammen mit einer Huhn-Größe. */
+export function cleanChickenLook(value, fail) {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) fail();
+  const coats = Object.hasOwn(CHICKEN_BREEDS, value.breed) ? CHICKEN_BREEDS[value.breed] : 0;
+  if (!coats) fail();
+  const coat = value.coat ?? 0;
+  if (!Number.isSafeInteger(coat) || coat < 0 || coat >= coats) fail();
+  return { breed: value.breed, coat };
+}
+
 export const hasAgents = (job) => job.sequences.some((s) => s.agents || s.chicken !== undefined);
 const hasGloveSkins = (s) => (s.skins || []).some((skin) => Boolean(SKIN_GLOVES[skin.weapon]));
 
@@ -140,7 +158,12 @@ export function agentRequest(job, { input, output, original, cache, skinsSwapped
     if (s.chicken !== undefined) {
       if (known.chicken !== undefined && known.chicken !== s.chicken)
         throw new Error(`${s.playerName}: In zwei Szenen sind verschiedene Huhn-Größen gewählt. Pro Spieler geht nur eine je Video.`);
+      const look = s.chickenLook ? `${s.chickenLook.breed}:${s.chickenLook.coat}` : "catalana:0";
+      if (known.look !== undefined && known.look !== look)
+        throw new Error(`${s.playerName}: In zwei Szenen sind verschiedene Hühner gewählt. Pro Spieler geht nur eins je Video.`);
       known.chicken = s.chicken;
+      known.look = look;
+      known.chickenLook = s.chickenLook;
     }
     for (const side of ["t", "ct"]) {
       if (wants[side] === undefined) continue;
@@ -163,6 +186,8 @@ export function agentRequest(job, { input, output, original, cache, skinsSwapped
       ...(sides.ct !== undefined ? { ct: AGENTS[sides.ct][1] } : {}),
       // Huhn-Modus (chicken-v1): ersetzt für diesen Spieler den Agenten im ganzen Video.
       ...(sides.chicken !== undefined ? { chicken: sides.chicken } : {}),
+      // Rasse und Farbe (chicken-breed-v1); ohne Angabe Catalana in Standardfarbe.
+      ...(sides.chickenLook ? { chicken_breed: sides.chickenLook.breed, chicken_coat: sides.chickenLook.coat } : {}),
     })),
   };
 }

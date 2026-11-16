@@ -21,9 +21,48 @@ const BODYGROUP_LEN: &str = "CBodyComponent.m_skeletonInstance.m_modelState.m_nB
 const MESH_FIELD: &str = "CBodyComponent.m_skeletonInstance.m_modelState.m_MeshGroupMask";
 const GLOVES_FIELD: &str = "m_EconGloves.m_iItemDefinitionIndex";
 const SCALE_FIELD: &str = "CBodyComponent.m_skeletonInstance.m_flScale";
-const CHICKEN_MODEL: &str = "models/chicken/chicken.vmdl";
+const MATERIAL_FIELD: &str = "CBodyComponent.m_skeletonInstance.m_materialGroup";
+/// Rassen: Name im Auftrag, festes Modell, höchste Farbnummer (Materialgruppe).
+const CHICKEN_BREEDS: [(&str, &str, u32); 4] = [
+    ("catalana", "models/chicken/chicken.vmdl", 12),
+    ("polish", "models/chicken/chicken_polish.vmdl", 11),
+    ("silkie", "models/chicken/chicken_silkie.vmdl", 8),
+    ("chick", "models/chicken/chick.vmdl", 0),
+];
 const RESOURCE_SEED: u64 = 0xEDAB_CDEF;
 const MAX_PLAYERS: usize = 10;
+
+/// MurmurHash2 (Austin Appleby, gemeinfrei) wie CS2s `CUtlStringToken`.
+/// Die Materialgruppen der Hühner heißen "1", "2", …; 0 = Standard.
+pub fn string_token(text: &str) -> u32 {
+    let data = text.to_ascii_lowercase().into_bytes();
+    const M: u32 = 0x5bd1_e995;
+    let mut h: u32 = 0x3141_5926 ^ data.len() as u32;
+    let mut chunks = data.chunks_exact(4);
+    for c in &mut chunks {
+        let mut k = u32::from_le_bytes([c[0], c[1], c[2], c[3]]).wrapping_mul(M);
+        k ^= k >> 24;
+        h = h.wrapping_mul(M) ^ k.wrapping_mul(M);
+    }
+    let rest = chunks.remainder();
+    if !rest.is_empty() {
+        for (i, b) in rest.iter().enumerate() {
+            h ^= (*b as u32) << (8 * i);
+        }
+        h = h.wrapping_mul(M);
+    }
+    h ^= h >> 13;
+    h = h.wrapping_mul(M);
+    h ^ (h >> 15)
+}
+
+fn coat_token(coat: u32) -> u32 {
+    if coat == 0 {
+        0
+    } else {
+        string_token(&coat.to_string())
+    }
+}
 
 /// MurmurHash64B (Austin Appleby, gemeinfrei) über den kleingeschriebenen Pfad.
 /// So bildet CS2 die Ressourcen-ID, die in `m_hModel` steht.
@@ -126,6 +165,19 @@ struct PlayerRequest {
     /// Versuch „Huhn-Modus“: Spieler als Huhn mit dieser Größe (0.25 bis 4).
     #[serde(default)]
     chicken: Option<f32>,
+    /// Rasse aus `CHICKEN_BREEDS` (ohne Angabe "catalana").
+    #[serde(default)]
+    chicken_breed: Option<String>,
+    /// Farbe = Nummer der Materialgruppe (0 = Standard).
+    #[serde(default)]
+    chicken_coat: Option<u32>,
+}
+
+#[derive(Clone, Copy)]
+struct Chicken {
+    scale: f32,
+    model: u64,
+    material: u32,
 }
 
 fn valid_model(path: &str) -> Result<String> {
@@ -198,8 +250,8 @@ pub fn wanted_look(looks: &Looks, model: u64, gloves: bool, fallback_len: usize)
 struct AgentSwap {
     /// SteamID64 -> Team (2 = T, 3 = CT) -> Ressourcen-ID
     models: HashMap<String, HashMap<u64, u64>>,
-    /// SteamID64 -> Größe als Huhn
-    chickens: HashMap<String, f32>,
+    /// SteamID64 -> Huhn (Größe, Rasse, Farbe)
+    chickens: HashMap<String, Chicken>,
     looks: Looks,
     changed: BTreeMap<String, usize>,
     guessed: BTreeSet<String>,
@@ -212,14 +264,15 @@ fn wanted_fields(swap: &mut AgentSwap, ctx: &Context, entity: &Entity) -> Option
     if team != 2 && team != 3 {
         return None;
     }
-    if let Some(&scale) = swap.chickens.get(&steamid) {
+    if let Some(&chicken) = swap.chickens.get(&steamid) {
         // Huhn: eigenes Modell, alle Meshes sichtbar, wie die Hühner auf der Karte.
         return Some(vec![
-            (MODEL_FIELD.to_string(), FieldValue::Unsigned64(resource_id(CHICKEN_MODEL))),
+            (MODEL_FIELD.to_string(), FieldValue::Unsigned64(chicken.model)),
+            (MATERIAL_FIELD.to_string(), FieldValue::Unsigned32(chicken.material)),
             (MESH_FIELD.to_string(), FieldValue::Unsigned64(u64::MAX)),
             (BODYGROUP_LEN.to_string(), FieldValue::Unsigned32(1)),
             (format!("{BODYGROUP_PREFIX}0000"), FieldValue::Signed32(0)),
-            (SCALE_FIELD.to_string(), FieldValue::Float(scale)),
+            (SCALE_FIELD.to_string(), FieldValue::Float(chicken.scale)),
         ]);
     }
     let player = swap.models.get(&steamid)?;
@@ -264,7 +317,9 @@ impl DemoRewriter for AgentSwap {
         field_name: &str,
         value: &FieldValue,
     ) -> Option<FieldValue> {
-        if !field_name.starts_with("CBodyComponent.m_skeletonInstance.m_modelState.m_") && field_name != SCALE_FIELD {
+        if !field_name.starts_with("CBodyComponent.m_skeletonInstance.m_modelState.m_") && field_name != SCALE_FIELD
+            && field_name != MATERIAL_FIELD
+        {
             return None;
         }
         let fields = wanted_fields(self, ctx, entity)?;
@@ -321,6 +376,21 @@ fn read_cache(path: &str) -> Looks {
         .unwrap_or_default()
 }
 
+fn chicken_of(scale: f32, breed: Option<&str>, coat: Option<u32>) -> Result<Chicken> {
+    if !(0.25..=4.0).contains(&scale) {
+        bail!("ungültige Huhn-Größe");
+    }
+    let breed = breed.unwrap_or("catalana");
+    let Some(&(_, model, max)) = CHICKEN_BREEDS.iter().find(|(name, _, _)| *name == breed) else {
+        bail!("unbekannte Huhn-Rasse");
+    };
+    let coat = coat.unwrap_or(0);
+    if coat > max {
+        bail!("ungültige Huhn-Farbe");
+    }
+    Ok(Chicken { scale, model: resource_id(model), material: coat_token(coat) })
+}
+
 fn rewrite(request_path: &str) -> Result<()> {
     let text = std::fs::read_to_string(request_path).context("Auftrag nicht lesbar")?;
     let request: Request = serde_json::from_str(&text).context("Auftrag ungültig")?;
@@ -328,13 +398,10 @@ fn rewrite(request_path: &str) -> Result<()> {
         bail!("ungültige Spielerzahl");
     }
     let mut models: HashMap<String, HashMap<u64, u64>> = HashMap::new();
-    let mut chickens: HashMap<String, f32> = HashMap::new();
+    let mut chickens: HashMap<String, Chicken> = HashMap::new();
     for player in &request.players {
         if let Some(scale) = player.chicken {
-            if !(0.25..=4.0).contains(&scale) {
-                bail!("ungültige Huhn-Größe");
-            }
-            chickens.insert(player.steamid.clone(), scale);
+            chickens.insert(player.steamid.clone(), chicken_of(scale, player.chicken_breed.as_deref(), player.chicken_coat)?);
         }
         if player.steamid.len() != 17 || !player.steamid.bytes().all(|b| b.is_ascii_digit()) {
             bail!("ungültige SteamID");
@@ -497,7 +564,7 @@ impl Observer for Fingerprint {
         }
         if event != EntityEvents::Deleted {
             for field in entity.fields() {
-                if field.name.contains("m_modelState.m_") || field.name == SCALE_FIELD {
+                if field.name.contains("m_modelState.m_") || field.name == SCALE_FIELD || field.name == MATERIAL_FIELD {
                     continue;
                 }
                 let value = format!("{:?}", field.value);
@@ -686,6 +753,26 @@ mod tests {
         assert_eq!(resource_id("agents/models/ctm_sas/ctm_sas.vmdl"), 0xdfab7cb9fec05111);
         assert_eq!(resource_id("agents/models/tm_phoenix/tm_phoenix.vmdl"), 0xc78dd1a3fe45c901);
         assert_eq!(resource_id("agents/models/ctm_fbi/ctm_fbi_variantb.vmdl"), 0x820d2c0493aa15e9);
+    }
+
+    #[test]
+    fn coat_tokens_match_real_demo() {
+        // Materialgruppen der Hühner auf der Karte aus einer echten Demo.
+        let seen = [1347516877u32, 3661698933, 3742522097, 628863847];
+        for coat in 1..=4 {
+            assert!(seen.contains(&coat_token(coat)), "Farbe {coat}");
+        }
+        assert_eq!(coat_token(0), 0);
+        assert_eq!(resource_id("models/chicken/chicken.vmdl"), 8795782451463713622);
+    }
+
+    #[test]
+    fn chicken_breeds_are_checked() {
+        assert!(chicken_of(1.0, None, None).is_ok());
+        assert!(chicken_of(1.0, Some("silkie"), Some(8)).is_ok());
+        assert!(chicken_of(1.0, Some("silkie"), Some(9)).is_err());
+        assert!(chicken_of(1.0, Some("models/x.vmdl"), None).is_err());
+        assert!(chicken_of(9.0, None, None).is_err());
     }
 
     #[test]
