@@ -151,6 +151,12 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.33.2: Linksklick-Fenster mit abgeschnittenen Ecken
+
+- Enthält die Änderung aus 0.32.8 (siehe unten), die noch nicht veröffentlicht
+  war: Das Linksklick-Fenster der Figur hat jetzt den TecMon-Stil mit
+  abgeschnittenen Ecken.
+
 ### Neu in 0.33.1: Update mit Demo-Rewriter repariert
 
 - Die Update-Datei für 0.33.0 brach mit „Unzulässiger Update-Pfad.“ ab, weil
@@ -173,6 +179,15 @@ Neueste Version zuerst.
   Die Werte lernt er aus der Original-Demo und merkt sie sich in
   `agent-looks.json`; für noch unbekannte Agenten schätzt er und sagt das im
   Protokoll.
+
+### Neu in 0.32.8: Linksklick-Fenster mit abgeschnittenen Ecken
+
+- Das Fenster, das ein Linksklick auf die Figur oder das Tray-Symbol öffnet,
+  hat jetzt denselben TecMon-Stil wie der Setup-Assistent auf tecmon.online:
+  Karten, Knöpfe, Reiter, Felder und Listen mit abgeschnittenen Ecken, lila
+  Kanten und goldenen Akzenten. Der aktive Reiter ist ein goldenes
+  Parallelogramm, die Knöpfe × und − oben im Fenster haben ebenfalls
+  abgeschnittene Ecken. Funktionen ändern sich nicht.
 
 ### Neu in 0.32.7: Echte cs2.exe wird geprüft
 

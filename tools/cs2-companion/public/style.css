@@ -158,3 +158,49 @@ details>summary{cursor:pointer}
 .card-fold:has(>.card[hidden]){display:none}
 .game-fold:not(:has(>.card-fold>.card:not([hidden]))){display:none}
 @media (hover:hover) and (pointer:fine){.game-fold>summary:hover{background:rgba(167,139,250,.08)}.card-fold>summary:hover{color:#d8cbff}}
+
+/* 0.32.8: Linksklick-Fenster der Figur mit abgeschnittenen Ecken wie der Setup-Assistent auf tecmon.online.
+   Form per clip-path, die schrägen Kanten zeichnen Verläufe in den Ecken (gleiche Farbe wie --edge). */
+body.desktop-panel.holo :where(.card,.game-fold,.panel-tabs,.update-banner,.recent-item,.tip-item,.game-row,.overlay-box,.cfg-group,.cfg-item,.badge,.cfg-count,button,.button,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea,pre,.reaction-box,.aim-field,.crosshair-grid canvas){
+  --cut:8px;--edge:#3a2f4d;--fill:#120e19;
+  border:1px solid var(--edge)!important;border-radius:0!important;
+  background:linear-gradient(135deg,transparent calc(50% - .8px),var(--edge) calc(50% - .8px) calc(50% + .8px),transparent calc(50% + .8px)) top left/var(--cut) var(--cut) no-repeat,linear-gradient(225deg,transparent calc(50% - .8px),var(--edge) calc(50% - .8px) calc(50% + .8px),transparent calc(50% + .8px)) top right/var(--cut) var(--cut) no-repeat,linear-gradient(315deg,transparent calc(50% - .8px),var(--edge) calc(50% - .8px) calc(50% + .8px),transparent calc(50% + .8px)) bottom right/var(--cut) var(--cut) no-repeat,linear-gradient(45deg,transparent calc(50% - .8px),var(--edge) calc(50% - .8px) calc(50% + .8px),transparent calc(50% + .8px)) bottom left/var(--cut) var(--cut) no-repeat,var(--fill)!important;background-origin:border-box!important;
+  clip-path:polygon(var(--cut) 0,calc(100% - var(--cut)) 0,100% var(--cut),100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,var(--cut) 100%,0 calc(100% - var(--cut)),0 var(--cut));
+}
+/* Karten: großer Schnitt, lila Kante, goldene Akzente an den zwei Hauptecken. */
+body.desktop-panel.holo :is(.card,.game-fold){--cut:16px;--edge:#a78bfa66;--fill:linear-gradient(160deg,#1d1729,#0f0c16);position:relative;box-shadow:none}
+body.desktop-panel.holo :is(.card,.game-fold)::after{content:"";position:absolute;inset:-1px;pointer-events:none;background:linear-gradient(135deg,transparent calc(50% - 1px),var(--gold) calc(50% - 1px) calc(50% + 1.6px),transparent calc(50% + 1.6px)) top left/16px 16px no-repeat,linear-gradient(315deg,transparent calc(50% - 1px),var(--gold) calc(50% - 1px) calc(50% + 1.6px),transparent calc(50% + 1.6px)) bottom right/16px 16px no-repeat}
+body.desktop-panel.holo .card-fold>.card{--edge:transparent;--fill:transparent;clip-path:none}
+body.desktop-panel.holo .card-fold>.card::after{display:none}
+body.desktop-panel.holo .game-fold>summary{position:relative;z-index:1}
+/* Knöpfe: kleine Schnitte, Gold-Kante; Hover nur mit Maus. */
+body.desktop-panel.holo :is(button,.button){--cut:7px;--edge:#e8c57388;--fill:linear-gradient(135deg,#2a2036,#17121f)}
+body.desktop-panel.holo button.danger{--edge:#fb7185;--fill:#be123c}
+body.desktop-panel.holo .pet-buttons button[aria-checked="true"]{--edge:#f5d36b;--fill:linear-gradient(135deg,#8b5cf6,#d4a72c)}
+body.desktop-panel.holo .reaction-box{--cut:12px;--fill:#1b1626}
+body.desktop-panel.holo .reaction-box.go{--edge:#e8c573;--fill:linear-gradient(135deg,#a78bfa,#6d4fc4)}
+body.desktop-panel.holo .reaction-box.fail{--edge:#fb7185;--fill:#3a1520}
+body.desktop-panel.holo .aim-field{--cut:12px;--edge:rgba(212,167,44,.35);--fill:radial-gradient(circle at 50% 50%,rgba(139,92,246,.12),transparent 70%)}
+body.desktop-panel.holo .aim-target{clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%);border-radius:0}
+body.desktop-panel.holo .memory-pad{border-radius:0;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+/* Reiter oben: Leiste mit Schnitten, aktiver Reiter als goldenes Parallelogramm. */
+body.desktop-panel.holo .panel-tabs{--cut:10px;--fill:#120e19f2}
+body.desktop-panel.holo .panel-tabs button{--edge:transparent;--fill:transparent;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%)}
+body.desktop-panel.holo .panel-tabs button[aria-selected="true"]{--edge:transparent;--fill:linear-gradient(135deg,#e8c573,#c9a04a)}
+body.desktop-panel.holo .badge,body.desktop-panel.holo .cfg-count{--cut:5px;--edge:#a78bfa77;--fill:transparent}
+body.desktop-panel.holo .cfg-count{--edge:var(--gold)}
+body.desktop-panel.holo :is(.recent-item,.tip-item,.game-row,.overlay-box,.cfg-group,.cfg-item){--cut:9px;--fill:rgba(255,255,255,.02)}
+body.desktop-panel.holo .game-row.installed,body.desktop-panel.holo .cfg-item.on{--edge:#e8c573aa;--fill:rgba(139,92,246,.1)}
+body.desktop-panel.holo .update-banner{--cut:12px;--edge:#e8c57388;--fill:#e8c57312}
+body.desktop-panel.holo :is(input,select,textarea,pre){--cut:6px}
+body.desktop-panel.holo :is(input,select,textarea):focus{outline:none;--edge:var(--gold)}
+body.desktop-panel.holo :is(button,.button):focus-visible{outline:none;--edge:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+body.desktop-panel.holo .crosshair-grid canvas{--cut:10px;--fill:transparent}
+body.desktop-panel.holo .status-orb{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);box-shadow:none}
+body.desktop-panel.holo meter::-webkit-meter-bar,body.desktop-panel.holo meter::-webkit-meter-optimum-value,body.desktop-panel.holo meter::-webkit-meter-suboptimum-value,body.desktop-panel.holo meter::-webkit-meter-even-less-good-value{border-radius:0}
+body.desktop-panel.holo .overlay-consent{border-radius:0;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+@media (hover:hover) and (pointer:fine){
+  body.desktop-panel.holo :is(button,.button):not(:disabled):not([aria-selected="true"]):not([aria-checked="true"]):hover{--edge:var(--gold);--fill:#2f2440}
+  body.desktop-panel.holo .panel-tabs button:not([aria-selected="true"]):hover{--edge:transparent;--fill:#a78bfa22}
+  body.desktop-panel.holo .game-fold>summary:hover{background:rgba(167,139,250,.08)}
+}
