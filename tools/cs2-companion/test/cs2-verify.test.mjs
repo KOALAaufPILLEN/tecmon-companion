@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
-import { mkdtemp, mkdir, writeFile, symlink, link, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, symlink, link, rm, realpath } from "node:fs/promises";
 import { checkCs2Exe, steamappsOf, VALVE_SIGNER } from "../cs2-verify.mjs";
 
 const VALVE = { status: "Valid", subject: "CN=Valve Corp., O=Valve Corp., L=Bellevue, S=Washington, C=US" };
@@ -24,7 +24,7 @@ test("echte cs2.exe in der Steam-Bibliothek mit Valve-Signatur wird angenommen",
   const exe = await library(dir);
   const result = await checkCs2Exe(exe, { platform: "win32", signature: valve });
   assert.equal(result.ok, true, result.reason);
-  assert.equal(result.path.toLowerCase(), exe.toLowerCase());
+  assert.equal(result.path, await realpath(exe));
 });
 
 test("umbenannte Browser-exe: falscher Signierer oder keine Signatur wird abgelehnt", async (t) => {
@@ -88,7 +88,7 @@ test("Link auf die echte cs2.exe wird zum echten Pfad aufgelöst", { skip: proce
   await symlink(real, alias);
   const result = await checkCs2Exe(alias, { platform: "win32", signature: valve });
   assert.equal(result.ok, true, result.reason);
-  assert.equal(result.path, real);
+  assert.equal(result.path, await realpath(real));
 });
 
 test("Hardlink (Datei mit mehreren Namen) wird abgelehnt", async (t) => {

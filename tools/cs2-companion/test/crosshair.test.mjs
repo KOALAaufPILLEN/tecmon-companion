@@ -52,7 +52,7 @@ test("Companion: Fadenkreuz speichern schreibt eigene cfg in den CS2-Ordner", as
   await mkdir(path.dirname(cs2), { recursive: true });
   await mkdir(path.join(game, "csgo", "cfg"), { recursive: true });
   await writeFile(cs2, "fixture");
-  const { server, token } = await createCompanion({ dataDir: path.join(dir, "data"), detectTools: async () => ({ csdm: "", cs2 }) });
+  const { server, token } = await createCompanion({ verifyGame: async (file) => ({ ok: true, reason: "", path: file }), dataDir: path.join(dir, "data"), detectTools: async () => ({ csdm: "", cs2 }) });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(async () => { server.closeAllConnections(); await new Promise((r) => server.close(r)); await rm(dir, { recursive: true, force: true }); });

@@ -250,6 +250,7 @@ test("Companion: Rundentipps einschalten, GSI-Token prüfen, ausschalten", async
   await writeFile(cs2, "fixture");
   const time = clock();
   const { server, token } = await createCompanion({
+    verifyGame: async (file) => ({ ok: true, reason: "", path: file }),
     dataDir: path.join(dir, "data"),
     detectTools: async () => ({ csdm: "", cs2 }),
     now: time.now,

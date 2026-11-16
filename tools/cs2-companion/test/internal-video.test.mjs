@@ -38,6 +38,7 @@ async function scenario(t, mode) {
   let clock = Date.now();
   let recording = null;
   const system = {
+    verifyCs2: async (file) => ({ ok: true, reason: "", path: file }), // Testdatei ist keine echte cs2.exe
     plugin: async () => Buffer.from("dll"),
     isRunning: async (image) => (image === "steam.exe" ? true : cs2),
     sleep: async () => {
@@ -65,6 +66,7 @@ async function scenario(t, mode) {
     ffmpeg: async (_exe, args) => writeFile(args.at(-1), "fertiges video"),
   };
   const { server, token } = await createCompanion({
+    verifyGame: async (file) => ({ ok: true, reason: "", path: file }),
     installation,
     detectTools: async () => ({ csdm: "", cs2: cs2Exe }),
     runProcess: async () => {

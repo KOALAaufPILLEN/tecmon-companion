@@ -178,6 +178,7 @@ test("Gesamte Aufnahme ohne CS Demo Manager, mit Aufräumen", async () => {
   let plan = null;
   let launched = null;
   const system = {
+    verifyCs2: async (file) => ({ ok: true, reason: "", path: file }), // Testdatei ist keine echte cs2.exe
     plugin: async () => Buffer.from("dll"),
     isRunning: async (image) => (image === "steam.exe" ? true : cs2),
     sleep: async () => {
@@ -290,6 +291,7 @@ test("Demo-Download über Steam und Valve, lokal entpackt", async () => {
   await writeFile(path.join(folder, "integrity.txt"), BOILER.integrity);
   let args = null;
   const system = {
+    verifyCs2: async (file) => ({ ok: true, reason: "", path: file }), // Testdatei ist keine echte cs2.exe
     isRunning: async (image) => image === "steam.exe",
     runBoiler: async (_exe, a) => {
       args = a;

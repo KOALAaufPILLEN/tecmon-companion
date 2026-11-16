@@ -190,6 +190,7 @@ test("Kamera im Spiel setzen: Demo anhalten, Punkte aus neuen Konsolenzeilen les
   let args = null;
   let naps = 0;
   const system = {
+    verifyCs2: async (file) => ({ ok: true, reason: "", path: file }), // Testdatei ist keine echte cs2.exe
     plugin: async () => Buffer.from("dll"),
     isRunning: async (image) => (image === "steam.exe" ? true : cs2),
     sleep: async () => {
