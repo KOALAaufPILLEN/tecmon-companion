@@ -151,6 +151,12 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.36.2: Großer Stack für den Demo-Rewriter
+
+Windows gibt einem Programm im Hauptthread nur 1 MB Stack. Bei großen Demos
+endete der Agenten-Tausch deshalb mit „has overflowed its stack“. Der Rewriter
+arbeitet jetzt in einem eigenen Thread mit 256 MB Stack.
+
 ### Neu in 0.36.1: Agenten-Tausch nach Skin-Tausch
 
 - Scheitert der Agenten-Tausch auf der Skin-Kopie, versucht der Companion die
