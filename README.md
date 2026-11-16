@@ -161,6 +161,14 @@ Neueste Version zuerst.
   Training) Dropdowns mit Anzeige, wie viele davon aktiv sind; die Einträge
   sind alphabetisch sortiert.
 
+### Neu in 0.32.6: Skin-Tausch-Auftrag wie in nSkinz
+
+- Messer und Handschuhe gehen jetzt je Seite an den Demo-Rewriter (T: 59/5028, CT: 42/5029),
+  wie es die nSkinz-Oberfläche macht. Vorher wurden Messer mit „ANY“ übergangen.
+- Ein eigenes Messer aus der Demo wird nicht mehr als Quelle mitgeschickt. Der Rewriter lehnte
+  das ab und der ganze Skin-Tausch (auch Waffen wie die Scout) schlug fehl; er ersetzt ohnehin
+  jedes Messer des Spielers.
+
 ### Neu in 0.32.5: Messer-Tausch korrigiert
 
 - Hat der Spieler in der Demo schon ein besonderes Messer und bekommt dasselbe
