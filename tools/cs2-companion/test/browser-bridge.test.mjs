@@ -131,6 +131,10 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
   assert.equal((await get("/bridge/skins", "wrong")).status, 401);
   const caps = (await (await get("/bridge/state", grant)).json()).capabilities;
   assert.ok(!caps.includes("skin-swap-v1") && !caps.includes("skin-swap-setup-v1"));
+  // Demo-Download für die Webseite: immer angeboten, nur mit Token und nur Valve-Links.
+  assert.ok(caps.includes("demo-fetch-v1"));
+  assert.equal((await get("/bridge/demo-fetch?url=" + encodeURIComponent("http://replay1.valve.net/730/1_2.dem.bz2"), "wrong")).status, 401);
+  assert.equal((await get("/bridge/demo-fetch?url=" + encodeURIComponent("http://127.0.0.1/secret"), grant)).status, 400);
   assert.equal((await post("/bridge/capture", { job, confirm: false }, grant)).status, 400);
   assert.equal(
     (await post("/bridge/capture", { job: { ...job, shareCode: undefined }, confirm: true }, grant))
