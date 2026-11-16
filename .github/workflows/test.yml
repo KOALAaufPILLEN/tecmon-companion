@@ -26,7 +26,12 @@ jobs:
           cd native/tecmon-demo-rewriter/vendor/source2-demo && cargo test --lib --no-default-features --features cs2
       - name: Build TecMon demo rewriter for Windows
         if: runner.os == 'Windows'
-        run: cargo build --release --locked --manifest-path native/tecmon-demo-rewriter/Cargo.toml
+        shell: pwsh
+        run: |
+          cargo build --release --locked --manifest-path native/tecmon-demo-rewriter/Cargo.toml
+          if($LASTEXITCODE -ne 0) { throw 'Rewriter build failed' }
+          # Wie im Release: das Update-Paket muss die Rewriter-Exe enthalten und einspielen können.
+          Copy-Item -LiteralPath native/tecmon-demo-rewriter/target/release/tecmon-demo-rewriter.exe -Destination tools/cs2-companion/tecmon-demo-rewriter.exe
       - name: Compile native launcher and run self-test
         if: runner.os == 'Windows'
         shell: pwsh
