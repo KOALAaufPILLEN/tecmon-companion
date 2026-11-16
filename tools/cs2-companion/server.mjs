@@ -40,6 +40,7 @@ import { downloadDemo } from "./demo-download.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { checkPostgres, postgresEnvironment } from "./postgresql.mjs";
 import { verifyCs2 } from "./cs2-verify.mjs";
+import { createDemoFetch, DEMO_FETCH_CAPABILITY } from "./demo-fetch.mjs";
 import {
   readInstallation,
   ensureManagedDatabase,
@@ -153,6 +154,8 @@ export async function createCompanion({
   findUpdate = checkUpdate,
   fetchUpdate = downloadUpdate,
   launchUpdate = (file) => spawn(file, ...updaterCommand(root, process.pid)),
+  /** Demo-Download für die Webseite (demo-fetch-v1); in Tests ersetzbar. */
+  fetchDemo = globalThis.fetch,
 } = {}) {
   if (installation) dataDir = path.join(installation.dataDir, "Jobs");
   await mkdir(dataDir, { recursive: true });
@@ -325,6 +328,7 @@ export async function createCompanion({
     };
   }
   /* Highlight-Video nach dem Match: standardmäßig aus, fragt erst nach Matchende und geschlossenem CS2. */
+  const demoFetch = createDemoFetch({ fetch: fetchDemo });
   const auto = await createAutoHighlights({
     dir: installation?.profileDir || dataDir,
     ...(now ? { now } : {}),
@@ -825,7 +829,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY] : [])] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",DEMO_FETCH_CAPABILITY,...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,...(ownEngine ? [SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY] : [])] : [])] : [])],
       });
     // Skin-Tausch von der Webseite ein- und ausschalten (skin-swap-setup-v1); Einschalten nur mit bestätigtem Hinweis.
     if (url.pathname === "/bridge/skins" && (req.method === "GET" || req.method === "POST")) {
@@ -857,6 +861,8 @@ export async function createCompanion({
       const item = auto.ready(String(url.searchParams.get("id") || ""));
       return item ? json(res, 200, item) : json(res, 404, { error: "Kein automatisches Video vorbereitet." });
     }
+    // Demo von Valve für die Webseite holen (demo-fetch-v1): spart der Webseite den Server-Umweg.
+    if (req.method === "GET" && url.pathname === "/bridge/demo-fetch") return demoFetch.send(res, url.searchParams.get("url"));
     if (req.method === "GET" && url.pathname === "/bridge/auto/demo") {
       const demo = auto.demoPath(String(url.searchParams.get("id") || ""));
       const info = demo ? await stat(demo).catch(() => null) : null;

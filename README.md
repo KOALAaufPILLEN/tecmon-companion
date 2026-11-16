@@ -151,6 +151,15 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.34.0: Demos von Valve über den Companion laden
+
+- Valve liefert Demos nur über http, eine https-Seite darf sie nicht direkt
+  laden. Bisher reichte tecmon.online jede Demo über den eigenen Server durch.
+  Ist der Companion verbunden, holt jetzt dieser PC die Demo bei Valve und gibt
+  sie an den Browser weiter (Capability `demo-fetch-v1`,
+  `GET /bridge/demo-fetch?url=`). Erlaubt sind nur Links auf Valves
+  Replay-Server, höchstens zwei Downloads gleichzeitig; gespeichert wird nichts.
+
 ### Neu in 0.33.2: Linksklick-Fenster mit abgeschnittenen Ecken
 
 - Enthält die Änderung aus 0.32.8 (siehe unten), die noch nicht veröffentlicht

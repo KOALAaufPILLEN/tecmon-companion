@@ -108,6 +108,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   bekommen eine eigene Capability in `/bridge/state`; bestehende Capabilities
   nicht ändern oder entfernen, weil ältere Webseiten-Versionen darauf prüfen.
 - Größenlimits für Eingaben (`readInput(req, limit)`) immer setzen.
+- Demo-Download für die Webseite (`demo-fetch-v1`, `demo-fetch.mjs`): nur Links, die
+  `REPLAY_URL` erfüllen, ohne Weiterleitungen, höchstens `MAX_PARALLEL` gleichzeitig und
+  `MAX_FETCH_BYTES` groß. Nichts speichern; die Webseite entpackt selbst.
 
 ## Windows-Figur (`windows/TecMon.cs`)
 
