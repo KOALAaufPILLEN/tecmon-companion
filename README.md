@@ -150,6 +150,15 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.32.8: Linksklick-Fenster mit abgeschnittenen Ecken
+
+- Das Fenster, das ein Linksklick auf die Figur oder das Tray-Symbol öffnet,
+  hat jetzt denselben TecMon-Stil wie der Setup-Assistent auf tecmon.online:
+  Karten, Knöpfe, Reiter, Felder und Listen mit abgeschnittenen Ecken, lila
+  Kanten und goldenen Akzenten. Der aktive Reiter ist ein goldenes
+  Parallelogramm, die Knöpfe × und − oben im Fenster haben ebenfalls
+  abgeschnittene Ecken. Funktionen ändern sich nicht.
+
 ### Neu in 0.32.7: Echte cs2.exe wird geprüft
 
 - Der Companion startet und benutzt nur noch eine echte `cs2.exe` von Valve.
