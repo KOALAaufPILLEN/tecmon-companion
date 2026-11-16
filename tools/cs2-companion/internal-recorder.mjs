@@ -19,6 +19,7 @@ import { spawn, execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { PLUGIN_REVISION, PLUGIN_SHA256 } from "./recording-engine.mjs";
 import { needsScript } from "./job.mjs";
+import { verifyCs2 } from "./cs2-verify.mjs";
 import { scriptPlan, scriptSource, parseMarks, MARK_COMMAND } from "./camera-script.mjs";
 
 export const ENGINE_CAPABILITY = "recorder-internal-v1";
@@ -296,6 +297,10 @@ async function playInCs2({ installation, cs2Exe, demo, width, height, extra = ""
   const isRunning = system.isRunning || tasklist;
   const launch = system.launch || ((exe, args, env) => spawn(exe, args, { shell: false, windowsHide: true, env }));
   const wait = system.sleep || sleep;
+  // Direkt vor dem Start noch einmal prüfen: nur die echte, aufgelöste cs2.exe von Valve starten.
+  const check = await (system.verifyCs2 || verifyCs2)(cs2Exe);
+  if (!check.ok) throw new Error(`CS2 wird nicht gestartet: ${check.reason}`);
+  cs2Exe = check.path;
   log("CS2 über HLAE starten …");
   const env = {
     ...process.env,

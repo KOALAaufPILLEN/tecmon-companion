@@ -114,7 +114,7 @@ async function refresh() {
   $('database-port').disabled = state.managed;
   if(state.managed && state.postgres.lazy) { $('database-status').textContent='PostgreSQL startet erst bei Bedarf';$('database-note').textContent='Die lokale Datenbank wird beim ersten Demo-Download, bei einer Aufnahme oder beim Öffnen von CS Demo Manager gestartet.'; }
   if (state.managed && state.postgres.ready) $('database-note').textContent = `TecMon-Datenbank automatisch eingerichtet und unter 127.0.0.1:${state.postgres.port} erreichbar. Alle Tool-Pfade sind hinterlegt.`;
-  $('cs2-status').textContent = state.detected.cs2 ? 'CS2 erkannt' : 'CS2 nicht gefunden';
+  $('cs2-status').textContent = state.detected.cs2 ? 'CS2 erkannt' : state.cs2Check && !state.cs2Check.ok ? `CS2 abgelehnt: ${state.cs2Check.reason}` : 'CS2 nicht gefunden';
   $('engine-status').textContent = state.detected.csdm ? 'CS Demo Manager erkannt' : 'CS Demo Manager fehlt';
   if (!populated) { $('engine').value = state.detected.csdm; $('database-port').value = state.postgres.port; populated = true; }
   const completed = (state.downloads || []).filter(d => d.status === 'done');

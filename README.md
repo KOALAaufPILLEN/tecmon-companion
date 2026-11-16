@@ -150,6 +150,19 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.32.7: Echte cs2.exe wird geprüft
+
+- Der Companion startet und benutzt nur noch eine echte `cs2.exe` von Valve.
+  Geprüft wird beim Start, bei der Einrichtung und direkt vor jedem Start von
+  CS2 für eine Aufnahme: Verknüpfungen (Symlinks, Junctions) werden bis zur
+  echten Datei aufgelöst, Hardlinks abgelehnt, die Datei muss im CS2-Ordner
+  einer Steam-Bibliothek neben `appmanifest_730.acf` liegen und eine gültige
+  digitale Signatur von Valve tragen. Eine umbenannte andere exe wird so nicht
+  mehr gestartet.
+- Eine feste Prüfsumme gibt es bewusst nicht, weil sich die `cs2.exe` mit
+  jedem CS2-Update ändert. Wird eine Datei abgelehnt, steht der Grund im
+  Companion-Fenster bei „CS2“.
+
 ### Neu in 0.32.6: Spiele-Reiter aufgeräumt
 
 - Im Companion-Fenster (Linksklick auf die Figur) zeigt der Reiter „Spiele“

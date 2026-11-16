@@ -4,6 +4,7 @@ import { readFile, writeFile, mkdir, access, unlink, readdir } from "node:fs/pro
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { ensureVideoTools } from "./download-tools.mjs";
+import { verifyCs2 } from "./cs2-verify.mjs";
 
 export async function readInstallation(root) {
   try {
@@ -155,6 +156,12 @@ export async function setupManagedInstallation(root, options, progress = () => {
     throw new Error("Bitte vollständige lokale Ordnerpfade auswählen.");
   if (options.dataDir === root || options.dataDir.startsWith(root + path.sep))
     throw new Error("Datenordner muss außerhalb des Programmordners liegen.");
+  if (options.cs2Exe) {
+    // Nur eine echte cs2.exe von Valve eintragen (Links aufgelöst, Steam-Ordner, Signatur).
+    const check = await verifyCs2(options.cs2Exe);
+    if (!check.ok) throw new Error(`Gewählte cs2.exe abgelehnt: ${check.reason}`);
+    options = { ...options, cs2Exe: check.path };
+  }
   const privateDir = path.join(options.dataDir, "TecMon-Private");
   const configFile = path.join(root, "installation.json");
   let previous = await readInstallation(root);
@@ -171,7 +178,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     );
   const config = previous || {
     format: "tecmon-installation-v1",
-    version: "0.32.6",
+    version: "0.32.7",
     installationId: randomUUID(),
     dataDir: options.dataDir,
     clusterDir: path.join(privateDir, "postgres", "data"),

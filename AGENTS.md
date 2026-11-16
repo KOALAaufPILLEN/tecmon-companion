@@ -301,6 +301,11 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Fremde Binärdateien nur mit fester Prüfsumme: CS2-Plugin über
   `PLUGIN_SHA256` (`recording-engine.mjs`), boiler-writter über die
   npm-Integrität in `BOILER`. Bei Abweichung abbrechen, nie ungeprüft starten.
+- Die `cs2.exe` nur nach `checkCs2Exe()` (`cs2-verify.mjs`) benutzen oder starten:
+  Links aufgelöst, kein Hardlink, CS2-Ordner einer Steam-Bibliothek mit
+  `appmanifest_730.acf`, gültige Authenticode-Signatur von Valve. Keine feste
+  Prüfsumme der cs2.exe (bricht bei jedem Update). Neue Stellen, die CS2 starten,
+  prüfen direkt davor erneut; nicht lockern.
 - CS2 nie beenden: Läuft CS2 schon, bricht die Aufnahme ab. In `gameinfo.gi`
   nur die eigene Zeile ergänzen und wieder entfernen.
 - Befehle in der Aktionsdatei entstehen nur aus geprüften Zahlen und
