@@ -151,6 +151,13 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.37.0: Messer und Handschuhe je Seite
+
+Im Skin-Tausch kann jeder Spieler jetzt als T und als CT ein anderes Messer und
+andere Handschuhe bekommen, wie im echten Spiel. Die Webseite schickt dafür je
+Eintrag `side` (`"t"` oder `"ct"`, Capability `skin-side-v1`); ohne Seite gilt
+die Wahl wie bisher für beide Seiten.
+
 ### Neu in 0.36.2: Großer Stack für den Demo-Rewriter
 
 Windows gibt einem Programm im Hauptthread nur 1 MB Stack. Bei großen Demos

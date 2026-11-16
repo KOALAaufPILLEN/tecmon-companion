@@ -123,6 +123,12 @@ export const SKIN_GLOVES = {
   5034: "Specialist Gloves",
   5035: "Hydra Gloves",
 };
+/**
+ * Ab `skin-side-v1` (nur zusammen mit `skin-swap-v2`): Messer und Handschuhe optional je Seite
+ * (`side: "t"` oder `"ct"`). Ohne Seite gilt die Wahl für beide Seiten wie bisher.
+ */
+export const SKIN_SIDE_CAPABILITY = "skin-side-v1";
+export const SKIN_SIDES = ["t", "ct"];
 /** Standard-Messer und -Handschuhe in Demos, die der Rewriter ersetzt. */
 export const DEFAULT_KNIVES = [42, 59];
 export const DEFAULT_GLOVES = [5028, 5029];
@@ -137,7 +143,7 @@ export function cleanSkins(value, fail) {
   const seen = new Set();
   return value.map((s) => {
     if (!s || typeof s !== "object" || Array.isArray(s)) fail();
-    const { weapon, paintKit, wear, seed, from } = s;
+    const { weapon, paintKit, wear, seed, from, side } = s;
     const knife = isKnife(weapon);
     const glove = isGlove(weapon);
     const slot = knife ? "knife" : glove ? "glove" : weapon;
@@ -146,8 +152,16 @@ export function cleanSkins(value, fail) {
     if (typeof wear !== "number" || !Number.isFinite(wear) || wear < 0 || wear > 1) fail();
     if (!Number.isSafeInteger(seed) || seed < 0 || seed > 1000) fail();
     if (from !== undefined && !(knife && Number.isSafeInteger(from) && (DEFAULT_KNIVES.includes(from) || isKnife(from)))) fail();
+    if (side !== undefined && !((knife || glove) && SKIN_SIDES.includes(side))) fail();
     seen.add(slot);
-    return { weapon, paintKit, wear: Math.round(wear * 1e6) / 1e6, seed, ...(from !== undefined ? { from } : {}) };
+    return {
+      weapon,
+      paintKit,
+      wear: Math.round(wear * 1e6) / 1e6,
+      seed,
+      ...(from !== undefined ? { from } : {}),
+      ...(side !== undefined ? { side } : {}),
+    };
   });
 }
 
@@ -164,18 +178,22 @@ export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
     if (!s.skins?.length) continue;
     const items = players.get(s.steamId) || new Map();
     for (const skin of s.skins) {
-      const slot = isKnife(skin.weapon) ? "knife" : isGlove(skin.weapon) ? "glove" : skin.weapon;
-      const known = items.get(slot);
-      if (
-        known &&
-        (known.weapon !== skin.weapon || known.paintKit !== skin.paintKit || known.wear !== skin.wear || known.seed !== skin.seed)
-      )
-        throw new Error(
-          typeof slot === "string"
-            ? `${s.playerName}: In zwei Szenen sind verschiedene ${slot === "knife" ? "Messer" : "Handschuhe"} gewählt. Pro Spieler geht nur eins je Video.`
-            : `${s.playerName}: ${itemName(skin.weapon)} hat in zwei Szenen verschiedene Skins. Pro Spieler und Waffe geht nur ein Skin je Video.`,
-        );
-      items.set(slot, known?.from !== undefined && skin.from === undefined ? { ...skin, from: known.from } : skin);
+      const base = isKnife(skin.weapon) ? "knife" : isGlove(skin.weapon) ? "glove" : skin.weapon;
+      // Messer und Handschuhe je Seite; ohne `side` für beide Seiten.
+      const slots = typeof base === "string" ? (skin.side ? [skin.side] : SKIN_SIDES).map((side) => `${base}:${side}`) : [base];
+      for (const slot of slots) {
+        const known = items.get(slot);
+        if (
+          known &&
+          (known.weapon !== skin.weapon || known.paintKit !== skin.paintKit || known.wear !== skin.wear || known.seed !== skin.seed)
+        )
+          throw new Error(
+            typeof base === "string"
+              ? `${s.playerName}: In zwei Szenen sind verschiedene ${base === "knife" ? "Messer" : "Handschuhe"} für ${slot.endsWith(":t") ? "T" : "CT"} gewählt. Pro Spieler und Seite geht nur eins je Video.`
+              : `${s.playerName}: ${itemName(skin.weapon)} hat in zwei Szenen verschiedene Skins. Pro Spieler und Waffe geht nur ein Skin je Video.`,
+          );
+        items.set(slot, known?.from !== undefined && skin.from === undefined ? { ...skin, from: known.from } : skin);
+      }
     }
     players.set(s.steamId, items);
   }
@@ -193,7 +211,7 @@ export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
     custom_name: SKIN_TAG,
     team: sideOf[source] ?? "ANY",
   });
-  const knives = [...players.values()].some((items) => items.has("knife"));
+  const knives = [...players.values()].some((items) => items.has("knife:t") || items.has("knife:ct"));
   if (knives && !gameDir) throw new Error("Für den Messer-Tausch wurde der CS2-Ordner nicht gefunden.");
   return {
     schema_version: 2,
@@ -205,8 +223,11 @@ export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
       steam_id64: steamId,
       items: [...items].flatMap(([slot, skin]) => {
         // `from` (Messer aus der Demo) wird nicht mehr gebraucht: der Rewriter findet alle Messer des Spielers.
-        if (slot === "knife") return DEFAULT_KNIVES.map((source) => item(source, skin, true));
-        if (slot === "glove") return DEFAULT_GLOVES.map((source) => item(source, skin, true));
+        // Je Seite die Standard-Quelle dieser Seite (Messer 59 T / 42 CT, Handschuhe 5028 T / 5029 CT).
+        if (slot === "knife:t") return [item(59, skin, true)];
+        if (slot === "knife:ct") return [item(42, skin, true)];
+        if (slot === "glove:t") return [item(5028, skin, true)];
+        if (slot === "glove:ct") return [item(5029, skin, true)];
         return [item(skin.weapon, skin, false)];
       }),
     })),

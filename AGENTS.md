@@ -212,6 +212,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   `SKIN_KNIVES` (Skin-ID 0 = ohne Lackierung, optional `from` = Messer aus der Demo) und ein
   Handschuh aus `SKIN_GLOVES`. Ersetzt werden `DEFAULT_KNIVES`/`DEFAULT_GLOVES` (und `from`);
   `cs2_game_dir` kommt nur aus dem erkannten CS2-Pfad (`cs2GameDir()`), nie aus dem Auftrag.
+- `skin-side-v1` (nur zusammen mit `skin-swap-v2`): Messer und Handschuhe optional mit `side`
+  (`"t"`/`"ct"`, `SKIN_SIDES`). Dann ersetzt der Rewriter nur die Standard-Quelle dieser Seite
+  (Messer 59 T / 42 CT, Handschuhe 5028 T / 5029 CT); ohne `side` beide. Pro Spieler und Seite eins.
 
 ## Agenten-Tausch (`agent-swap.mjs`, `native/tecmon-demo-rewriter`)
 
