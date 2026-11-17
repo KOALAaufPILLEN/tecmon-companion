@@ -51,6 +51,32 @@ const KNIVES: [(u32, &str); 22] = [
     (526, "weapons/models/knife/knife_kukri/weapon_knife_kukri.vmdl"),
 ];
 
+/// Messer: Item-Definition -> Waffenname im Ereignis `player_death` (Killfeed-Symbol).
+const KILLFEED: [(u32, &str); 22] = [
+    (42, "knife"),
+    (59, "knife_t"),
+    (500, "bayonet"),
+    (503, "knife_css"),
+    (505, "knife_flip"),
+    (506, "knife_gut"),
+    (507, "knife_karambit"),
+    (508, "knife_m9_bayonet"),
+    (509, "knife_tactical"),
+    (512, "knife_falchion"),
+    (514, "knife_survival_bowie"),
+    (515, "knife_butterfly"),
+    (516, "knife_push"),
+    (517, "knife_cord"),
+    (518, "knife_canis"),
+    (519, "knife_ursus"),
+    (520, "knife_gypsy_jackknife"),
+    (521, "knife_outdoor"),
+    (522, "knife_stiletto"),
+    (523, "knife_widowmaker"),
+    (525, "knife_skeleton"),
+    (526, "knife_kukri"),
+];
+
 const GLOVES: [u32; 8] = [4725, 5027, 5030, 5031, 5032, 5033, 5034, 5035];
 
 /// Messer mit Standard-Seite (59 = T, 42 = CT).
@@ -68,6 +94,21 @@ pub fn knife_model(def: u32) -> Option<&'static str> {
 
 pub fn is_knife(def: u64) -> bool {
     KNIVES.iter().any(|(d, _)| *d as u64 == def)
+}
+
+/// Waffenname eines Messers im Killfeed.
+pub fn killfeed_name(def: u32) -> Option<&'static str> {
+    KILLFEED.iter().find(|(d, _)| *d == def).map(|(_, n)| *n)
+}
+
+/// Ist der Waffenname im Ereignis ein Messer (Standard oder Econ)?
+pub fn is_knife_kill(weapon: &str) -> bool {
+    KILLFEED.iter().any(|(_, n)| *n == weapon)
+}
+
+/// „Faux“-Item-ID wie CS2 sie in `player_death` schickt: Markierung, Paintkit, Definition.
+pub fn faux_item_id(p: &Paint) -> u64 {
+    0xF000_0000_0000_0000 | ((p.paint as u64 & 0xFFFF) << 16) | (p.def as u64 & 0xFFFF)
 }
 
 /// Ein Skin-Wunsch, fertig geprüft.
@@ -434,6 +475,19 @@ mod tests {
         assert!(player_skins(id, &[req("knife", 7, None, 0)]).is_err());
         assert!(player_skins(id, &[req("glove", 5030, Some("x"), 1)]).is_err());
         assert!(player_skins(id, &[req("sticker", 1, None, 1)]).is_err());
+    }
+
+    #[test]
+    fn killfeed_names_cover_every_knife() {
+        for (def, _) in KNIVES {
+            assert!(killfeed_name(def).is_some(), "Messer {def} fehlt im Killfeed");
+        }
+        assert!(is_knife_kill("knife_t") && is_knife_kill("bayonet") && !is_knife_kill("glock"));
+        // Echte Demo: Glock ohne Skin = 0xF000000000000004.
+        let p = Paint { def: 4, paint: 0, seed: 0, wear: 0.0, legacy: None, item_id: 0 };
+        assert_eq!(faux_item_id(&p), 17293822569102704644);
+        let k = Paint { def: 507, paint: 38, ..p };
+        assert_eq!(faux_item_id(&k), 0xF000_0000_0026_01FB);
     }
 
     #[test]

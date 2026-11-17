@@ -152,6 +152,12 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 
 Neueste Version zuerst.
 
+### Neu in 0.41.1: Killfeed zeigt das getauschte Messer
+
+- Bei Messer-Kills eines Spielers mit getauschtem Messer zeigt der Killfeed jetzt das
+  Symbol des neuen Messers, passend zur Seite (T oder CT). Andere Kills und Spieler ohne
+  Messer-Wunsch bleiben unverändert.
+
 ### Neu in 0.41.0: Eigener Skin-Tausch
 
 - Waffen-Skins, Messer und Handschuhe tauscht jetzt der eigene TecMon-Demo-Rewriter,
@@ -163,7 +169,6 @@ Neueste Version zuerst.
   der gewählten Seite ersetzt.
 - Alte Skins bekommen weiter das alte Waffenmodell, Sticker der getauschten Waffen
   verschwinden wie bisher (außer mit „Original-Sticker behalten“).
-- Bekannt: Der Killfeed zeigt bei getauschten Messern weiter das Symbol des echten Messers.
 
 ### Neu in 0.40.0: Ohne CS Demo Manager und ohne Datenbank
 

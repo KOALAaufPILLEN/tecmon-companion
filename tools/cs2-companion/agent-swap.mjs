@@ -270,6 +270,7 @@ export async function createAgentSwap({
           if (!swapped.length) log("Hinweis: Die Spieler mit Skin-Wunsch wurden in der Demo nicht gefunden; das Video zeigt die echten Skins.");
           else log(`Skins getauscht: ${count("waffe")} Waffen, ${count("messer")} Messer, ${count("handschuhe")} Handschuhe in der Demo-Kopie.`);
         }
+        if (result.killfeed) log(`Killfeed: ${result.killfeed} Messer-Kill${result.killfeed === 1 ? "" : "s"} zeigen das neue Messer.`);
         if (result.stickers) log(`Sticker entfernt an ${result.stickers} getauschten Waffe${result.stickers === 1 ? "" : "n"}.`);
         if (!changed && hasAgents(job)) log("Hinweis: Kein Spieler mit Agentenwunsch in der Demo gefunden.");
         else if (changed && hasAgents(job)) log(`Agenten/Handschuhe angepasst bei ${changed} Spieler${changed === 1 ? "" : "n"}.`);

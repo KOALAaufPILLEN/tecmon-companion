@@ -219,6 +219,10 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   (`"t"`/`"ct"`, `SKIN_SIDES`); ohne `side` beide Seiten. Seite eines Messers: Träger, sonst Team
   des Besitzers. Auf der Seite ohne Handschuh-Wunsch stellt der Rewriter die echten Handschuhe
   nach einem Seitenwechsel wieder her. Pro Spieler und Seite eins.
+- Killfeed: Bei Messer-Kills eines Spielers mit getauschtem Messer schreibt der Rewriter im Ereignis
+  `player_death` nur `weapon` (Name aus `KILLFEED` in `skins.rs`), `weapon_itemid` und
+  `weapon_fauxitemid` um; Angreifer und Seite kommen aus Pawn bzw. Controller. Andere Ereignisse
+  und Felder bleiben unverändert.
 - `skin-legacy-v1`: Waffen-Skins optional mit `legacy` (0/1, nicht bei Messer/Handschuh). Dann geht
   `m_MeshGroupMask` auf 2 (altes) bzw. 1 (neues Waffenmodell); ohne Angabe nichts.
 - Sticker der echten Waffe entfernt der eigene Rewriter (`clear_stickers` je Spieler: Item-Definitionen
