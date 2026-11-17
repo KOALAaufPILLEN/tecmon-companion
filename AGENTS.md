@@ -181,6 +181,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Filter kommen nur als Kennung aus `VIDEO_FILTERS`; `filterId()` verwirft alles
   andere. Keine Filterketten oder Ausdrücke aus dem Auftrag übernehmen. Die Liste
   muss zu `lib/videoFilters.ts` der Webseite passen (Capability `video-filter-v1`).
+- `video-filter-v2`: zusätzliche IDs aus `FILTER_V2_IDS` (14 Pro/Intense Looks). Die Webseite darf sie nur mit dieser Capability senden; v1 und alle bisherigen IDs bleiben erhalten. Öffentliche Vorschaubilder stammen nur aus dem vorhandenen Website-Testbild, nie aus privaten Nutzeraufnahmen.
 - Szenenfilter wirken nur auf das Gameplay vor dem HUD; `branding.filter` nur auf
   Intro, Titelbild, Spielerwechsel und Outro.
 - HUD v2 nur, wenn das geprüfte Video-Paket `hud-v2.png` enthält.

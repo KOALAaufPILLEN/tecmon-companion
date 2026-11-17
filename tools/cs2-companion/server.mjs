@@ -16,6 +16,7 @@ import { createAutoHighlights, AUTO_CAPABILITY } from "./auto-highlights.mjs";
 import { ANGLE_CAPABILITY, SCRIPT_CAPABILITY, SESSION_CAPABILITY } from "./camera-script.mjs";
 import { updateHandoff } from "./update-handoff.mjs";
 import { loadBrandingPack, loadMotionPack } from "./branding-assets.mjs";
+import { FILTER_V2_CAPABILITY } from "./video-filters.mjs";
 import { renderBranding } from "./video-branding.mjs";
 import { createBrowserBridge } from "./browser-bridge.mjs";
 import { browserDemos } from "./browser-demo.mjs";
@@ -661,7 +662,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",DEMO_FETCH_CAPABILITY,...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled && agentSwap.available ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY,SKIN_SIDE_CAPABILITY,SKIN_LEGACY_CAPABILITY,SKIN_STICKER_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY,CHICKEN_CAPABILITY,CHICKEN_BREED_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",DEMO_FETCH_CAPABILITY,...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1",FILTER_V2_CAPABILITY,"kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled && agentSwap.available ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY,SKIN_SIDE_CAPABILITY,SKIN_LEGACY_CAPABILITY,SKIN_STICKER_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY,CHICKEN_CAPABILITY,CHICKEN_BREED_CAPABILITY] : [])] : [])],
       });
     // Skin-Tausch von der Webseite ein- und ausschalten (skin-swap-setup-v1); Einschalten nur mit bestätigtem Hinweis.
     if (url.pathname === "/bridge/skins" && (req.method === "GET" || req.method === "POST")) {
