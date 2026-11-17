@@ -156,6 +156,12 @@ Neueste Version zuerst.
 
 Sechs Pro Looks und acht zusätzliche kräftige **Intense Looks** für Szenen und Branding (insgesamt 50 Filter). Die bisherigen Looks bleiben erhalten. Echte Filter-Testbilder, Originalvergleich und Auswahl je Szene auf der Webseite; die 14 neuen Kennungen nur mit `video-filter-v2`.
 
+### Neu in 0.41.2: Kein CS2-Absturz mehr mit getauschten Skins
+
+- Getauschte Waffen, Messer und Handschuhe bekamen eine Item-ID, die CS2 als
+  „Faux-ID“ deutet und daraus eine unsinnige Waffe und Lackierung liest. Das konnte
+  CS2 während der Aufnahme abstürzen lassen und die Handschuhe unsichtbar machen.
+  Die IDs tragen jetzt eine eigene Markierung, die CS2 nicht so liest.
 
 ### Neu in 0.41.1: Killfeed zeigt das getauschte Messer
 

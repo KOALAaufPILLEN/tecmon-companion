@@ -52,7 +52,8 @@ Auftrag (`agent-swap.mjs` im Companion erzeugt ihn):
 - Skins (`src/skins.rs`): Für Waffen des Spielers (`m_OriginalOwnerXuid…`)
   setzt der Rewriter die Attribute 6 (Paintkit), 7 (Muster) und 8 (Abnutzung)
   in `m_NetworkedDynamicAttributes`, die Fallback-Werte, eine eigene markierte
-  Item-ID (oberste vier Bits gesetzt), Qualität und das Namensschild
+  Item-ID (oberstes Byte `0x7E`; nie `0xF…`, das liest CS2 als Faux-ID mit
+  Definition und Paintkit und stürzt bei Unsinn-Werten ab), Qualität und das Namensschild
   „TecMon Skin“. `legacy` stellt `m_MeshGroupMask` auf das alte (2) oder neue
   (1) Waffenmodell.
 - Messer: Item-Definition, `m_nSubclassID` (String-Token der Definition) und

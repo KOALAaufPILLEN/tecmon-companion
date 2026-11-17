@@ -208,7 +208,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   bleibt Text. Aufgenommen wird aus einer Kopie `*.tecmon-swap.dem`, die danach
   gelöscht wird; die Original-Demo bleibt unverändert.
 - Getauschte Waffen, Messer und Handschuhe tragen das Namensschild „TecMon Skin“ und eine
-  markierte Item-ID (oberste vier Bits gesetzt).
+  markierte Item-ID (oberstes Byte `0x7E`, nie die Faux-Markierung `0xF…`).
 - Die Webseite darf den Schalter über `GET/POST /bridge/skins` bedienen (Capability
   `skin-swap-setup-v1`, nur mit installiertem Companion und eigener Engine). Einschalten
   nur mit `accept` gleich `SKIN_NOTICE_VERSION`; die Webseite zeigt dafür `SKIN_NOTICE`.
