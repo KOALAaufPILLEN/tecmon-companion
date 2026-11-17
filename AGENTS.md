@@ -312,7 +312,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - TecMon-Stil (wie `docs/tecmon-style.md` der Webseite, im README unter „TecMon-Stil“):
   abgeschnittene Ecken statt Rundungen (`clip-path`, `border-radius: 0`, `--cut`/`--edge`/`--fill`),
   eckige Eingabefelder, Lila für Rahmen und Kanten, Gold für die aktive Wahl, Fokus und die
-  zwei Hauptecken großer Karten; Statuspunkte als Raute, Reiter als Parallelogramm.
+  zwei Hauptecken großer Karten; Sternenhimmel als allgemeiner Hintergrund; Statuspunkte als Raute, Reiter als Parallelogramm.
   Neue Stilregeln dort und im README eintragen.
 - Gleiche UI-Regeln wie auf tecmon.online: TecMon-Farben (Schwarz, Lila, Gold),
   Buttons mit Hover nur bei Maus und sichtbarem Nachgeben beim Drücken

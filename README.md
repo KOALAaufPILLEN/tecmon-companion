@@ -149,6 +149,7 @@ Companion-Seite, Linksklick-Fenster, Schnellmenü und Sprechblase folgen denselb
 - **Eckige Eingabefelder**, dunkle Fläche, dünner Rahmen; im Fokus wird die Kante Gold.
 - **Farben:** Schwarz und Tiefviolett als Grund, Lila (`#a78bfa`) für Rahmen und Kanten, **Gold** (`#e8c573`) für Akzente mit Bedeutung. Große Karten tragen goldene Kanten an den zwei Hauptecken.
 - **Aktive Wahl ist Gold:** gewählter Reiter als goldenes Parallelogramm, eingeschaltete Optionen und installierte Pakete mit goldener Kante. Nicht gewählte Optionen bleiben Lila oder neutral.
+- **Hintergrund:** Sternenhimmel als allgemeiner Hintergrund (feine, versetzt funkelnde Sterne mit lila Glow), bei ausgeschalteter Animation stehend. Bestehende Fenster bekommen ihn bei der nächsten Überarbeitung.
 - **Formen:** Statuspunkte als Raute, Reiter als Parallelogramm, keine Kreise und Pillen in neuen Bereichen.
 - **Bewegung:** Übergänge nur mit benannten Eigenschaften und den `--tm-dur-*`-Zeiten, nie `transition: all`. Drücken mit `scale(0.96)`, nie unter 0,95. Hover nur bei Maus (`@media (hover: hover) and (pointer: fine)`); breite Karten ändern nur die Farbe.
 - **Bedienung:** Trefferflächen mindestens 40 px, Esc schließt Rückfragen, keine Windows-Standarddialoge während des Spiels, die Sprechblase nimmt CS2 nie den Fokus.
