@@ -222,13 +222,16 @@ export async function registerFfmpeg(hlaeExe, ffmpegExe) {
   await writeFile(path.join(folder, "ffmpeg.ini"), `[Ffmpeg]\nPath=${ffmpegExe}`, "utf8");
 }
 
-function tasklist(image) {
-  return new Promise((resolve) => {
-    execFile(
+export function tasklist(image, execute = execFile) {
+  return new Promise((resolve, reject) => {
+    execute(
       "tasklist",
       ["/fi", `imagename eq ${image}`, "/fo", "csv", "/nh"],
       { windowsHide: true },
-      (error, stdout) => resolve(!error && stdout.toLowerCase().includes(`"${image}"`)),
+      (error, stdout) => {
+        if (error) return reject(new Error(`Windows-Prozessliste konnte nicht gelesen werden (${image}). Der Aufnahmestatus ist unbekannt. Bitte erneut versuchen.`, { cause: error }));
+        resolve(stdout.toLowerCase().includes(`"${image.toLowerCase()}"`));
+      },
     );
   });
 }

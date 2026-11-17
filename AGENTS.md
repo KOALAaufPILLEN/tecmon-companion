@@ -207,7 +207,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   `SKIN_WEAPONS`, Paintkit, Abnutzung, Muster, höchstens `MAX_SKINS`). SteamID64
   bleibt Text. Aufgenommen wird aus einer Kopie `*.tecmon-swap.dem`, die danach
   gelöscht wird; die Original-Demo bleibt unverändert.
-- Getauschte Waffen, Messer und Handschuhe tragen das Namensschild „TecMon Skin“ und eine
+- Getauschte Waffen, Messer und Handschuhe tragen das Namensschild „www.TecMon.Online“ und eine
   markierte Item-ID (oberstes Byte `0x7E`, nie die Faux-Markierung `0xF…`).
 - Die Webseite darf den Schalter über `GET/POST /bridge/skins` bedienen (Capability
   `skin-swap-setup-v1`, nur mit installiertem Companion und eigener Engine). Einschalten

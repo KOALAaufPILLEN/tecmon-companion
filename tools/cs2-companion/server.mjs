@@ -574,7 +574,15 @@ export async function createCompanion({
         } catch {
           /* optional diagnostics */
         }
-        throw new Error(recordingFailure(error, pluginLog, await crashSince(detected.cs2, startedAt)));
+        const crash = await crashSince(detected.cs2, startedAt);
+        // Den ursprünglichen Fehler erhalten; ein Dump ist allein keine Ursachenanalyse.
+        await writeFile(path.join(output, "recording-diagnostics.txt"), [
+          `Aufnahmestart: ${new Date(startedAt).toISOString()}`,
+          `Fehler: ${error.message}`,
+          `CS2-Fehlerbericht: ${crash || "keiner"}`,
+          "", "Plugin-Protokoll:", pluginLog,
+        ].join("\n"), "utf8").catch(() => {});
+        throw new Error(recordingFailure(error, pluginLog, crash));
       } finally {
         await agentSwap.cleanup(swapCopy);
       }
