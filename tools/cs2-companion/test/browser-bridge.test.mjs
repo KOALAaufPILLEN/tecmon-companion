@@ -191,6 +191,7 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
 
 test("recording diagnostics explain missing hook and absent raw files", () => {
   assert.match(PLUGIN_SHA256, /^[a-f0-9]{64}$/);
+  assert.equal(recordingFailure(new Error("Prozessliste nicht lesbar"), "alter Plugin-Log"), "Prozessliste nicht lesbar");
   assert.match(
     recordingFailure(new Error("Raw files not found"), "Connected to WebSocket server"),
     /Szenensteuerung/,
@@ -205,7 +206,7 @@ test("recording diagnostics explain missing hook and absent raw files", () => {
   );
   assert.match(
     recordingFailure(new Error("Raw files not found"), "Hooked FrameStageNotify", "cs2_2026_1112_202651_0_accessviolation.mdmp"),
-    /abgestürzt.*accessviolation/,
+    /Raw files not found.*Fehlerbericht.*accessviolation/,
   );
 });
 

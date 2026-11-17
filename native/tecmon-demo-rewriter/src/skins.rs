@@ -3,15 +3,17 @@
 //! Eigener Code des TecMon Companion (MIT). Gesetzt werden nur die Felder, die
 //! CS2 selbst für Skins ins Netz schickt: Item-Definition, Qualität, Item-ID,
 //! Namensschild, die Attribute „Paintkit“ (6), „Muster“ (7) und „Abnutzung“ (8)
-//! sowie die Fallback-Werte. Messer bekommen dazu Modell und Unterklasse.
+//! sowie die Fallback-Werte. Bei Messern bestimmt die Unterklasse das Modell.
 
-use crate::{prop, resource_id, string_token, weapon_owner, ATTRIBUTE_PREFIX};
+use crate::{prop, string_token, weapon_owner, ATTRIBUTE_PREFIX};
+#[cfg(test)]
+use crate::resource_id;
 use anyhow::{bail, Result};
 use source2_demo::prelude::*;
 use std::collections::HashMap;
 
-/// Namensschild auf getauschten Teilen: Im Video ist sichtbar, dass der Skin nicht echt ist.
-pub const SKIN_TAG: &str = "TecMon Skin";
+/// Namensschild auf getauschten Teilen mit der TecMon-Webadresse.
+pub const SKIN_TAG: &str = "www.TecMon.Online";
 const GLOVE_PREFIX: &str = "m_EconGloves.m_NetworkedDynamicAttributes.m_Attributes";
 const ATTR_PAINT: u64 = 6;
 const ATTR_SEED: u64 = 7;
@@ -258,6 +260,15 @@ fn item_fields(prefix: &str, paint: &Paint, quality: i32, out: &mut Vec<(String,
     out.push((format!("{prefix}.m_szCustomName"), FieldValue::String(SKIN_TAG.to_string())));
 }
 
+/// CS2 leitet das Messer-Modell aus Item-Definition und Unterklasse ab.
+/// m_hModel nicht direkt ersetzen: beim Demo-Sprung können die übrigen
+/// Skelett-/Animationsdaten noch zum ursprünglichen Modell gehören.
+fn knife_identity_fields(paint: &Paint, out: &mut Vec<(String, FieldValue)>) {
+    out.push(("m_AttributeManager.m_Item.m_iItemDefinitionIndex".into(), FieldValue::Unsigned16(paint.def as u16)));
+    out.push(("m_nSubclassID".into(), FieldValue::Unsigned32(string_token(&paint.def.to_string()))));
+    item_fields("m_AttributeManager.m_Item", paint, if paint.def == 42 || paint.def == 59 { 0 } else { 3 }, out);
+}
+
 /// Seite (0 = T, 1 = CT) des Spielers, der die Waffe gerade trägt.
 fn holder_side(ctx: &Context, entity: &Entity) -> Option<usize> {
     let handle = prop(entity, "m_hOwnerEntity")? as usize;
@@ -311,14 +322,7 @@ pub fn weapon_fields(
         let Some(paint) = paint else {
             return false;
         };
-        let model = knife_model(paint.def).unwrap_or_default();
-        out.push(("m_AttributeManager.m_Item.m_iItemDefinitionIndex".into(), FieldValue::Unsigned16(paint.def as u16)));
-        out.push(("m_nSubclassID".into(), FieldValue::Unsigned32(string_token(&paint.def.to_string()))));
-        out.push((
-            "CBodyComponent.m_skeletonInstance.m_modelState.m_hModel".into(),
-            FieldValue::Unsigned64(resource_id(model)),
-        ));
-        item_fields("m_AttributeManager.m_Item", &paint, if paint.def == 42 || paint.def == 59 { 0 } else { 3 }, out);
+        knife_identity_fields(&paint, out);
         paint_attributes(entity, ATTRIBUTE_PREFIX, &paint, out);
         fallback_fields(&paint, out);
         return true;
@@ -470,6 +474,19 @@ mod tests {
         // m_nSubclassID ist das String-Token der Item-Definition.
         assert_eq!(string_token("507"), 1731408398);
         assert_eq!(string_token("61"), 2343690088);
+    }
+
+    #[test]
+    fn knife_identity_leaves_skeleton_to_cs2() {
+        for def in [42, 59, 507, 508, 515] {
+            let paint = Paint { def, paint: 0, seed: 0, wear: 0.01, legacy: None, item_id: 123 };
+            let mut fields = Vec::new();
+            knife_identity_fields(&paint, &mut fields);
+            assert!(fields.contains(&("m_AttributeManager.m_Item.m_iItemDefinitionIndex".into(), FieldValue::Unsigned16(def as u16))));
+            assert!(fields.contains(&("m_nSubclassID".into(), FieldValue::Unsigned32(string_token(&def.to_string())))));
+            assert!(fields.contains(&("m_AttributeManager.m_Item.m_szCustomName".into(), FieldValue::String("www.TecMon.Online".into()))));
+            assert!(!fields.iter().any(|(name, _)| name.starts_with("CBodyComponent.")));
+        }
     }
 
     #[test]

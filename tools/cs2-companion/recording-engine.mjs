@@ -25,8 +25,8 @@ export async function crashSince(cs2Exe, since) {
 
 export function recordingFailure(error, pluginLog, crash = "") {
   if (crash)
-    return `CS2 ist während der Aufnahme abgestürzt (Absturzbericht ${crash}). Meist passt nach einem CS2-Update das Aufnahme-Plugin oder HLAE noch nicht: Companion aktualisieren und erneut versuchen. Es wurde keine MP4 gespeichert.`;
-  if (pluginLog && !pluginLog.includes("Hooked FrameStageNotify"))
+    return `${error.message} Während des Aufnahmeversuchs hat CS2 einen Fehlerbericht geschrieben (${crash}). Daraus allein lässt sich die Ursache nicht bestimmen oder erkennen, ob CS2 noch läuft. HLAE-/Plugin-Protokoll und Demo prüfen.`;
+  if (/Raw files not found/i.test(error.message) && pluginLog && !pluginLog.includes("Hooked FrameStageNotify"))
     return "CS2 hat das Demo-Plugin geladen, aber die Szenensteuerung nicht aktiviert. CS2 schließen und Companion aktualisieren. Es wurde keine MP4 gespeichert.";
   if (/Raw files not found/i.test(error.message))
     return "CS2 hat keine Rohaufnahme erzeugt. HLAE-/Plugin-Protokoll prüfen; es wurde keine MP4 gespeichert.";
