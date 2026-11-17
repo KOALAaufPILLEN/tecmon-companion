@@ -219,7 +219,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   `mesh_group_mask` (2 = altes, 1 = neues Waffenmodell) an den Rewriter; ohne Angabe nichts.
 - Sticker der echten Waffe entfernt der eigene Rewriter (`clear_stickers` je Spieler: Item-Definitionen
   der Waffen mit getauschtem Skin). Er setzt nur die Sticker-ID-Attribute (113, 117, …) auf 0, sonst nichts;
-  `compare` ignoriert genau diese Werte.
+  `compare` ignoriert genau diese Werte. Mit `keepStickers: true` je Szene (`skin-stickers-v1`) bleiben sie.
 
 ## Agenten-Tausch (`agent-swap.mjs`, `native/tecmon-demo-rewriter`)
 

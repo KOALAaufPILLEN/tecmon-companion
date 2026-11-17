@@ -238,9 +238,10 @@ pub fn wanted_look(looks: &Looks, model: u64, gloves: bool, fallback_len: usize)
     if let Some(base) = entry.and_then(|e| e.get(other)) {
         let mut bodygroups = base.bodygroups.clone();
         if gloves {
-            // Platz der Standard-Handschuhe unbekannt: meist der erste.
-            if let Some(first) = bodygroups.first_mut() {
-                *first = 1;
+            // Handschuh-Bodygroup ist bei allen bekannten Agenten die letzte (Professionals [1],
+            // FBI/SAS [0, 1]); die erste ist bei zweiteiligen Modellen etwas anderes.
+            if let Some(last) = bodygroups.last_mut() {
+                *last = 1;
             }
         } else {
             for value in bodygroups.iter_mut() {
@@ -251,7 +252,9 @@ pub fn wanted_look(looks: &Looks, model: u64, gloves: bool, fallback_len: usize)
         return (Look { bodygroups, mesh }, false);
     }
     let mut bodygroups = vec![0; fallback_len.clamp(1, 4)];
-    bodygroups[0] = gloves as i32;
+    if let Some(last) = bodygroups.last_mut() {
+        *last = gloves as i32;
+    }
     let mesh = mesh_from(&bodygroups, None);
     (Look { bodygroups, mesh }, false)
 }
@@ -966,7 +969,7 @@ mod tests {
         assert_eq!(wanted_look(&looks, fbi, true, 2), (Look { bodygroups: vec![0, 1], mesh: 9 }, true));
         assert_eq!(wanted_look(&looks, fbi, false, 2), (Look { bodygroups: vec![0, 0], mesh: 5 }, false));
         let sas = resource_id("agents/models/ctm_sas/ctm_sas.vmdl");
-        assert_eq!(wanted_look(&looks, sas, true, 2), (Look { bodygroups: vec![1, 0], mesh: 6 }, false));
+        assert_eq!(wanted_look(&looks, sas, true, 2), (Look { bodygroups: vec![0, 1], mesh: 9 }, false));
     }
 
     #[test]

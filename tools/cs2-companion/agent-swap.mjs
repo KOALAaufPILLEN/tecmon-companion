@@ -144,7 +144,8 @@ export function cleanChickenLook(value, fail) {
 export const hasAgents = (job) => job.sequences.some((s) => s.agents || s.chicken !== undefined);
 const hasGloveSkins = (s) => (s.skins || []).some((skin) => Boolean(SKIN_GLOVES[skin.weapon]));
 /** Waffen (keine Messer/Handschuhe) mit getauschtem Skin: ihre echten Sticker entfernt der Rewriter. */
-const skinWeapons = (s) => (s.skins || []).map((skin) => skin.weapon).filter((id) => SKIN_WEAPONS[id]);
+const skinWeapons = (s) =>
+  s.keepStickers ? [] : (s.skins || []).map((skin) => skin.weapon).filter((id) => SKIN_WEAPONS[id]);
 
 /**
  * Auftrag für den Rewriter. Agenten gelten je Spieler für das ganze Video;

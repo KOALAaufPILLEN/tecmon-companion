@@ -151,6 +151,16 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.39.0: Handschuhe bei allen Agenten, Sticker auf Wunsch behalten
+
+- Bei Agenten, deren Handschuh-Einstellung der Companion noch nicht kannte,
+  wurde bei zweiteiligen Modellen (z. B. SAS, FBI, SEAL) die falsche Bodygroup
+  geraten. Dann blieben die Standard-Handschuhe sichtbar statt der getauschten.
+  Jetzt nimmt er wie bei allen bekannten Agenten die letzte Bodygroup.
+- Neue Option je Spieler: „Original-Sticker behalten“ (`keepStickers`,
+  Capability `skin-stickers-v1`). Ohne sie entfernt der Companion wie bisher
+  die Sticker der echten Waffe.
+
 ### Neu in 0.38.0: Skins wie im Original, ohne fremde Sticker
 
 - Viele ältere Skins (z. B. Dragon Lore, Howl, Gungnir) sind für das alte

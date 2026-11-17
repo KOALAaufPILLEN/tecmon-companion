@@ -54,6 +54,7 @@ export function validateJob(value) {
     const chicken = cleanChicken(s.chicken, fail);
     const chickenLook = cleanChickenLook(s.chickenLook, fail);
     if (chickenLook && chicken === undefined) fail();
+    if (s.keepStickers !== undefined && typeof s.keepStickers !== "boolean") fail();
     return {
       startTick: s.startTick,
       endTick: s.endTick,
@@ -75,6 +76,8 @@ export function validateJob(value) {
       ...(chicken !== undefined ? { chicken } : {}),
       // Huhn-Rasse und Farbe (chicken-breed-v1).
       ...(chickenLook ? { chickenLook } : {}),
+      // Original-Sticker der getauschten Waffen behalten (skin-stickers-v1).
+      ...(s.keepStickers === true && skins.length ? { keepStickers: true } : {}),
     };
   });
   if (ticks / value.tickRate > 1200)
