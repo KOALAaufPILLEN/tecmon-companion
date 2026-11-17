@@ -135,6 +135,8 @@ export const SKIN_SIDES = ["t", "ct"];
  * Modell der echten Waffe, und alte Skins wie Howl oder Dragon Lore sehen falsch aus.
  */
 export const SKIN_LEGACY_CAPABILITY = "skin-legacy-v1";
+/** Ab `skin-stickers-v1`: je Szene `keepStickers: true` lässt die Sticker der echten Waffe drauf. */
+export const SKIN_STICKER_CAPABILITY = "skin-stickers-v1";
 /** Standard-Messer und -Handschuhe in Demos, die der Rewriter ersetzt. */
 export const DEFAULT_KNIVES = [42, 59];
 export const DEFAULT_GLOVES = [5028, 5029];

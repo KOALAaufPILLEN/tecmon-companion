@@ -194,4 +194,9 @@ test("swapped weapon skins lose the real weapon's stickers (clear_stickers)", ()
   assert.deepEqual(agentRequest(j, { input: "s", output: "b", original: "a", cache: "c", gloveSkinsLater: true }).players, [
     { steamid: OTHER, clear_stickers: [9] },
   ]);
+  // „Original-Sticker behalten“ (skin-stickers-v1): nichts entfernen
+  const keep = validateJob({ ...j, sequences: j.sequences.map((s) => (s.skins ? { ...s, keepStickers: true } : s)) });
+  assert.equal(keep.sequences[1].keepStickers, true);
+  assert.equal(agentRequest(keep, { input: "s", output: "b", original: "a", cache: "c", skinsSwapped: true }), null);
+  assert.throws(() => validateJob({ ...j, sequences: [{ ...j.sequences[1], keepStickers: "ja" }] }));
 });
