@@ -215,6 +215,11 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - `skin-side-v1` (nur zusammen mit `skin-swap-v2`): Messer und Handschuhe optional mit `side`
   (`"t"`/`"ct"`, `SKIN_SIDES`). Dann ersetzt der Rewriter nur die Standard-Quelle dieser Seite
   (Messer 59 T / 42 CT, Handschuhe 5028 T / 5029 CT); ohne `side` beide. Pro Spieler und Seite eins.
+- `skin-legacy-v1`: Waffen-Skins optional mit `legacy` (0/1, nicht bei Messer/Handschuh). Dann geht
+  `mesh_group_mask` (2 = altes, 1 = neues Waffenmodell) an den Rewriter; ohne Angabe nichts.
+- Sticker der echten Waffe entfernt der eigene Rewriter (`clear_stickers` je Spieler: Item-Definitionen
+  der Waffen mit getauschtem Skin). Er setzt nur die Sticker-ID-Attribute (113, 117, …) auf 0, sonst nichts;
+  `compare` ignoriert genau diese Werte.
 
 ## Agenten-Tausch (`agent-swap.mjs`, `native/tecmon-demo-rewriter`)
 

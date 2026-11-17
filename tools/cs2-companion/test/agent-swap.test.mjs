@@ -180,3 +180,18 @@ test("failure reason: Rust panics show the panic line, gloves can be prepared be
   assert.deepEqual(request.players, [{ steamid: STEAM, force_gloves: true }]);
   assert.equal(agentRequest(job, { input: "a.dem", output: "b.dem", original: "a.dem", cache: "c.json" }), null);
 });
+
+test("swapped weapon skins lose the real weapon's stickers (clear_stickers)", () => {
+  const skins = [
+    { weapon: 9, paintKit: 344, wear: 0.01, seed: 0, legacy: 1 },
+    { weapon: 507, paintKit: 0, wear: 0, seed: 0 },
+  ];
+  const j = job(undefined, undefined, skins);
+  assert.equal(agentRequest(j, { input: "a", output: "b", original: "a", cache: "c" }), null);
+  assert.deepEqual(agentRequest(j, { input: "s", output: "b", original: "a", cache: "c", skinsSwapped: true }).players, [
+    { steamid: OTHER, clear_stickers: [9] },
+  ]);
+  assert.deepEqual(agentRequest(j, { input: "s", output: "b", original: "a", cache: "c", gloveSkinsLater: true }).players, [
+    { steamid: OTHER, clear_stickers: [9] },
+  ]);
+});

@@ -118,6 +118,20 @@ test("Messer und Handschuhe ersetzen die Standard-Gegenstände (skin-swap-v2)", 
   assert.match(cs2GameDir(path.join("C:", "cs2", "game", "bin", "win64", "cs2.exe")), /game[\\/]csgo$/);
 });
 
+test("Alte Skins bekommen das alte Waffenmodell (skin-legacy-v1)", () => {
+  const lore = { weapon: 9, paintKit: 344, wear: 0.01, seed: 0, legacy: 1 };
+  const modern = { ...ak, legacy: 0 };
+  const clean = validateJob(job([lore, modern]));
+  assert.equal(clean.sequences[0].skins[0].legacy, 1);
+  const items = rewriteRequest(clean, "a.dem", "b.dem").passes[0].items;
+  assert.equal(items.find((i) => i.definition_index === 9).mesh_group_mask, 2);
+  assert.equal(items.find((i) => i.definition_index === 7).mesh_group_mask, 1);
+  // Ohne Angabe kein Eingriff ins Modell
+  assert.equal(rewriteRequest(validateJob(job([ak])), "a.dem", "b.dem").passes[0].items[0].mesh_group_mask, undefined);
+  assert.throws(() => validateJob(job([{ ...lore, legacy: 2 }])));
+  assert.throws(() => validateJob(job([{ weapon: 507, paintKit: 0, wear: 0, seed: 0, legacy: 1 }])));
+});
+
 test("Messer und Handschuhe je Seite (skin-side-v1)", () => {
   const tKnife = { weapon: 507, paintKit: 0, wear: 0, seed: 0, side: "t" };
   const ctKnife = { weapon: 515, paintKit: 38, wear: 0.01, seed: 3, side: "ct" };

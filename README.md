@@ -151,6 +151,17 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL Li
 
 Neueste Version zuerst.
 
+### Neu in 0.38.0: Skins wie im Original, ohne fremde Sticker
+
+- Viele ältere Skins (z. B. Dragon Lore, Howl, Gungnir) sind für das alte
+  Waffenmodell gemacht. Die Webseite schickt dafür je Skin `legacy` mit
+  (Capability `skin-legacy-v1`), und der Skin-Tausch stellt das passende Modell
+  ein. Vorher lag die Textur auf dem neuen Modell und sah verzerrt aus.
+- Hatte die echte Waffe Sticker, blieben sie nach dem Tausch drauf. Der eigene
+  Rewriter entfernt jetzt die Sticker an allen Waffen mit getauschtem Skin
+  (`clear_stickers`); andere Waffen bleiben unverändert.
+- Prüfhilfe: `tecmon-demo-rewriter stickers <demo>` listet Waffen mit Stickern je Spieler.
+
 ### Neu in 0.37.0: Messer und Handschuhe je Seite
 
 Im Skin-Tausch kann jeder Spieler jetzt als T und als CT ein anderes Messer und
