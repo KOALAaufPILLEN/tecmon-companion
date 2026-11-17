@@ -6,12 +6,11 @@
  * MIT/Apache-2.0). Er liegt dem Companion als `tecmon-demo-rewriter.exe` bei;
  * es wird nichts nachgeladen.
  *
- * Der Rewriter schreibt eine Kopie der Demo, in der ein Spieler ein anderes
- * Agentenmodell trägt. Er setzt außerdem die Bodygroups der Standard-Handschuhe
- * passend zum Modell. Das repariert auch den Handschuh-Tausch aus dem
- * Skin-Addon, der sonst bei manchen Agenten Kopf oder Variante ändert. Die
- * Werte lernt er aus der Original-Demo und merkt sie sich lokal in
- * `agent-looks.json`.
+ * Der Rewriter schreibt in einem Durchgang eine Kopie der Demo, in der ein
+ * Spieler ein anderes Agentenmodell trägt und (mit dem Skin-Addon) andere
+ * Waffen-Skins, Messer und Handschuhe. Die Bodygroups der Handschuhe stellt er
+ * passend zum Modell ein. Die Werte lernt er aus der Original-Demo und merkt
+ * sie sich lokal in `agent-looks.json`.
  *
  * Aus dem Auftrag kommen nur Agenten-Nummern aus `AGENTS`; die Modellpfade
  * stehen fest hier im Companion. Nichts davon läuft im Spiel.
@@ -20,7 +19,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { access, readFile, writeFile, rm } from "node:fs/promises";
-import { SKIN_GLOVES, SKIN_WEAPONS } from "./skin-swap.mjs";
+import { SKIN_WEAPONS, hasSkins, skinPlan } from "./skin-swap.mjs";
 
 export const AGENT_CAPABILITY = "agent-swap-v1";
 /** Huhn-Modus (Experiment): Spieler als Huhn in wählbarer Größe, über denselben Rewriter. */
@@ -142,26 +141,23 @@ export function cleanChickenLook(value, fail) {
 }
 
 export const hasAgents = (job) => job.sequences.some((s) => s.agents || s.chicken !== undefined);
-const hasGloveSkins = (s) => (s.skins || []).some((skin) => Boolean(SKIN_GLOVES[skin.weapon]));
 /** Waffen (keine Messer/Handschuhe) mit getauschtem Skin: ihre echten Sticker entfernt der Rewriter. */
 const skinWeapons = (s) =>
   s.keepStickers ? [] : (s.skins || []).map((skin) => skin.weapon).filter((id) => SKIN_WEAPONS[id]);
 
 /**
- * Auftrag für den Rewriter. Agenten gelten je Spieler für das ganze Video;
- * Spieler mit getauschten Handschuhen kommen ohne Agentenwunsch dazu, damit
- * nur ihre Handschuh-Bodygroups repariert werden.
+ * Auftrag für den Rewriter. Agenten gelten je Spieler für das ganze Video. Mit
+ * `skins` (Skin-Addon an) kommen Waffen-Skins, Messer, Handschuhe und das Entfernen
+ * der echten Sticker dazu.
  */
-export function agentRequest(job, { input, output, original, cache, skinsSwapped = false, gloveSkinsLater = false }) {
+export function agentRequest(job, { input, output, original, cache, skins = false }) {
   const players = new Map();
+  const plan = skins ? skinPlan(job) : new Map();
   for (const s of job.sequences) {
-    const wants = s.agents || {};
-    const gloves = (skinsSwapped || gloveSkinsLater) && hasGloveSkins(s);
-    const weapons = skinsSwapped || gloveSkinsLater ? skinWeapons(s) : [];
-    if (!s.agents && s.chicken === undefined && !gloves && !weapons.length) continue;
+    const weapons = skins ? skinWeapons(s) : [];
+    if (!s.agents && s.chicken === undefined && !plan.has(s.steamId)) continue;
     const known = players.get(s.steamId) || {};
     known.stickers = [...new Set([...(known.stickers || []), ...weapons])];
-    if (gloveSkinsLater && gloves) known.forceGloves = true;
     if (s.chicken !== undefined) {
       if (known.chicken !== undefined && known.chicken !== s.chicken)
         throw new Error(`${s.playerName}: In zwei Szenen sind verschiedene Huhn-Größen gewählt. Pro Spieler geht nur eine je Video.`);
@@ -173,6 +169,7 @@ export function agentRequest(job, { input, output, original, cache, skinsSwapped
       known.chickenLook = s.chickenLook;
     }
     for (const side of ["t", "ct"]) {
+      const wants = s.agents || {};
       if (wants[side] === undefined) continue;
       if (known[side] !== undefined && known[side] !== wants[side])
         throw new Error(`${s.playerName}: In zwei Szenen sind verschiedene Agenten gewählt. Pro Spieler und Seite geht nur einer je Video.`);
@@ -195,10 +192,9 @@ export function agentRequest(job, { input, output, original, cache, skinsSwapped
       ...(sides.chicken !== undefined ? { chicken: sides.chicken } : {}),
       // Rasse und Farbe (chicken-breed-v1); ohne Angabe Catalana in Standardfarbe.
       ...(sides.chickenLook ? { chicken_breed: sides.chickenLook.breed, chicken_coat: sides.chickenLook.coat } : {}),
-      // Handschuhe kommen erst danach per Skin-Tausch: Bodygroups schon passend setzen.
-      ...(sides.forceGloves ? { force_gloves: true } : {}),
       // Getauschte Waffen ohne die Sticker der echten Waffe.
       ...(sides.stickers?.length ? { clear_stickers: sides.stickers } : {}),
+      ...(plan.has(steamId) ? { skins: plan.get(steamId) } : {}),
     })),
   };
 }
@@ -236,25 +232,26 @@ export async function createAgentSwap({
      * `input` ist die Demo für die Aufnahme (eventuell schon mit getauschten Skins),
      * `original` die unveränderte Demo zum Lernen der Bodygroups.
      */
-    async rewrite(job, { input, original, skinsSwapped = false, gloveSkinsLater = false, log = () => {} }) {
+    async rewrite(job, { input, original, skins = false, log = () => {} }) {
       const base = original.replace(/\.dem$/i, "");
-      const output = `${base}.tecmon-agents.dem`;
-      const request = agentRequest(job, { input, output, original, cache, skinsSwapped, gloveSkinsLater });
+      const output = `${base}.tecmon-swap.dem`;
+      const request = agentRequest(job, { input, output, original, cache, skins });
       if (!request) return "";
       if (!available) {
-        if (hasAgents(job)) log("Agenten-Tausch braucht einen neueren Companion; das Video zeigt die echten Agenten.");
+        if (hasAgents(job) || (skins && hasSkins(job))) log("Agenten- und Skin-Tausch brauchen einen neueren Companion; das Video zeigt die echten Agenten und Skins.");
         return "";
       }
-      const requestFile = `${base}.tecmon-agents.request.json`;
+      const requestFile = `${base}.tecmon-swap.request.json`;
       await writeFile(requestFile, JSON.stringify(request));
+      const withSkins = request.players.some((p) => p.skins);
       log(
         job.sequences.some((s) => s.chicken !== undefined)
-          ? "Hühner und Agenten in einer Kopie der Demo einsetzen …"
-          : hasAgents(job)
-            ? "Agenten in einer Kopie der Demo tauschen …"
-            : request.players.some((p) => p.force_gloves || job.sequences.some((s) => s.steamId === p.steamid && hasGloveSkins(s)))
-              ? "Handschuhe einstellen und Sticker der getauschten Waffen entfernen …"
-              : "Sticker der getauschten Waffen entfernen …",
+          ? "Hühner, Agenten und Skins in einer Kopie der Demo einsetzen …"
+          : hasAgents(job) && withSkins
+            ? "Agenten und Skins in einer Kopie der Demo tauschen (TecMon-Demo-Rewriter) …"
+            : withSkins
+              ? "Skins in einer Kopie der Demo tauschen (TecMon-Demo-Rewriter) …"
+              : "Agenten in einer Kopie der Demo tauschen …",
       );
       try {
         let result = null;
@@ -263,13 +260,19 @@ export async function createAgentSwap({
         } catch (error) {
           await rm(output, { force: true }).catch(() => {});
           const reason = failureReason(error);
-          throw new Error(`Agenten-Tausch fehlgeschlagen (${reason || "keine Antwort"}).`);
+          throw new Error(`${withSkins ? "Skin-/Agenten-Tausch" : "Agenten-Tausch"} fehlgeschlagen (${reason || "keine Antwort"}).`);
         }
         if (!result?.ok) throw new Error("Agenten-Tausch fehlgeschlagen.");
         const changed = Object.keys(result.changed || {}).length;
+        const swapped = Array.isArray(result.skins) ? result.skins : [];
+        const count = (kind) => swapped.filter((entry) => String(entry).split(":")[1] === kind).length;
+        if (withSkins) {
+          if (!swapped.length) log("Hinweis: Die Spieler mit Skin-Wunsch wurden in der Demo nicht gefunden; das Video zeigt die echten Skins.");
+          else log(`Skins getauscht: ${count("waffe")} Waffen, ${count("messer")} Messer, ${count("handschuhe")} Handschuhe in der Demo-Kopie.`);
+        }
         if (result.stickers) log(`Sticker entfernt an ${result.stickers} getauschten Waffe${result.stickers === 1 ? "" : "n"}.`);
         if (!changed && hasAgents(job)) log("Hinweis: Kein Spieler mit Agentenwunsch in der Demo gefunden.");
-        else if (changed) log(`Agenten/Handschuhe angepasst bei ${changed} Spieler${changed === 1 ? "" : "n"}.`);
+        else if (changed && hasAgents(job)) log(`Agenten/Handschuhe angepasst bei ${changed} Spieler${changed === 1 ? "" : "n"}.`);
         if (result.guessed?.length)
           log("Hinweis: Für manche Agenten sind die Handschuh-Einstellungen geschätzt; die Hände können leicht anders aussehen.");
         return output;
@@ -278,7 +281,7 @@ export async function createAgentSwap({
       }
     },
     async cleanup(copy) {
-      if (copy && /\.tecmon-agents\.dem$/i.test(copy)) await rm(copy, { force: true }).catch(() => {});
+      if (copy && /\.tecmon-(swap|agents)\.dem$/i.test(copy)) await rm(copy, { force: true }).catch(() => {});
     },
   };
 }

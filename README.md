@@ -86,7 +86,7 @@ Mehr Details zu Einrichtung, Aufnahme und Branding stehen in der [Anleitung](too
 - Zur Laufzeit erzeugt er lokale Zugangsdaten, etwa ein zufälliges Sitzungstoken für die lokale API. Diese Werte sind **keine öffentlichen Repository-Dateien**.
 - Die API bindet an `127.0.0.1`. Die API prüft Host, Origin und Sitzungstoken. Webseiten müssen einmal im Companion freigegeben werden.
 - Demos, Aufnahme und Kodierung laufen lokal. Eine Aufnahme startet nur nach ausdrücklicher Bestätigung. Rohclips ohne Branding gibt der Companion nicht heraus.
-- Fremde Programme (CS2-Aufnahme-Plugin, boiler-writter, HLAE, FFmpeg, Demo-Rewriter für den Skin-Tausch, Video-Pakete) werden nur mit fester Prüfsumme genutzt. Bei Abweichung bricht der Companion ab. Das schützt vor beschädigten oder ausgetauschten Downloads, nicht vor jemandem, der den eigenen PC selbst verändert.
+- Fremde Programme (CS2-Aufnahme-Plugin, boiler-writter, HLAE, FFmpeg, Video-Pakete) werden nur mit fester Prüfsumme genutzt. Bei Abweichung bricht der Companion ab. Das schützt vor beschädigten oder ausgetauschten Downloads, nicht vor jemandem, der den eigenen PC selbst verändert.
 - Rundentipps und Dota-2-Tipps lesen nur, was das Spiel selbst per Game State Integration schickt, und nur eigene Spielerdaten. Kein Speicherzugriff, keine Injektion, keine Eingaben an das Spiel.
 
 Details, Grenzen und Hinweise für Reviewer: [SECURITY.md](SECURITY.md). Offener Code und bestandene Tests ersetzen kein unabhängiges Sicherheitsaudit.
@@ -129,7 +129,7 @@ Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` 
 | immer | `browser-demo-v1`, `xray-v1`, `insights-v1`, `insights-v2` |
 | mit verwalteter Installation | `clips-v1`, `video-branding-v1`, `video-style-v1`, `video-filter-v1`, `kill-badge-v1`, `deathcam-label-v1`, `camera-points-v1`, `recorder-internal-v1` |
 | zusätzlich mit eigener Engine | `camera-script-v1`, `camera-session-v1`, `camera-angle-v1`, `auto-highlights-v1`, `skin-swap-setup-v1` |
-| zusätzlich mit eingeschaltetem Skin-Tausch | `skin-swap-v1`, `skin-swap-v2` |
+| zusätzlich mit eingeschaltetem Skin-Tausch und mitgeliefertem Rewriter | `skin-swap-v1`, `skin-swap-v2`, `skin-side-v1`, `skin-legacy-v1`, `skin-stickers-v1` |
 
 ### Tests
 
@@ -144,13 +144,26 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 - Der Installer enthält Node.js mit seiner Lizenz; HLAE und FFmpeg lädt er bei Bedarf von den Originalanbietern.
 - Das CS2-Aufnahme-Plugin stammt aus [CS Demo Manager von AkiVer](https://github.com/akiver/cs-demo-manager) (MIT). Der Companion lädt es bei der ersten Aufnahme vom festen Stand und prüft die Prüfsumme; der Ablauf der eigenen Engine folgt CS Demo Manager 3.20.1. Danke!
 - boiler-writter (MIT) lädt der Companion beim ersten eigenen Download vom npm-Paket und prüft die feste Prüfsumme.
-- Der Demo-Rewriter für den Skin-Tausch stammt aus [CS2-nskinz von Lyan-edit](https://github.com/Lyan-edit/CS2-nskinz) (AGPL-3.0). Er wird erst beim Einschalten unverändert vom festen Stand des Autors geladen, geprüft und als eigenes Programm gestartet; sein Code ist nicht Teil des Companions. Danke an den Autor!
+- Skin-Tausch: Die Idee, Skins in einer Kopie der Demo zu tauschen, kommt aus dem Projekt CS2-nskinz von Lyan-edit. Der TecMon-Demo-Rewriter ist eine eigene Umsetzung ohne dessen Code und wird nicht nachgeladen.
 - Radarbilder werden nicht mitgeliefert. Der Companion kopiert sie nur aus einem schon vorhandenen CS-Demo-Manager-Ordner (ältere Installation oder eigenes Programm) in seinen Datenordner; sonst zeigen die Tipps nur Text.
-- Der eigene Demo-Rewriter für den Agenten-Tausch (`native/tecmon-demo-rewriter`, MIT) nutzt die Bibliothek [source2-demo von Artem Rupasov](https://github.com/Rupas1k/source2-demo) (MIT oder Apache-2.0). Danke!
+- Der eigene Demo-Rewriter für Agenten- und Skin-Tausch (`native/tecmon-demo-rewriter`, MIT) nutzt die Bibliothek [source2-demo von Artem Rupasov](https://github.com/Rupas1k/source2-demo) (MIT oder Apache-2.0). Danke!
 
 ## Versionsverlauf
 
 Neueste Version zuerst.
+
+### Neu in 0.41.0: Eigener Skin-Tausch
+
+- Waffen-Skins, Messer und Handschuhe tauscht jetzt der eigene TecMon-Demo-Rewriter,
+  der dem Companion schon beiliegt, zusammen mit Agenten und Hühnern in einem
+  Durchgang. Es wird kein fremdes Programm mehr nachgeladen; das Einschalten braucht
+  kein Internet.
+- Messer und Handschuhe gelten je Seite. Auf der Seite ohne Wunsch bleiben die echten
+  Handschuhe, auch nach dem Seitenwechsel. Ein eigenes Messer aus der Demo wird nur auf
+  der gewählten Seite ersetzt.
+- Alte Skins bekommen weiter das alte Waffenmodell, Sticker der getauschten Waffen
+  verschwinden wie bisher (außer mit „Original-Sticker behalten“).
+- Bekannt: Der Killfeed zeigt bei getauschten Messern weiter das Symbol des echten Messers.
 
 ### Neu in 0.40.0: Ohne CS Demo Manager und ohne Datenbank
 
@@ -301,10 +314,10 @@ arbeitet jetzt in einem eigenen Thread mit 256 MB Stack.
   Training) Dropdowns mit Anzeige, wie viele davon aktiv sind; die Einträge
   sind alphabetisch sortiert.
 
-### Neu in 0.32.6: Skin-Tausch-Auftrag wie in nSkinz
+### Neu in 0.32.6: Skin-Tausch-Auftrag je Seite
 
-- Messer und Handschuhe gehen jetzt je Seite an den Demo-Rewriter (T: 59/5028, CT: 42/5029),
-  wie es die nSkinz-Oberfläche macht. Vorher wurden Messer mit „ANY“ übergangen.
+- Messer und Handschuhe gehen jetzt je Seite an den Demo-Rewriter (T: 59/5028, CT: 42/5029).
+  Vorher wurden Messer mit „ANY“ übergangen.
 - Ein eigenes Messer aus der Demo wird nicht mehr als Quelle mitgeschickt. Der Rewriter lehnte
   das ab und der ganze Skin-Tausch (auch Waffen wie die Scout) schlug fehl; er ersetzt ohnehin
   jedes Messer des Spielers.
@@ -366,12 +379,8 @@ arbeitet jetzt in einem eigenen Thread mit 256 MB Stack.
   Original-Demo bleibt unverändert, nichts läuft im Spiel oder im Live-Match.
 - Standardmäßig aus, Einschalten nach bestätigtem Hinweis. Getauschte Waffen tragen
   das Namensschild „TecMon Skin“, damit niemand den Skin für echten Besitz hält.
-- **Credits:** Der Demo-Rewriter stammt aus
-  [CS2-nskinz von Lyan-edit](https://github.com/Lyan-edit/CS2-nskinz) (AGPL-3.0).
-  Der Companion lädt `nskinz-demo-rewriter.exe` erst beim Einschalten unverändert
-  vom festen Stand des Autors (v0.7.4), prüft die SHA-256-Prüfsumme und startet ihn
-  als eigenes Programm. Ausschalten löscht ihn wieder. Nach einem CS2-Update kann
-  eine neue Version nötig sein.
+- Den Tausch machte bis 0.40 ein externer Demo-Rewriter, den der Companion beim
+  Einschalten geprüft nachlud. Seit 0.41.0 macht ihn der eigene TecMon-Demo-Rewriter.
 
 ### Neu in 0.30.0: CFG-Sammlung und Fadenkreuz-Overlay
 

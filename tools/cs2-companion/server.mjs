@@ -1,5 +1,5 @@
 import http from "node:http";
-import { readFile, writeFile, mkdir, readdir, stat, open, realpath } from "node:fs/promises";
+import { readFile, writeFile, mkdir, readdir, stat, open, realpath, rm } from "node:fs/promises";
 import { createReadStream, existsSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -26,7 +26,7 @@ import { createInsightsStore } from "./insights.mjs";
 import { createGamePackages } from "./games.mjs";
 import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
 import { workState } from "./work-status.mjs";
-import { createSkinSwap, cs2GameDir, hasSkins, SKIN_CAPABILITY, SKIN_KNIFE_CAPABILITY, SKIN_SETUP_CAPABILITY, SKIN_SIDE_CAPABILITY, SKIN_LEGACY_CAPABILITY, SKIN_STICKER_CAPABILITY } from "./skin-swap.mjs";
+import { createSkinSwap, hasSkins, SKIN_CAPABILITY, SKIN_KNIFE_CAPABILITY, SKIN_SETUP_CAPABILITY, SKIN_SIDE_CAPABILITY, SKIN_LEGACY_CAPABILITY, SKIN_STICKER_CAPABILITY } from "./skin-swap.mjs";
 import { AGENT_CAPABILITY, CHICKEN_BREED_CAPABILITY, CHICKEN_CAPABILITY, createAgentSwap, hasAgents } from "./agent-swap.mjs";
 import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
@@ -419,11 +419,9 @@ export async function createCompanion({
   /* Eigene TecMon-Engine: Download und Aufnahme ohne CS Demo Manager und ohne Datenbank. */
   const engineCache = installation ? path.join(path.dirname(installation.profileDir), "engine") : path.join(dataDir, "engine");
   /** Skin-Tausch für Video-Szenen (skin-swap-v1): freiwilliges Addon, standardmäßig aus. */
-  const skinSwap = await createSkinSwap({
-    dir: installation?.profileDir || dataDir,
-    cacheDir: engineCache,
-    ...(engineSystem.skinSwap || {}),
-  });
+  const skinSwap = await createSkinSwap({ dir: installation?.profileDir || dataDir });
+  // Bis 0.40 nachgeladener fremder Rewriter: eigener Cache-Ordner, wird nicht mehr gebraucht.
+  await rm(path.join(engineCache, "skin-swap"), { recursive: true, force: true }).catch(() => {});
   /** Agenten-Tausch (agent-swap-v1) mit dem mitgelieferten TecMon-Demo-Rewriter. */
   const agentSwap = await createAgentSwap({
     dir: installation?.profileDir || dataDir,
@@ -522,59 +520,19 @@ export async function createCompanion({
     }
     const output = path.join(dataDir, job.id);
     await mkdir(output, { recursive: true });
-    // Skin-Tausch: Aufnahme aus einer umgeschriebenen Kopie, das Original bleibt unverändert.
-    let skinCopy = "";
-    if (hasSkins(job.job)) {
-      if (!skinSwap.enabled) job.log += "\nSkin-Tausch ist im Companion aus; das Video zeigt die echten Skins.";
-      else {
-        job.status = "preparing";
-        skinCopy = await skinSwap.rewrite(
-          job.job,
-          demo,
-          (message) => {
-            job.log += `\n${message}`;
-          },
-          { gameDir: cs2GameDir(detected.cs2) },
-        );
-      }
-    }
-    // Agenten-Tausch und Handschuh-Bodygroups: zweite Kopie aus der Skin-Kopie oder dem Original.
-    let agentCopy = "";
-    {
-      try {
-        if (hasAgents(job.job)) job.status = "preparing";
-        agentCopy = await agentSwap.rewrite(job.job, {
-          input: skinCopy || demo,
-          original: demo,
-          skinsSwapped: Boolean(skinCopy),
-          log: (message) => {
-            job.log += `\n${message}`;
-          },
-        });
-      } catch (error) {
-        // Nur Handschuh-Reparatur: weiter mit der Skin-Kopie statt abzubrechen.
-        if (!hasAgents(job.job)) job.log += `\n${error.message} Das Video nutzt die Skin-Kopie ohne Handschuh-Anpassung.`;
-        else if (!skinCopy) throw error;
-        else {
-          // Umgekehrte Reihenfolge: erst Agenten in der unveränderten Demo, dann Skins darauf.
-          job.log += `\n${error.message} Neuer Versuch: erst Agenten, dann Skins.`;
-          await skinSwap.cleanup(skinCopy);
-          skinCopy = "";
-          const log = (message) => {
-            job.log += `\n${message}`;
-          };
-          agentCopy = await agentSwap.rewrite(job.job, { input: demo, original: demo, gloveSkinsLater: true, log });
-          try {
-            skinCopy = await skinSwap.rewrite(job.job, agentCopy || demo, log, { gameDir: cs2GameDir(detected.cs2) });
-          } finally {
-            // Die Skin-Kopie enthält die Agenten schon; die Zwischenkopie wird nicht mehr gebraucht.
-            await agentSwap.cleanup(agentCopy);
-            agentCopy = "";
-          }
-        }
-      }
-    }
-    const recordDemo = agentCopy || skinCopy || demo;
+    // Agenten- und Skin-Tausch: Aufnahme aus einer umgeschriebenen Kopie, das Original bleibt unverändert.
+    const skins = hasSkins(job.job) && skinSwap.enabled;
+    if (hasSkins(job.job) && !skinSwap.enabled) job.log += "\nSkin-Tausch ist im Companion aus; das Video zeigt die echten Skins.";
+    if (hasAgents(job.job) || skins) job.status = "preparing";
+    const swapCopy = await agentSwap.rewrite(job.job, {
+      input: demo,
+      original: demo,
+      skins,
+      log: (message) => {
+        job.log += `\n${message}`;
+      },
+    });
+    const recordDemo = swapCopy || demo;
     const config = path.join(output, "recording.json");
     const cameras = jobCameras(job.job, randomUUID);
     if (cameras.length && !installation)
@@ -617,8 +575,7 @@ export async function createCompanion({
         }
         throw new Error(recordingFailure(error, pluginLog, await crashSince(detected.cs2, startedAt)));
       } finally {
-        await skinSwap.cleanup(skinCopy);
-        await agentSwap.cleanup(agentCopy);
+        await agentSwap.cleanup(swapCopy);
       }
       return finishRecording(job, output, branding, assets);
     }
@@ -704,7 +661,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",DEMO_FETCH_CAPABILITY,...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY,SKIN_SIDE_CAPABILITY,SKIN_LEGACY_CAPABILITY,SKIN_STICKER_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY,CHICKEN_CAPABILITY,CHICKEN_BREED_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",DEMO_FETCH_CAPABILITY,...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1","kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled && agentSwap.available ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY,SKIN_SIDE_CAPABILITY,SKIN_LEGACY_CAPABILITY,SKIN_STICKER_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY,CHICKEN_CAPABILITY,CHICKEN_BREED_CAPABILITY] : [])] : [])],
       });
     // Skin-Tausch von der Webseite ein- und ausschalten (skin-swap-setup-v1); Einschalten nur mit bestätigtem Hinweis.
     if (url.pathname === "/bridge/skins" && (req.method === "GET" || req.method === "POST")) {

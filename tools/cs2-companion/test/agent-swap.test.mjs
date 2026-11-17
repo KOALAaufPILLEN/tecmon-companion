@@ -61,12 +61,14 @@ test("request lists models per player, steam ids stay text", () => {
   assert.equal(agentRequest(job(), { input: "a", output: "b", original: "a", cache: "c" }), null);
 });
 
-test("glove skins add the player for the glove fix only after a skin swap", () => {
-  const gloves = [{ weapon: 5030, paintKit: 10037, wear: 0.1, seed: 1 }];
+test("skins go to the same rewriter pass only with the skin add-on on", () => {
+  const gloves = [{ weapon: 5030, paintKit: 10037, wear: 0.1, seed: 1, side: "ct" }];
   const j = job(undefined, undefined, gloves);
   assert.equal(hasAgents(j), false);
   assert.equal(agentRequest(j, { input: "a", output: "b", original: "a", cache: "c" }), null);
-  assert.deepEqual(agentRequest(j, { input: "s", output: "b", original: "a", cache: "c", skinsSwapped: true }).players, [{ steamid: OTHER }]);
+  assert.deepEqual(agentRequest(j, { input: "a", output: "b", original: "a", cache: "c", skins: true }).players, [
+    { steamid: OTHER, skins: [{ kind: "glove", def: 5030, side: "ct", paint_kit: 10037, seed: 1, wear: 0.1 }] },
+  ]);
 });
 
 test("different agents for one player and side are refused", () => {
@@ -94,7 +96,7 @@ test("rewrite runs the bundled program and cleans up", async () => {
   assert.equal(swap.available, true);
   const log = [];
   const copy = await swap.rewrite(job({ t: 4613 }), { input: demo, original: demo, log: (m) => log.push(m) });
-  assert.equal(copy, path.join(dir, "match.tecmon-agents.dem"));
+  assert.equal(copy, path.join(dir, "match.tecmon-swap.dem"));
   assert.equal(calls[0][0], "rewrite");
   assert.equal(existsSync(calls[0][1]), false, "request file removed");
   assert.ok(log.some((m) => m.includes("1 Spieler")));
@@ -165,20 +167,12 @@ test("chicken breeds: breed and coat are checked, one chicken per player", async
   assert.throws(() => validateJob({ ...base, sequences: [noSize] }));
 });
 
-test("failure reason: Rust panics show the panic line, gloves can be prepared before the skin swap", async () => {
+test("failure reason: Rust panics show the panic line", async () => {
   const { failureReason } = await import("../agent-swap.mjs");
   const panic = { stderr: "\nthread 'main' (42) panicked at src/main.rs:10:5:\nindex out of bounds\nnote: run with `RUST_BACKTRACE=1`\n", message: "Command failed" };
   assert.equal(failureReason(panic), "thread 'main' (42) panicked at src/main.rs:10:5: index out of bounds");
   assert.equal(failureReason({ stderr: "", message: "spawn EACCES\nmore" }), "spawn EACCES");
   assert.equal(failureReason({ stderr: "Error: Demo nicht lesbar\n" }), "Error: Demo nicht lesbar");
-  const base = { format: "tecmon-cs2-job", version: 1, title: "Test", map: "de_mirage", tickRate: 64, branding: { enabled: false } };
-  const job = validateJob({
-    ...base,
-    sequences: [{ startTick: 1000, endTick: 1640, steamId: STEAM, playerName: "Eins", slot: 2, skins: [{ weapon: 5030, paintKit: 10037, wear: 0.1, seed: 1 }] }],
-  });
-  const request = agentRequest(job, { input: "a.dem", output: "b.dem", original: "a.dem", cache: "c.json", gloveSkinsLater: true });
-  assert.deepEqual(request.players, [{ steamid: STEAM, force_gloves: true }]);
-  assert.equal(agentRequest(job, { input: "a.dem", output: "b.dem", original: "a.dem", cache: "c.json" }), null);
 });
 
 test("swapped weapon skins lose the real weapon's stickers (clear_stickers)", () => {
@@ -188,15 +182,16 @@ test("swapped weapon skins lose the real weapon's stickers (clear_stickers)", ()
   ];
   const j = job(undefined, undefined, skins);
   assert.equal(agentRequest(j, { input: "a", output: "b", original: "a", cache: "c" }), null);
-  assert.deepEqual(agentRequest(j, { input: "s", output: "b", original: "a", cache: "c", skinsSwapped: true }).players, [
-    { steamid: OTHER, clear_stickers: [9] },
-  ]);
-  assert.deepEqual(agentRequest(j, { input: "s", output: "b", original: "a", cache: "c", gloveSkinsLater: true }).players, [
-    { steamid: OTHER, clear_stickers: [9] },
+  const request = agentRequest(j, { input: "a", output: "b", original: "a", cache: "c", skins: true });
+  assert.deepEqual(request.players.map((p) => p.clear_stickers), [[9]]);
+  assert.deepEqual(request.players[0].skins.map((i) => [i.kind, i.def, i.legacy]), [
+    ["weapon", 9, 1],
+    ["knife", 507, undefined],
+    ["knife", 507, undefined],
   ]);
   // „Original-Sticker behalten“ (skin-stickers-v1): nichts entfernen
   const keep = validateJob({ ...j, sequences: j.sequences.map((s) => (s.skins ? { ...s, keepStickers: true } : s)) });
   assert.equal(keep.sequences[1].keepStickers, true);
-  assert.equal(agentRequest(keep, { input: "s", output: "b", original: "a", cache: "c", skinsSwapped: true }), null);
+  assert.equal(agentRequest(keep, { input: "a", output: "b", original: "a", cache: "c", skins: true }).players[0].clear_stickers, undefined);
   assert.throws(() => validateJob({ ...j, sequences: [{ ...j.sequences[1], keepStickers: "ja" }] }));
 });

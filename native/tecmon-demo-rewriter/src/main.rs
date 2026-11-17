@@ -1,4 +1,4 @@
-//! TecMon-Demo-Rewriter: tauscht Agentenmodelle in einer Kopie einer CS2-Demo.
+//! TecMon-Demo-Rewriter: tauscht Agenten, Skins, Messer und Handschuhe in einer Kopie einer CS2-Demo.
 //!
 //! Eigener Code des TecMon Companion (MIT). Nutzt die Bibliothek
 //! `source2-demo` (MIT OR Apache-2.0) von Artem Rupasov.
@@ -6,6 +6,7 @@
 //! Aufrufe:
 //!   tecmon-demo-rewriter inspect <demo.dem> <tmp-out.dem>
 //!   tecmon-demo-rewriter rewrite <auftrag.json>
+//!   tecmon-demo-rewriter econ <demo.dem> <steamid64>   (Prüfhilfe: Skins eines Spielers)
 
 use anyhow::{anyhow, bail, Context as _, Result};
 use serde::Deserialize;
@@ -14,6 +15,8 @@ use source2_demo::writer::*;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
+
+mod skins;
 
 const MODEL_FIELD: &str = "CBodyComponent.m_skeletonInstance.m_modelState.m_hModel";
 const BODYGROUP_PREFIX: &str = "CBodyComponent.m_skeletonInstance.m_modelState.m_nBodyGroupChoices.";
@@ -181,6 +184,26 @@ struct PlayerRequest {
     /// Waffen (Item-Definition) mit getauschtem Skin: Sticker der echten Waffe entfernen.
     #[serde(default)]
     clear_stickers: Vec<u32>,
+    /// Skin-Tausch: Waffen-Skins, Messer und Handschuhe dieses Spielers.
+    #[serde(default)]
+    skins: Vec<SkinRequest>,
+}
+
+#[derive(Deserialize, Clone)]
+struct SkinRequest {
+    /// "weapon", "knife" oder "glove".
+    kind: String,
+    /// Waffe: Item-Definition der echten Waffe. Messer/Handschuh: neues Modell.
+    def: u32,
+    /// Nur Messer/Handschuh: "t" oder "ct"; ohne Angabe beide Seiten.
+    #[serde(default)]
+    side: Option<String>,
+    paint_kit: u32,
+    seed: u32,
+    wear: f32,
+    /// Nur Waffen: 1 = altes Waffenmodell, 0 = neues.
+    #[serde(default)]
+    legacy: Option<u8>,
 }
 
 #[derive(Clone, Copy)]
@@ -269,14 +292,22 @@ struct AgentSwap {
     gloves: BTreeSet<String>,
     /// SteamID64 -> Waffen, deren Sticker entfernt werden.
     stickers: HashMap<String, BTreeSet<u64>>,
-    stickers_cleared: usize,
+    /// Waffen ohne ihre echten Sticker: "SteamID:Definition".
+    sticker_weapons: BTreeSet<String>,
+    /// SteamID64 -> Skins (Waffen, Messer, Handschuhe).
+    skins: HashMap<String, skins::PlayerSkins>,
+    /// Getauschte Teile: "SteamID:Art:Definition".
+    swapped: BTreeSet<String>,
+    /// Echte Handschuhe je Spieler und Team, für Seiten ohne Handschuh-Wunsch.
+    glove_originals: skins::GloveOriginals,
     looks: Looks,
     changed: BTreeMap<String, usize>,
     guessed: BTreeSet<String>,
 }
 
 /// Gewünschte Werte für einen Pawn: Feldname -> Wert.
-fn wanted_fields(swap: &mut AgentSwap, ctx: &Context, entity: &Entity) -> Option<Vec<(String, FieldValue)>> {
+/// `gloves_hint`: trägt der Pawn nach dem Skin-Tausch Econ-Handschuhe (sonst aus der Demo).
+fn wanted_fields(swap: &mut AgentSwap, ctx: &Context, entity: &Entity, gloves_hint: Option<bool>) -> Option<Vec<(String, FieldValue)>> {
     let steamid = pawn_steamid(ctx, entity)?;
     let team = prop(entity, "m_iTeamNum")?;
     if team != 2 && team != 3 {
@@ -296,7 +327,7 @@ fn wanted_fields(swap: &mut AgentSwap, ctx: &Context, entity: &Entity) -> Option
     let player = swap.models.get(&steamid)?;
     let current = prop(entity, MODEL_FIELD).filter(|m| *m != 0)?;
     let model = player.get(&team).copied().unwrap_or(current);
-    let gloves = swap.gloves.contains(&steamid) || prop(entity, GLOVES_FIELD).unwrap_or(0) != 0;
+    let gloves = swap.gloves.contains(&steamid) || gloves_hint.unwrap_or_else(|| prop(entity, GLOVES_FIELD).unwrap_or(0) != 0);
     let len = prop(entity, BODYGROUP_LEN).unwrap_or(1) as usize;
     let (look, exact) = wanted_look(&swap.looks, model, gloves, len);
     if !exact {
@@ -370,6 +401,61 @@ fn sticker_fields(swap: &AgentSwap, entity: &Entity) -> Vec<(String, FieldValue)
     out
 }
 
+/// Felder, die beim Pawn geändert werden dürfen.
+fn pawn_field(name: &str) -> bool {
+    name.starts_with("CBodyComponent.m_skeletonInstance.m_modelState.m_")
+        || name == SCALE_FIELD
+        || name == MATERIAL_FIELD
+        || name.starts_with("m_EconGloves.")
+        || name == "m_nEconGlovesChanged"
+}
+
+/// Felder, die bei Waffen geändert werden dürfen.
+fn weapon_field(name: &str) -> bool {
+    skins::is_skin_field(name) || name == MODEL_FIELD || name == MESH_FIELD
+}
+
+impl AgentSwap {
+    fn wants_weapons(&self) -> bool {
+        !self.stickers.is_empty() || !self.skins.is_empty()
+    }
+
+    fn weapon_wanted(&mut self, ctx: &Context, entity: &Entity) -> Vec<(String, FieldValue)> {
+        let mut out = sticker_fields(self, entity);
+        if !out.is_empty() {
+            if let (Some(owner), Some(def)) = (weapon_owner(entity), prop(entity, "m_AttributeManager.m_Item.m_iItemDefinitionIndex")) {
+                self.sticker_weapons.insert(format!("{owner}:{def}"));
+            }
+        }
+        if skins::weapon_fields(&self.skins, ctx, entity, &mut out) {
+            if let (Some(owner), Some(def)) = (weapon_owner(entity), prop(entity, "m_AttributeManager.m_Item.m_iItemDefinitionIndex")) {
+                let kind = if skins::is_knife(def) { "messer" } else { "waffe" };
+                self.swapped.insert(format!("{owner}:{kind}:{def}"));
+            }
+        }
+        out
+    }
+
+    fn pawn_wanted(&mut self, ctx: &Context, entity: &Entity) -> Vec<(String, FieldValue)> {
+        // Erst die Handschuhe, dann das passende Agenten-Aussehen dazu.
+        let mut gloves = Vec::new();
+        let mut hint = None;
+        if !self.skins.is_empty() {
+            if let (Some(steamid), Some(team)) = (pawn_steamid(ctx, entity), prop(entity, "m_iTeamNum")) {
+                if let Some(player) = self.skins.get(&steamid) {
+                    hint = skins::glove_fields(player, &steamid, team, entity, &mut self.glove_originals, &mut gloves);
+                    if hint.is_some() && player.glove[if team == 2 { 0 } else { 1 }].is_some() {
+                        self.swapped.insert(format!("{steamid}:handschuhe:{team}"));
+                    }
+                }
+            }
+        }
+        let mut out = wanted_fields(self, ctx, entity, hint).unwrap_or_default();
+        out.extend(gloves);
+        out
+    }
+}
+
 impl DemoRewriter for AgentSwap {
     fn interests(&self) -> RewriteInterests {
         RewriteInterests::ENTITY_FIELDS
@@ -378,14 +464,14 @@ impl DemoRewriter for AgentSwap {
     fn should_rewrite_entity(&mut self, _ctx: &Context, _e: EntityEvents, entity: &Entity) -> bool {
         let name = entity.class().name();
         name == "CCSPlayerPawn"
-            || (!self.stickers.is_empty() && is_weapon_class(name) && entity.get_property("m_OriginalOwnerXuidLow").is_ok())
+            || (self.wants_weapons() && is_weapon_class(name) && entity.get_property("m_OriginalOwnerXuidLow").is_ok())
     }
 
     fn should_track_entity(&mut self, _ctx: &Context, _e: EntityEvents, entity: &Entity) -> bool {
         let name = entity.class().name();
         name == "CCSPlayerPawn"
             || name == "CCSPlayerController"
-            || (!self.stickers.is_empty() && is_weapon_class(name) && entity.get_property("m_OriginalOwnerXuidLow").is_ok())
+            || (self.wants_weapons() && is_weapon_class(name) && entity.get_property("m_OriginalOwnerXuidLow").is_ok())
     }
 
     fn replace_entity_field(
@@ -396,41 +482,32 @@ impl DemoRewriter for AgentSwap {
         field_name: &str,
         value: &FieldValue,
     ) -> Option<FieldValue> {
-        if field_name.starts_with(ATTRIBUTE_PREFIX) {
-            let (_, wanted) = sticker_fields(self, entity).into_iter().find(|(name, _)| name == field_name)?;
-            return (&wanted != value).then_some(wanted);
-        }
-        if entity.class().name() != "CCSPlayerPawn" {
-            return None;
-        }
-        if !field_name.starts_with("CBodyComponent.m_skeletonInstance.m_modelState.m_") && field_name != SCALE_FIELD
-            && field_name != MATERIAL_FIELD
-        {
-            return None;
-        }
-        let fields = wanted_fields(self, ctx, entity)?;
+        let fields = if entity.class().name() == "CCSPlayerPawn" {
+            if !pawn_field(field_name) {
+                return None;
+            }
+            self.pawn_wanted(ctx, entity)
+        } else {
+            if !weapon_field(field_name) {
+                return None;
+            }
+            self.weapon_wanted(ctx, entity)
+        };
         let (_, wanted) = fields.into_iter().find(|(name, _)| name == field_name)?;
-        if &wanted == value {
-            return None;
-        }
-        Some(wanted)
+        (&wanted != value).then_some(wanted)
     }
 
     fn extra_entity_fields(&mut self, ctx: &Context, _event: EntityEvents, entity: &Entity) -> Vec<(String, FieldValue)> {
         if entity.class().name() != "CCSPlayerPawn" {
-            let missing: Vec<(String, FieldValue)> = sticker_fields(self, entity)
+            let missing: Vec<(String, FieldValue)> = self
+                .weapon_wanted(ctx, entity)
                 .into_iter()
                 .filter(|(name, value)| entity.get_property(name).ok() != Some(value))
                 .collect();
-            if !missing.is_empty() {
-                self.stickers_cleared += 1;
-            }
             return missing;
         }
-        let Some(fields) = wanted_fields(self, ctx, entity) else {
-            return Vec::new();
-        };
-        let missing: Vec<(String, FieldValue)> = fields
+        let missing: Vec<(String, FieldValue)> = self
+            .pawn_wanted(ctx, entity)
             .into_iter()
             .filter(|(name, value)| entity.get_property(name).ok() != Some(value))
             .collect();
@@ -497,6 +574,8 @@ fn rewrite(request_path: &str) -> Result<()> {
     let mut chickens: HashMap<String, Chicken> = HashMap::new();
     let mut gloves: BTreeSet<String> = BTreeSet::new();
     let mut stickers: HashMap<String, BTreeSet<u64>> = HashMap::new();
+    let mut skin_plan: HashMap<String, skins::PlayerSkins> = HashMap::new();
+    let mut glove_players: BTreeSet<String> = BTreeSet::new();
     for player in &request.players {
         if player.clear_stickers.len() > 64 || player.clear_stickers.iter().any(|d| *d == 0 || *d > 65535) {
             bail!("ungültige Waffenliste");
@@ -513,8 +592,16 @@ fn rewrite(request_path: &str) -> Result<()> {
         if player.steamid.len() != 17 || !player.steamid.bytes().all(|b| b.is_ascii_digit()) {
             bail!("ungültige SteamID");
         }
+        if !player.skins.is_empty() {
+            let plan = skins::player_skins(&player.steamid, &player.skins)?;
+            // Neue Handschuhe: Bodygroups passend zum Agenten einstellen (je Seite).
+            if plan.glove.iter().any(Option::is_some) {
+                glove_players.insert(player.steamid.clone());
+            }
+            skin_plan.insert(player.steamid.clone(), plan);
+        }
         // Nur Spieler mit Agenten- oder Handschuh-Wunsch bekommen ein neues Aussehen.
-        if player.t.is_none() && player.ct.is_none() && !player.force_gloves {
+        if player.t.is_none() && player.ct.is_none() && !player.force_gloves && !glove_players.contains(&player.steamid) {
             continue;
         }
         let entry = models.entry(player.steamid.clone()).or_default();
@@ -553,6 +640,7 @@ fn rewrite(request_path: &str) -> Result<()> {
         swap.chickens = chickens;
         swap.gloves = gloves;
         swap.stickers = stickers;
+        swap.skins = skin_plan;
         swap.looks = looks;
     }
     writer.run().map_err(|e| anyhow!("{e}"))?;
@@ -560,7 +648,13 @@ fn rewrite(request_path: &str) -> Result<()> {
     let swap = swap.borrow();
     println!(
         "{}",
-        serde_json::json!({ "ok": true, "changed": swap.changed, "guessed": swap.guessed, "stickers": swap.stickers_cleared })
+        serde_json::json!({
+            "ok": true,
+            "changed": swap.changed,
+            "guessed": swap.guessed,
+            "stickers": swap.sticker_weapons.len(),
+            "skins": swap.swapped,
+        })
     );
     Ok(())
 }
@@ -678,6 +772,68 @@ impl Observer for StickerScan {
     }
 }
 
+/// Prüfhilfe: alle Felder der Waffen und Handschuhe eines Spielers (eindeutige Werte).
+#[derive(Default)]
+struct EconScan {
+    steamid: String,
+    seen: BTreeMap<String, BTreeMap<String, BTreeSet<String>>>,
+}
+
+impl Observer for EconScan {
+    fn interests(&self) -> Interests {
+        Interests::ENTITY_STATE | Interests::ENTITY_EVENTS
+    }
+
+    fn on_entity(&mut self, ctx: &Context, event: EntityEvents, entity: &Entity) -> ObserverResult {
+        if event == EntityEvents::Deleted {
+            return Ok(());
+        }
+        let name = entity.class().name();
+        let key = if name == "CCSPlayerPawn" {
+            if pawn_steamid(ctx, entity).as_deref() != Some(self.steamid.as_str()) {
+                return Ok(());
+            }
+            "pawn".to_string()
+        } else if name.contains("ViewModel") {
+            format!("{name}")
+        } else {
+            if weapon_owner(entity).as_deref() != Some(self.steamid.as_str()) {
+                return Ok(());
+            }
+            format!("{name} def={}", prop(entity, "m_AttributeManager.m_Item.m_iItemDefinitionIndex").unwrap_or(0))
+        };
+        let entry = self.seen.entry(key).or_default();
+        for field in entity.fields() {
+            let n = &field.name;
+            let interesting = n.contains("Econ") || n.contains("Fallback") || n.contains("m_AttributeManager")
+                || n.contains("m_hModel") || n.contains("ModelIndex") || n.contains("MeshGroupMask")
+                || n.contains("Gloves") || n.contains("m_hWeapon") || n.contains("m_nSubclassID");
+            if interesting {
+                let values = entry.entry(n.clone()).or_default();
+                if values.len() < 12 {
+                    values.insert(format!("{:?}", field.value));
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn econ_scan(demo: &str, steamid: &str) -> Result<()> {
+    let input = BufReader::new(File::open(demo)?);
+    let mut parser = Parser::from_reader(input).map_err(|e| anyhow!("{e}"))?;
+    let scan = parser.register_observer::<EconScan>();
+    scan.borrow_mut().steamid = steamid.to_string();
+    parser.run_to_end().map_err(|e| anyhow!("{e}"))?;
+    for (key, fields) in &scan.borrow().seen {
+        println!("{key}");
+        for (field, values) in fields {
+            println!("  {field} = {values:?}");
+        }
+    }
+    Ok(())
+}
+
 fn sticker_scan(demo: &str) -> Result<()> {
     let input = BufReader::new(File::open(demo)?);
     let mut parser = Parser::from_reader(input).map_err(|e| anyhow!("{e}"))?;
@@ -728,7 +884,7 @@ impl Observer for Fingerprint {
                 if field.name.contains("m_modelState.m_") || field.name == SCALE_FIELD || field.name == MATERIAL_FIELD {
                     continue;
                 }
-                if is_sticker_value(entity, &field.name) {
+                if is_sticker_value(entity, &field.name) || skins::is_skin_field(&field.name) {
                     continue;
                 }
                 let value = format!("{:?}", field.value);
@@ -910,6 +1066,7 @@ fn run() -> Result<()> {
         Some("rewrite") if args.len() == 3 => rewrite(&args[2]),
         Some("looks") if args.len() == 3 => player_looks(&args[2]),
         Some("stickers") if args.len() == 3 => sticker_scan(&args[2]),
+        Some("econ") if args.len() == 4 => econ_scan(&args[2], &args[3]),
         Some("compare") if args.len() == 4 => compare(&args[2], &args[3]),
         Some("learn") if args.len() == 3 => {
             println!("{}", serde_json::to_string_pretty(&learn(&args[2])?)?);

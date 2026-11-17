@@ -518,7 +518,7 @@ function showSkins(skins,managed){
   $('skins-heading').textContent=skins.enabled?'Skin-Tausch für Videos ist an':'Skin-Tausch für Videos ist aus';
   $('skins-toggle').textContent=skins.enabled?'Ausschalten':(skins.needsNotice?'Einschalten …':'Einschalten');
   $('skins-notice').textContent=skins.notice||'';
-  $('skins-status').textContent=skins.enabled?`Aktiv: ${skins.credit?.name||'CS2-nskinz'} ${skins.credit?.version||''}. Skins je Szene trägst du auf tecmon.online im Demo-Manager ein.`:'';
+  $('skins-status').textContent=skins.enabled?'Aktiv. Skins, Messer und Handschuhe wählst du auf tecmon.online im Demo-Manager.':'';
 }
 $('skins-toggle').addEventListener('click',async()=>{
   const button=$('skins-toggle');const on=!skinState?.enabled;
