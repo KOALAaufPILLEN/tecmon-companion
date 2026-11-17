@@ -13,6 +13,7 @@ tecmon-demo-rewriter rewrite <auftrag.json>   # Agenten, Skins, Messer, Handschu
 tecmon-demo-rewriter learn <demo.dem>         # Bodygroups je Modell aus einer Demo lesen
 tecmon-demo-rewriter looks <demo.dem>         # Aussehen je Spieler (Prüfung)
 tecmon-demo-rewriter compare <a.dem> <b.dem>  # alle Felder außer Modellfeldern vergleichen
+tecmon-demo-rewriter events <demo.dem>        # Ereignisse mit Waffenangaben (Killfeed, Prüfung)
 tecmon-demo-rewriter hash <modellpfad>        # Ressourcen-ID eines Modells
 tecmon-demo-rewriter econ <demo.dem> <id64>   # Skin-Felder der Waffen und Handschuhe eines Spielers (Prüfung)
 tecmon-demo-rewriter stickers <demo.dem>      # Sticker je Waffe (Prüfung)
@@ -57,6 +58,9 @@ Auftrag (`agent-swap.mjs` im Companion erzeugt ihn):
 - Messer: Item-Definition, `m_nSubclassID` (String-Token der Definition) und
   `m_hModel` (Modellpfad aus `items_game.txt`, fest in `KNIVES`). Die Seite
   kommt vom Träger, sonst vom Team des Besitzers.
+- Killfeed: Bei Messer-Kills mit getauschtem Messer bekommt das Ereignis
+  `player_death` den Namen des neuen Messers (`KILLFEED`), dessen Item-ID und
+  Faux-ID; alle anderen Ereignisse bleiben, wie sie sind.
 - Handschuhe: `m_EconGloves` des Pawns je Seite, dazu `m_nEconGlovesChanged`.
   Auf der Seite ohne Wunsch merkt sich der Rewriter die echten Handschuhe und
   stellt sie nach einem Seitenwechsel wieder her.

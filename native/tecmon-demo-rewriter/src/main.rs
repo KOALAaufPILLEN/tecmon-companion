@@ -11,6 +11,7 @@
 use anyhow::{anyhow, bail, Context as _, Result};
 use serde::Deserialize;
 use source2_demo::prelude::*;
+use source2_demo::proto::{CSvcMsgGameEvent, CSvcMsgGameEventList, EBaseGameEvents};
 use source2_demo::writer::*;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
@@ -300,9 +301,63 @@ struct AgentSwap {
     swapped: BTreeSet<String>,
     /// Echte Handschuhe je Spieler und Team, für Seiten ohne Handschuh-Wunsch.
     glove_originals: skins::GloveOriginals,
+    /// Aufbau des Ereignisses `player_death` aus der Ereignisliste der Demo.
+    death: Option<DeathKeys>,
+    /// Killfeed-Einträge, deren Messer angepasst wurde.
+    killfeed: usize,
     looks: Looks,
     changed: BTreeMap<String, usize>,
     guessed: BTreeSet<String>,
+}
+
+/// Lage der Schlüssel im Ereignis `player_death` (Reihenfolge aus der Ereignisliste).
+#[derive(Clone, Copy, Default)]
+struct DeathKeys {
+    id: i32,
+    weapon: usize,
+    itemid: Option<usize>,
+    faux: Option<usize>,
+    attacker: Option<usize>,
+    attacker_pawn: Option<usize>,
+}
+
+fn death_keys(list: &CSvcMsgGameEventList) -> Option<DeathKeys> {
+    let d = list.descriptors.iter().find(|d| d.name() == "player_death")?;
+    let at = |name: &str| d.keys.iter().position(|k| k.name() == name);
+    Some(DeathKeys {
+        id: d.eventid(),
+        weapon: at("weapon")?,
+        itemid: at("weapon_itemid"),
+        faux: at("weapon_fauxitemid"),
+        attacker: at("attacker"),
+        attacker_pawn: at("attacker_pawn"),
+    })
+}
+
+/// SteamID64 und Seite (0 = T, 1 = CT) des Angreifers: über seinen Pawn, sonst über den Controller-Slot.
+fn attacker_of(ctx: &Context, keys: &DeathKeys, ev: &CSvcMsgGameEvent) -> Option<(String, usize)> {
+    let side = |team| match team {
+        2 => Some(0),
+        3 => Some(1),
+        _ => None,
+    };
+    if let Some(pawn) = keys
+        .attacker_pawn
+        .and_then(|i| ev.keys.get(i))
+        .and_then(|k| ctx.entities().get_by_handle(k.val_long() as u32 as usize).ok())
+    {
+        if let (Some(id), Some(team)) = (pawn_steamid(ctx, pawn), prop(pawn, "m_iTeamNum")) {
+            return Some((id, side(team)?));
+        }
+    }
+    let slot = keys.attacker.and_then(|i| ev.keys.get(i))?.val_short();
+    let controller = ctx.entities().get_by_index(slot as usize + 1).ok()?;
+    if controller.class().name() != "CCSPlayerController" {
+        return None;
+    }
+    let id = prop(controller, "m_steamID")?;
+    (id > 76_561_197_960_265_728).then_some(())?;
+    Some((id.to_string(), side(prop(controller, "m_iTeamNum")?)?))
 }
 
 /// Gewünschte Werte für einen Pawn: Feldname -> Wert.
@@ -416,6 +471,36 @@ fn weapon_field(name: &str) -> bool {
 }
 
 impl AgentSwap {
+    fn wants_killfeed(&self) -> bool {
+        self.skins.values().any(|p| p.knife.iter().any(Option::is_some))
+    }
+
+    /// Killfeed: Bei Messer-Kills eines Spielers mit getauschtem Messer zeigt `player_death`
+    /// das neue Messer (Waffenname, Item-ID, Faux-ID). Sonst bleibt das Ereignis unverändert.
+    fn killfeed_event(&mut self, ctx: &Context, payload: &[u8]) -> Option<Vec<u8>> {
+        let keys = self.death?;
+        let mut ev = CSvcMsgGameEvent::decode(payload).ok()?;
+        if ev.eventid() != keys.id {
+            return None;
+        }
+        let weapon = String::from_utf8_lossy(ev.keys.get(keys.weapon)?.val_string()).into_owned();
+        if !skins::is_knife_kill(&weapon) {
+            return None;
+        }
+        let (steamid, side) = attacker_of(ctx, &keys, &ev)?;
+        let paint = self.skins.get(&steamid)?.knife[side]?;
+        let name = skins::killfeed_name(paint.def)?;
+        ev.keys[keys.weapon].val_string = Some(name.as_bytes().to_vec());
+        if let Some(k) = keys.itemid.and_then(|i| ev.keys.get_mut(i)) {
+            k.val_string = Some(paint.item_id.to_string().into_bytes());
+        }
+        if let Some(k) = keys.faux.and_then(|i| ev.keys.get_mut(i)) {
+            k.val_string = Some(skins::faux_item_id(&paint).to_string().into_bytes());
+        }
+        self.killfeed += 1;
+        Some(ev.encode_to_vec())
+    }
+
     fn wants_weapons(&self) -> bool {
         !self.stickers.is_empty() || !self.skins.is_empty()
     }
@@ -457,8 +542,29 @@ impl AgentSwap {
 }
 
 impl DemoRewriter for AgentSwap {
+    // Wird schon beim Registrieren abgefragt, bevor die Skins gesetzt sind: Ereignisse
+    // werden darum immer angeboten; ohne getauschte Messer bleibt alles unverändert.
     fn interests(&self) -> RewriteInterests {
-        RewriteInterests::ENTITY_FIELDS
+        RewriteInterests::ENTITY_FIELDS | RewriteInterests::PACKET_MESSAGE
+    }
+
+    fn rewrite_packet_message(
+        &mut self,
+        ctx: &Context,
+        _tick: u32,
+        msg_type: i32,
+        payload: &[u8],
+    ) -> Result<MessageRewrite, ParserError> {
+        if msg_type == EBaseGameEvents::GeSource1LegacyGameEventList as i32 {
+            if let Ok(list) = CSvcMsgGameEventList::decode(payload) {
+                self.death = death_keys(&list); 
+            }
+        } else if msg_type == EBaseGameEvents::GeSource1LegacyGameEvent as i32 && self.wants_killfeed() {
+            if let Some(bytes) = self.killfeed_event(ctx, payload) {
+                return Ok(MessageRewrite::Replace(bytes));
+            }
+        }
+        Ok(MessageRewrite::Keep)
     }
 
     fn should_rewrite_entity(&mut self, _ctx: &Context, _e: EntityEvents, entity: &Entity) -> bool {
@@ -653,6 +759,7 @@ fn rewrite(request_path: &str) -> Result<()> {
             "changed": swap.changed,
             "guessed": swap.guessed,
             "stickers": swap.sticker_weapons.len(),
+            "killfeed": swap.killfeed,
             "skins": swap.swapped,
         })
     );
@@ -831,6 +938,32 @@ fn econ_scan(demo: &str, steamid: &str) -> Result<()> {
             println!("  {field} = {values:?}");
         }
     }
+    Ok(())
+}
+
+/// Zur Prüfung: Spielereignisse mit Waffenangaben (Killfeed), eine Zeile je Ereignis.
+#[derive(Default)]
+struct EventScan;
+
+impl Observer for EventScan {
+    fn interests(&self) -> Interests {
+        Interests::BASE_GAME_EVENT
+    }
+
+    fn on_game_event(&mut self, _ctx: &Context, ge: &GameEvent) -> ObserverResult {
+        if ge.iter().any(|(k, _)| k.starts_with("weapon")) {
+            let keys: Vec<String> = ge.iter().map(|(k, v)| format!("{k}={v:?}")).collect();
+            println!("{} {}", ge.name(), keys.join(" "));
+        }
+        Ok(())
+    }
+}
+
+fn event_scan(demo: &str) -> Result<()> {
+    let input = BufReader::new(File::open(demo)?);
+    let mut parser = Parser::from_reader(input).map_err(|e| anyhow!("{e}"))?;
+    parser.register_observer::<EventScan>();
+    parser.run_to_end().map_err(|e| anyhow!("{e}"))?;
     Ok(())
 }
 
@@ -1065,6 +1198,7 @@ fn run() -> Result<()> {
         Some("inspect") if args.len() == 4 => inspect(&args[2], &args[3]),
         Some("rewrite") if args.len() == 3 => rewrite(&args[2]),
         Some("looks") if args.len() == 3 => player_looks(&args[2]),
+        Some("events") if args.len() == 3 => event_scan(&args[2]),
         Some("stickers") if args.len() == 3 => sticker_scan(&args[2]),
         Some("econ") if args.len() == 4 => econ_scan(&args[2], &args[3]),
         Some("compare") if args.len() == 4 => compare(&args[2], &args[3]),
