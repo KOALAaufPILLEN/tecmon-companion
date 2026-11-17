@@ -63,13 +63,13 @@ Ein echter kurzer Test auf CS2 1.41.9.6 mit dem korrigierten Plugin erzeugte am 
 
 ### Sharecodes und Team-Videos
 
-Im Steam-Match-Bereich der Webseite „Für Companion exportieren“ wählen: Die Datei enthält ausschließlich bis zu zehn Sharecodes, keine API-Schlüssel oder Steam-Anmeldecodes. Im Companion über „Auftrag / Matches öffnen“ importieren, Steam lokal anmelden und den Download bestätigen. Alternativ Sharecodes direkt einfügen. CS2 und die CS-Demo-Manager-Oberfläche vorher schließen. Der Companion verwendet `csdm dl-valve`, lädt und entpackt lokal in einen eigenen Download-Ordner. Abgelaufene Valve-Demos werden als Fehler angezeigt. Download und Aufnahme laufen nacheinander; kein Spiele- oder Demo-Upload auf den Webserver.
+Im Steam-Match-Bereich der Webseite „Für Companion exportieren“ wählen: Die Datei enthält ausschließlich bis zu zehn Sharecodes, keine API-Schlüssel oder Steam-Anmeldecodes. Im Companion über „Auftrag / Matches öffnen“ importieren, Steam lokal anmelden und den Download bestätigen. Alternativ Sharecodes direkt einfügen. CS2 vorher schließen. Seit 0.40 lädt die eigene Engine (boiler-writter mit fester Prüfsumme, `valve-download.mjs`) und entpackt lokal in einen eigenen Download-Ordner. Abgelaufene Valve-Demos werden als Fehler angezeigt. Download und Aufnahme laufen nacheinander; kein Spiele- oder Demo-Upload auf den Webserver.
 
 Bei aus Steam geladenen Replays enthält der Aufnahmeauftrag auch den bekannten Sharecode. Der Companion kann die heruntergeladene Demo dann diesem Auftrag zuordnen. Bei manuell geladenen Dateien die passende Originaldemo selbst auswählen; ein Sharecode lässt sich nicht aus jeder Demo rekonstruieren.
 
 In den Highlights mehrere Spieler, „Alle Spieler“ oder „Team des gewählten Spielers“ auswählen. Die Teamzuordnung richtet sich nach der ersten Runde, nicht nach wechselnden T-/CT-Seiten zur Halbzeit. Ein gemeinsames Zeitbudget (z. B. bis zu fünf Minuten) begrenzt die Summe aller Szenen. Die Auswahl berücksichtigt Spieler reihum, vermeidet überlappende Szenen derselben Perspektive und sortiert anschließend chronologisch. Jede Szene bleibt eine Egoansicht; verschiedene Spieler erscheinen nacheinander in einer gemeinsamen MP4, kein Splitscreen. Der Export bleibt mit Aufträgen der Version 1 kompatibel.
 
-Beim Update zuerst den laufenden Companion über „Companion beenden“. Das Setup beendet danach gegebenenfalls nur den anhand seiner Konfiguration und Marker erkannten privaten TecMon-PostgreSQL-Cluster vor dem Entpacken. Daten und bisheriges Administratorpasswort bleiben erhalten.
+Beim Update zuerst den laufenden Companion über „Companion beenden“. Nur bei älteren Installationen (bis 0.39) beendet das Setup einen noch laufenden, in `installation.json` genannten privaten PostgreSQL-Cluster vor dem Entpacken; dessen Daten bleiben erhalten, gestartet wird er nicht mehr.
 
 Im TecMon-Replay unter „In CS2 aufnehmen“ den Auftrag als `.tecmon.json` exportieren. Im Companion öffnen, Originaldemo mit „Demo wählen“ auswählen, CS2-Partie beenden und Aufnahme bestätigen. Danach die MP4 im Replay auswählen und mit Spielername/Freitext und Steam-Link veröffentlichen. Demos und Aufnahme bleiben lokal; der Companion erhält keine YouTube-Secrets.
 
@@ -77,7 +77,7 @@ Im TecMon-Replay unter „In CS2 aufnehmen“ den Auftrag als `.tecmon.json` exp
 
 ## Entwickler
 
-Für den vollständigen Installer `scripts/build-companion-installer.ps1` verwenden. Der Build prüft `windows/dependency-manifest.json`, extrahiert unveränderte Originalpakete und kompiliert Launcher/Setup mit dem vorhandenen Windows-.NET-Framework-Compiler. Der Quellcode von CS Demo Manager muss auf Tag `v3.20.1` stehen. Die Binärpakete sind separat; keine Laufzeit-Binaries gehören ins Git-Repository.
+Für den vollständigen Installer `scripts/build-companion-installer.ps1` verwenden. Der Build prüft `windows/dependency-manifest.json`, extrahiert unveränderte Originalpakete und kompiliert Launcher/Setup mit dem vorhandenen Windows-.NET-Framework-Compiler. Seit 0.40 gehören weder CS Demo Manager noch PostgreSQL zum Build; der TecMon-Demo-Rewriter wird mit `cargo build --locked` gebaut. Die Binärpakete sind separat; keine Laufzeit-Binaries gehören ins Git-Repository.
 
 Tests: `node --test "tools/cs2-companion/test/*.test.mjs"`. Der reale Einrichtungstest verwendet einen eigenen Test-Datenordner. Automatisierte Tests ersetzen keinen echten CS2-Aufnahmetest.
 
@@ -87,7 +87,7 @@ GitHub-Release: Das Kernpaket enthält Companion und Node.js. HLAE und FFmpeg we
 
 ## Aktualisieren ohne Neuinstallation
 
-Für eine bestehende Installation (ab 0.3.1) die kleine TecMon-Companion-Update.exe aus dem neuesten GitHub-Release verwenden. Vorher den Companion schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
+Für eine bestehende Installation (ab 0.3.1) die kleine TecMon-Companion-Update.exe aus dem neuesten GitHub-Release verwenden. Vorher den Companion schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Zugangsdaten, Demos und Videos (bei älteren Installationen auch deren Datenbank) werden nicht ersetzt.
 
 Ab 0.4: Im Companion Auf Updates prüfen und anschließend Update installieren wählen. Das Paket wird ausschließlich aus stabilen Releases des offiziellen Repositories bezogen. Größe und SHA256 werden vor dem Start geprüft. Nach dem Beenden des lokalen Servers übernimmt ein separater Update-Prozess und startet den Companion wieder. Änderungen an großen Drittanbieter-Tools können weiterhin einen gesonderten Tool-/Installer-Schritt erfordern.
 

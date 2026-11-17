@@ -6,11 +6,14 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
+**Stand dieser Übersicht:** Version 0.41.1, 17. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
 - [Sicherheit und Daten](#sicherheit-und-daten)
 - [Windows herunterladen](#windows-herunterladen)
 - [Für Entwickler](#für-entwickler)
+- [TecMon-Stil](#tecmon-stil)
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
 
@@ -20,12 +23,14 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 - **„In CS2 aufnehmen“ auf tecmon.online:** Du wählst im Demo-Manager Szenen und Spieler, der Companion erledigt den Rest: Demo per Sharecode über dein Steam laden (oder direkt aus dem Browser übernehmen), in CS2 aufnehmen, mit TecMon-Branding zu einer MP4 verarbeiten und an die Webseite zurückgeben. Fortschritt und Fehler siehst du auf der Webseite, die Figur sagt dir nebenbei, an welchem Schritt sie gerade ist.
 - **Eigene TecMon-Engine:** Download und Aufnahme laufen komplett im Companion, ohne CS Demo Manager und ohne Datenbank.
+- **Demos für die Webseite laden:** Öffnest du auf tecmon.online eine Demo aus deinem Match-Verlauf, lädt der Companion sie direkt bei Valve (`demo-fetch-v1`), statt dass sie über den TecMon-Server läuft. Er speichert dabei nichts; die Webseite entpackt und wertet selbst aus.
 - **Kamera:** Egoansicht, feste Freikamera-Punkte, weiche Kamerafahrten über bis zu 8 Punkte, Verfolger-Kamera, Spieler-Intro von vorn und „Kamera im Spiel setzen“ (Punkte mit F8 direkt in CS2 merken).
 - **Branding:** Animiertes TecMon-Intro in zwei Stilen (Neon-Raster oder Hologramm), Esport-Titelbild, Spielerwechsel im Teamvideo, animiertes HUD am Radar, Outro und weiche Übergänge.
 - **Kill-Anzeige:** Neben dem TecMon-Logo erscheint bei jedem Kill „1K · KILL“ bis „ACE · ALL 5 ENEMIES“, mit Headshot-Hinweis.
 - **Deathcam:** Oben steht „DEATHCAM: Name“, vorher kommt ein kurzes Intro von vorn auf den Spieler, der stirbt.
 - **36 Filter:** je Szene ein Filter nur aufs Gameplay, auf Wunsch ein eigener für Intro, Spielerwechsel und Outro.
-- **Skin-Tausch für Videos (Zusatz-Addon):** zeigt in einer Szene andere Waffenskins, Messer und Handschuhe. Der Companion schreibt dafür eine Kopie der Demo um; die Original-Demo und dein Live-Spiel bleiben unberührt. Getauschte Waffen tragen das Namensschild „TecMon Skin“. Standardmäßig aus, Einschalten nur nach bestätigtem Hinweis.
+- **Skin-Tausch für Videos (Zusatz-Addon):** zeigt in einer Szene andere Waffenskins, Messer und Handschuhe. Der Companion schreibt dafür eine Kopie der Demo um; die Original-Demo und dein Live-Spiel bleiben unberührt. Getauschte Waffen tragen das Namensschild „TecMon Skin“. Messer und Handschuhe je Seite (T/CT), alte Skins mit altem Waffenmodell, Original-Sticker auf Wunsch, der Killfeed zeigt das getauschte Messer. Standardmäßig aus, Einschalten nur nach bestätigtem Hinweis.
+- **Agenten-Tausch und Huhn-Modus:** je Spieler und Seite ein anderer Agent fürs ganze Video, mit passenden Handschuhen. Als Experiment wird der Spieler zum Huhn, mit wählbarer Größe, Rasse und Farbe. Beides schreibt der eigene TecMon-Demo-Rewriter in dieselbe Demo-Kopie.
 
 Grenzen: höchstens 40 Szenen und 20 Minuten Spielzeit pro Auftrag. Steam und CS2 müssen installiert sein, und CS2 darf während der Aufnahme nicht schon laufen.
 
@@ -126,14 +131,30 @@ Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` 
 
 | Gemeldet | Capabilities |
 | --- | --- |
-| immer | `browser-demo-v1`, `xray-v1`, `insights-v1`, `insights-v2` |
+| immer | `browser-demo-v1`, `xray-v1`, `insights-v1`, `insights-v2`, `demo-fetch-v1` |
 | mit verwalteter Installation | `clips-v1`, `video-branding-v1`, `video-style-v1`, `video-filter-v1`, `kill-badge-v1`, `deathcam-label-v1`, `camera-points-v1`, `recorder-internal-v1` |
 | zusätzlich mit eigener Engine | `camera-script-v1`, `camera-session-v1`, `camera-angle-v1`, `auto-highlights-v1`, `skin-swap-setup-v1` |
+| zusätzlich mit mitgeliefertem Rewriter (`tecmon-demo-rewriter.exe`) | `agent-swap-v1`, `chicken-v1`, `chicken-breed-v1` |
 | zusätzlich mit eingeschaltetem Skin-Tausch und mitgeliefertem Rewriter | `skin-swap-v1`, `skin-swap-v2`, `skin-side-v1`, `skin-legacy-v1`, `skin-stickers-v1` |
 
 ### Tests
 
 `npm test` führt über 130 automatisierte Tests aus, darunter die Prüfung, dass Rundentipps und Dota-2-Tipps keine verbotenen GSI-Blöcke anfordern und die CFG-Sammlung nur erlaubte Befehle enthält. Bei jedem Release wird zusätzlich eine isolierte Windows-Neuinstallation getestet. Die Tests sind kein Nachweis, dass jede Demo mit jeder CS2-Version aufgenommen werden kann. Regeln für Beiträge stehen in [AGENTS.md](AGENTS.md).
+
+## TecMon-Stil
+
+Companion-Seite, Linksklick-Fenster, Schnellmenü und Sprechblase folgen denselben Designregeln wie tecmon.online. Sie gelten für jede neue oder überarbeitete Oberfläche:
+
+- **Abgeschnittene Ecken statt Rundungen:** Karten, Knöpfe, Felder und Listenzeilen per `clip-path` mit `border-radius: 0`; die schräge Kante zeichnet ein Verlauf in Rahmenfarbe (`--cut`, `--edge`, `--fill` in `public/style.css`, Bereich `body.desktop-panel.holo`). Große Karten 16 px Schnitt, Zeilen 9 px, Knöpfe 7 px, Felder 6 px, Abzeichen 5 px.
+- **Eckige Eingabefelder**, dunkle Fläche, dünner Rahmen; im Fokus wird die Kante Gold.
+- **Farben:** Schwarz und Tiefviolett als Grund, Lila (`#a78bfa`) für Rahmen und Kanten, **Gold** (`#e8c573`) für Akzente mit Bedeutung. Große Karten tragen goldene Kanten an den zwei Hauptecken.
+- **Aktive Wahl ist Gold:** gewählter Reiter als goldenes Parallelogramm, eingeschaltete Optionen und installierte Pakete mit goldener Kante. Nicht gewählte Optionen bleiben Lila oder neutral.
+- **Formen:** Statuspunkte als Raute, Reiter als Parallelogramm, keine Kreise und Pillen in neuen Bereichen.
+- **Bewegung:** Übergänge nur mit benannten Eigenschaften und den `--tm-dur-*`-Zeiten, nie `transition: all`. Drücken mit `scale(0.96)`, nie unter 0,95. Hover nur bei Maus (`@media (hover: hover) and (pointer: fine)`); breite Karten ändern nur die Farbe.
+- **Bedienung:** Trefferflächen mindestens 40 px, Esc schließt Rückfragen, keine Windows-Standarddialoge während des Spiels, die Sprechblase nimmt CS2 nie den Fokus.
+- **Marke:** vorhandenes TecMon-Logo und die TecMon-Figur, keine fremden Icons oder Marken-Overlays.
+
+Die ausführliche Fassung mit Vorlagen steht auf der Webseite in `docs/tecmon-style.md` (Repo `tecmon`); die verbindliche Kurzfassung für dieses Repo steht in [AGENTS.md](AGENTS.md) unter „Oberfläche“. Neue Stilregeln werden an beiden Stellen eingetragen.
 
 ## Lizenzen und Herkunft
 
