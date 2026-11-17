@@ -196,47 +196,48 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 
 - Freiwilliges Addon, standardmäßig aus (`skin-swap.json`), Einschalten nur nach
   bestätigtem Hinweis (`SKIN_NOTICE`, Version `SKIN_NOTICE_VERSION`). Capability
-  `skin-swap-v1` nur, wenn es an ist und die eigene Engine läuft.
-- Nutzt nur den eigenständigen Demo-Rewriter aus CS2-nskinz (Lyan-edit, AGPL-3.0):
-  Download vom festen Commit `REWRITER_REVISION`, Prüfung gegen `REWRITER_SHA256`,
-  bei Abweichung abbrechen. Keinen Code des Projekts in den MIT-Companion kopieren,
-  keine DLL in CS2 laden. Credits mit Autor, Link und Lizenz in Seite und README.
+  `skin-swap-v1` nur, wenn es an ist, die eigene Engine läuft und der mitgelieferte
+  `tecmon-demo-rewriter.exe` da ist.
+- Seit 0.41 tauscht nur der eigene Rewriter (`native/tecmon-demo-rewriter/src/skins.rs`, MIT),
+  im selben Durchgang wie Agenten (`agentRequest(..., { skins: true })`, `skinPlan()`). Nichts
+  nachladen, keine DLL in CS2. Keinen Code aus anderen Skin-Tauschern (etwa CS2-nskinz,
+  AGPL-3.0) übernehmen; die Idee darf genannt werden, Links dorthin nicht.
 - Aus dem Auftrag nur `sequences[].skins` mit Zahlen (`cleanSkins()`: Waffe aus
   `SKIN_WEAPONS`, Paintkit, Abnutzung, Muster, höchstens `MAX_SKINS`). SteamID64
-  bleibt Text. Aufgenommen wird aus einer Kopie `*.tecmon-skins.dem`, die danach
+  bleibt Text. Aufgenommen wird aus einer Kopie `*.tecmon-swap.dem`, die danach
   gelöscht wird; die Original-Demo bleibt unverändert.
-- Getauschte Waffen tragen das Namensschild `SKIN_TAG` („TecMon Skin“).
+- Getauschte Waffen, Messer und Handschuhe tragen das Namensschild „TecMon Skin“ und eine
+  markierte Item-ID (oberste vier Bits gesetzt).
 - Die Webseite darf den Schalter über `GET/POST /bridge/skins` bedienen (Capability
   `skin-swap-setup-v1`, nur mit installiertem Companion und eigener Engine). Einschalten
   nur mit `accept` gleich `SKIN_NOTICE_VERSION`; die Webseite zeigt dafür `SKIN_NOTICE`.
 - `skin-swap-v2` (nur zusammen mit `skin-swap-v1`): je Szene höchstens ein Messer aus
-  `SKIN_KNIVES` (Skin-ID 0 = ohne Lackierung, optional `from` = Messer aus der Demo) und ein
-  Handschuh aus `SKIN_GLOVES`. Ersetzt werden `DEFAULT_KNIVES`/`DEFAULT_GLOVES` (und `from`);
-  `cs2_game_dir` kommt nur aus dem erkannten CS2-Pfad (`cs2GameDir()`), nie aus dem Auftrag.
+  `SKIN_KNIVES` (Skin-ID 0 = ohne Lackierung, `from` wird angenommen, aber nicht gebraucht) und
+  ein Handschuh aus `SKIN_GLOVES`. Der Rewriter ersetzt jedes Messer des Spielers auf der Seite
+  (Modellpfade fest in `KNIVES` in `skins.rs`) und `m_EconGloves` des Pawns.
 - `skin-side-v1` (nur zusammen mit `skin-swap-v2`): Messer und Handschuhe optional mit `side`
-  (`"t"`/`"ct"`, `SKIN_SIDES`). Dann ersetzt der Rewriter nur die Standard-Quelle dieser Seite
-  (Messer 59 T / 42 CT, Handschuhe 5028 T / 5029 CT); ohne `side` beide. Pro Spieler und Seite eins.
+  (`"t"`/`"ct"`, `SKIN_SIDES`); ohne `side` beide Seiten. Seite eines Messers: Träger, sonst Team
+  des Besitzers. Auf der Seite ohne Handschuh-Wunsch stellt der Rewriter die echten Handschuhe
+  nach einem Seitenwechsel wieder her. Pro Spieler und Seite eins.
 - `skin-legacy-v1`: Waffen-Skins optional mit `legacy` (0/1, nicht bei Messer/Handschuh). Dann geht
-  `mesh_group_mask` (2 = altes, 1 = neues Waffenmodell) an den Rewriter; ohne Angabe nichts.
+  `m_MeshGroupMask` auf 2 (altes) bzw. 1 (neues Waffenmodell); ohne Angabe nichts.
 - Sticker der echten Waffe entfernt der eigene Rewriter (`clear_stickers` je Spieler: Item-Definitionen
   der Waffen mit getauschtem Skin). Er setzt nur die Sticker-ID-Attribute (113, 117, …) auf 0, sonst nichts;
-  `compare` ignoriert genau diese Werte. Mit `keepStickers: true` je Szene (`skin-stickers-v1`) bleiben sie.
+  `compare` ignoriert diese Werte und die Skin-Felder (`is_skin_field()`). Mit `keepStickers: true` je Szene (`skin-stickers-v1`) bleiben sie.
 
 ## Agenten-Tausch (`agent-swap.mjs`, `native/tecmon-demo-rewriter`)
 
 - Eigener Rewriter in Rust (MIT) auf Basis von source2-demo (MIT/Apache-2.0,
   Kopie in `native/tecmon-demo-rewriter/vendor`, Änderungen mit „TecMon:“
-  markiert). Kein Code aus CS2-nskinz übernehmen. Die Release-Pipeline baut ihn
+  markiert). Kein Code aus anderen Skin-Tauschern übernehmen. Die Release-Pipeline baut ihn
   mit `cargo build --locked`; er liegt als `tecmon-demo-rewriter.exe` neben den
   `.mjs`-Dateien. Capability `agent-swap-v1` nur, wenn die Datei da ist und die
   eigene Engine läuft.
 - Aus dem Auftrag nur `sequences[].agents` als `{ t?, ct? }` mit Nummern aus
   `AGENTS` der passenden Seite (`cleanAgents()`); Modellpfade stehen nur im
   Companion. Pro Spieler und Seite ein Agent je Video. SteamID64 bleibt Text.
-- Aufgenommen wird aus `*.tecmon-agents.dem`, danach gelöscht. Nach einem
-  Skin-Tausch mit Handschuhen läuft der Rewriter auch ohne Agentenwunsch, um die
-  Handschuh-Bodygroups zu reparieren; scheitert nur das, geht die Aufnahme mit
-  der Skin-Kopie weiter.
+- Aufgenommen wird aus `*.tecmon-swap.dem`, danach gelöscht. Bei getauschten Handschuhen
+  wählt der Rewriter je Seite die Bodygroups „mit Handschuhen“ passend zum Agenten.
 - Huhn-Modus (`chicken-v1`, Experiment): je Szene `chicken` als Zahl von `CHICKEN_MIN` bis
   `CHICKEN_MAX` (`cleanChicken()`), pro Spieler eine Größe je Video. Der Rewriter setzt nur das feste
   Modell `models/chicken/chicken.vmdl`, Mesh-Maske, Bodygroups wie die Hühner der Karte und

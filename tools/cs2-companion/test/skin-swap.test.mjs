@@ -2,24 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import os from "node:os";
-import { createHash } from "node:crypto";
-import { mkdtemp, writeFile, readFile, readdir } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { validateJob } from "../job.mjs";
-import {
-  createSkinSwap,
-  rewriteRequest,
-  cs2GameDir,
-  DEFAULT_KNIVES,
-  DEFAULT_GLOVES,
-  hasSkins,
-  REWRITER_SHA256,
-  REWRITER_URL,
-  REWRITER_REVISION,
-  SKIN_NOTICE_VERSION,
-  SKIN_TAG,
-  MAX_SKINS,
-} from "../skin-swap.mjs";
+import { createSkinSwap, skinPlan, hasSkins, SKIN_NOTICE, SKIN_NOTICE_VERSION, MAX_SKINS } from "../skin-swap.mjs";
 
 const STEAM = "76561198000000001";
 const OTHER = "76561198000000002";
@@ -63,71 +49,51 @@ test("Auftrag übernimmt nur geprüfte Skin-Zahlen", () => {
   for (const skins of bad) assert.throws(() => validateJob(job(skins)), /Ungültiger TecMon-Auftrag/);
 });
 
-test("Rewriter-Anfrage behält SteamID64 als Text und markiert getauschte Waffen", () => {
+test("Skin-Plan behält SteamID64 als Text und übergibt nur Zahlen", () => {
   const clean = validateJob(job([ak, { weapon: 9, paintKit: 344, wear: 0, seed: 0 }], [{ weapon: 61, paintKit: 504, wear: 0.3, seed: 1 }]));
-  const request = rewriteRequest(clean, "C:/d/a.dem", "C:/d/a.tecmon-skins.dem");
-  assert.equal(request.schema_version, 2);
-  assert.equal(request.input_dem, "C:/d/a.dem");
-  assert.equal(request.output_dem, "C:/d/a.tecmon-skins.dem");
-  assert.deepEqual(request.passes.map((p) => p.steam_id64), [STEAM, OTHER]);
-  assert.equal(typeof request.passes[0].steam_id64, "string");
-  const awp = request.passes[0].items[1];
-  assert.equal(awp.definition_index, 9);
-  assert.equal(awp.paint_kit, 344);
-  assert.ok(awp.wear > 0, "Abnutzung 0 wird auf den kleinsten gültigen Wert gesetzt");
-  assert.equal(awp.custom_name, SKIN_TAG);
-  assert.equal(awp.team, "ANY");
-  assert.equal(awp.replacement_definition_index, null);
+  const plan = skinPlan(clean);
+  assert.deepEqual([...plan.keys()], [STEAM, OTHER]);
+  assert.deepEqual(plan.get(STEAM), [
+    { kind: "weapon", def: 7, paint_kit: 282, seed: 661, wear: 0.15 },
+    { kind: "weapon", def: 9, paint_kit: 344, seed: 0, wear: 0 },
+  ]);
+  assert.deepEqual(plan.get(OTHER), [{ kind: "weapon", def: 61, paint_kit: 504, seed: 1, wear: 0.3 }]);
 });
 
 test("Zwei Szenen desselben Spielers dürfen einer Waffe keine verschiedenen Skins geben", () => {
   const value = job([ak]);
   value.sequences[1] = { ...value.sequences[1], steamId: STEAM, skins: [{ ...ak, paintKit: 180 }] };
-  assert.throws(() => rewriteRequest(validateJob(value), "a.dem", "b.dem"), /zwei Szenen verschiedene Skins/);
+  assert.throws(() => skinPlan(validateJob(value)), /zwei Szenen verschiedene Skins/);
   value.sequences[1].skins = [ak];
-  assert.equal(rewriteRequest(validateJob(value), "a.dem", "b.dem").passes[0].items.length, 1);
+  assert.equal(skinPlan(validateJob(value)).get(STEAM).length, 1);
 });
 
-test("Messer und Handschuhe ersetzen die Standard-Gegenstände (skin-swap-v2)", () => {
+test("Messer und Handschuhe gelten ohne Seite für T und CT (skin-swap-v2)", () => {
   const knife = { weapon: 507, paintKit: 0, wear: 0, seed: 0, from: 515 };
   const glove = { weapon: 5030, paintKit: 10018, wear: 0.2, seed: 7 };
   const clean = validateJob(job([ak, knife, glove]));
   assert.deepEqual(clean.sequences[0].skins, [ak, knife, glove]);
-  assert.throws(() => rewriteRequest(clean, "a.dem", "b.dem"), /CS2-Ordner/);
-  const request = rewriteRequest(clean, "a.dem", "b.dem", "C:/cs2/game/csgo");
-  assert.equal(request.cs2_game_dir, "C:/cs2/game/csgo");
-  const items = request.passes[0].items;
-  const knives = items.filter((i) => i.replacement_definition_index === 507);
-  // Nur Standard-Quellen, je Seite: der Rewriter lehnt andere ab und nutzt Messer nur aus T/CT-Plänen.
-  assert.deepEqual(knives.map((i) => [i.definition_index, i.team]).sort(), [[42, "CT"], [59, "T"]]);
-  assert.deepEqual(items.filter((i) => i.replacement_definition_index === 5030).map((i) => i.team).sort(), ["CT", "T"]);
-  assert.equal(items.find((i) => i.definition_index === 7).team, "ANY");
-  const gloves = items.filter((i) => i.replacement_definition_index === 5030);
-  assert.deepEqual(gloves.map((i) => i.definition_index).sort(), DEFAULT_GLOVES);
-  assert.ok(gloves.every((i) => i.paint_kit === 10018 && i.quality === 3 && i.custom_name === SKIN_TAG));
-  assert.equal(items.find((i) => i.definition_index === 7).replacement_definition_index, null);
-  // Ohne Messer kein Spielordner in der Anfrage
-  assert.equal(rewriteRequest(validateJob(job([glove])), "a.dem", "b.dem").cs2_game_dir, undefined);
+  const items = skinPlan(clean).get(STEAM);
+  assert.deepEqual(
+    items.filter((i) => i.kind === "knife").map((i) => [i.def, i.side, i.paint_kit]),
+    [[507, "t", 0], [507, "ct", 0]],
+  );
+  assert.deepEqual(items.filter((i) => i.kind === "glove").map((i) => i.side), ["t", "ct"]);
+  // `from` geht nicht an den Rewriter: er ersetzt jedes Messer des Spielers.
+  assert.ok(items.every((i) => !("from" in i)));
   const value = job([knife]);
   value.sequences[1] = { ...value.sequences[1], steamId: STEAM, skins: [{ ...knife, weapon: 515 }] };
-  assert.throws(() => rewriteRequest(validateJob(value), "a.dem", "b.dem", "x"), /verschiedene Messer/);
-  // Gleiches Messer wie in der Demo: trotzdem nur Standard-Quellen (Rewriter ersetzt jedes Messer des Spielers).
-  const own = rewriteRequest(validateJob(job([{ ...knife, weapon: 515, paintKit: 38 }])), "a.dem", "b.dem", "x");
-  assert.deepEqual(own.passes[0].items.map((i) => i.definition_index).sort(), DEFAULT_KNIVES);
-  assert.equal(cs2GameDir(""), "");
-  assert.match(cs2GameDir(path.join("C:", "cs2", "game", "bin", "win64", "cs2.exe")), /game[\\/]csgo$/);
+  assert.throws(() => skinPlan(validateJob(value)), /verschiedene Messer/);
 });
 
 test("Alte Skins bekommen das alte Waffenmodell (skin-legacy-v1)", () => {
   const lore = { weapon: 9, paintKit: 344, wear: 0.01, seed: 0, legacy: 1 };
   const modern = { ...ak, legacy: 0 };
-  const clean = validateJob(job([lore, modern]));
-  assert.equal(clean.sequences[0].skins[0].legacy, 1);
-  const items = rewriteRequest(clean, "a.dem", "b.dem").passes[0].items;
-  assert.equal(items.find((i) => i.definition_index === 9).mesh_group_mask, 2);
-  assert.equal(items.find((i) => i.definition_index === 7).mesh_group_mask, 1);
+  const items = skinPlan(validateJob(job([lore, modern]))).get(STEAM);
+  assert.equal(items.find((i) => i.def === 9).legacy, 1);
+  assert.equal(items.find((i) => i.def === 7).legacy, 0);
   // Ohne Angabe kein Eingriff ins Modell
-  assert.equal(rewriteRequest(validateJob(job([ak])), "a.dem", "b.dem").passes[0].items[0].mesh_group_mask, undefined);
+  assert.equal(skinPlan(validateJob(job([ak]))).get(STEAM)[0].legacy, undefined);
   assert.throws(() => validateJob(job([{ ...lore, legacy: 2 }])));
   assert.throws(() => validateJob(job([{ weapon: 507, paintKit: 0, wear: 0, seed: 0, legacy: 1 }])));
 });
@@ -140,12 +106,11 @@ test("Messer und Handschuhe je Seite (skin-side-v1)", () => {
   value.sequences[1] = { ...value.sequences[1], steamId: STEAM, skins: [ctKnife] };
   const clean = validateJob(value);
   assert.equal(clean.sequences[1].skins[0].side, "ct");
-  const items = rewriteRequest(clean, "a.dem", "b.dem", "x").passes[0].items;
-  const by = (source) => items.filter((i) => i.definition_index === source).map((i) => i.replacement_definition_index);
-  assert.deepEqual(by(59), [507]);
-  assert.deepEqual(by(42), [515]);
-  assert.deepEqual(by(5028), [5030]);
-  assert.deepEqual(by(5029), []);
+  const items = skinPlan(clean).get(STEAM);
+  assert.deepEqual(
+    items.map((i) => [i.kind, i.side, i.def]),
+    [["knife", "t", 507], ["glove", "t", 5030], ["knife", "ct", 515]],
+  );
   // Seite nur bei Messer/Handschuh und nur t/ct
   assert.throws(() => validateJob(job([{ ...ak, side: "t" }])));
   assert.throws(() => validateJob(job([{ ...tKnife, side: "x" }])));
@@ -153,97 +118,24 @@ test("Messer und Handschuhe je Seite (skin-side-v1)", () => {
   const clash = job([{ ...tKnife, side: undefined }]);
   delete clash.sequences[0].skins[0].side;
   clash.sequences[1] = { ...clash.sequences[1], steamId: STEAM, skins: [{ ...ctKnife, side: "t" }] };
-  assert.throws(() => rewriteRequest(validateJob(clash), "a.dem", "b.dem", "x"), /verschiedene Messer für T/);
+  assert.throws(() => skinPlan(validateJob(clash)), /verschiedene Messer für T/);
 });
 
-const body = (bytes) => ({ ok: true, body: [bytes] });
-
-test("Skin-Tausch ist standardmäßig aus und braucht den bestätigten Hinweis", async () => {
+test("Skin-Tausch ist standardmäßig aus, braucht den bestätigten Hinweis und lädt nichts nach", async () => {
   const dir = await temp();
-  let downloads = 0;
-  const swap = await createSkinSwap({ dir, cacheDir: dir, request: async () => (downloads++, body(Buffer.from("x"))) });
+  const swap = await createSkinSwap({ dir });
   assert.equal(swap.enabled, false);
   assert.equal(swap.state().needsNotice, true);
-  assert.equal(swap.state().credit.author, "Lyan-edit");
+  assert.equal(swap.state().notice, SKIN_NOTICE);
+  assert.doesNotMatch(SKIN_NOTICE, /nskinz/i);
+  assert.equal(swap.state().credit, undefined);
   await assert.rejects(swap.set(true), /Hinweis/);
-  assert.equal(downloads, 0);
-  await assert.rejects(swap.rewrite(validateJob(job([ak])), path.join(dir, "a.dem")), /ausgeschaltet/);
-});
-
-test("Download vom festen Commit mit falscher Prüfsumme wird abgelehnt", async () => {
-  const dir = await temp();
-  let url = "";
-  const swap = await createSkinSwap({
-    dir,
-    cacheDir: dir,
-    request: async (u) => ((url = u), body(Buffer.from("MZ falsch"))),
-  });
-  await assert.rejects(swap.set(true, SKIN_NOTICE_VERSION), /Prüfsumme/);
-  assert.equal(url, REWRITER_URL);
-  assert.ok(url.includes(REWRITER_REVISION));
-  assert.equal(swap.enabled, false);
   assert.equal(existsSync(path.join(dir, "skin-swap.json")), false);
-});
-
-test("Eingeschaltet: Demo-Kopie umschreiben, Hilfsdateien löschen, Ausschalten entfernt das Programm", async () => {
-  const dir = await temp();
-  const exe = Buffer.from("geprüftes Programm");
-  const expected = createHash("sha256").update(exe).digest("hex");
-  const demo = path.join(dir, "match.dem");
-  await writeFile(demo, "PBDEMS2\0original");
-  const calls = [];
-  let answer = { ok: true, matched_player_count: 1, weapon_count: 1 };
-  const swap = await createSkinSwap({
-    dir,
-    cacheDir: path.join(dir, "cache"),
-    expected,
-    request: async () => body(exe),
-    run: async (program, args) => {
-      calls.push(args);
-      const request = JSON.parse(await readFile(args[1], "utf8"));
-      await writeFile(request.output_dem, "PBDEMS2\0kopie");
-      await writeFile(args[3], JSON.stringify(answer));
-    },
-  });
   assert.equal((await swap.set(true, SKIN_NOTICE_VERSION)).enabled, true);
-  const logs = [];
-  const copy = await swap.rewrite(validateJob(job([ak])), demo, (m) => logs.push(m));
-  assert.equal(copy, path.join(dir, "match.tecmon-skins.dem"));
-  assert.equal(calls[0][0], "--request");
-  assert.equal(await readFile(demo, "utf8"), "PBDEMS2\0original");
-  assert.ok(logs.some((m) => m.includes("Lyan-edit")));
-  assert.deepEqual((await readdir(dir)).sort(), ["cache", "match.dem", "match.tecmon-skins.dem", "skin-swap.json"]);
-  await swap.cleanup(copy);
-  await swap.cleanup(demo); // Original wird nie gelöscht
-  assert.ok(existsSync(demo));
-  assert.equal(existsSync(copy), false);
-
-  answer = { ok: false, error: "unsupported request schema 9" };
-  await assert.rejects(swap.rewrite(validateJob(job([ak])), demo), /unsupported request schema 9/);
-  assert.equal(existsSync(copy), false);
-
   // Einstellung bleibt nach Neustart erhalten.
-  const again = await createSkinSwap({ dir, cacheDir: path.join(dir, "cache"), expected, request: async () => body(exe) });
+  const again = await createSkinSwap({ dir });
   assert.equal(again.enabled, true);
   assert.equal(again.state().needsNotice, false);
   await again.set(false);
-  assert.equal(existsSync(path.join(dir, "cache", "skin-swap")), false);
-});
-
-test("Ohne Netz lässt sich nichts einschalten", async () => {
-  const dir = await temp();
-  const swap = await createSkinSwap({
-    dir,
-    cacheDir: dir,
-    request: async () => {
-      throw new Error("kein Netz im Test");
-    },
-  });
-  await assert.rejects(swap.set(true, SKIN_NOTICE_VERSION), /kein Netz/);
-  assert.equal(swap.enabled, false);
-});
-
-test("Die feste Prüfsumme gehört zum veröffentlichten Rewriter", () => {
-  assert.match(REWRITER_SHA256, /^[0-9a-f]{64}$/);
-  assert.match(REWRITER_REVISION, /^[0-9a-f]{40}$/);
+  assert.equal((await createSkinSwap({ dir })).enabled, false);
 });

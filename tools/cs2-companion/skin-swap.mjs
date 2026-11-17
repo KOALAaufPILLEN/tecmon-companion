@@ -1,16 +1,12 @@
 /**
  * Skin-Tausch für Video-Szenen (Capability `skin-swap-v1`).
  *
- * Freiwilliges Zusatz-Addon, standardmäßig aus. Es nutzt den eigenständigen
- * Demo-Rewriter aus dem Open-Source-Projekt CS2-nskinz von Lyan-edit
- * (https://github.com/Lyan-edit/CS2-nskinz, AGPL-3.0). Der Companion lädt die
- * unveränderte `nskinz-demo-rewriter.exe` erst beim Einschalten vom festen
- * Commit des Autors, prüft die SHA-256-Prüfsumme und startet sie als eigenes
- * Programm. Es wird kein Code des Projekts in den Companion kopiert.
- *
- * Der Rewriter schreibt aus der Demo eine Kopie, in der die Waffen eines
- * Spielers andere Skins (Paintkit, Abnutzung, Muster) tragen. Aufgenommen wird
- * aus dieser Kopie, danach wird sie gelöscht; die Original-Demo bleibt
+ * Freiwilliges Zusatz-Addon, standardmäßig aus. Den Tausch macht der eigene
+ * TecMon-Demo-Rewriter (`native/tecmon-demo-rewriter`, MIT), der dem Companion
+ * als `tecmon-demo-rewriter.exe` beiliegt; es wird nichts nachgeladen. Er
+ * schreibt eine Kopie der Demo, in der die Waffen eines Spielers andere Skins
+ * tragen (Paintkit, Abnutzung, Muster), dazu Messer und Handschuhe. Aufgenommen
+ * wird aus der Kopie, danach wird sie gelöscht; die Original-Demo bleibt
  * unverändert. Nichts davon läuft im Spiel: keine DLL in CS2, nur die
  * Offline-Demo-Wiedergabe der TecMon-Engine.
  *
@@ -18,31 +14,17 @@
  * Paintkit, Abnutzung, Muster), nie Text, Pfade oder Befehle.
  */
 import path from "node:path";
-import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
-import { readFile, writeFile, rename, rm, mkdir } from "node:fs/promises";
+import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 
 export const SKIN_CAPABILITY = "skin-swap-v1";
 /** Webseite darf Skin-Tausch über `GET/POST /bridge/skins` ein- und ausschalten (mit bestätigtem Hinweis). */
 export const SKIN_SETUP_CAPABILITY = "skin-swap-setup-v1";
-/** Unveränderlicher Stand im Repository des Autors (Release v0.7.4). */
-export const REWRITER_REVISION = "68cff11fc316bb6767dd381f1b2369e4b930ca4a";
-export const REWRITER_SHA256 = "165b323f5d4cbed59d3d52ac69f1f9fd2269a33ab2b2e26e9f085024c3754c94";
-export const REWRITER_URL = `https://raw.githubusercontent.com/Lyan-edit/CS2-nskinz/${REWRITER_REVISION}/assets/tools/nskinz-demo-rewriter.exe`;
-export const REWRITER_CREDIT = {
-  name: "CS2-nskinz",
-  author: "Lyan-edit",
-  url: "https://github.com/Lyan-edit/CS2-nskinz",
-  license: "AGPL-3.0",
-  version: "v0.7.4",
-};
 /** Ändert sich der Hinweis inhaltlich, Version erhöhen: dann muss neu bestätigt werden. */
 export const SKIN_NOTICE_VERSION = 1;
 export const SKIN_NOTICE =
-  "Skin-Tausch nutzt das freie Programm CS2-nskinz von Lyan-edit (AGPL-3.0). Der Companion lädt es vom festen Stand des Autors, prüft die Prüfsumme und schreibt damit nur eine Kopie der Demo für die Aufnahme um. Nichts davon läuft im Spiel oder im Live-Match. Getauschte Skins gehören nicht dem Spieler; das Video bekommt den Namensschild-Text „TecMon Skin“.";
+  "Skin-Tausch schreibt mit dem TecMon-Demo-Rewriter nur eine Kopie der Demo für die Aufnahme um. Nichts davon läuft im Spiel oder im Live-Match. Getauschte Skins gehören nicht dem Spieler; das Video bekommt den Namensschild-Text „TecMon Skin“.";
 /** Höchstens so viele Waffen mit neuem Skin je Szene. */
 export const MAX_SKINS = 4;
-const MAX_EXE = 8 * 1024 * 1024;
 /** Namensschild auf getauschten Waffen; macht im Video sichtbar, dass der Skin nicht echt ist. */
 export const SKIN_TAG = "TecMon Skin";
 
@@ -87,8 +69,8 @@ export const SKIN_WEAPONS = {
 
 /**
  * Ab `skin-swap-v2`: Messer (Modell + Skin) und Handschuhe. Der Rewriter ersetzt
- * dafür die Standard-Messer (42 CT, 59 T) und Standard-Handschuhe (5028 T,
- * 5029 CT) des Spielers; ein eigenes Messer aus der Demo kommt als `from` mit.
+ * dafür jedes Messer und die Handschuhe des Spielers auf der gewählten Seite;
+ * `from` (Messer aus der Demo) wird angenommen, aber nicht mehr gebraucht.
  */
 export const SKIN_KNIFE_CAPABILITY = "skin-swap-v2";
 export const SKIN_KNIVES = {
@@ -178,11 +160,12 @@ export function cleanSkins(value, fail) {
 export const hasSkins = (job) => job.sequences.some((s) => s.skins?.length);
 
 /**
- * Anfrage für den Rewriter. Der Rewriter tauscht je Spieler und Waffe für die
- * ganze Demo; zwei Szenen desselben Spielers dürfen derselben Waffe also keine
- * unterschiedlichen Skins geben.
+ * Skin-Wünsche je Spieler für den TecMon-Demo-Rewriter (`skins` im Spieler-Auftrag).
+ * Der Rewriter tauscht je Spieler und Waffe für die ganze Demo; zwei Szenen desselben
+ * Spielers dürfen derselben Waffe also keine unterschiedlichen Skins geben.
+ * Ergebnis: SteamID64 (Text) -> Liste für den Rewriter.
  */
-export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
+export function skinPlan(job) {
   const players = new Map();
   for (const s of job.sequences) {
     if (!s.skins?.length) continue;
@@ -202,70 +185,39 @@ export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
               ? `${s.playerName}: In zwei Szenen sind verschiedene ${base === "knife" ? "Messer" : "Handschuhe"} für ${slot.endsWith(":t") ? "T" : "CT"} gewählt. Pro Spieler und Seite geht nur eins je Video.`
               : `${s.playerName}: ${itemName(skin.weapon)} hat in zwei Szenen verschiedene Skins. Pro Spieler und Waffe geht nur ein Skin je Video.`,
           );
-        items.set(slot, known?.from !== undefined && skin.from === undefined ? { ...skin, from: known.from } : skin);
+        items.set(slot, skin);
       }
     }
     players.set(s.steamId, items);
   }
-  // Wie die nSkinz-Oberfläche: Messer 59/Handschuhe 5028 nur für T, 42/5029 nur für CT. Der Rewriter
-  // wendet Messer nur aus dem Plan der eigenen Seite an ("ANY" wurde ignoriert) und ersetzt jedes
-  // Messer des Spielers, auch ein eigenes; andere Quell-Definitionen lehnt er ab (Auftrag scheitert).
-  const sideOf = { 59: "T", 42: "CT", 5028: "T", 5029: "CT" };
-  const item = (source, skin, replace) => ({
-    definition_index: source,
-    replacement_definition_index: replace ? skin.weapon : null,
-    paint_kit: skin.paintKit,
-    quality: replace ? 3 : 0,
-    pattern_seed: skin.seed,
-    wear: Math.max(skin.wear, 0.0000001),
-    custom_name: SKIN_TAG,
-    team: sideOf[source] ?? "ANY",
-    // Altes oder neues Waffenmodell passend zum Skin (skin-legacy-v1).
-    ...(!replace && skin.legacy !== undefined ? { mesh_group_mask: skin.legacy ? 2 : 1 } : {}),
-  });
-  const knives = [...players.values()].some((items) => items.has("knife:t") || items.has("knife:ct"));
-  if (knives && !gameDir) throw new Error("Für den Messer-Tausch wurde der CS2-Ordner nicht gefunden.");
-  return {
-    schema_version: 2,
-    input_dem: inputDem,
-    output_dem: outputDem,
-    ...(knives ? { cs2_game_dir: gameDir } : {}),
-    passes: [...players].map(([steamId, items]) => ({
-      // SteamID64 bleibt Text, nie über Number runden.
-      steam_id64: steamId,
-      items: [...items].flatMap(([slot, skin]) => {
-        // `from` (Messer aus der Demo) wird nicht mehr gebraucht: der Rewriter findet alle Messer des Spielers.
-        // Je Seite die Standard-Quelle dieser Seite (Messer 59 T / 42 CT, Handschuhe 5028 T / 5029 CT).
-        if (slot === "knife:t") return [item(59, skin, true)];
-        if (slot === "knife:ct") return [item(42, skin, true)];
-        if (slot === "glove:t") return [item(5028, skin, true)];
-        if (slot === "glove:ct") return [item(5029, skin, true)];
-        return [item(skin.weapon, skin, false)];
+  const plan = new Map();
+  for (const [steamId, items] of players)
+    plan.set(
+      steamId,
+      [...items].map(([slot, skin]) => {
+        const [base, side] = typeof slot === "string" ? slot.split(":") : [slot];
+        return {
+          kind: base === "knife" ? "knife" : base === "glove" ? "glove" : "weapon",
+          def: skin.weapon,
+          ...(side ? { side } : {}),
+          paint_kit: skin.paintKit,
+          seed: skin.seed,
+          wear: skin.wear,
+          // Altes oder neues Waffenmodell passend zum Skin (skin-legacy-v1).
+          ...(base !== "knife" && base !== "glove" && skin.legacy !== undefined ? { legacy: skin.legacy } : {}),
+        };
       }),
-    })),
-  };
+    );
+  return plan;
 }
 
-/** CS2-Spielordner mit `pak01_dir.vpk` (game/csgo) aus dem Pfad der cs2.exe (game/bin/win64). */
-export function cs2GameDir(cs2Exe) {
-  if (!cs2Exe || typeof cs2Exe !== "string") return "";
-  return path.join(path.dirname(cs2Exe), "..", "..", "csgo");
-}
-
-const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-
-function runExe(exe, args) {
-  return new Promise((resolve, reject) =>
-    execFile(exe, args, { cwd: path.dirname(exe), windowsHide: true, timeout: 15 * 60_000, shell: false }, (error) =>
-      error ? reject(error) : resolve(),
-    ),
-  );
-}
-
-export async function createSkinSwap({ dir, cacheDir, request = fetch, run = runExe, expected = REWRITER_SHA256 }) {
+/**
+ * Schalter für das Addon. Der Tausch selbst läuft im Agenten-Tausch mit
+ * (`createAgentSwap`), weil beides derselbe Rewriter in einem Durchgang macht.
+ */
+export async function createSkinSwap({ dir }) {
   await mkdir(dir, { recursive: true });
   const file = path.join(dir, "skin-swap.json");
-  const exe = path.join(cacheDir, "skin-swap", `nskinz-demo-rewriter-${REWRITER_REVISION.slice(0, 12)}.exe`);
   let enabled = false;
   let accepted = 0;
   try {
@@ -285,35 +237,8 @@ export async function createSkinSwap({ dir, cacheDir, request = fetch, run = run
     notice: SKIN_NOTICE,
     noticeVersion: SKIN_NOTICE_VERSION,
     needsNotice: accepted < SKIN_NOTICE_VERSION,
-    credit: REWRITER_CREDIT,
     weapons: SKIN_WEAPONS,
   });
-
-  /** Rewriter aus dem Cache, sonst einmalig vom festen Commit laden; nie ungeprüft. */
-  async function rewriter() {
-    try {
-      if (sha256(await readFile(exe)) === expected) return exe;
-    } catch {
-      /* noch nicht geladen */
-    }
-    const response = await request(REWRITER_URL, { signal: AbortSignal.timeout(120_000) });
-    if (!response.ok) throw new Error("Skin-Tausch-Programm konnte nicht geladen werden.");
-    const chunks = [];
-    let size = 0;
-    for await (const chunk of response.body) {
-      size += chunk.length;
-      if (size > MAX_EXE) throw new Error("Skin-Tausch-Programm zu groß.");
-      chunks.push(chunk);
-    }
-    const bytes = Buffer.concat(chunks);
-    if (sha256(bytes) !== expected)
-      throw new Error("Prüfsumme des Skin-Tausch-Programms stimmt nicht. Aufnahme abgebrochen.");
-    await mkdir(path.dirname(exe), { recursive: true });
-    await writeFile(`${exe}.tmp`, bytes);
-    await rename(`${exe}.tmp`, exe);
-    return exe;
-  }
-
   return {
     state,
     get enabled() {
@@ -324,52 +249,9 @@ export async function createSkinSwap({ dir, cacheDir, request = fetch, run = run
         if (accept !== SKIN_NOTICE_VERSION) throw new Error("Bitte zuerst den Hinweis zum Skin-Tausch bestätigen.");
         accepted = SKIN_NOTICE_VERSION;
       }
-      if (on) await rewriter();
       enabled = on;
-      // Ausschalten entfernt das geladene Programm wieder.
-      if (!on) await rm(path.dirname(exe), { recursive: true, force: true });
       await save();
       return state();
-    },
-    /**
-     * Demo-Kopie mit getauschten Skins schreiben. Gibt den Pfad der Kopie zurück;
-     * der Aufrufer löscht sie nach der Aufnahme mit `cleanup()`.
-     */
-    async rewrite(job, demo, log = () => {}, { gameDir = "" } = {}) {
-      if (!enabled) throw new Error("Skin-Tausch ist im Companion ausgeschaltet.");
-      const program = await rewriter();
-      const base = demo.replace(/\.dem$/i, "");
-      const output = `${base}.tecmon-skins.dem`;
-      const requestFile = `${base}.tecmon-skins.request.json`;
-      const responseFile = `${base}.tecmon-skins.response.json`;
-      await writeFile(requestFile, JSON.stringify(rewriteRequest(job, demo, output, gameDir)));
-      log("Skins in einer Kopie der Demo tauschen (CS2-nskinz von Lyan-edit) …");
-      try {
-        await run(program, ["--request", requestFile, "--response", responseFile]).catch(() => {});
-        let result = null;
-        try {
-          result = JSON.parse(await readFile(responseFile, "utf8"));
-        } catch {
-          /* fehlt = Fehler */
-        }
-        if (!result?.ok) {
-          await rm(output, { force: true }).catch(() => {});
-          const reason = typeof result?.error === "string" ? result.error.slice(0, 300) : "keine Antwort";
-          throw new Error(`Skin-Tausch fehlgeschlagen (${reason}). Nach einem CS2-Update braucht es oft eine neue Version.`);
-        }
-        if (!result.matched_player_count)
-          log("Hinweis: Der Spieler mit Skin-Wunsch wurde in der Demo nicht gefunden; das Video zeigt die echten Skins.");
-        log(
-          `Skins getauscht: ${result.weapon_count ?? 0} Waffen, ${result.knife_count ?? 0} Messer, ${result.glove_count ?? 0} Handschuhe in der Demo-Kopie.`,
-        );
-        return output;
-      } finally {
-        await rm(requestFile, { force: true }).catch(() => {});
-        await rm(responseFile, { force: true }).catch(() => {});
-      }
-    },
-    async cleanup(copy) {
-      if (copy && /\.tecmon-skins\.dem$/i.test(copy)) await rm(copy, { force: true }).catch(() => {});
     },
   };
 }

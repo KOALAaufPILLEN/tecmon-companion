@@ -1,29 +1,41 @@
 # TecMon-Demo-Rewriter
 
-Kleines Rust-Programm des TecMon Companion (MIT). Es schreibt eine **Kopie**
-einer CS2-Demo, in der gewählte Spieler ein anderes Agentenmodell tragen, und
-stellt die Bodygroups der Standard-Handschuhe passend zum Modell ein. Die
-Original-Demo bleibt unverändert. Nichts davon läuft im Spiel.
+Kleines Rust-Programm des TecMon Companion (MIT). Es schreibt in einem
+Durchgang eine **Kopie** einer CS2-Demo, in der gewählte Spieler ein anderes
+Agentenmodell, andere Waffen-Skins, Messer und Handschuhe tragen, und stellt die
+Bodygroups der Handschuhe passend zum Modell ein. Die Original-Demo bleibt
+unverändert. Nichts davon läuft im Spiel.
 
 ## Aufrufe
 
 ```
-tecmon-demo-rewriter rewrite <auftrag.json>   # Agenten/Handschuhe umschreiben
+tecmon-demo-rewriter rewrite <auftrag.json>   # Agenten, Skins, Messer, Handschuhe umschreiben
 tecmon-demo-rewriter learn <demo.dem>         # Bodygroups je Modell aus einer Demo lesen
 tecmon-demo-rewriter looks <demo.dem>         # Aussehen je Spieler (Prüfung)
 tecmon-demo-rewriter compare <a.dem> <b.dem>  # alle Felder außer Modellfeldern vergleichen
 tecmon-demo-rewriter hash <modellpfad>        # Ressourcen-ID eines Modells
+tecmon-demo-rewriter econ <demo.dem> <id64>   # Skin-Felder der Waffen und Handschuhe eines Spielers (Prüfung)
+tecmon-demo-rewriter stickers <demo.dem>      # Sticker je Waffe (Prüfung)
 ```
 
 Auftrag (`agent-swap.mjs` im Companion erzeugt ihn):
 
 ```json
 {
-  "input": "match.tecmon-skins.dem",
-  "output": "match.tecmon-agents.dem",
+  "input": "match.dem",
+  "output": "match.tecmon-swap.dem",
   "learn": "match.dem",
   "looks_cache": "agent-looks.json",
-  "players": [{ "steamid": "7656119…", "t": "agents/models/…/….vmdl", "ct": "…" }]
+  "players": [{
+    "steamid": "7656119…",
+    "t": "agents/models/…/….vmdl",
+    "clear_stickers": [7],
+    "skins": [
+      { "kind": "weapon", "def": 7, "paint_kit": 180, "seed": 3, "wear": 0.15, "legacy": 0 },
+      { "kind": "knife", "def": 507, "side": "t", "paint_kit": 38, "seed": 1, "wear": 0.01 },
+      { "kind": "glove", "def": 5030, "side": "ct", "paint_kit": 10037, "seed": 1, "wear": 0.1 }
+    ]
+  }]
 }
 ```
 
@@ -36,6 +48,20 @@ Auftrag (`agent-swap.mjs` im Companion erzeugt ihn):
   vom Modell ab. Der Rewriter lernt es aus der Original-Demo (wie CS2 selbst es
   gesetzt hat), merkt es sich in `looks_cache` und schätzt nur, wenn ein Modell
   noch nie mit und ohne Handschuhe gesehen wurde (`guessed` in der Antwort).
+- Skins (`src/skins.rs`): Für Waffen des Spielers (`m_OriginalOwnerXuid…`)
+  setzt der Rewriter die Attribute 6 (Paintkit), 7 (Muster) und 8 (Abnutzung)
+  in `m_NetworkedDynamicAttributes`, die Fallback-Werte, eine eigene markierte
+  Item-ID (oberste vier Bits gesetzt), Qualität und das Namensschild
+  „TecMon Skin“. `legacy` stellt `m_MeshGroupMask` auf das alte (2) oder neue
+  (1) Waffenmodell.
+- Messer: Item-Definition, `m_nSubclassID` (String-Token der Definition) und
+  `m_hModel` (Modellpfad aus `items_game.txt`, fest in `KNIVES`). Die Seite
+  kommt vom Träger, sonst vom Team des Besitzers.
+- Handschuhe: `m_EconGloves` des Pawns je Seite, dazu `m_nEconGlovesChanged`.
+  Auf der Seite ohne Wunsch merkt sich der Rewriter die echten Handschuhe und
+  stellt sie nach einem Seitenwechsel wieder her.
+- Sticker der getauschten Waffen (`clear_stickers`): nur die Sticker-IDs
+  (Attribute 113, 117, …) werden 0.
 - Fehlen Felder im Paket, weil sie dem Klassen-Baseline entsprechen, fügt der
   Rewriter sie ein und kodiert dafür die Feldliste des Pawns neu.
 
@@ -50,7 +76,8 @@ TecMon-Änderungen sind mit „TecMon:“ markiert:
 - `parser/demo/writer/*`: `DemoRewriter::extra_entity_fields()` und das
   Neukodieren eines Entity-Feldblocks
 
-Kein Code aus CS2-nskinz.
+Eigene Umsetzung; kein Code aus anderen Skin-Tauschern. Die Feldnamen und
+Werte stammen aus dem Netzwerk-Schema von CS2 und aus echten Demos.
 
 ## Prüfen
 
