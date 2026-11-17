@@ -66,6 +66,7 @@ export function cyberHud({width,height,fps,playerFile,mapFile,sceneFile,playerLe
  const text=(file,size,x,y,color,extra='')=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:shadowcolor=black@0.8:shadowx=1:shadowy=1:x=${n(x)}:y=${n(y)}${extra}`;
  const size=Math.min(44,Math.max(20,Math.floor(700/Math.max(playerLength,16))));
  const game=filter?`[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game0];${filter};`:`[0:v]scale=${width}:${height},setsar=1,fps=${fps}[game];`;
+
  let hud=`[2:v]scale=${width}:${height}[hud];[game][hud]overlay=0:0[base];`;
  if(hud2){
   // HUD v2: nur die Farben wandern langsam (Cyan → Lila → Cyan), keine bewegten Teile.
@@ -86,7 +87,7 @@ export const SWITCH_SECONDS=1.1;
  */
 export function playerSwitch({width,height,fps,nextFile,playerLength}){
  const n=v=>Math.max(1,Math.round(v*width/1920));
- const freeze=(input,label)=>`[${input}:v]scale=${width}:${height},fps=${fps},trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=1.2,format=yuv420p[${label}];`;
+ const freeze=(input,label)=>`[${input}:v]scale=${width}:${height},fps=${fps},trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=1.2,fps=${fps},settb=AVTB,format=yuv420p[${label}];`;
  const text=(file,size,y,color)=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:x=(w-text_w)/2:y=${n(y)}`;
  return freeze(0,'old')+freeze(1,'next')+
   `[old][next]xfade=transition=fade:duration=0.05:offset=0.5[game];`+
@@ -126,7 +127,7 @@ export function playerStinger({width,height,fps,nextFile,playerLength,style=MOTI
  const text=(file,size,y,color)=>`drawtext=fontfile=font.ttf:textfile=${file}:expansion=none:fontsize=${n(size)}:fontcolor=${color}:borderw=${n(3)}:bordercolor=black@0.75:shadowcolor=black@0.85:shadowx=${n(2)}:shadowy=${n(2)}:x=(w-text_w)/2:y=${n(y)}:${fade}`;
  const nameSize=Math.min(84,Math.max(36,Math.floor(1200/Math.max(playerLength,12))));
  const unmix=unmixGreen(style.key),key=keyColor(style.key);
- const hold=(input,label)=>`[${input}:v]scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${style.stingerSeconds+0.5}[${label}];`;
+ const hold=(input,label)=>`[${input}:v]scale=${width}:${height},setsar=1,fps=${fps},format=yuv420p,trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${style.stingerSeconds+0.5},fps=${fps},settb=AVTB[${label}];`;
  return hold(1,'old')+hold(2,'next')+
   `[old][next]xfade=transition=fade:duration=0.3:offset=${(style.cut-0.15).toFixed(2)}[under];`+
   // Bis zum Deckmoment hartes Freistellen (Figur bleibt deckend), danach weiches Freistellen mit

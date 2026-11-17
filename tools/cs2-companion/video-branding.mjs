@@ -351,7 +351,8 @@ export async function renderBranding({
       const badgeInputs=kills.length?["-loop","1","-i","motion-kill-badge.png","-loop","1","-i","motion-kill-badge-multi.png"]:[];
       // Deathcam: „DEATHCAM: Name des Sterbenden“ oben (deathcam-label-v1), Name nur als gesperrte Datei.
       const deathName=sequence.deathcam?visualPlayerName(sequence.deathcam):'';
-      const deathcamFile=deathName?await artifact(`deathcam-${i}.txt`,deathName.length>30?deathName.slice(0,29)+'…':deathName):null;
+      const deathLabel=deathName.length>30?deathName.slice(0,29)+"…":deathName;
+      const deathcamFile=deathName?await artifact(`deathcam-${i}.txt`,deathLabel):null;
       let graph=cyberHud({width:w,height:h,fps,playerFile:label,mapFile:caption,sceneFile:counter,playerLength:displayName.length,hud2,filter,kills,deathcamFile});
       progress(`Cyberpunk-HUD mit dauerhaftem Spielername: Szene ${i + 1}/${sources.length} …`);
       await encode(

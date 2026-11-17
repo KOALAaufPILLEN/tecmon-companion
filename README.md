@@ -152,6 +152,11 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 
 Neueste Version zuerst.
 
+### Neu in 0.42.0: Pro Looks und Intense Looks
+
+Sechs Pro Looks und acht zusätzliche kräftige **Intense Looks** für Szenen und Branding (insgesamt 50 Filter). Die bisherigen Looks bleiben erhalten. Echte Filter-Testbilder, Originalvergleich und Auswahl je Szene auf der Webseite; die 14 neuen Kennungen nur mit `video-filter-v2`.
+
+
 ### Neu in 0.41.1: Killfeed zeigt das getauschte Messer
 
 - Bei Messer-Kills eines Spielers mit getauschtem Messer zeigt der Killfeed jetzt das
