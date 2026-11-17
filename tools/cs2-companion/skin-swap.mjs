@@ -129,6 +129,12 @@ export const SKIN_GLOVES = {
  */
 export const SKIN_SIDE_CAPABILITY = "skin-side-v1";
 export const SKIN_SIDES = ["t", "ct"];
+/**
+ * Ab `skin-legacy-v1`: Waffen-Skins tragen `legacy` (1 = Skin für das alte Waffenmodell, 0 = neues).
+ * Der Rewriter stellt dann die passende Mesh-Gruppe ein (2 alt, 1 neu); ohne Angabe bleibt das
+ * Modell der echten Waffe, und alte Skins wie Howl oder Dragon Lore sehen falsch aus.
+ */
+export const SKIN_LEGACY_CAPABILITY = "skin-legacy-v1";
 /** Standard-Messer und -Handschuhe in Demos, die der Rewriter ersetzt. */
 export const DEFAULT_KNIVES = [42, 59];
 export const DEFAULT_GLOVES = [5028, 5029];
@@ -143,7 +149,7 @@ export function cleanSkins(value, fail) {
   const seen = new Set();
   return value.map((s) => {
     if (!s || typeof s !== "object" || Array.isArray(s)) fail();
-    const { weapon, paintKit, wear, seed, from, side } = s;
+    const { weapon, paintKit, wear, seed, from, side, legacy } = s;
     const knife = isKnife(weapon);
     const glove = isGlove(weapon);
     const slot = knife ? "knife" : glove ? "glove" : weapon;
@@ -153,6 +159,7 @@ export function cleanSkins(value, fail) {
     if (!Number.isSafeInteger(seed) || seed < 0 || seed > 1000) fail();
     if (from !== undefined && !(knife && Number.isSafeInteger(from) && (DEFAULT_KNIVES.includes(from) || isKnife(from)))) fail();
     if (side !== undefined && !((knife || glove) && SKIN_SIDES.includes(side))) fail();
+    if (legacy !== undefined && (knife || glove || (legacy !== 0 && legacy !== 1))) fail();
     seen.add(slot);
     return {
       weapon,
@@ -161,6 +168,7 @@ export function cleanSkins(value, fail) {
       seed,
       ...(from !== undefined ? { from } : {}),
       ...(side !== undefined ? { side } : {}),
+      ...(legacy !== undefined ? { legacy } : {}),
     };
   });
 }
@@ -210,6 +218,8 @@ export function rewriteRequest(job, inputDem, outputDem, gameDir = "") {
     wear: Math.max(skin.wear, 0.0000001),
     custom_name: SKIN_TAG,
     team: sideOf[source] ?? "ANY",
+    // Altes oder neues Waffenmodell passend zum Skin (skin-legacy-v1).
+    ...(!replace && skin.legacy !== undefined ? { mesh_group_mask: skin.legacy ? 2 : 1 } : {}),
   });
   const knives = [...players.values()].some((items) => items.has("knife:t") || items.has("knife:ct"));
   if (knives && !gameDir) throw new Error("Für den Messer-Tausch wurde der CS2-Ordner nicht gefunden.");

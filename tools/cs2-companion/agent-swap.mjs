@@ -20,7 +20,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { access, readFile, writeFile, rm } from "node:fs/promises";
-import { SKIN_GLOVES } from "./skin-swap.mjs";
+import { SKIN_GLOVES, SKIN_WEAPONS } from "./skin-swap.mjs";
 
 export const AGENT_CAPABILITY = "agent-swap-v1";
 /** Huhn-Modus (Experiment): Spieler als Huhn in wählbarer Größe, über denselben Rewriter. */
@@ -143,6 +143,8 @@ export function cleanChickenLook(value, fail) {
 
 export const hasAgents = (job) => job.sequences.some((s) => s.agents || s.chicken !== undefined);
 const hasGloveSkins = (s) => (s.skins || []).some((skin) => Boolean(SKIN_GLOVES[skin.weapon]));
+/** Waffen (keine Messer/Handschuhe) mit getauschtem Skin: ihre echten Sticker entfernt der Rewriter. */
+const skinWeapons = (s) => (s.skins || []).map((skin) => skin.weapon).filter((id) => SKIN_WEAPONS[id]);
 
 /**
  * Auftrag für den Rewriter. Agenten gelten je Spieler für das ganze Video;
@@ -154,8 +156,10 @@ export function agentRequest(job, { input, output, original, cache, skinsSwapped
   for (const s of job.sequences) {
     const wants = s.agents || {};
     const gloves = (skinsSwapped || gloveSkinsLater) && hasGloveSkins(s);
-    if (!s.agents && s.chicken === undefined && !gloves) continue;
+    const weapons = skinsSwapped || gloveSkinsLater ? skinWeapons(s) : [];
+    if (!s.agents && s.chicken === undefined && !gloves && !weapons.length) continue;
     const known = players.get(s.steamId) || {};
+    known.stickers = [...new Set([...(known.stickers || []), ...weapons])];
     if (gloveSkinsLater && gloves) known.forceGloves = true;
     if (s.chicken !== undefined) {
       if (known.chicken !== undefined && known.chicken !== s.chicken)
@@ -192,6 +196,8 @@ export function agentRequest(job, { input, output, original, cache, skinsSwapped
       ...(sides.chickenLook ? { chicken_breed: sides.chickenLook.breed, chicken_coat: sides.chickenLook.coat } : {}),
       // Handschuhe kommen erst danach per Skin-Tausch: Bodygroups schon passend setzen.
       ...(sides.forceGloves ? { force_gloves: true } : {}),
+      // Getauschte Waffen ohne die Sticker der echten Waffe.
+      ...(sides.stickers?.length ? { clear_stickers: sides.stickers } : {}),
     })),
   };
 }
@@ -240,7 +246,15 @@ export async function createAgentSwap({
       }
       const requestFile = `${base}.tecmon-agents.request.json`;
       await writeFile(requestFile, JSON.stringify(request));
-      log(job.sequences.some((s) => s.chicken !== undefined) ? "Hühner und Agenten in einer Kopie der Demo einsetzen …" : hasAgents(job) ? "Agenten in einer Kopie der Demo tauschen …" : "Handschuhe passend zum Agenten einstellen …");
+      log(
+        job.sequences.some((s) => s.chicken !== undefined)
+          ? "Hühner und Agenten in einer Kopie der Demo einsetzen …"
+          : hasAgents(job)
+            ? "Agenten in einer Kopie der Demo tauschen …"
+            : request.players.some((p) => p.force_gloves || job.sequences.some((s) => s.steamId === p.steamid && hasGloveSkins(s)))
+              ? "Handschuhe einstellen und Sticker der getauschten Waffen entfernen …"
+              : "Sticker der getauschten Waffen entfernen …",
+      );
       try {
         let result = null;
         try {
@@ -252,8 +266,9 @@ export async function createAgentSwap({
         }
         if (!result?.ok) throw new Error("Agenten-Tausch fehlgeschlagen.");
         const changed = Object.keys(result.changed || {}).length;
-        if (!changed) log("Hinweis: Kein Spieler mit Agentenwunsch in der Demo gefunden.");
-        else log(`Agenten/Handschuhe angepasst bei ${changed} Spieler${changed === 1 ? "" : "n"}.`);
+        if (result.stickers) log(`Sticker entfernt an ${result.stickers} getauschten Waffe${result.stickers === 1 ? "" : "n"}.`);
+        if (!changed && hasAgents(job)) log("Hinweis: Kein Spieler mit Agentenwunsch in der Demo gefunden.");
+        else if (changed) log(`Agenten/Handschuhe angepasst bei ${changed} Spieler${changed === 1 ? "" : "n"}.`);
         if (result.guessed?.length)
           log("Hinweis: Für manche Agenten sind die Handschuh-Einstellungen geschätzt; die Hände können leicht anders aussehen.");
         return output;

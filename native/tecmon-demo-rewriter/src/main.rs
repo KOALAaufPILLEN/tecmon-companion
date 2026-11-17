@@ -29,6 +29,10 @@ const CHICKEN_BREEDS: [(&str, &str, u32); 4] = [
     ("silkie", "models/chicken/chicken_silkie.vmdl", 8),
     ("chick", "models/chicken/chick.vmdl", 0),
 ];
+/// Attribute der Sticker-IDs je Platz (113, 117, … wie im Item-Schema von CS2).
+const STICKER_ID_ATTRIBUTES: [u64; 6] = [113, 117, 121, 125, 129, 133];
+const ATTRIBUTE_PREFIX: &str = "m_AttributeManager.m_Item.m_NetworkedDynamicAttributes.m_Attributes";
+const ATTRIBUTE_SLOTS: usize = 64;
 const RESOURCE_SEED: u64 = 0xEDAB_CDEF;
 const MAX_PLAYERS: usize = 10;
 
@@ -174,6 +178,9 @@ struct PlayerRequest {
     /// Handschuhe kommen erst danach per Skin-Tausch dazu: Aussehen „mit Handschuhen“ wählen.
     #[serde(default)]
     force_gloves: bool,
+    /// Waffen (Item-Definition) mit getauschtem Skin: Sticker der echten Waffe entfernen.
+    #[serde(default)]
+    clear_stickers: Vec<u32>,
 }
 
 #[derive(Clone, Copy)]
@@ -257,6 +264,9 @@ struct AgentSwap {
     chickens: HashMap<String, Chicken>,
     /// SteamID64 der Spieler, die später Handschuhe per Skin-Tausch bekommen.
     gloves: BTreeSet<String>,
+    /// SteamID64 -> Waffen, deren Sticker entfernt werden.
+    stickers: HashMap<String, BTreeSet<u64>>,
+    stickers_cleared: usize,
     looks: Looks,
     changed: BTreeMap<String, usize>,
     guessed: BTreeSet<String>,
@@ -300,18 +310,79 @@ fn wanted_fields(swap: &mut AgentSwap, ctx: &Context, entity: &Entity) -> Option
     Some(fields)
 }
 
+/// SteamID64 des ersten Besitzers einer Waffe, als Text.
+fn weapon_owner(entity: &Entity) -> Option<String> {
+    let low = prop(entity, "m_OriginalOwnerXuidLow")?;
+    let high = prop(entity, "m_OriginalOwnerXuidHigh")?;
+    let id = (high << 32) | (low & 0xFFFF_FFFF);
+    (id > 76_561_197_960_265_728).then(|| id.to_string())
+}
+
+const fn is_weapon_class(name: &str) -> bool {
+    let b = name.as_bytes();
+    // CS2-Waffenklassen: CWeapon…, CAK47, CDEagle, CKnife … ; die Prüfung auf das Besitzerfeld folgt.
+    b.len() > 1 && b[0] == b'C'
+}
+
+/// Wert einer Sticker-ID (wird beim Entfernen der Sticker auf 0 gesetzt); für `compare`.
+fn is_sticker_value(entity: &Entity, field: &str) -> bool {
+    let Some(rest) = field.strip_prefix(ATTRIBUTE_PREFIX).and_then(|r| r.strip_prefix('.')) else {
+        return false;
+    };
+    let Some((slot, name)) = rest.split_once('.') else {
+        return false;
+    };
+    (name == "m_iRawValue32" || name == "m_flInitialValue")
+        && prop(entity, &format!("{ATTRIBUTE_PREFIX}.{slot}.m_iAttributeDefinitionIndex"))
+            .is_some_and(|d| STICKER_ID_ATTRIBUTES.contains(&d))
+}
+
+/// Sticker-ID-Werte einer Waffe, die auf 0 (kein Sticker) gesetzt werden sollen.
+fn sticker_fields(swap: &AgentSwap, entity: &Entity) -> Vec<(String, FieldValue)> {
+    if swap.stickers.is_empty() {
+        return Vec::new();
+    }
+    let Some(definition) = prop(entity, "m_AttributeManager.m_Item.m_iItemDefinitionIndex") else {
+        return Vec::new();
+    };
+    let Some(owner) = weapon_owner(entity) else {
+        return Vec::new();
+    };
+    if !swap.stickers.get(&owner).is_some_and(|set| set.contains(&definition)) {
+        return Vec::new();
+    }
+    let count = (prop(entity, ATTRIBUTE_PREFIX).unwrap_or(ATTRIBUTE_SLOTS as u64) as usize).min(ATTRIBUTE_SLOTS);
+    let mut out = Vec::new();
+    for slot in 0..count {
+        let base = format!("{ATTRIBUTE_PREFIX}.{slot:04}");
+        let Some(attribute) = prop(entity, &format!("{base}.m_iAttributeDefinitionIndex")) else {
+            continue;
+        };
+        if !STICKER_ID_ATTRIBUTES.contains(&attribute) {
+            continue;
+        }
+        out.push((format!("{base}.m_iRawValue32"), FieldValue::Float(0.0)));
+        out.push((format!("{base}.m_flInitialValue"), FieldValue::Float(0.0)));
+    }
+    out
+}
+
 impl DemoRewriter for AgentSwap {
     fn interests(&self) -> RewriteInterests {
         RewriteInterests::ENTITY_FIELDS
     }
 
     fn should_rewrite_entity(&mut self, _ctx: &Context, _e: EntityEvents, entity: &Entity) -> bool {
-        entity.class().name() == "CCSPlayerPawn"
+        let name = entity.class().name();
+        name == "CCSPlayerPawn"
+            || (!self.stickers.is_empty() && is_weapon_class(name) && entity.get_property("m_OriginalOwnerXuidLow").is_ok())
     }
 
     fn should_track_entity(&mut self, _ctx: &Context, _e: EntityEvents, entity: &Entity) -> bool {
         let name = entity.class().name();
-        name == "CCSPlayerPawn" || name == "CCSPlayerController"
+        name == "CCSPlayerPawn"
+            || name == "CCSPlayerController"
+            || (!self.stickers.is_empty() && is_weapon_class(name) && entity.get_property("m_OriginalOwnerXuidLow").is_ok())
     }
 
     fn replace_entity_field(
@@ -322,6 +393,13 @@ impl DemoRewriter for AgentSwap {
         field_name: &str,
         value: &FieldValue,
     ) -> Option<FieldValue> {
+        if field_name.starts_with(ATTRIBUTE_PREFIX) {
+            let (_, wanted) = sticker_fields(self, entity).into_iter().find(|(name, _)| name == field_name)?;
+            return (&wanted != value).then_some(wanted);
+        }
+        if entity.class().name() != "CCSPlayerPawn" {
+            return None;
+        }
         if !field_name.starts_with("CBodyComponent.m_skeletonInstance.m_modelState.m_") && field_name != SCALE_FIELD
             && field_name != MATERIAL_FIELD
         {
@@ -336,6 +414,16 @@ impl DemoRewriter for AgentSwap {
     }
 
     fn extra_entity_fields(&mut self, ctx: &Context, _event: EntityEvents, entity: &Entity) -> Vec<(String, FieldValue)> {
+        if entity.class().name() != "CCSPlayerPawn" {
+            let missing: Vec<(String, FieldValue)> = sticker_fields(self, entity)
+                .into_iter()
+                .filter(|(name, value)| entity.get_property(name).ok() != Some(value))
+                .collect();
+            if !missing.is_empty() {
+                self.stickers_cleared += 1;
+            }
+            return missing;
+        }
         let Some(fields) = wanted_fields(self, ctx, entity) else {
             return Vec::new();
         };
@@ -405,7 +493,14 @@ fn rewrite(request_path: &str) -> Result<()> {
     let mut models: HashMap<String, HashMap<u64, u64>> = HashMap::new();
     let mut chickens: HashMap<String, Chicken> = HashMap::new();
     let mut gloves: BTreeSet<String> = BTreeSet::new();
+    let mut stickers: HashMap<String, BTreeSet<u64>> = HashMap::new();
     for player in &request.players {
+        if player.clear_stickers.len() > 64 || player.clear_stickers.iter().any(|d| *d == 0 || *d > 65535) {
+            bail!("ungültige Waffenliste");
+        }
+        if !player.clear_stickers.is_empty() {
+            stickers.insert(player.steamid.clone(), player.clear_stickers.iter().map(|d| *d as u64).collect());
+        }
         if player.force_gloves {
             gloves.insert(player.steamid.clone());
         }
@@ -414,6 +509,10 @@ fn rewrite(request_path: &str) -> Result<()> {
         }
         if player.steamid.len() != 17 || !player.steamid.bytes().all(|b| b.is_ascii_digit()) {
             bail!("ungültige SteamID");
+        }
+        // Nur Spieler mit Agenten- oder Handschuh-Wunsch bekommen ein neues Aussehen.
+        if player.t.is_none() && player.ct.is_none() && !player.force_gloves {
+            continue;
         }
         let entry = models.entry(player.steamid.clone()).or_default();
         if let Some(t) = &player.t {
@@ -450,6 +549,7 @@ fn rewrite(request_path: &str) -> Result<()> {
         swap.models = models;
         swap.chickens = chickens;
         swap.gloves = gloves;
+        swap.stickers = stickers;
         swap.looks = looks;
     }
     writer.run().map_err(|e| anyhow!("{e}"))?;
@@ -457,7 +557,7 @@ fn rewrite(request_path: &str) -> Result<()> {
     let swap = swap.borrow();
     println!(
         "{}",
-        serde_json::json!({ "ok": true, "changed": swap.changed, "guessed": swap.guessed })
+        serde_json::json!({ "ok": true, "changed": swap.changed, "guessed": swap.guessed, "stickers": swap.stickers_cleared })
     );
     Ok(())
 }
@@ -536,6 +636,54 @@ impl Observer for PlayerLooks {
     }
 }
 
+/// Prüfhilfe: Waffen mit Stickern je Besitzer (Item-Definition -> Sticker-IDs).
+#[derive(Default)]
+struct StickerScan {
+    seen: BTreeMap<String, BTreeMap<u64, BTreeSet<u32>>>,
+}
+
+impl Observer for StickerScan {
+    fn interests(&self) -> Interests {
+        Interests::ENTITY_STATE | Interests::ENTITY_EVENTS
+    }
+
+    fn on_entity(&mut self, _ctx: &Context, event: EntityEvents, entity: &Entity) -> ObserverResult {
+        if event == EntityEvents::Deleted || !is_weapon_class(entity.class().name()) {
+            return Ok(());
+        }
+        let (Some(owner), Some(definition)) =
+            (weapon_owner(entity), prop(entity, "m_AttributeManager.m_Item.m_iItemDefinitionIndex"))
+        else {
+            return Ok(());
+        };
+        for slot in 0..ATTRIBUTE_SLOTS {
+            let base = format!("{ATTRIBUTE_PREFIX}.{slot:04}");
+            let Some(attribute) = prop(entity, &format!("{base}.m_iAttributeDefinitionIndex")) else {
+                break;
+            };
+            if !STICKER_ID_ATTRIBUTES.contains(&attribute) {
+                continue;
+            }
+            if let Ok(FieldValue::Float(raw)) = entity.get_property(&format!("{base}.m_iRawValue32")) {
+                let id = raw.to_bits();
+                if id != 0 {
+                    self.seen.entry(owner.clone()).or_default().entry(definition).or_default().insert(id);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn sticker_scan(demo: &str) -> Result<()> {
+    let input = BufReader::new(File::open(demo)?);
+    let mut parser = Parser::from_reader(input).map_err(|e| anyhow!("{e}"))?;
+    let scan = parser.register_observer::<StickerScan>();
+    parser.run_to_end().map_err(|e| anyhow!("{e}"))?;
+    println!("{}", serde_json::to_string(&scan.borrow().seen)?);
+    Ok(())
+}
+
 fn player_looks(demo: &str) -> Result<()> {
     let input = BufReader::new(File::open(demo)?);
     let mut parser = Parser::from_reader(input).map_err(|e| anyhow!("{e}"))?;
@@ -575,6 +723,9 @@ impl Observer for Fingerprint {
         if event != EntityEvents::Deleted {
             for field in entity.fields() {
                 if field.name.contains("m_modelState.m_") || field.name == SCALE_FIELD || field.name == MATERIAL_FIELD {
+                    continue;
+                }
+                if is_sticker_value(entity, &field.name) {
                     continue;
                 }
                 let value = format!("{:?}", field.value);
@@ -755,6 +906,7 @@ fn run() -> Result<()> {
         Some("inspect") if args.len() == 4 => inspect(&args[2], &args[3]),
         Some("rewrite") if args.len() == 3 => rewrite(&args[2]),
         Some("looks") if args.len() == 3 => player_looks(&args[2]),
+        Some("stickers") if args.len() == 3 => sticker_scan(&args[2]),
         Some("compare") if args.len() == 4 => compare(&args[2], &args[3]),
         Some("learn") if args.len() == 3 => {
             println!("{}", serde_json::to_string_pretty(&learn(&args[2])?)?);
