@@ -138,8 +138,18 @@ fn item_id(steamid: &str, kind: &str, p: &Paint) -> u64 {
         h ^= b as u64;
         h = h.wrapping_mul(0x0000_0100_0000_01b3);
     }
-    // Hohe Bits gesetzt: kollidiert nicht mit echten Inventar-IDs.
-    h | 0xF000_0000_0000_0000
+    // Oberstes Byte = TECMON_ID_MARK: kollidiert nicht mit echten Inventar-IDs (oberstes Byte 0).
+    // Nie die Faux-Markierung 0xF…: CS2 liest daraus Definition und Paintkit (bits 0–31) und stürzt
+    // bei Unsinn-Werten ab bzw. zeigt keine Handschuhe.
+    (h & 0x00FF_FFFF_FFFF_FFFF) | ((TECMON_ID_MARK as u64) << 56)
+}
+
+/// Markierung im obersten Byte der Item-ID getauschter Gegenstände.
+pub const TECMON_ID_MARK: u32 = 0x7E;
+
+/// Trägt die obere Hälfte einer Item-ID die TecMon-Markierung?
+pub fn is_tecmon_id_high(high: u64) -> bool {
+    high >> 24 == TECMON_ID_MARK as u64
 }
 
 fn sides(side: &Option<String>) -> Result<Vec<usize>> {
@@ -347,7 +357,7 @@ const GLOVE_FIELDS: [&str; 8] = [
 
 /// Trägt der Pawn gerade TecMon-Handschuhe (markierte Item-ID)?
 fn tecmon_gloves(entity: &Entity) -> bool {
-    prop(entity, "m_EconGloves.m_iItemIDHigh").is_some_and(|high| high >> 28 == 0xF)
+    prop(entity, "m_EconGloves.m_iItemIDHigh").is_some_and(is_tecmon_id_high)
 }
 
 /// Echte Handschuhe des Pawns, um sie auf der Seite ohne Wunsch wiederherzustellen.
@@ -495,6 +505,9 @@ mod tests {
         let p = Paint { def: 7, paint: 180, seed: 1, wear: 0.1, legacy: None, item_id: 0 };
         assert_eq!(item_id("1", "weapon", &p), item_id("1", "weapon", &p));
         assert_ne!(item_id("1", "weapon", &p), item_id("2", "weapon", &p));
-        assert!(item_id("1", "weapon", &p) >> 60 == 0xF);
+        let id = item_id("1", "weapon", &p);
+        assert!(is_tecmon_id_high(id >> 32));
+        // Keine Faux-ID: sonst liest CS2 Definition/Paintkit aus der ID.
+        assert_ne!(id >> 60, 0xF);
     }
 }

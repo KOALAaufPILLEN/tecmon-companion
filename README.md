@@ -152,6 +152,13 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 
 Neueste Version zuerst.
 
+### Neu in 0.41.2: Kein CS2-Absturz mehr mit getauschten Skins
+
+- Getauschte Waffen, Messer und Handschuhe bekamen eine Item-ID, die CS2 als
+  „Faux-ID“ deutet und daraus eine unsinnige Waffe und Lackierung liest. Das konnte
+  CS2 während der Aufnahme abstürzen lassen und die Handschuhe unsichtbar machen.
+  Die IDs tragen jetzt eine eigene Markierung, die CS2 nicht so liest.
+
 ### Neu in 0.41.1: Killfeed zeigt das getauschte Messer
 
 - Bei Messer-Kills eines Spielers mit getauschtem Messer zeigt der Killfeed jetzt das
