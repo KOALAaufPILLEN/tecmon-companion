@@ -166,21 +166,19 @@ function view(c, num) {
 
 /**
  * Kamerafahrten ("path") und Verfolger-Kamera ("follow") steuert das
- * TecMon-Skript in HLAE. Nur die eigene Engine kann das; über CS Demo Manager
- * wird eine Fahrt zum festen Punkt am ersten Wegpunkt und die Verfolger-Kamera
- * zur Egoansicht.
+ * TecMon-Skript in HLAE.
  */
 export const MAX_KEYS = 8;
 export const FOLLOW = { distance: [40, 800], height: [-200, 400], orbit: [-180, 180], angle: [-180, 180] };
 export const scriptedCut = (c) => c.kind === "path" || c.kind === "follow";
 export const needsScript = (job) => job.sequences.some((s) => (s.cuts || []).some(scriptedCut));
 
-/** Feste Kamerapunkte eines Auftrags mit den IDs, unter denen sie in CS Demo Manager liegen. */
+/** Feste Kamerapunkte eines Auftrags (Startpunkt jeder Kamerafahrt) mit eigener ID. */
 export function jobCameras(job, newId) {
   const list = [];
   job.sequences.forEach((s, i) =>
     (s.cuts || []).forEach((c, j) => {
-      // Eine Kamerafahrt beginnt am ersten Wegpunkt; dorthin springt auch CS Demo Manager.
+      // Eine Kamerafahrt beginnt am ersten Wegpunkt.
       const p = c.kind === "free" ? c : c.kind === "path" ? c.keys[0] : null;
       if (!p) return;
       list.push({ sequence: i, tick: c.tick, id: newId(), name: `TecMon ${i + 1}.${j + 1}`, x: p.x, y: p.y, z: p.z, pitch: p.pitch, yaw: p.yaw });

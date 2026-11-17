@@ -252,7 +252,7 @@ test("Companion: Rundentipps einschalten, GSI-Token prüfen, ausschalten", async
   const { server, token } = await createCompanion({
     verifyGame: async (file) => ({ ok: true, reason: "", path: file }),
     dataDir: path.join(dir, "data"),
-    detectTools: async () => ({ csdm: "", cs2 }),
+    detectTools: async () => ({ cs2 }),
     now: time.now,
   });
   server.listen(0, "127.0.0.1");

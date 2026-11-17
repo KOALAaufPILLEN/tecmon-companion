@@ -26,12 +26,10 @@ async function scenario(t, mode) {
     hlaeExe: path.join(tools, "hlae", "hlae.exe"),
     ffmpegExe: path.join(tools, "ffmpeg", "ffmpeg.exe"),
     cs2Exe,
-    csdmExe: path.join(dir, "csdm.exe"),
   };
   await mkdir(installation.profileDir, { recursive: true });
   await writeFile(installation.hlaeExe, "");
   await writeFile(installation.ffmpegExe, "");
-  await writeFile(installation.csdmExe, "fixture");
   let cs2 = false;
   let naps = 0;
   const opened = [];
@@ -68,10 +66,7 @@ async function scenario(t, mode) {
   const { server, token } = await createCompanion({
     verifyGame: async (file) => ({ ok: true, reason: "", path: file }),
     installation,
-    detectTools: async () => ({ csdm: "", cs2: cs2Exe }),
-    runProcess: async () => {
-      throw new Error("CS Demo Manager darf nicht laufen");
-    },
+    detectTools: async () => ({ cs2: cs2Exe }),
     engineSystem: {
       recorder: system,
       download: { isRunning: async () => false },
@@ -157,7 +152,7 @@ async function scenario(t, mode) {
     assert.equal((await demo.arrayBuffer()).byteLength, 308);
     assert.equal((await fetch(base + `/bridge/auto/demo?id=${offer.id}`, { headers: { Origin: origin } })).status, 401);
     source = { autoId: offer.id };
-  } else {
+  } else if (mode === "browser") {
     const bytes = Buffer.concat([Buffer.from("PBDEMS2\0"), Buffer.alloc(300, 79)]);
     const upload = await (await post("/bridge/demo/start", { size: bytes.length })).json();
     assert.equal((await post(`/bridge/demo/chunk?id=${upload.id}&offset=0`, bytes)).status, 200);
@@ -171,6 +166,25 @@ async function scenario(t, mode) {
     tickRate: 64,
     sequences: [{ startTick: 256, endTick: 384, steamId: "76561197992597660", playerName: "Player", slot: 3 }],
   };
+  if (mode === "local") {
+    // Lokaler Auftrag aus der Companion-Seite: Import, Bestätigung, eigene Engine.
+    const demo = path.join(dir, "local.dem");
+    await writeFile(demo, Buffer.concat([Buffer.from("PBDEMS2\0"), Buffer.alloc(300, 79)]));
+    const imported = await (await local("/api/import", job)).json();
+    assert.equal((await local("/api/start", { id: imported.id, demo })).status, 400);
+    assert.equal((await local("/api/start", { id: imported.id, demo, confirm: true })).status, 202);
+    let state;
+    for (let i = 0; i < 300; i++) {
+      state = await (await fetch(base + "/api/state", { headers: { "x-tecmon-token": token } })).json();
+      if (!state.active) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    const done = state.jobs.find((j) => j.id === imported.id);
+    assert.equal(done.status, "done", done.log);
+    const file = await fetch(base + `/api/video?job=${imported.id}&file=0`, { headers: { "x-tecmon-token": token } });
+    assert.equal(await file.text(), "fertiges video");
+    return;
+  }
   const started = await (await post("/bridge/capture", { job, ...source, confirm: true })).json();
   assert.ok(started.id, JSON.stringify(started));
   let result;
@@ -189,4 +203,5 @@ async function scenario(t, mode) {
 }
 
 test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", (t) => scenario(t, "browser"));
+test("Eigene Engine: lokaler Auftrag aus der Companion-Seite wird ohne CS Demo Manager aufgenommen", (t) => scenario(t, "local"));
 test("Auto-Highlights: nach dem Match fragen, Demo bereitstellen, damit aufnehmen", (t) => scenario(t, "auto"));

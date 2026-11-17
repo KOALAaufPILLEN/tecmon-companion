@@ -1,6 +1,6 @@
 # TecMon Companion · Anleitung
 
-Diese Anleitung beschreibt Einrichtung, Browser-Verbindung, Aufnahme und Video-Branding. Seit 0.17 nimmt die eigene TecMon-Engine ohne CS Demo Manager und PostgreSQL auf, mit Kamerafahrten, Verfolger-Kamera und „Kamera im Spiel setzen“; der unten beschriebene CS-Demo-Manager-Weg bleibt als Rückfall. Details im [Versionsverlauf](../../README.md#neu-in-0170-eigene-tecmon-engine-vorschau). Die CS2-Rundentipps, die Tipps aus „Meine Stats“ und die Desktopfigur stehen im [README](../../README.md#versionsverlauf). Download der neuesten Version: [tecmon.online/companion](https://tecmon.online/companion) oder [GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest).
+Diese Anleitung beschreibt Einrichtung, Browser-Verbindung, Aufnahme und Video-Branding. Seit 0.40 laufen Download und Aufnahme nur noch über die eigene TecMon-Engine: ohne CS Demo Manager, ohne PostgreSQL und ohne Passwort im Setup. Ältere Abschnitte weiter unten beschreiben teils den früheren CS-Demo-Manager-Weg und bleiben als Versionsverlauf stehen.
 
 ## Cyberpunk-Overlay und Spielerwechsel ab 0.11
 
@@ -16,8 +16,8 @@ Auf der Webseite läuft die CS2-Aufnahme jetzt in vier Schritten: Szenen, Kamera
 
 - **X-Ray** ist standardmäßig an. Der Auftrag trägt `xray` (fehlt es, gilt `true`), der Companion setzt daraus `showXRay` je Sequenz.
 - **Kamerapunkte:** In der 3D-Flugkamera „Kamerapunkt setzen“ oder einen Punkt auf Kopfhöhe des gewählten Spielers anlegen. Je Szene wählt man Egoansicht oder einen Punkt, optional nur für die ersten Sekunden, danach Ego. Im Auftrag stehen dafür je Sequenz bis zu 12 `cuts` (`{tick, kind:"free", x, y, z, pitch, yaw}` oder `{tick, kind:"player"}`), ausschließlich als Zahlen.
-- Nach `csdm analyze` legt der Companion die Punkte in der Tabelle `cameras` seiner eigenen CS-Demo-Manager-Datenbank an (Kommentar `tecmon-companion`), CSDM springt in der Aufnahme per `spec_goto` hin. Nach der Aufnahme werden genau diese Einträge wieder gelöscht. Ohne verwaltete Installation werden Aufträge mit Punkten abgelehnt.
-- CSDM kennt nur harte Schnitte zwischen Punkten. Fließende Kamerafahrten sind noch nicht umgesetzt.
+- Die eigene Engine springt in der Aufnahme direkt zu den Punkten (Aktionsdatei für das CS2-Plugin); eine Datenbank ist dafür nicht nötig.
+- Fließende Kamerafahrten und die Verfolger-Kamera übernimmt das TecMon-Skript in HLAE (siehe Hauptdokumentation).
 
 ## Video-Branding ab 0.6
 
@@ -39,14 +39,12 @@ Für eine bestehende Installation die kleine **TecMon-Companion-Update.exe** aus
 
 1. Setup starten. Programmordner, Datenordner und optional den Demo-Ordner wählen. Alle Laufwerke sind über die normale Windows-Dateiauswahl erreichbar, soweit das Windows-Konto darauf zugreifen darf.
 2. Den automatisch gefundenen CS2-Pfad prüfen oder `cs2.exe` auswählen.
-3. Das PostgreSQL-Administratorpasswort frei wählen und wiederholen. Mindestens acht Zeichen; Sonderzeichen und Unicode sind möglich, Zeilenumbrüche nicht.
-4. Lizenzhinweise lesen und „Installieren & einrichten“ wählen. Bei fehlender Microsoft-Laufzeit öffnet sich deren offizieller Installer mit gegebenenfalls erforderlicher Adminfreigabe.
-5. Das Setup erstellt einen TecMon-eigenen PostgreSQL-Bereich, wählt einen freien lokalen Port und legt `tecmon_csdm` als Datenbank und Anwendungskonto an. Alle Tool-Pfade, die Datenbankverbindung und ein separater HLAE-Config-Ordner werden automatisch hinterlegt und geprüft. Ein bestehender fremder PostgreSQL-Dienst wird nicht verändert.
-6. Danach „TecMon Companion starten“ oder die Desktop-/Startmenü-Verknüpfung verwenden. Das Studio öffnet sich als eigenes Edge-App-Fenster; alternativ wird der Standardbrowser verwendet.
+3. Lizenzhinweise lesen und „Installieren & einrichten“ wählen. Bei fehlender Microsoft-Laufzeit öffnet sich deren offizieller Installer mit gegebenenfalls erforderlicher Adminfreigabe.
+4. Das Setup lädt HLAE und FFmpeg mit Prüfsumme, legt den privaten Datenordner und einen eigenen HLAE-Config-Ordner an und hinterlegt alle Tool-Pfade automatisch. Eine Datenbank oder ein Passwort braucht es nicht.
+5. Danach „TecMon Companion starten“ oder die Desktop-/Startmenü-Verknüpfung verwenden. Das Studio öffnet sich als eigenes Edge-App-Fenster; alternativ wird der Standardbrowser verwendet.
 
-Das gewählte Administratorpasswort wird nur zur Initialisierung verwendet. Für CS Demo Manager erzeugt das Setup ein separates Anwendungspasswort. Die dafür erforderlichen Einstellungen liegen unter `<Datenordner>/TecMon-Private`, mit Windows-Zugriff ausschließlich für das eigene Konto und SYSTEM. Passwörter werden weder im Protokoll noch auf der Webseite ausgegeben. Bei einem Update bleibt das bisherige Administratorpasswort erhalten; bei einer noch nicht abgeschlossenen Einrichtung dasselbe zuerst gewählte Passwort erneut verwenden.
+Einstellungen liegen unter `<Datenordner>/TecMon-Private`, mit Windows-Zugriff ausschließlich für dein Konto. Ältere Installationen (bis 0.39) behalten ihre frühere Datenbank und CS-Demo-Manager-Dateien auf der Festplatte; der Companion startet sie nicht mehr.
 
-CS Demo Manager erzeugt seine Tabellen beim ersten Start bzw. der ersten Analyse selbst. Der Installer prüft vorher bereits die Datenbankanmeldung, FFmpeg und den tatsächlichen CS-Demo-Manager-CLI-Einstiegspunkt. PostgreSQL startet zusammen mit dem Companion. Vor dem Deinstallieren über „Companion beenden“ schließen; Datenbank, Demos und Videos im separaten Datenordner bleiben bei der Deinstallation erhalten.
 
 ## Highlights aufnehmen
 
@@ -55,7 +53,7 @@ CS Demo Manager erzeugt seine Tabellen beim ersten Start bzw. der ersten Analyse
 1. Companion starten, auf **https://tecmon.online** „Companion verbinden“ anklicken. Falls der Browser fragt, lokalen Zugriff erlauben.
 2. Den Zahlencode vergleichen und im Companion unter „Webseite verbinden“ diese Webseite freigeben. Die Verbindung gilt nur für genau diese TecMon-Adresse und diesen Browser und lässt sich im Companion widerrufen.
 3. Danach den Companion im Hintergrund laufen lassen. Im Steam-Bereich der Webseite Demos direkt herunterladen. Bei Highlights den Sharecode des passenden Matches eintragen, Spieler/Szenen wählen und „Demo herunterladen & in CS2 aufnehmen“ starten.
-4. Steam muss angemeldet und CS2 / CS Demo Manager vor dem Start geschlossen sein. Download, Entpacken, Analyse, CS2-Aufnahme und Konvertierung laufen auf dem PC. Die fertige MP4 erscheint auf der geöffneten Webseite und bleibt im lokalen Auftragsordner. Ein Seitenwechsel unterbricht nur die Statusanzeige, nicht den lokalen Auftrag; das Ergebnis ist dann im Companion zugänglich.
+4. Steam muss angemeldet und CS2 vor dem Start geschlossen sein. Download, Entpacken, CS2-Aufnahme und Konvertierung laufen auf dem PC. Die fertige MP4 erscheint auf der geöffneten Webseite und bleibt im lokalen Auftragsordner. Ein Seitenwechsel unterbricht nur die Statusanzeige, nicht den lokalen Auftrag; das Ergebnis ist dann im Companion zugänglich.
 
 Die JSON-Übergabe bleibt möglich. Der sichtbare Sharecode wird mit exportiert. Keine Steam-API-Schlüssel, Passwörter oder YouTube-Tokens gehören in diese Datei.
 
@@ -71,7 +69,7 @@ Bei aus Steam geladenen Replays enthält der Aufnahmeauftrag auch den bekannten 
 
 In den Highlights mehrere Spieler, „Alle Spieler“ oder „Team des gewählten Spielers“ auswählen. Die Teamzuordnung richtet sich nach der ersten Runde, nicht nach wechselnden T-/CT-Seiten zur Halbzeit. Ein gemeinsames Zeitbudget (z. B. bis zu fünf Minuten) begrenzt die Summe aller Szenen. Die Auswahl berücksichtigt Spieler reihum, vermeidet überlappende Szenen derselben Perspektive und sortiert anschließend chronologisch. Jede Szene bleibt eine Egoansicht; verschiedene Spieler erscheinen nacheinander in einer gemeinsamen MP4, kein Splitscreen. Der Export bleibt mit Aufträgen der Version 1 kompatibel.
 
-Beim Update zuerst den laufenden Companion über „Companion beenden“ und die CS-Demo-Manager-Oberfläche schließen. Das Setup beendet danach gegebenenfalls nur den anhand seiner Konfiguration und Marker erkannten privaten TecMon-PostgreSQL-Cluster vor dem Entpacken. Daten und bisheriges Administratorpasswort bleiben erhalten.
+Beim Update zuerst den laufenden Companion über „Companion beenden“. Das Setup beendet danach gegebenenfalls nur den anhand seiner Konfiguration und Marker erkannten privaten TecMon-PostgreSQL-Cluster vor dem Entpacken. Daten und bisheriges Administratorpasswort bleiben erhalten.
 
 Im TecMon-Replay unter „In CS2 aufnehmen“ den Auftrag als `.tecmon.json` exportieren. Im Companion öffnen, Originaldemo mit „Demo wählen“ auswählen, CS2-Partie beenden und Aufnahme bestätigen. Danach die MP4 im Replay auswählen und mit Spielername/Freitext und Steam-Link veröffentlichen. Demos und Aufnahme bleiben lokal; der Companion erhält keine YouTube-Secrets.
 
@@ -81,15 +79,15 @@ Im TecMon-Replay unter „In CS2 aufnehmen“ den Auftrag als `.tecmon.json` exp
 
 Für den vollständigen Installer `scripts/build-companion-installer.ps1` verwenden. Der Build prüft `windows/dependency-manifest.json`, extrahiert unveränderte Originalpakete und kompiliert Launcher/Setup mit dem vorhandenen Windows-.NET-Framework-Compiler. Der Quellcode von CS Demo Manager muss auf Tag `v3.20.1` stehen. Die Binärpakete sind separat; keine Laufzeit-Binaries gehören ins Git-Repository.
 
-Tests: `node --test "tools/cs2-companion/test/*.test.mjs"`. Der reale Einrichtungstest verwendet einen eigenen Test-Datenordner und ein generiertes Testpasswort; keine fremden Datenbanken. Automatisierte Tests ersetzen den oben beschriebenen gesonderten realen Aufnahmetest nicht.
+Tests: `node --test "tools/cs2-companion/test/*.test.mjs"`. Der reale Einrichtungstest verwendet einen eigenen Test-Datenordner. Automatisierte Tests ersetzen keinen echten CS2-Aufnahmetest.
 
-Paketversionen und Lizenzhinweise: `windows/THIRD-PARTY-NOTICES.txt`, `windows/dependency-manifest.json`. Engine-Dokumentation: https://cs-demo-manager.com/docs/cli
+Paketversionen und Lizenzhinweise: `windows/THIRD-PARTY-NOTICES.txt`, `windows/dependency-manifest.json`.
 
-GitHub-Release: Das Kernpaket enthält Companion, Node.js, PostgreSQL und CS Demo Manager. HLAE und FFmpeg werden bei fehlender Installation direkt von ihren Originalanbietern heruntergeladen und anhand des Manifests geprüft. Dafür ist beim ersten Setup Internet nötig. Bereits installierte Videotools werden weiterverwendet. Ein vollständiger lokaler Offline-Build ist weiterhin möglich.
+GitHub-Release: Das Kernpaket enthält Companion und Node.js. HLAE und FFmpeg werden bei fehlender Installation direkt von ihren Originalanbietern heruntergeladen und anhand des Manifests geprüft. Dafür ist beim ersten Setup Internet nötig. Bereits installierte Videotools werden weiterverwendet. Ein vollständiger lokaler Offline-Build ist weiterhin möglich.
 
 ## Aktualisieren ohne Neuinstallation
 
-Für eine bestehende Installation (ab 0.3.1) die kleine TecMon-Companion-Update.exe aus dem neuesten GitHub-Release verwenden. Vorher Companion und CS Demo Manager schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
+Für eine bestehende Installation (ab 0.3.1) die kleine TecMon-Companion-Update.exe aus dem neuesten GitHub-Release verwenden. Vorher den Companion schließen. Die Update-EXE erkennt den installierten Programmordner über den Deinstallationseintrag; alternativ den eigenen TecMon-Programmordner auswählen. Es werden nur eigene Programmdateien aktualisiert; unveränderte Dateien werden per SHA256 übersprungen. Runtime, Tools, Datenbank, Zugangsdaten, Demos und Videos werden nicht ersetzt.
 
 Ab 0.4: Im Companion Auf Updates prüfen und anschließend Update installieren wählen. Das Paket wird ausschließlich aus stabilen Releases des offiziellen Repositories bezogen. Größe und SHA256 werden vor dem Start geprüft. Nach dem Beenden des lokalen Servers übernimmt ein separater Update-Prozess und startet den Companion wieder. Änderungen an großen Drittanbieter-Tools können weiterhin einen gesonderten Tool-/Installer-Schritt erfordern.
 

@@ -74,10 +74,11 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
 
 ### Karten und Bilder
 
-- Radarbilder werden nie mitgeliefert oder heruntergeladen. Sie werden lokal
-  aus der mitinstallierten CS-Demo-Manager-Version gelesen
-  (`resources/static/images/maps/cs2/radars/<map>.png`). Fehlt das Bild, kommt
-  nur Text.
+- Radarbilder werden nie mitgeliefert oder heruntergeladen. `copyRadars()`
+  (`radars.mjs`) kopiert sie beim Start nur aus einem schon vorhandenen
+  CS-Demo-Manager-Ordner (alte verwaltete Installation oder eigenes Programm,
+  `resources/static/images/maps/cs2/radars/<map>.png`) in `<profil>/radars`;
+  das Programm wird nie gestartet. Fehlt das Bild, kommt nur Text.
 - Callouts und Radar-Metadaten stehen in `map-spots.mjs` als Anteile des
   1024er-Radars. Spray-Muster in `spray-patterns.mjs` stammen aus
   `lib/recoilProfiles.ts` der Webseite.
@@ -336,10 +337,15 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 
 ## Eigene TecMon-Engine (`internal-recorder.mjs`, `valve-download.mjs`)
 
-- Download und Aufnahme laufen ohne CS-Demo-Manager-Programm und ohne
-  PostgreSQL. Der CSDM-Weg bleibt als Rückfall erhalten, bis die eigene Engine
-  auf echten PCs freigegeben ist; Aufträge ohne `slot` je Szene nutzen ihn
-  automatisch.
+- Download und Aufnahme laufen nur über die eigene Engine, ohne
+  CS-Demo-Manager-Programm und ohne PostgreSQL (seit 0.40 kein Rückfall mehr,
+  kein Passwort im Setup). Keinen CSDM- oder Datenbank-Weg wieder einbauen.
+  Aufträge ohne `slot` je Szene lehnt `internalProblem()` mit `SLOTS_MISSING`
+  ab (Bitte um neue Auswertung auf der Webseite).
+- Alte Installationen behalten `tools\csdm`, `tools\postgresql` und ihren
+  Datenbank-Cluster; der Companion startet sie nicht und löscht sie nicht
+  ungefragt. `PrepareUpdate()` in `TecMon.cs` beendet einen noch laufenden
+  alten Cluster vor dem Update weiter, falls `installation.json` ihn nennt.
 - Fremde Binärdateien nur mit fester Prüfsumme: CS2-Plugin über
   `PLUGIN_SHA256` (`recording-engine.mjs`), boiler-writter über die
   npm-Integrität in `BOILER`. Bei Abweichung abbrechen, nie ungeprüft starten.

@@ -50,22 +50,7 @@ test("reject invalid Steam IDs, ticks, excessive duration and schema versions", 
 });
 test("loopback authentication, import, confirmation and recording pipeline", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-companion-test-"));
-  const calls = [];
-  const { server, token } = await createCompanion({
-    dataDir: dir,
-    runProcess: async (exe, args) => {
-      calls.push({ exe, args });
-      if (args[0] === "video") {
-        const config = JSON.parse(await readFile(args[2], "utf8"));
-        assert.equal(config.sequences[0].playerCameras[0].playerName, "KOALA");
-        await mkdir(path.join(config.outputFolderPath, "rendered"));
-        await writeFile(
-          path.join(config.outputFolderPath, "rendered", "result.mp4"),
-          "test-output-not-a-real-video",
-        );
-      }
-    },
-  });
+  const { server, token } = await createCompanion({ dataDir: dir, detectTools: async () => ({}) });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(async () => {
@@ -92,26 +77,16 @@ test("loopback authentication, import, confirmation and recording pipeline", asy
   });
   assert.equal(badHost, 403);
   assert.equal((await post("/api/import", job, { Origin: "https://evil.example" })).status, 403);
-  assert.equal((await post("/api/database/check", { port: 0 })).status, 400);
-  assert.equal((await post("/api/database/install", {})).status, 400);
+  // CS Demo Manager und Datenbank gibt es nicht mehr.
+  for (const route of ["/api/database/check", "/api/database/install", "/api/csdm/open", "/api/engine"])
+    assert.equal((await post(route, {})).status, 404);
   assert.equal((await fetch(base)).status, 200);
   const imported = await (await post("/api/import", job)).json();
-  const exe = path.join(dir, "csdm.exe");
   const demo = path.join(dir, "match.dem");
-  await writeFile(exe, "fixture");
   await writeFile(demo, "PBDEMS2\0fixture");
-  assert.equal((await post("/api/start", { id: imported.id, csdm: exe, demo })).status, 400);
-  assert.equal(calls.length, 0);
+  assert.equal((await post("/api/start", { id: imported.id, demo })).status, 400);
   assert.equal(
-    (
-      await post("/api/start", {
-        id: imported.id,
-        csdm: exe,
-        demo,
-        confirm: true,
-        quality: "1080p60",
-      })
-    ).status,
+    (await post("/api/start", { id: imported.id, demo, confirm: true, quality: "1080p60" })).status,
     202,
   );
   let state;
@@ -120,14 +95,10 @@ test("loopback authentication, import, confirmation and recording pipeline", asy
     if (!state.active) break;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
-  assert.equal(state.jobs[0].status, "done");
-  assert.deepEqual(
-    calls.map((c) => c.args[0]),
-    ["analyze", "video"],
-  );
-  const response = await fetch(base + `/api/video?job=${imported.id}&file=0`, { headers });
-  assert.equal(response.status, 200);
-  assert.equal(await response.text(), "test-output-not-a-real-video");
+  // Ohne installierten Windows-Companion keine Aufnahme (Erfolgsweg: internal-video.test.mjs).
+  assert.equal(state.jobs[0].status, "error");
+  assert.match(state.jobs[0].log, /installierten Windows-Companion/);
+  assert.equal((await fetch(base + `/api/video?job=${imported.id}&file=0`, { headers })).status, 404);
   assert.equal(
     (await fetch(base + `/api/video?job=${imported.id}&file=../../../secret`, { headers })).status,
     404,

@@ -6,7 +6,6 @@ $target=Join-Path $workspace 'installed'
 $data=Join-Path $workspace 'data'
 $private=Join-Path $data 'TecMon-Private'
 New-Item -ItemType Directory -Path $application,$target,$private,(Join-Path $target 'runtime') -Force | Out-Null
-Set-Content -LiteralPath (Join-Path $application 'csdm-defaults.json') -Value '{}'
 Set-Content -LiteralPath (Join-Path $target 'tecmon-app.marker') -Value 'test only'
 Set-Content -LiteralPath (Join-Path $private 'tecmon-data.marker') -Value 'test only'
 Set-Content -LiteralPath (Join-Path $private 'sentinel.txt') -Value 'keep private data'

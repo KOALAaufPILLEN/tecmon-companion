@@ -119,7 +119,7 @@ test("Companion: abgelehnte cs2.exe wird nicht benutzt, Grund steht in /api/stat
   await writeFile(cs2, "MZ");
   const { server, token } = await createCompanion({
     dataDir: path.join(dir, "data"),
-    detectTools: async () => ({ csdm: "", cs2 }),
+    detectTools: async () => ({ cs2 }),
     verifyGame: (file) => checkCs2Exe(file, { platform: "win32", signature: valve }),
   });
   server.listen(0, "127.0.0.1");

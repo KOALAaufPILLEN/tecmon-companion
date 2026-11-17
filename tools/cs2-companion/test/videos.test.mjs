@@ -20,7 +20,7 @@ test("neueste Videos auflisten und nur geprüfte Pfade öffnen", async (t) => {
   const opened = [];
   const { server, token } = await createCompanion({
     dataDir: dir,
-    detectTools: async () => ({ csdm: "", cs2: "" }),
+    detectTools: async () => ({ cs2: "" }),
     openPath: (target, select) => opened.push([target, select]),
   });
   server.listen(0, "127.0.0.1");

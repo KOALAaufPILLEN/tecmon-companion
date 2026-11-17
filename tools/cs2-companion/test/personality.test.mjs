@@ -74,7 +74,7 @@ test("TecMon-Werte: Interaktion, Energie, Schlaf, Spiele, Speichern", async (t) 
 
 test("Companion: TecMon-API mit Sitzungstoken", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-pet-api-"));
-  const { server, token } = await createCompanion({ dataDir: path.join(dir, "data"), detectTools: async () => ({ csdm: "", cs2: "" }) });
+  const { server, token } = await createCompanion({ dataDir: path.join(dir, "data"), detectTools: async () => ({ cs2: "" }) });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(async () => { server.closeAllConnections(); await new Promise((r) => server.close(r)); await rm(dir, { recursive: true, force: true }); });

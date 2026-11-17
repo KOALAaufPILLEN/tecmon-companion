@@ -14,9 +14,9 @@ Auftragsdateien sind untrusted data. `job.mjs` erlaubt nur das versionierte Form
 
 ## Lokale Zugangsdaten
 
-Der Installer nimmt das Administratorpasswort verdeckt entgegen und übergibt es an den Node-Unterprozess über UTF-8-stdin, nicht als Kommandozeilenargument. Für PostgreSQL wird vorübergehend eine private Passwortdatei verwendet. Temporäre Administrator-Passwortdateien werden anschließend entfernt. Bei fehlgeschlagener Einrichtung kann ein temporäres generiertes Anwendungspasswort zur Wiederaufnahme im privaten Datenordner verbleiben.
+Seit 0.40 fragt der Installer kein Passwort mehr ab: Es gibt weder CS Demo Manager noch PostgreSQL. Zur Laufzeit entstehen nur lokale Tokens (Sitzung der lokalen API, gehashte Browser-Freigaben).
 
-Der Datenbereich `<gewählter Datenordner>/TecMon-Private` wird über Windows-ACLs auf das eigene Konto und SYSTEM beschränkt. Das generierte CSDM-Anwendungskennwort muss lokal in dessen `settings.json` stehen; es ist nicht verschlüsselt. ACLs und Loopback reduzieren den Zugriff, ersetzen aber keine Sicherheit gegen Prozesse mit gleichen Benutzerrechten oder Administratoren. Bei der Deinstallation bleiben Daten und Datenbank erhalten.
+Der Datenbereich `<gewählter Datenordner>/TecMon-Private` wird über Windows-ACLs auf das eigene Konto und SYSTEM beschränkt. ACLs und Loopback reduzieren den Zugriff, ersetzen aber keine Sicherheit gegen Prozesse mit gleichen Benutzerrechten oder Administratoren. Bei der Deinstallation bleiben Daten erhalten. Installationen bis 0.39 behalten dort ihre frühere Datenbank samt generiertem CSDM-Anwendungskennwort in `settings.json`; der Companion nutzt beides nicht mehr.
 
 ## Dateien, die niemals veröffentlicht werden dürfen
 
@@ -26,7 +26,7 @@ Der Datenbereich `<gewählter Datenordner>/TecMon-Private` wird über Windows-AC
 
 Die Node-Laufzeit verwendet nur eingebaute Module. Build und Windows-Paket greifen auf externe Tools zu. Paketversionen und Hashes stehen im Manifest; die Build-Anleitung beschreibt zusätzlich Node und 7-Zip. Ein SHA256-Abgleich mit einem im selben Repository gespeicherten Wert schützt nicht vor einem kompromittierten Repository. Installer und EXE sind derzeit nicht digital signiert.
 
-Bekannte Einschränkung von 0.3.1: Nach einer unterbrochenen Installation kann der private TecMon-PostgreSQL-Prozess DLLs sperren. Vor erneutem Entpacken muss genau dieser Prozess über `pg_ctl stop` für den eigenen TecMon-Cluster sauber beendet werden. Keine fremden PostgreSQL-Prozesse pauschal beenden. Seit 0.4 prüft der Installer vor dem Entpacken die verwalteten Datenbankpfade und beendet einen zurückgebliebenen eigenen Cluster sauber. Einen noch geöffneten Companion und CS Demo Manager vorher selbst schließen.
+Bekannte Einschränkung von 0.3.1: Nach einer unterbrochenen Installation kann der private TecMon-PostgreSQL-Prozess DLLs sperren. Vor erneutem Entpacken muss genau dieser Prozess über `pg_ctl stop` für den eigenen TecMon-Cluster sauber beendet werden. Keine fremden PostgreSQL-Prozesse pauschal beenden. Seit 0.4 prüft der Installer vor dem Entpacken die verwalteten Datenbankpfade und beendet einen zurückgebliebenen eigenen Cluster sauber; das gilt seit 0.40 nur noch für ältere Installationen mit Datenbank. Einen noch geöffneten Companion vorher selbst schließen.
 
 Automatisierte Tests und Secret-Scans sind Prüfungen mit begrenzter Abdeckung. Es wurde kein unabhängiges Sicherheitsaudit durchgeführt und keine Fehlerfreiheit zugesichert.
 
@@ -39,7 +39,7 @@ Die Updateprüfung verwendet ausschließlich stabile Releases von KOALAaufPILLEN
 
 Fest erlaubte TecMon-Origins, ausdrückliche lokale Freigabe per Zahlencode (fünf Minuten gültig), origin-gebundene Tokens und eigene Auftragsrechte. Browser-Tokens bleiben lokal im Browser; Companion persistiert ausschließlich Hashes und Origin in `bridge-devices.json` im privaten Profil. Verbindungen lassen sich lokal widerrufen. Keine frei wählbaren Pfade, Executables, Datenbankbefehle oder Updates über die Browser-Bridge. Download und Aufnahme teilen eine exklusive Sperre. Kein pauschales CORS für Preview-Domains.
 
-Der verwaltete Recorder lädt für das bekannte originale CSDM-3.20.1-Plugin den offiziellen Upstream-Build mit Fix #1483. Unveränderliche Quellrevision, URL und SHA256 stehen im öffentlich prüfbaren `recording-engine.mjs`; ein unbekanntes vorhandenes Plugin wird nicht überschrieben. Der Dienst führt keine fremden Downloads aus Website-Aufträgen aus.
+Die eigene Engine lädt das CS2-Aufnahme-Plugin als offiziellen CS-Demo-Manager-Upstream-Build mit Fix #1483 (MIT). Unveränderliche Quellrevision, URL und SHA256 stehen im öffentlich prüfbaren `recording-engine.mjs`. Der Dienst führt keine fremden Downloads aus Website-Aufträgen aus.
 
 
 ## Branding-Integrität ab 0.6
@@ -57,7 +57,7 @@ Die Rundentipps nutzen ausschließlich Valves offizielle Game State Integration:
 
 ## Eigene TecMon-Engine ab 0.17
 
-Download und Aufnahme können ohne CS-Demo-Manager-Programm und ohne PostgreSQL laufen (`internal-recorder.mjs`, `valve-download.mjs`). Fremde Binärdateien starten nur mit fester Prüfsumme: das CS2-Plugin über `PLUGIN_SHA256` in `recording-engine.mjs`, boiler-writter über die feste npm-Integrität. Bei Abweichung bricht der Companion ab. Läuft CS2 schon, bricht die Aufnahme ab, statt das Spiel zu beenden; in `gameinfo.gi` wird nur die eigene Zeile ergänzt und danach wieder entfernt. Befehle in der Aktionsdatei und der Kameraplan für das HLAE-Skript (`camera-script.mjs`) entstehen nur aus geprüften Zahlen und bereinigten Namen des Auftrags, nie aus freiem Text der Webseite. Das Skript läuft nur bei der Offline-Demo-Wiedergabe, nie im Live-Match. „Kamera im Spiel setzen“ nutzt einen eigenen CS2-Konfigurationsordner und liest `console.log` nur.
+Download und Aufnahme laufen ohne CS-Demo-Manager-Programm und ohne PostgreSQL (`internal-recorder.mjs`, `valve-download.mjs`); seit 0.40 ist das der einzige Weg. Fremde Binärdateien starten nur mit fester Prüfsumme: das CS2-Plugin über `PLUGIN_SHA256` in `recording-engine.mjs`, boiler-writter über die feste npm-Integrität. Bei Abweichung bricht der Companion ab. Läuft CS2 schon, bricht die Aufnahme ab, statt das Spiel zu beenden; in `gameinfo.gi` wird nur die eigene Zeile ergänzt und danach wieder entfernt. Befehle in der Aktionsdatei und der Kameraplan für das HLAE-Skript (`camera-script.mjs`) entstehen nur aus geprüften Zahlen und bereinigten Namen des Auftrags, nie aus freiem Text der Webseite. Das Skript läuft nur bei der Offline-Demo-Wiedergabe, nie im Live-Match. „Kamera im Spiel setzen“ nutzt einen eigenen CS2-Konfigurationsordner und liest `console.log` nur.
 
 ## Automatische Updates ab 0.17.1
 

@@ -47,30 +47,25 @@ test("browser grants require local approval, persist only hashes, bind origin an
 
 test("website bridge enforces CORS, pairing, confirmation, fixed paths, job ownership and one download-to-video lock", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-bridge-api-"));
-  const exe = path.join(dir, "csdm.exe");
-  await writeFile(exe, "fixture");
+  const installation = { dataDir: dir, profileDir: path.join(dir, "profile"), hlaeExe: "", ffmpegExe: "", cs2Exe: "" };
+  await mkdir(installation.profileDir, { recursive: true });
   const calls = [];
   let release;
   const hold = new Promise((resolve) => {
     release = resolve;
   });
   const { server, token: localToken } = await createCompanion({
-    dataDir: dir,
-    detectTools: async () => ({ csdm: exe, cs2: "" }),
-    runProcess: async (engine, args) => {
-      assert.equal(engine, exe);
-      calls.push(args);
-      if (args[0] === "dl-valve") {
-        await hold;
-        await mkdir(args[3], { recursive: true });
-        await writeFile(path.join(args[3], "match.dem"), Buffer.from("PBDEMS2\0fixture"));
-      }
-      if (args[0] === "video") {
-        const config = JSON.parse(await readFile(args[2], "utf8"));
-        assert.equal(config.sequences[0].startTick, 256);
-        assert.equal(config.concatenateSequences, true);
-        await writeFile(path.join(config.outputFolderPath, "result.mp4"), "MP4 fixture");
-      }
+    installation,
+    detectTools: async () => ({ cs2: "" }),
+    // Aufnahme-Stub: läuft bis zur eigenen Engine, die ohne CS2 sauber abbricht.
+    engineSystem: { recorder: { isRunning: async () => false } },
+    downloadDemo: async ({ code: value, directory }) => {
+      calls.push(value);
+      await hold;
+      await mkdir(directory, { recursive: true });
+      const demo = path.join(directory, "match.dem");
+      await writeFile(demo, Buffer.from("PBDEMS2\0fixture"));
+      return demo;
     },
   });
   server.listen(0, "127.0.0.1");
@@ -125,12 +120,12 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
   }
   const grant = await pair();
   const second = await pair();
-  // Skin-Tausch braucht den installierten Companion; ohne ihn weder Capability noch Schalter.
-  assert.equal((await get("/bridge/skins", grant)).status, 409);
-  assert.equal((await post("/bridge/skins", { enabled: true, accept: 1 }, grant)).status, 409);
+  // Skin-Tausch ist aus: Schalter ja, Capability erst nach bestätigtem Hinweis.
+  assert.equal((await get("/bridge/skins", grant)).status, 200);
+  assert.equal((await post("/bridge/skins", { enabled: true, accept: 0 }, grant)).status, 400);
   assert.equal((await get("/bridge/skins", "wrong")).status, 401);
   const caps = (await (await get("/bridge/state", grant)).json()).capabilities;
-  assert.ok(!caps.includes("skin-swap-v1") && !caps.includes("skin-swap-setup-v1"));
+  assert.ok(!caps.includes("skin-swap-v1") && caps.includes("skin-swap-setup-v1"));
   // Demo-Download für die Webseite: immer angeboten, nur mit Token und nur Valve-Links.
   assert.ok(caps.includes("demo-fetch-v1"));
   assert.equal((await get("/bridge/demo-fetch?url=" + encodeURIComponent("http://replay1.valve.net/730/1_2.dem.bz2"), "wrong")).status, 401);
@@ -151,9 +146,14 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
     ).status,
     400,
   );
+  // Ältere Auswertung ohne Spieler-Slots: klare Bitte um neue Auswertung statt CS-Demo-Manager-Rückfall.
+  const old = await post("/bridge/capture", { job, confirm: true }, grant);
+  assert.equal(old.status, 400);
+  assert.match((await old.json()).error, /neu auswerten/);
+  const slotted = { ...job, sequences: job.sequences.map((s) => ({ ...s, slot: 3 })) };
   const start = await post(
     "/bridge/capture",
-    { job, confirm: true, csdm: "C:\\evil.exe", demo: "C:\\private.dem" },
+    { job: slotted, confirm: true, csdm: "C:\\evil.exe", demo: "C:\\private.dem" },
     grant,
   );
   assert.equal(start.status, 202);
@@ -177,15 +177,12 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
     if (["done", "error"].includes(completed.status)) break;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
-  assert.equal(completed.status, "done");
-  assert.equal(completed.files, 1);
+  // Ohne CS2 bricht die eigene Engine ab; Pfade landen nie in der Antwort an die Webseite.
+  assert.equal(completed.status, "error");
+  assert.equal(completed.files, 0);
   assert.ok(!JSON.stringify(completed).includes(dir));
-  assert.deepEqual(
-    calls.map((c) => c[0]),
-    ["dl-valve", "analyze", "video"],
-  );
-  const video = await get(`/bridge/video?id=${id}&file=0`, grant);
-  assert.equal(await video.text(), "MP4 fixture");
+  assert.deepEqual(calls, [code]);
+  assert.equal((await get(`/bridge/video?id=${id}&file=0`, grant)).status, 404);
   const state = await (await local("/api/state")).json();
   await local("/api/bridge/revoke", { id: state.bridge.devices[0].id });
   assert.equal((await get("/bridge/state", grant)).status, 401);
