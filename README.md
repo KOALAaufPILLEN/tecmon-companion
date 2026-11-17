@@ -152,6 +152,15 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 
 Neueste Version zuerst.
 
+### Neu in 0.41.3: Companion-Seite im TecMon-Stil
+
+- Die lokale Seite unter `http://127.0.0.1:31977` sieht jetzt aus wie tecmon.online
+  statt im türkisen Holo-Look: dunkler Sternenhimmel mit lila Glow, Karten und Knöpfe
+  mit abgeschnittenen Ecken, lila Rahmen, Gold für die aktive Wahl und den Fokus,
+  Reiter im erweiterten Modus als goldenes Parallelogramm. Funktionen bleiben gleich.
+- Das Linksklick-Fenster der Figur bekommt denselben Sternenhimmel.
+- Die Stilregeln stehen in `docs/tecmon-style.md` (Repo `tecmon`) und in der `AGENTS.md`.
+
 ### Neu in 0.41.2: Kein CS2-Absturz mehr mit getauschten Skins
 
 - Getauschte Waffen, Messer und Handschuhe bekamen eine Item-ID, die CS2 als

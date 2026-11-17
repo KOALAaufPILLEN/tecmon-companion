@@ -314,6 +314,14 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   (`scale(0.96)`, nie unter 0.95), breite Karten ändern nur die Farbe.
   Übergänge nur mit benannten Eigenschaften und den `--tm-dur-*`-Zeiten, nie
   `transition: all`. Esc schließt Rückfragen; Trefferflächen mindestens 40 px.
+- TecMon-Stil (verbindlich, Details in `docs/tecmon-style.md` im Repo `tecmon`): Die
+  Companion-Seite im Browser (`http://127.0.0.1:31977`) und das Linksklick-Fenster teilen
+  dasselbe Aussehen über `body.holo` in `public/style.css`: abgeschnittene Ecken
+  (`--cut`/`--edge`/`--fill`, kein `border-radius`), lila Rahmen, Gold für aktive Wahl,
+  Fokus und die zwei Hauptecken großer Karten, aktive Reiter als goldenes Parallelogramm,
+  Statuspunkte als Raute, Sternenhimmel als Hintergrund (steht bei
+  `prefers-reduced-motion` still). Kein Cyan-Holo-Look mehr; neue Elemente in diese
+  Regeln einhängen statt eigene Farben festzulegen.
 - Rechtsklick auf die Figur öffnet `QuickMenu` (`OpenQuick()`/`BuildQuick()` in
   `TecMon.cs`): Kacheln, Schalter, Persönlichkeit, „Alle Optionen …“ öffnet das
   vollständige `ContextMenuStrip` (auch am Tray-Symbol). Neue häufige Funktionen
