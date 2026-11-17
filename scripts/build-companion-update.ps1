@@ -19,7 +19,6 @@ foreach($name in @('README.md','unpack-tools.ps1')) {Copy-Item -LiteralPath (Joi
 $rewriter=Join-Path $source 'tecmon-demo-rewriter.exe'
 if(Test-Path -LiteralPath $rewriter) { Copy-Item -LiteralPath $rewriter -Destination $stage -Force } else { Write-Warning 'tecmon-demo-rewriter.exe fehlt: Agenten-Tausch ist in diesem Paket nicht verfügbar.' }
 foreach($name in @('dependency-manifest.json','THIRD-PARTY-NOTICES.txt')) {Copy-Item -LiteralPath (Join-Path $source ('windows/'+$name)) -Destination $stage}
-Copy-Item -LiteralPath (Join-Path $ApplicationDirectory 'csdm-defaults.json') -Destination $stage
 & (Join-Path $PSScriptRoot 'prepare-companion-desktop.ps1') -Stage $stage -Cache (Join-Path $BuildDirectory 'desktop-cache')
 $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 $native=Join-Path $source 'windows/TecMon.cs'

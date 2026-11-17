@@ -6,17 +6,14 @@ $stage = Join-Path $packageRoot 'TecMon-Companion'
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/server.mjs'),(Join-Path $repo 'tools/cs2-companion/job.mjs'),(Join-Path $repo 'tools/cs2-companion/Start-TecMon.cmd'),(Join-Path $repo 'tools/cs2-companion/README.md') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/public') -Destination $stage -Recurse
-Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/postgresql.mjs'),(Join-Path $repo 'tools/cs2-companion/postgres-setup.mjs'),(Join-Path $repo 'tools/cs2-companion/Install-PostgreSQL.cmd') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/managed-installation.mjs'),(Join-Path $repo 'tools/cs2-companion/install-backend.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/windows') -Destination $stage -Recurse
-Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/share-code.mjs'),(Join-Path $repo 'tools/cs2-companion/demo-download.mjs') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/share-code.mjs'),(Join-Path $repo 'tools/cs2-companion/radars.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/download-tools.mjs'),(Join-Path $repo 'tools/cs2-companion/unpack-tools.ps1') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/updater.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/browser-bridge.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/recording-engine.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/branding-assets.mjs'),(Join-Path $repo 'tools/cs2-companion/video-branding.mjs') -Destination $stage
-Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/lazy-engine.mjs') -Destination $stage
-Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/custom-cameras.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/update-handoff.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/browser-demo.mjs') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $repo 'tools/cs2-companion/cyber-hud.mjs') -Destination $stage

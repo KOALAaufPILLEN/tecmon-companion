@@ -41,26 +41,14 @@ test("browser demo chunks retain all bytes, reject invalid data/offsets and bind
 });
 
 test("approved browser transfers original demo without sharecode and obtains rendered video without local UI", async (t) => {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "tecmon-browser-capture-")),
-    exe = path.join(directory, "csdm.exe");
-  await writeFile(exe, "fixture");
+  const directory = await mkdtemp(path.join(os.tmpdir(), "tecmon-browser-capture-"));
   const bytes = Buffer.concat([Buffer.from("PBDEMS2\0"), Buffer.alloc(300, 79)]);
-  const calls = [];
+  const installation = { dataDir: directory, profileDir: path.join(directory, "profile"), hlaeExe: "", ffmpegExe: "", cs2Exe: "" };
+  await mkdir(installation.profileDir, { recursive: true });
   const { server, token } = await createCompanion({
-    dataDir: directory,
-    detectTools: async () => ({ csdm: exe, cs2: "" }),
-    runProcess: async (_exe, args) => {
-      calls.push(args[0]);
-      if (args[0] === "analyze") {
-        assert.deepEqual(await readFile(args[1]), bytes);
-        assert.ok(args[1].startsWith(path.join(directory, "Browser-Demos")));
-      }
-      if (args[0] === "video") {
-        const config = JSON.parse(await readFile(args[2], "utf8"));
-        await mkdir(config.outputFolderPath, { recursive: true });
-        await writeFile(path.join(config.outputFolderPath, "result.mp4"), "rendered fixture");
-      }
-    },
+    installation,
+    detectTools: async () => ({ cs2: "" }),
+    engineSystem: { recorder: { isRunning: async () => false } },
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -114,9 +102,14 @@ test("approved browser transfers original demo without sharecode and obtains ren
     (await post("/bridge/capture", { job, demoId: upload.id, confirm: false })).status,
     400,
   );
+  // Ältere Auswertung ohne Spieler-Slots: abgelehnt, die hochgeladene Demo bleibt für den nächsten Versuch.
+  const old = await post("/bridge/capture", { job, demoId: upload.id, confirm: true });
+  assert.equal(old.status, 400);
+  assert.match((await old.json()).error, /neu auswerten/);
+  const slotted = { ...job, sequences: job.sequences.map((s) => ({ ...s, slot: 2 })) };
   const started = await (
     await post("/bridge/capture", {
-      job,
+      job: slotted,
       demoId: upload.id,
       demo: "C:\\not-allowed.dem",
       confirm: true,
@@ -130,11 +123,9 @@ test("approved browser transfers original demo without sharecode and obtains ren
     if (["error", "done"].includes(result.status)) break;
     await new Promise((r) => setTimeout(r, 10));
   }
-  assert.equal(result.status, "done");
-  assert.deepEqual(calls, ["analyze", "video"]);
-  assert.equal(result.files, 1);
-  assert.equal(
-    await (await fetch(base + `/bridge/video?id=${started.id}&file=0`, { headers })).text(),
-    "rendered fixture",
-  );
+  // Ohne CS2 bricht die eigene Engine ab (der Erfolgsweg steht in internal-video.test.mjs).
+  assert.equal(result.status, "error");
+  assert.ok(!JSON.stringify(result).includes(directory));
+  // Die Demo ist verbraucht: ein zweiter Auftrag damit geht nicht.
+  assert.equal((await post("/bridge/capture", { job: slotted, demoId: upload.id, confirm: true })).status, 400);
 });

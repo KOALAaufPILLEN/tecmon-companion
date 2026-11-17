@@ -30,7 +30,7 @@ test("Spiel-Pakete: CS2 entfernen löscht eigene Dateien und sperrt CS2-Funktion
   await mkdir(path.dirname(cs2), { recursive: true });
   await writeFile(cs2, "");
   const data = path.join(dir, "data");
-  const { server, token } = await createCompanion({ verifyGame: async (file) => ({ ok: true, reason: "", path: file }), dataDir: data, detectTools: async () => ({ csdm: "", cs2 }) });
+  const { server, token } = await createCompanion({ verifyGame: async (file) => ({ ok: true, reason: "", path: file }), dataDir: data, detectTools: async () => ({ cs2 }) });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(async () => { server.closeAllConnections(); await new Promise((r) => server.close(r)); await rm(dir, { recursive: true, force: true }); });

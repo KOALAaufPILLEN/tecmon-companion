@@ -19,7 +19,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 ### Highlight-Videos aus CS2-Demos
 
 - **„In CS2 aufnehmen“ auf tecmon.online:** Du wählst im Demo-Manager Szenen und Spieler, der Companion erledigt den Rest: Demo per Sharecode über dein Steam laden (oder direkt aus dem Browser übernehmen), in CS2 aufnehmen, mit TecMon-Branding zu einer MP4 verarbeiten und an die Webseite zurückgeben. Fortschritt und Fehler siehst du auf der Webseite, die Figur sagt dir nebenbei, an welchem Schritt sie gerade ist.
-- **Eigene TecMon-Engine:** Download und Aufnahme laufen ohne CS Demo Manager und ohne Datenbank. CS Demo Manager bleibt als Rückfall installiert.
+- **Eigene TecMon-Engine:** Download und Aufnahme laufen komplett im Companion, ohne CS Demo Manager und ohne Datenbank.
 - **Kamera:** Egoansicht, feste Freikamera-Punkte, weiche Kamerafahrten über bis zu 8 Punkte, Verfolger-Kamera, Spieler-Intro von vorn und „Kamera im Spiel setzen“ (Punkte mit F8 direkt in CS2 merken).
 - **Branding:** Animiertes TecMon-Intro in zwei Stilen (Neon-Raster oder Hologramm), Esport-Titelbild, Spielerwechsel im Teamvideo, animiertes HUD am Radar, Outro und weiche Übergänge.
 - **Kill-Anzeige:** Neben dem TecMon-Logo erscheint bei jedem Kill „1K · KILL“ bis „ACE · ALL 5 ENEMIES“, mit Headshot-Hinweis.
@@ -83,8 +83,8 @@ Mehr Details zu Einrichtung, Aufnahme und Branding stehen in der [Anleitung](too
 ## Sicherheit und Daten
 
 - Keine YouTube-/Google-OAuth-Secrets, Refresh-Tokens, Website-Umgebungsdateien oder persönlichen Installationsdaten werden mitgeliefert. Der Companion braucht keinen Zugang zum TecMon-YouTube-Kanal.
-- Zur Laufzeit erzeugt er lokale Zugangsdaten: ein zufälliges Sitzungstoken für die lokale API und, für den CS-Demo-Manager-Rückfall, ein frei gewähltes PostgreSQL-Administratorpasswort und ein separates generiertes Datenbankkennwort. Diese Werte sind **keine öffentlichen Repository-Dateien**.
-- Datenbank und API binden an `127.0.0.1`. Die API prüft Host, Origin und Sitzungstoken. Webseiten müssen einmal im Companion freigegeben werden.
+- Zur Laufzeit erzeugt er lokale Zugangsdaten, etwa ein zufälliges Sitzungstoken für die lokale API. Diese Werte sind **keine öffentlichen Repository-Dateien**.
+- Die API bindet an `127.0.0.1`. Die API prüft Host, Origin und Sitzungstoken. Webseiten müssen einmal im Companion freigegeben werden.
 - Demos, Aufnahme und Kodierung laufen lokal. Eine Aufnahme startet nur nach ausdrücklicher Bestätigung. Rohclips ohne Branding gibt der Companion nicht heraus.
 - Fremde Programme (CS2-Aufnahme-Plugin, boiler-writter, HLAE, FFmpeg, Demo-Rewriter für den Skin-Tausch, Video-Pakete) werden nur mit fester Prüfsumme genutzt. Bei Abweichung bricht der Companion ab. Das schützt vor beschädigten oder ausgetauschten Downloads, nicht vor jemandem, der den eigenen PC selbst verändert.
 - Rundentipps und Dota-2-Tipps lesen nur, was das Spiel selbst per Game State Integration schickt, und nur eigene Spielerdaten. Kein Speicherzugriff, keine Injektion, keine Eingaben an das Spiel.
@@ -95,12 +95,12 @@ Details, Grenzen und Hinweise für Reviewer: [SECURITY.md](SECURITY.md). Offener
 
 Die einfachste Quelle ist [tecmon.online/companion](https://tecmon.online/companion): Die Seite verlinkt automatisch die neueste Version. Im [aktuellen GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest) gibt es zwei getrennte EXE-Dateien:
 
-- **TecMon-Companion-Setup-X.Y.Z.exe**: für neue Nutzer ohne vorhandene Installation. Enthält Companion, Node.js, PostgreSQL und CS Demo Manager. Das Setup lädt HLAE und FFmpeg vom Originalanbieter mit SHA256-Prüfung nach, richtet eine private Datenbank ein und fragt nach einem frei wählbaren Administratorpasswort. Steam und CS2 müssen bereits installiert sein. Internetverbindung erforderlich.
-- **TecMon-Companion-Update-X.Y.Z.exe**: für bestehende Installationen. Ersetzt nur Companion-Programmdateien und erhält Datenbank, Kennwörter, Tools, Demos, Videos und Einstellungen. Meist brauchst du sie nicht, weil der Companion sich selbst aktualisiert.
+- **TecMon-Companion-Setup-X.Y.Z.exe**: für neue Nutzer ohne vorhandene Installation. Enthält Companion und Node.js. Das Setup lädt HLAE und FFmpeg vom Originalanbieter mit SHA256-Prüfung nach; eine Datenbank oder ein Passwort braucht es nicht. Steam und CS2 müssen bereits installiert sein. Internetverbindung erforderlich.
+- **TecMon-Companion-Update-X.Y.Z.exe**: für bestehende Installationen. Ersetzt nur Companion-Programmdateien und erhält Tools, Demos, Videos und Einstellungen. Meist brauchst du sie nicht, weil der Companion sich selbst aktualisiert.
 
 Feste Links auf die jeweils neueste Version: [Setup](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Setup.exe) und [Update](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest/download/TecMon-Companion-Update.exe). Prüfsummen und Update-Manifest beziehen sich auf die Dateien mit Versionsnummer.
 
-Vor Installation oder Update den Companion und CS Demo Manager schließen. Die Prüfsumme des Installers steht neben der EXE als `.sha256`; das Update hat ein eigenes JSON-Manifest und `SHA256SUMS.txt`. WebView2 Evergreen Runtime muss vorhanden sein; siehe [Build- und Laufzeitvoraussetzungen](BUILDING.md).
+Vor Installation oder Update den Companion schließen. Die Prüfsumme des Installers steht neben der EXE als `.sha256`; das Update hat ein eigenes JSON-Manifest und `SHA256SUMS.txt`. WebView2 Evergreen Runtime muss vorhanden sein; siehe [Build- und Laufzeitvoraussetzungen](BUILDING.md).
 
 ## Für Entwickler
 
@@ -139,17 +139,34 @@ Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` 
 
 Der Companion-Quellcode steht unter der MIT-Lizenz. Beiträge, Fehlerberichte und Sicherheitsprüfungen sind willkommen. Dieses Repository enthält nur den Companion und seine Build-Werkzeuge, mit eigener Git-Historie; der private Website-Code wird nicht veröffentlicht. Das TecMon-Logo dient zur Kennzeichnung; die Lizenz gewährt keine Markenrechte.
 
-Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, PostgreSQL License, GPL und AGPL. Siehe [THIRD-PARTY-NOTICES.txt](tools/cs2-companion/windows/THIRD-PARTY-NOTICES.txt) und [dependency-manifest.json](tools/cs2-companion/windows/dependency-manifest.json). Wer Binärpakete weitergibt, muss deren Lizenz- und Quellcodepflichten erfüllen.
+Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL. Siehe [THIRD-PARTY-NOTICES.txt](tools/cs2-companion/windows/THIRD-PARTY-NOTICES.txt) und [dependency-manifest.json](tools/cs2-companion/windows/dependency-manifest.json). Wer Binärpakete weitergibt, muss deren Lizenz- und Quellcodepflichten erfüllen.
 
-- Der Installer enthält Node.js, PostgreSQL und CS Demo Manager mit ihren Lizenzen; HLAE und FFmpeg lädt er bei Bedarf von den Originalanbietern.
+- Der Installer enthält Node.js mit seiner Lizenz; HLAE und FFmpeg lädt er bei Bedarf von den Originalanbietern.
+- Das CS2-Aufnahme-Plugin stammt aus [CS Demo Manager von AkiVer](https://github.com/akiver/cs-demo-manager) (MIT). Der Companion lädt es bei der ersten Aufnahme vom festen Stand und prüft die Prüfsumme; der Ablauf der eigenen Engine folgt CS Demo Manager 3.20.1. Danke!
 - boiler-writter (MIT) lädt der Companion beim ersten eigenen Download vom npm-Paket und prüft die feste Prüfsumme.
 - Der Demo-Rewriter für den Skin-Tausch stammt aus [CS2-nskinz von Lyan-edit](https://github.com/Lyan-edit/CS2-nskinz) (AGPL-3.0). Er wird erst beim Einschalten unverändert vom festen Stand des Autors geladen, geprüft und als eigenes Programm gestartet; sein Code ist nicht Teil des Companions. Danke an den Autor!
-- Radarbilder werden nicht mitgeliefert, sondern lokal aus CS Demo Manager gelesen.
+- Radarbilder werden nicht mitgeliefert. Der Companion kopiert sie nur aus einem schon vorhandenen CS-Demo-Manager-Ordner (ältere Installation oder eigenes Programm) in seinen Datenordner; sonst zeigen die Tipps nur Text.
 - Der eigene Demo-Rewriter für den Agenten-Tausch (`native/tecmon-demo-rewriter`, MIT) nutzt die Bibliothek [source2-demo von Artem Rupasov](https://github.com/Rupas1k/source2-demo) (MIT oder Apache-2.0). Danke!
 
 ## Versionsverlauf
 
 Neueste Version zuerst.
+
+### Neu in 0.40.0: Ohne CS Demo Manager und ohne Datenbank
+
+- Der CS-Demo-Manager-Rückfall ist entfernt. Download und Aufnahme laufen nur noch über die
+  eigene TecMon-Engine, die sich in den letzten Versionen bewährt hat.
+- Das Setup enthält weder CS Demo Manager noch PostgreSQL und fragt kein Passwort mehr ab.
+  Es ist dadurch deutlich kleiner.
+- Aufträge ohne Spieler-Slots (sehr alte Auswertungen) bekommen eine klare Meldung:
+  Demo auf tecmon.online neu auswerten und erneut senden.
+- Der Schalter „Eigene TecMon-Engine verwenden“, „CS Demo Manager öffnen“ und die
+  Datenbank-Karte sind aus der Companion-Seite verschwunden.
+- Radarbilder für die Rundentipps kopiert der Companion einmalig aus einer älteren
+  Installation in seinen eigenen Ordner, damit sie erhalten bleiben.
+- Bestehende Installationen behalten die alten Ordner `tools\csdm` und `tools\postgresql`
+  sowie die alte Datenbank auf der Festplatte; der Companion startet sie nicht mehr. Wer Platz
+  sparen will, kann sie nach dem Update löschen.
 
 ### Neu in 0.39.0: Handschuhe bei allen Agenten, Sticker auf Wunsch behalten
 

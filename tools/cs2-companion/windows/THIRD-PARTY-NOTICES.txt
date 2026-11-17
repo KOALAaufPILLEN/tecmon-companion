@@ -14,16 +14,6 @@ Node.js 26.13.0 LTS
 https://nodejs.org/ · MIT und mitgelieferte Drittanbieter-Lizenzen, siehe runtime/LICENSE.
 Quellcode: https://github.com/nodejs/node/tree/v26.13.0
 
-PostgreSQL 18.6 (EDB Windows-Binärpaket 18.6-5)
-https://www.postgresql.org/ · PostgreSQL License sowie mitgelieferte Drittanbieter-Lizenzen.
-Binärpaket: https://www.enterprisedb.com/download-postgresql-binaries
-Quellcode: https://www.postgresql.org/ftp/source/v18.6/
-
-CS Demo Manager 3.20.1
-https://cs-demo-manager.com/ · MIT, Copyright AkiVer und Beitragende.
-Quellcode und Lizenz: https://github.com/akiver/cs-demo-manager/tree/v3.20.1
-Die Konfigurationsvorlage basiert auf den unveränderten Standardwerten dieser Version.
-
 HLAE 2.193.0 (advancedfx)
 https://www.advancedfx.org/ · GPL und enthaltene Drittanbieter-Lizenzen.
 Quellcode: https://github.com/advancedfx/advancedfx/tree/v2.193.0
@@ -37,7 +27,7 @@ FFmpeg-Quellcode: https://git.ffmpeg.org/ffmpeg.git
 
 7-Zip wird nur zum Zusammenstellen des Installers verwendet und ist kein Laufzeitbestandteil. Der Installer selbst und der Companion verwenden Windows/.NET und die mitgelieferte Node.js-Laufzeit.
 
-Die Versionen und SHA256-Prüfsummen der bezogenen Originalpakete stehen in dependency-manifest.json. Die lokale Datenbank wird ausschließlich an 127.0.0.1 gebunden. Das frei gewählte Administratorpasswort wird zur Initialisierung verwendet; für CS Demo Manager richtet TecMon ein eigenes lokales Anwendungskonto ein. Die dafür notwendige CS-Demo-Manager-Konfiguration liegt im nur für dein Windows-Konto zugänglichen Datenordner.
+Die Versionen und SHA256-Prüfsummen der bezogenen Originalpakete stehen in dependency-manifest.json. Seit Version 0.40.0 enthält das Setup weder CS Demo Manager noch PostgreSQL; eine Datenbank oder ein Passwort braucht der Companion nicht mehr.
 
 Beim öffentlichen Download-Installer sind HLAE und FFmpeg nicht im EXE-Payload enthalten: Das Setup lädt die unveränderten Originalpakete bei Bedarf direkt von den oben genannten Anbietern herunter und prüft deren SHA256. Das Kernpaket enthält die übrigen oben aufgeführten Programme mit ihren mitgelieferten Lizenzdateien.
 
@@ -45,7 +35,7 @@ boiler-writter 1.7.0 (AkiVer) · MIT
 Quellcode: https://github.com/akiver/boiler-writter · Paket: https://registry.npmjs.org/@akiver/boiler-writter/-/boiler-writter-1.7.0.tgz
 Wird von der eigenen TecMon-Engine beim ersten Sharecode-Download geladen und gegen die SHA-512-Prüfsumme der npm-Registry geprüft. Enthält steam_api64.dll aus dem Steamworks SDK (Valve).
 
-Die eigene TecMon-Engine (internal-recorder.mjs, valve-download.mjs) folgt im Ablauf CS Demo Manager 3.20.1 (MIT, Copyright AkiVer und Beitragende).
+Die eigene TecMon-Engine (internal-recorder.mjs, valve-download.mjs) folgt im Ablauf CS Demo Manager 3.20.1 (MIT, Copyright AkiVer und Beitragende): https://github.com/akiver/cs-demo-manager
 
 CS2-Aufnahme-Plugin: offizieller Upstream-Build mit Fix #1483, bei der ersten Aufnahme separat geladen und SHA256-geprüft. MIT und enthaltene Drittanbieter-Hinweise.
 Quelle und Binärdatei: https://github.com/akiver/cs-demo-manager/tree/01f655f20141d366e07a5869f84554df3a61c64a

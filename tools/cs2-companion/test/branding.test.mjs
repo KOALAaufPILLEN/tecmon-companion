@@ -159,21 +159,20 @@ test("changed in-memory visuals abort before any encoder runs", async (t) => {
 
 test("asset integrity failure stops the recording pipeline before CS2 and cannot publish raw output", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-brand-api-"));
-  const demo=path.join(dir,"match.dem"),exe=path.join(dir,"csdm.exe");
-  await writeFile(demo,Buffer.from("PBDEMS2\0fixture"));await writeFile(exe,"fixture");
-  const installation = {
-    dataDir: dir,
-    profileDir: path.join(dir, "profile"),
-    postgresBin: path.join(dir, "pg"),
-    port: 31000,
-    csdmExe: path.join(dir, "csdm.exe"),
-    cs2Exe: "",
-  };
+  const demo=path.join(dir,"match.dem");
+  await writeFile(demo,Buffer.from("PBDEMS2\0fixture"));
+  const installation = { dataDir: dir, profileDir: path.join(dir, "profile"), cs2Exe: "" };
   let calls = 0;
   const { server, token } = await createCompanion({
     installation,
-    runProcess: async () => {
-      calls++;
+    detectTools: async () => ({}),
+    engineSystem: {
+      recorder: {
+        launch: () => {
+          calls++;
+          throw new Error("CS2 darf nicht starten");
+        },
+      },
     },
     loadAssets: async () => {
       throw new Error("Branding-Prüfsumme stimmt nicht");
@@ -190,8 +189,9 @@ test("asset integrity failure stops the recording pipeline before CS2 and cannot
   const headers = { "x-tecmon-token": token, "content-type": "application/json" };
   const post = async (route, body) =>
     fetch(base + route, { method: "POST", headers, body: JSON.stringify(body) });
-  const imported = await (await post("/api/import", job)).json();
-  assert.equal((await post("/api/start", { id: imported.id, confirm: true,csdm:exe,demo })).status, 202);
+  const slotted = { ...job, sequences: job.sequences.map((s, i) => ({ ...s, slot: i + 1 })) };
+  const imported = await (await post("/api/import", slotted)).json();
+  assert.equal((await post("/api/start", { id: imported.id, confirm: true, demo })).status, 202);
   let state;
   for (let i = 0; i < 50; i++) {
     state = await (await fetch(base + "/api/state", { headers })).json();

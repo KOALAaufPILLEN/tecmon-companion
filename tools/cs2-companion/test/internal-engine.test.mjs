@@ -42,7 +42,7 @@ test("Auftrag übernimmt gültige Spieler-Slots und lehnt ungültige ab", () => 
   assert.equal(jobSlots(job).get(STEAM), 2);
   const old = validateJob(baseJob({ sequences: [{ startTick: 100, endTick: 200, steamId: STEAM, playerName: "A" }] }));
   assert.equal(old.sequences[0].slot, undefined);
-  assert.equal(jobSlots(old), null, "ohne Slot bleibt nur CS Demo Manager");
+  assert.equal(jobSlots(old), null, "ohne Slot muss die Demo neu ausgewertet werden");
   for (const slot of [0, 65, 1.5, "3"])
     assert.throws(() => validateJob(baseJob({ sequences: [{ startTick: 1, endTick: 2, steamId: STEAM, slot }] })));
   const clash = validateJob(baseJob({ sequences: [

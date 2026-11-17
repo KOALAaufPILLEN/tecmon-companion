@@ -1,7 +1,7 @@
 /**
  * Bekannte Callouts auf den CS2-Radarbildern (1024 × 1024, Valve-Overview-Ausschnitt),
- * als Anteil von Breite und Höhe. Die Radarbilder selbst bringt CS Demo Manager mit;
- * der Companion liest sie nur lokal und verteilt sie nicht.
+ * als Anteil von Breite und Höhe. Die Radarbilder selbst kopiert der Companion nur aus
+ * einem schon vorhandenen lokalen Ordner (radars.mjs) und verteilt sie nicht.
  *
  * kind: site = Bombenplatz, spawn = Spawn, spot = Callout.
  * radar: Overview-Werte der Karte (linke obere Ecke in Spieleinheiten, Einheiten pro Pixel),

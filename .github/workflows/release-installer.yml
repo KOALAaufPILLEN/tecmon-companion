@@ -81,12 +81,6 @@ jobs:
           ref: ${{ needs.detect.outputs.ref }}
           path: source
           persist-credentials: false
-      - uses: actions/checkout@v4
-        with:
-          repository: akiver/cs-demo-manager
-          ref: v3.20.1
-          path: csdm-source
-          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -126,7 +120,7 @@ jobs:
           RELEASE_TAG: ${{ needs.detect.outputs.tag }}
         run: |
           $base=$PWD.Path
-          & ./source/scripts/build-companion-installer.ps1 -DependenciesCache "$base/cache" -CsDmSource "$base/csdm-source" -NodeFolder "$base/runtime/node-v26.13.0-win-x64" -BuildDirectory "$base/build" -OutputDirectory "$base/dist" -DownloadVideoTools
+          & ./source/scripts/build-companion-installer.ps1 -DependenciesCache "$base/cache" -NodeFolder "$base/runtime/node-v26.13.0-win-x64" -BuildDirectory "$base/build" -OutputDirectory "$base/dist" -DownloadVideoTools
           & ./source/scripts/build-companion-update.ps1 -ApplicationDirectory "$base/build/app" -BuildDirectory "$base/update-build" -OutputDirectory "$base/dist" -Version $env:RELEASE_TAG.Substring(1)
       - name: Verify pristine payload and isolated first installation
         shell: pwsh

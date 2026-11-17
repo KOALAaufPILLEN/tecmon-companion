@@ -1,7 +1,6 @@
 // Runs only against a fresh, isolated test directory, never a user's installation.
 import path from 'node:path';
-import {access, readFile, readdir, writeFile, unlink, mkdir, copyFile} from 'node:fs/promises';
-import {randomBytes} from 'node:crypto';
+import {access, readFile, readdir, writeFile, mkdir, copyFile} from 'node:fs/promises';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {pathToFileURL} from 'node:url';
@@ -19,32 +18,16 @@ async function pristine(folder){
 }
 await pristine(root);
 const api=await import(pathToFileURL(path.join(root,'managed-installation.mjs')));
-const password=randomBytes(24).toString('hex')+' ä&:"\'\\';
+for(const name of ['tools/csdm','tools/postgresql','csdm-defaults.json','postgresql.mjs']){
+  try{await access(path.join(root,name));throw Error('Removed component still in payload: '+name);}catch(e){if(e.code!=='ENOENT')throw e;}
+}
 let config;
 try{
-  config=await api.setupManagedInstallation(root,{password,dataDir:path.join(base,'data'),acceptLicenses:true,databasePort:35533},message=>console.log(message));
+  config=await api.setupManagedInstallation(root,{dataDir:path.join(base,'data'),acceptLicenses:true},message=>console.log(message));
   if(config.version!==version)throw Error('Installed version mismatch');
-  const settingsFile=path.join(config.profileDir,'.csdm','settings.json');
-  const settings=JSON.parse(await readFile(settingsFile,'utf8'));
-  if(settings.database.password===password)throw Error('Admin password reused for application');
-  const psql=path.join(config.postgresBin,'psql.exe');
-  const sqlArgs=['-X','-w','-h','127.0.0.1','-p',String(config.port),'-v','ON_ERROR_STOP=1'];
-  const appEnv={...process.env,PGPASSWORD:settings.database.password,PGCONNECT_TIMEOUT:'5'};
-  await api.runTool(psql,[...sqlArgs,'-U','tecmon_csdm','-d','tecmon_csdm','-tAc','SELECT 1'],{env:appEnv});
-  // Emulate an interrupted setup: settings remain but app role/database are missing.
-  // Use the same UTF-8 pgpass transport as setup: Windows libpq's environment
-  // password transport does not reliably preserve non-ASCII characters.
-  const passFile=path.join(base,'test-admin.pgpass');
-  await writeFile(passFile,`127.0.0.1:${config.port}:postgres:tecmon_admin:${password.replaceAll('\\','\\\\').replaceAll(':','\\:')}\n`,{mode:0o600});
-  try{await api.runTool(psql,[...sqlArgs,'-U','tecmon_admin','-d','postgres'],{env:{...process.env,PGPASSWORD:'',PGPASSFILE:passFile},input:'DROP DATABASE tecmon_csdm;\nDROP ROLE tecmon_csdm;\n'});}
-  finally{await unlink(passFile);}
-  config=await api.setupManagedInstallation(root,{password,dataDir:config.dataDir,acceptLicenses:true},()=>{});
-  await api.runTool(psql,[...sqlArgs,'-U','tecmon_csdm','-d','tecmon_csdm','-tAc','SELECT 1'],{env:appEnv});
-  const fixture=path.join(base,'invalid-demo.dem');await writeFile(fixture,Buffer.from('PBDEMS2\0test'));
-  const invocation=api.csdmInvocation(config.csdmExe,['analyze',fixture],config);
-  try{await api.runTool(invocation.exe,invocation.args,{env:invocation.env,timeout:120000});}catch{/* Invalid demo; verify the database migrations separately. */}
-  const count=await api.runTool(psql,[...sqlArgs,'-U','tecmon_csdm','-d','tecmon_csdm','-tAc','SELECT count(*) FROM migrations'],{env:appEnv});
-  if(Number(count.trim())<1)throw Error('CSDM migrations missing');
+  for(const key of ['postgresBin','clusterDir','csdmExe','port'])if(key in config)throw Error('Database field in fresh installation: '+key);
+  // Erneute Einrichtung (Reparatur) mit derselben Installation bleibt möglich.
+  config=await api.setupManagedInstallation(root,{dataDir:config.dataDir,acceptLicenses:true},()=>{});
   await api.runTool(config.ffmpegExe,['-version']);
   if(process.argv[5]){
     const {verifyBrandingPack}=await import(pathToFileURL(path.join(root,'branding-assets.mjs')));
@@ -63,8 +46,8 @@ try{
     if(Math.abs(info.duration-2.9)>0.12)throw Error('Stinger did not preserve full scenes or appeared on repeated POV');
     console.log('PASS: real native-locked FFmpeg render, persistent cyber HUD, one animated player switch, repeated POV without extra stinger, complete scene durations.');
   }
-  console.log('PASS: pristine installer, fresh setup, separate accounts, special-character password, interrupted-setup repair, CSDM migrations and FFmpeg. No game recording performed.');
+  console.log('PASS: pristine installer without CS Demo Manager and PostgreSQL, fresh setup, repeated setup and FFmpeg. No game recording performed.');
 }catch(error){
-  console.error(String(error.message).replaceAll(password,'[test password]'));
+  console.error(String(error.message));
   process.exitCode=1;
-}finally{if(config)await api.stopManagedDatabase(config);}
+}

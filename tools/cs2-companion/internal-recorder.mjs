@@ -40,7 +40,7 @@ export const sequenceName = (s) => `${s.number}-sequence`;
 export const sequenceOutputFile = (folder, s) =>
   path.join(folder, `sequence-${s.number}-tick-${s.startTick}-to-${s.endTick}.mp4`);
 
-/** Spieler-Slots (Wert für spec_player) aus dem Auftrag; fehlt einer, bleibt nur der CSDM-Weg. */
+/** Spieler-Slots (Wert für spec_player) aus dem Auftrag; fehlt einer, muss die Demo neu ausgewertet werden. */
 export function jobSlots(job) {
   const slots = new Map();
   for (const s of job.sequences) {
@@ -373,12 +373,23 @@ export async function recordInternal({
 }
 
 /** Ist alles für den eigenen Weg vorhanden? */
-export async function internalReady(installation, cs2Exe, job) {
-  if (!installation || process.platform !== "win32" || !jobSlots(job)) return false;
-  if (!cs2Exe || !existsSync(cs2Exe)) return false;
+export const SLOTS_MISSING =
+  "Dem Auftrag fehlen die Spieler-Slots (ältere Auswertung). Demo auf tecmon.online neu auswerten und erneut senden.";
+
+/** Grund, warum die TecMon-Aufnahme nicht laufen kann; "" = alles da. */
+export async function internalProblem(installation, cs2Exe, job) {
+  if (!installation) return "Aufnahmen brauchen den installierten Windows-Companion.";
+  if (process.platform !== "win32") return "Aufnahmen gibt es nur unter Windows.";
+  if (!jobSlots(job)) return SLOTS_MISSING;
+  if (!cs2Exe || !existsSync(cs2Exe)) return "CS2 wurde nicht gefunden.";
   for (const exe of [installation.hlaeExe, installation.ffmpegExe])
-    if (!(await stat(exe).then((s) => s.isFile(), () => false))) return false;
-  return true;
+    if (!(await stat(exe).then((s) => s.isFile(), () => false)))
+      return "HLAE oder FFmpeg fehlt. Companion-Einrichtung reparieren.";
+  return "";
+}
+
+export async function internalReady(installation, cs2Exe, job) {
+  return !(await internalProblem(installation, cs2Exe, job));
 }
 
 /**

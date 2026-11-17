@@ -11,7 +11,7 @@ try {
   const config = await setupManagedInstallation(root, JSON.parse(input), (message) =>
     process.stdout.write(JSON.stringify({ message }) + "\n"),
   );
-  process.stdout.write(JSON.stringify({ done: true, port: config.port }) + "\n");
+  process.stdout.write(JSON.stringify({ done: true }) + "\n");
 } catch (error) {
   process.stdout.write(JSON.stringify({ error: error.message }) + "\n");
   process.exitCode = 1;

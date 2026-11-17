@@ -139,7 +139,7 @@ test("Clip-Branding: feste Spielnamen, bereinigter Titel, nur geprüfte Assets",
 
 test("Clips: lokale API ohne Windows-Companion meldet fehlendes FFmpeg, Bridge ohne Clip-Capability", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clips-api-"));
-  const { server, token } = await createCompanion({ dataDir: dir, detectTools: async () => ({ csdm: "", cs2: "" }) });
+  const { server, token } = await createCompanion({ dataDir: dir, detectTools: async () => ({ cs2: "" }) });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(async () => { server.closeAllConnections(); await new Promise((r) => server.close(r)); await rm(dir, { recursive: true, force: true }); });

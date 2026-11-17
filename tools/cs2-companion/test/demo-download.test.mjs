@@ -4,7 +4,6 @@ import { mkdtemp, mkdir, writeFile, rm, realpath } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { once } from "node:events";
-import { downloadDemo } from "../demo-download.mjs";
 import { matchDownloadRequest, shareCode } from "../share-code.mjs";
 import { recordingConfig, validateJob } from "../job.mjs";
 import { createCompanion } from "../server.mjs";
@@ -22,29 +21,19 @@ test("several players produce one concatenated recording with the correct POV pe
   assert.equal(result.concatenateSequences,true);
   assert.deepEqual(result.sequences.map(s=>s.playerCameras[0].playerSteamId),sequences.map(s=>s.steamId));
 });
-test("download resolves through fixed CLI arguments and rejects success without a real CS2 file",async(t)=>{
-  const root=await mkdtemp(path.join(os.tmpdir(),'tecmon-download-')); t.after(()=>rm(root,{recursive:true,force:true}));
-  const dir=path.join(root,'match');
-  await assert.rejects(downloadDemo({code,directory:dir,exe:'csdm.exe',run:async()=>{},entry:{log:''}}),/Keine eindeutige/);
-  await writeFile(path.join(dir,'match.dem'),'HTML failure');
-  await assert.rejects(downloadDemo({code,directory:dir,exe:'csdm.exe',run:async()=>{},entry:{log:''}}),/keine entpackte/);
-  const demo=await downloadDemo({code,directory:dir,exe:'csdm.exe',entry:{log:''},run:async(exe,args)=>{
-    assert.deepEqual(args,['dl-valve',code,'--output',dir]);
-    await writeFile(path.join(dir,'match.dem'),Buffer.from('PBDEMS2\0fixture'));
-  }});
-  assert.equal(demo,await realpath(path.join(dir,'match.dem')));
-});
 test("local download requires session, origin and explicit confirmation; recording shares its busy lock",async(t)=>{
   const dir=await mkdtemp(path.join(os.tmpdir(),'tecmon-download-api-'));
-  const exe=path.join(dir,'csdm.exe'); await writeFile(exe,'fixture');
   let release; const wait=new Promise(resolve=>{release=resolve;});
-  const {server,token}=await createCompanion({dataDir:dir,runProcess:async(_exe,args)=>{
-    await wait; await mkdir(args[3],{recursive:true}); await writeFile(path.join(args[3],'match.dem'),Buffer.from('PBDEMS2\0fixture'));
+  const installation={dataDir:dir,profileDir:path.join(dir,'profile'),hlaeExe:'',ffmpegExe:'',cs2Exe:''};
+  await mkdir(installation.profileDir,{recursive:true});
+  const {server,token}=await createCompanion({installation,detectTools:async()=>({}),downloadDemo:async({code:value,directory})=>{
+    assert.equal(value,code);
+    await wait; await mkdir(directory,{recursive:true}); const demo=path.join(directory,'match.dem'); await writeFile(demo,Buffer.from('PBDEMS2\0fixture')); return demo;
   }});
   server.listen(0,'127.0.0.1'); await once(server,'listening');
   t.after(async()=>{release();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});});
   const base=`http://127.0.0.1:${server.address().port}`;
-  const body={format:'tecmon-match-download',version:1,shareCodes:[code],csdm:exe,confirm:true};
+  const body={format:'tecmon-match-download',version:1,shareCodes:[code],confirm:true};
   const headers={'content-type':'application/json','x-tecmon-token':token};
   const post=(value,extra={})=>fetch(base+'/api/demos/download',{method:'POST',headers:{...headers,...extra},body:JSON.stringify(value)});
   assert.equal((await post(body,{'x-tecmon-token':'wrong'})).status,401);

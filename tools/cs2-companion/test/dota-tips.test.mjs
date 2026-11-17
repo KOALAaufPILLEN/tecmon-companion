@@ -95,7 +95,7 @@ test("Dota-Paket: Route nur mit Paket, Token und ohne Origin; Entfernen räumt d
   await mkdir(path.dirname(dota2), { recursive: true });
   await mkdir(path.join(dir, "dota 2 beta", "game", "dota", "cfg"), { recursive: true });
   await writeFile(dota2, "");
-  const { server, token } = await createCompanion({ dataDir: path.join(dir, "data"), detectTools: async () => ({ csdm: "", cs2: "", dota2 }) });
+  const { server, token } = await createCompanion({ dataDir: path.join(dir, "data"), detectTools: async () => ({ cs2: "", dota2 }) });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(async () => { server.closeAllConnections(); await new Promise((r) => server.close(r)); await rm(dir, { recursive: true, force: true }); });

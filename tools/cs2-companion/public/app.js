@@ -9,7 +9,6 @@ const drafts = new Map();
 let signature = '';
 let bridgeSignature = '';
 let downloadSignature = '';
-let populated = false;
 let restarting = false;
 let latestState;
 function advanced(show) {
@@ -39,14 +38,7 @@ function overview(state) {
   $('activity-progress').hidden=!state.active;
   $('activity-count').textContent=`${jobs.filter(j=>j.status==='done' && j.files.length).length} Videos · ${downloads.filter(d=>d.status==='done').length} Demos`;
   $('activity-heading').textContent=state.active?(statuses[running?.status] || (loading?'DEMO WIRD GELADEN':'Auftrag läuft …')):latest?.status==='error'||lastDownload?.status==='error'?'Auftrag fehlgeschlagen':latest?.status==='done'?'Auftrag fertig':latest?.status==='ready'?'Manueller Auftrag importiert':'Bereit für den nächsten Auftrag';
-  $('activity-note').textContent=state.active?(running?.job.title || 'Der Companion arbeitet lokal. Den Fortschritt siehst du auch auf der Webseite.'):latest?.status==='error'||lastDownload?.status==='error'?'Die Details findest du unter „Erweitert“ im Aufnahme- oder Download-Protokoll.':latest?.status==='done'?'Das Ergebnis steht bereit. Auf der Webseite gestartete Videos werden dort automatisch übernommen; lokale Aufträge findest du unter „Erweitert“.':latest?.status==='ready'?'Öffne „Erweitert“, um die Originaldemo zu wählen und den importierten Auftrag zu starten.':'Datenbank und Aufnahme-Tools starten erst bei Bedarf. Wähle deine Highlights auf TecMon.';
-}
-function databaseState(pg) {
-  $('database-install').disabled = pg.supported;
-  $('database-status').textContent = pg.installed ? `PostgreSQL-Tools ${pg.version} erkannt${pg.supported ? '' : ' · Version zu alt'}` : 'PostgreSQL nicht automatisch gefunden';
-  $('database-note').textContent = pg.supported
-    ? pg.ready ? `PostgreSQL antwortet unter 127.0.0.1:${pg.port}. Jetzt die Datenbank-Verbindung in CS Demo Manager prüfen.` : `Installation vorhanden. Unter 127.0.0.1:${pg.port} antwortet noch kein bereiter PostgreSQL-Server. Dienst starten bzw. Port korrigieren; keine Neuinstallation nötig.`
-    : 'Für CS Demo Manager wird PostgreSQL ab Version 17 benötigt. Mit dem Installationsknopf wird PostgreSQL 18 über WinGet eingerichtet. Vorhandene Datenbanken werden nicht gelöscht.';
+  $('activity-note').textContent=state.active?(running?.job.title || 'Der Companion arbeitet lokal. Den Fortschritt siehst du auch auf der Webseite.'):latest?.status==='error'||lastDownload?.status==='error'?'Die Details findest du unter „Erweitert“ im Aufnahme- oder Download-Protokoll.':latest?.status==='done'?'Das Ergebnis steht bereit. Auf der Webseite gestartete Videos werden dort automatisch übernommen; lokale Aufträge findest du unter „Erweitert“.':latest?.status==='ready'?'Öffne „Erweitert“, um die Originaldemo zu wählen und den importierten Auftrag zu starten.':'Aufnahme-Tools starten erst bei Bedarf. Wähle deine Highlights auf TecMon.';
 }
 async function api(url, body) {
   const response = await fetch(url, { method: body === undefined ? 'GET' : 'POST', headers: { 'x-tecmon-token': token, ...(body === undefined ? {} : { 'content-type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -107,16 +99,9 @@ async function refresh() {
   if(state.auto)showAuto(state.auto);
   if(state.skins)showSkins(state.skins,!!state.managed);
   dotaTips(state.dota);
-  databaseState(state.postgres);
   $('auto-update-row').hidden=!state.updates?.available; $('auto-update').checked=!!state.updates?.auto; $('auto-update-note').textContent=state.updates?.auto?'Neue Versionen werden nach der Prüfung von Größe und Prüfsumme selbst installiert, nie während eines Downloads oder einer Aufnahme. Danach startet der Companion neu.':'Aus: Neue Versionen erscheinen als Hinweis und werden erst nach deinem Klick installiert.';
- $('own-engine-card').hidden=!state.engine?.available; $('own-engine').checked=!!state.engine?.internal; $('own-engine-note').textContent=state.engine?.internal?'Aktiv: Download und Aufnahme laufen ohne CS Demo Manager. Ältere Aufträge ohne Spieler-Slots nutzen automatisch weiter CS Demo Manager.':'Aus: Download und Aufnahme laufen wie bisher über CS Demo Manager und die lokale Datenbank.';
-  $('csdm-open').hidden = !state.managed;
-  $('database-port').disabled = state.managed;
-  if(state.managed && state.postgres.lazy) { $('database-status').textContent='PostgreSQL startet erst bei Bedarf';$('database-note').textContent='Die lokale Datenbank wird beim ersten Demo-Download, bei einer Aufnahme oder beim Öffnen von CS Demo Manager gestartet.'; }
-  if (state.managed && state.postgres.ready) $('database-note').textContent = `TecMon-Datenbank automatisch eingerichtet und unter 127.0.0.1:${state.postgres.port} erreichbar. Alle Tool-Pfade sind hinterlegt.`;
   $('cs2-status').textContent = state.detected.cs2 ? 'CS2 erkannt' : state.cs2Check && !state.cs2Check.ok ? `CS2 abgelehnt: ${state.cs2Check.reason}` : 'CS2 nicht gefunden';
-  $('engine-status').textContent = state.detected.csdm ? 'CS Demo Manager erkannt' : 'CS Demo Manager fehlt';
-  if (!populated) { $('engine').value = state.detected.csdm; $('database-port').value = state.postgres.port; populated = true; }
+  $('engine-status').textContent = state.managed ? 'TecMon-Engine bereit' : 'Nur im installierten Windows-Companion';
   const completed = (state.downloads || []).filter(d => d.status === 'done');
   $('download-start').disabled = state.active;
   const downloadNext = JSON.stringify(state.downloads || []);
@@ -164,7 +149,7 @@ async function refresh() {
       const start = el('button', '● Lokal in CS2 aufnehmen'); start.disabled = state.active;
       start.addEventListener('click', async () => {
         start.disabled = true;
-        try { await api('/api/start', { id: job.id, demo: draft.demo.trim().replace(/^"|"$/g, ''), csdm: $('engine').value.trim().replace(/^"|"$/g, ''), confirm: draft.confirm, quality: $('quality').value }); $('notice').textContent = ''; await refresh(); } catch (err) { notice(err); start.disabled = false; }
+        try { await api('/api/start', { id: job.id, demo: draft.demo.trim().replace(/^"|"$/g, ''), confirm: draft.confirm, quality: $('quality').value }); $('notice').textContent = ''; await refresh(); } catch (err) { notice(err); start.disabled = false; }
       }); card.append(start);
     }
     if (job.status === 'done') {
@@ -192,7 +177,7 @@ $('import').addEventListener('change', async event => {
     await refresh(); } catch (err) { notice(err); } finally { event.target.value = ''; }
 });
 $('download-start').addEventListener('click',async()=>{
-  try { await api('/api/demos/download',{format:'tecmon-match-download',version:1,shareCodes:$('share-codes').value.trim().split(/\s+/),csdm:$('engine').value.trim().replace(/^"|"$/g,''),confirm:$('download-confirm').checked}); $('notice').textContent='Demo-Download läuft direkt auf deinem PC.'; await refresh(); }
+  try { await api('/api/demos/download',{format:'tecmon-match-download',version:1,shareCodes:$('share-codes').value.trim().split(/\s+/),confirm:$('download-confirm').checked}); $('notice').textContent='Demo-Download läuft direkt auf deinem PC.'; await refresh(); }
   catch(error){notice(error);}
 });
 function askShutdown(show){$('shutdown').hidden=show;$('shutdown-confirm').hidden=!show;}
@@ -201,29 +186,14 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('shutdo
 $('shutdown').addEventListener('click',()=>askShutdown(true));
 $('shutdown-no').addEventListener('click',()=>askShutdown(false));
 $('shutdown-yes').addEventListener('click', async () => { askShutdown(false); try { await api('/api/shutdown', {}); clearInterval(timer); $('notice').textContent = 'Companion beendet. Du kannst dieses Fenster schließen.'; } catch (err) { notice(err); } });
-$('database-check').addEventListener('click', async () => {
-  $('database-check').disabled = true;
-  try { databaseState(await api('/api/database/check', { port: Number($('database-port').value) })); $('notice').textContent = ''; }
-  catch (error) { notice(error); }
-  finally { $('database-check').disabled = false; }
-});
-$('database-install').addEventListener('click', async () => {
-  $('database-install').disabled = true;
-  try { const result = await api('/api/database/install', { confirm: true }); $('notice').textContent = result.message; }
-  catch (error) { notice(error); }
-  finally { await refresh().catch(notice); }
-});
-$('engine-browse').addEventListener('click', async () => { try { const selected=await api('/api/pick',{kind:'engine'}); if(selected.path) $('engine').value=selected.path; } catch(error) { notice(error); } });
 $('auto-update').addEventListener('change',async()=>{const box=$('auto-update');box.disabled=true;try{await api('/api/update/auto',{auto:box.checked});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});
-$('own-engine').addEventListener('change',async()=>{const box=$('own-engine');box.disabled=true;try{await api('/api/engine',{internal:box.checked});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});
-$('csdm-open').addEventListener('click', async () => { try { const result=await api('/api/csdm/open',{}); $('notice').textContent=result.message; } catch(error) { notice(error); } });
 let latestUpdate=null;
 function updateOffer(result){
   latestUpdate=result.available?result:null;
   $('update-banner').hidden=!latestUpdate;
   if(latestUpdate){$('update-banner-title').textContent=`Update ${result.latest} verfügbar`;$('update-check').textContent=`Update ${result.latest} installieren`;}
   else $('update-check').textContent='Auf Updates prüfen';
-  $('update-status').textContent=latestUpdate?`Version ${result.latest} ist verfügbar. Die Installation ersetzt nur Companion-Dateien und startet den Companion neu. CS Demo Manager vorher schließen.`:`Du hast die aktuelle Version${result.latest?` (${result.latest})`:''}.`;
+  $('update-status').textContent=latestUpdate?`Version ${result.latest} ist verfügbar. Die Installation ersetzt nur Companion-Dateien und startet den Companion neu.`:`Du hast die aktuelle Version${result.latest?` (${result.latest})`:''}.`;
 }
 async function checkUpdate(silent){
   try{updateOffer(await api('/api/update/check',{}));if(!silent&&!latestUpdate)$('notice').textContent='Companion ist aktuell.';}

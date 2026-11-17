@@ -5,46 +5,49 @@ import {once} from "node:events";
 import {mkdtemp,writeFile,mkdir,rm} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import {lazyEngine} from "../lazy-engine.mjs";
 import {createCompanion} from "../server.mjs";
 import {updateHandoff} from "../update-handoff.mjs";
-import {stopManagedDatabase} from "../managed-installation.mjs";
+import {copyRadars,radarFile} from "../radars.mjs";
 
-test("engine startup is lazy, concurrent calls share work and failures can be retried",async()=>{
-  let count=0;let release;const gate=new Promise(resolve=>{release=resolve;});
-  const prepare=lazyEngine(async()=>{count++;await gate;if(count===1)throw new Error("startup failed");});
-  assert.equal(count,0);const a=prepare(),b=prepare();assert.equal(a,b);release();
-  await assert.rejects(a,/startup failed/);await prepare();assert.equal(count,2);
-});
-
-test("opening managed Companion starts no database or CSDM; a confirmed download starts it on demand",async t=>{
+test("managed Companion downloads with the own engine and never mentions a database",async t=>{
   const dir=await mkdtemp(path.join(os.tmpdir(),"tecmon-lazy-"));
-  const exe=path.join(dir,"csdm.exe");await writeFile(exe,"fixture");
-  let starts=0,runs=0;
-  const installation={dataDir:dir,profileDir:path.join(dir,"profile"),postgresBin:path.join(dir,"pg"),port:25433,csdmExe:exe,cs2Exe:""};
-  const {server,token}=await createCompanion({installation,startDatabase:async()=>{starts++;},stopDatabase:async()=>{},runProcess:async(_exe,args)=>{
-    runs++;await mkdir(args[3],{recursive:true});await writeFile(path.join(args[3],"match.dem"),"PBDEMS2\0fixture");
+  let runs=0;
+  const installation={dataDir:dir,profileDir:path.join(dir,"profile"),hlaeExe:"",ffmpegExe:"",cs2Exe:""};
+  await mkdir(installation.profileDir,{recursive:true});
+  const {server,token}=await createCompanion({installation,detectTools:async()=>({}),downloadDemo:async({directory})=>{
+    runs++;await mkdir(directory,{recursive:true});const demo=path.join(directory,"match.dem");await writeFile(demo,"PBDEMS2\0fixture");return demo;
   }});
   server.listen(0,"127.0.0.1");await once(server,"listening");
   t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});});
   const base=`http://127.0.0.1:${server.address().port}`;
   const headers={"x-tecmon-token":token,"content-type":"application/json"};
   const state=async()=> (await fetch(base+"/api/state",{headers})).json();
-  assert.equal((await state()).postgres.lazy,true);assert.equal(starts,0);assert.equal(runs,0);
-  const response=await fetch(base+"/api/demos/download",{method:"POST",headers,body:JSON.stringify({format:"tecmon-match-download",version:1,shareCodes:["CSGO-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA"],confirm:true,csdm:exe})});
+  const first=await state();
+  assert.equal(first.postgres,undefined);assert.equal(first.engine,undefined);assert.equal("csdm" in first.detected,false);assert.equal(runs,0);
+  for(const route of ["/api/csdm/open","/api/database/check","/api/database/install","/api/engine"])
+    assert.equal((await fetch(base+route,{method:"POST",headers,body:"{}"})).status,404);
+  const response=await fetch(base+"/api/demos/download",{method:"POST",headers,body:JSON.stringify({format:"tecmon-match-download",version:1,shareCodes:["CSGO-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA"],confirm:true})});
   assert.equal(response.status,202);
   /* Bis zu 5 s warten: Windows-Runner brauchen für den Auftrag oft länger als 0,5 s. */
   let result;for(const end=Date.now()+5000;Date.now()<end;){result=await state();if(!result.active&&result.downloads[0]?.status!=="downloading")break;await new Promise(resolve=>setTimeout(resolve,20));}
-  assert.equal(starts,1);assert.equal(runs,1);assert.equal(result.postgres.ready,true);assert.equal(result.downloads[0].status,"done");
+  assert.equal(runs,1);assert.equal(result.downloads[0].status,"done");
 });
 
-test("stopping an idle private database is safe while other failures remain visible",async()=>{
-  let calls=0;const config={postgresBin:"pg",clusterDir:"private"};
-  await stopManagedDatabase(config,async()=>{calls++;throw Object.assign(new Error("not running"),{exitCode:3});});
-  assert.equal(calls,1);
-  await assert.rejects(stopManagedDatabase(config,async()=>{throw Object.assign(new Error("permission denied"),{exitCode:1});}),/permission/);
-  // PostgreSQL vom Nutzer entfernt: Update und Beenden dürfen daran nicht scheitern.
-  await stopManagedDatabase(config,async()=>{throw Object.assign(new Error("spawn pg_ctl.exe ENOENT"),{code:"ENOENT"});});
+test("Radarbilder kommen nur aus einem vorhandenen lokalen Ordner und werden einmal kopiert",async t=>{
+  const dir=await mkdtemp(path.join(os.tmpdir(),"tecmon-radar-"));
+  t.after(()=>rm(dir,{recursive:true,force:true}));
+  const source=path.join(dir,"old-csdm");
+  const radars=path.join(source,"resources","static","images","maps","cs2","radars");
+  await mkdir(radars,{recursive:true});
+  await writeFile(path.join(radars,"de_dust2.png"),"png");
+  await writeFile(path.join(radars,"evil.png"),"png");
+  await writeFile(path.join(radars,"de_mirage.txt"),"x");
+  const target=path.join(dir,"radars");
+  assert.equal(await copyRadars(target,["",path.join(dir,"missing"),source]),1);
+  assert.equal(await copyRadars(target,[source]),0);
+  assert.equal(radarFile(target,"de_dust2"),path.join(target,"de_dust2.png"));
+  assert.equal(radarFile(target,"../de_dust2"),"");
+  assert.equal(radarFile(target,"de_inferno"),"");
 });
 
 test("update acknowledgement reaches client before service closes and signals process exit",async t=>{
