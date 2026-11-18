@@ -181,6 +181,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Filter kommen nur als Kennung aus `VIDEO_FILTERS`; `filterId()` verwirft alles
   andere. Keine Filterketten oder Ausdrücke aus dem Auftrag übernehmen. Die Liste
   muss zu `lib/videoFilters.ts` der Webseite passen (Capability `video-filter-v1`).
+- `video-filter-v2`: zusätzliche IDs aus `FILTER_V2_IDS` (14 Pro/Intense Looks). Die Webseite darf sie nur mit dieser Capability senden; v1 und alle bisherigen IDs bleiben erhalten. Öffentliche Vorschaubilder stammen nur aus dem vorhandenen Website-Testbild, nie aus privaten Nutzeraufnahmen.
 - Szenenfilter wirken nur auf das Gameplay vor dem HUD; `branding.filter` nur auf
   Intro, Titelbild, Spielerwechsel und Outro.
 - HUD v2 nur, wenn das geprüfte Video-Paket `hud-v2.png` enthält.
@@ -206,8 +207,8 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   `SKIN_WEAPONS`, Paintkit, Abnutzung, Muster, höchstens `MAX_SKINS`). SteamID64
   bleibt Text. Aufgenommen wird aus einer Kopie `*.tecmon-swap.dem`, die danach
   gelöscht wird; die Original-Demo bleibt unverändert.
-- Getauschte Waffen, Messer und Handschuhe tragen das Namensschild „TecMon Skin“ und eine
-  markierte Item-ID (oberste vier Bits gesetzt).
+- Getauschte Waffen, Messer und Handschuhe tragen das Namensschild „www.TecMon.Online“ und eine
+  markierte Item-ID (oberstes Byte `0x7E`, nie die Faux-Markierung `0xF…`).
 - Die Webseite darf den Schalter über `GET/POST /bridge/skins` bedienen (Capability
   `skin-swap-setup-v1`, nur mit installiertem Companion und eigener Engine). Einschalten
   nur mit `accept` gleich `SKIN_NOTICE_VERSION`; die Webseite zeigt dafür `SKIN_NOTICE`.

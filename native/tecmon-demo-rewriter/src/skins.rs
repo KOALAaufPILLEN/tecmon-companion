@@ -3,15 +3,17 @@
 //! Eigener Code des TecMon Companion (MIT). Gesetzt werden nur die Felder, die
 //! CS2 selbst für Skins ins Netz schickt: Item-Definition, Qualität, Item-ID,
 //! Namensschild, die Attribute „Paintkit“ (6), „Muster“ (7) und „Abnutzung“ (8)
-//! sowie die Fallback-Werte. Messer bekommen dazu Modell und Unterklasse.
+//! sowie die Fallback-Werte. Bei Messern bestimmt die Unterklasse das Modell.
 
-use crate::{prop, resource_id, string_token, weapon_owner, ATTRIBUTE_PREFIX};
+use crate::{prop, string_token, weapon_owner, ATTRIBUTE_PREFIX};
+#[cfg(test)]
+use crate::resource_id;
 use anyhow::{bail, Result};
 use source2_demo::prelude::*;
 use std::collections::HashMap;
 
-/// Namensschild auf getauschten Teilen: Im Video ist sichtbar, dass der Skin nicht echt ist.
-pub const SKIN_TAG: &str = "TecMon Skin";
+/// Namensschild auf getauschten Teilen mit der TecMon-Webadresse.
+pub const SKIN_TAG: &str = "www.TecMon.Online";
 const GLOVE_PREFIX: &str = "m_EconGloves.m_NetworkedDynamicAttributes.m_Attributes";
 const ATTR_PAINT: u64 = 6;
 const ATTR_SEED: u64 = 7;
@@ -138,8 +140,18 @@ fn item_id(steamid: &str, kind: &str, p: &Paint) -> u64 {
         h ^= b as u64;
         h = h.wrapping_mul(0x0000_0100_0000_01b3);
     }
-    // Hohe Bits gesetzt: kollidiert nicht mit echten Inventar-IDs.
-    h | 0xF000_0000_0000_0000
+    // Oberstes Byte = TECMON_ID_MARK: kollidiert nicht mit echten Inventar-IDs (oberstes Byte 0).
+    // Nie die Faux-Markierung 0xF…: CS2 liest daraus Definition und Paintkit (bits 0–31) und stürzt
+    // bei Unsinn-Werten ab bzw. zeigt keine Handschuhe.
+    (h & 0x00FF_FFFF_FFFF_FFFF) | ((TECMON_ID_MARK as u64) << 56)
+}
+
+/// Markierung im obersten Byte der Item-ID getauschter Gegenstände.
+pub const TECMON_ID_MARK: u32 = 0x7E;
+
+/// Trägt die obere Hälfte einer Item-ID die TecMon-Markierung?
+pub fn is_tecmon_id_high(high: u64) -> bool {
+    high >> 24 == TECMON_ID_MARK as u64
 }
 
 fn sides(side: &Option<String>) -> Result<Vec<usize>> {
@@ -248,6 +260,15 @@ fn item_fields(prefix: &str, paint: &Paint, quality: i32, out: &mut Vec<(String,
     out.push((format!("{prefix}.m_szCustomName"), FieldValue::String(SKIN_TAG.to_string())));
 }
 
+/// CS2 leitet das Messer-Modell aus Item-Definition und Unterklasse ab.
+/// m_hModel nicht direkt ersetzen: beim Demo-Sprung können die übrigen
+/// Skelett-/Animationsdaten noch zum ursprünglichen Modell gehören.
+fn knife_identity_fields(paint: &Paint, out: &mut Vec<(String, FieldValue)>) {
+    out.push(("m_AttributeManager.m_Item.m_iItemDefinitionIndex".into(), FieldValue::Unsigned16(paint.def as u16)));
+    out.push(("m_nSubclassID".into(), FieldValue::Unsigned32(string_token(&paint.def.to_string()))));
+    item_fields("m_AttributeManager.m_Item", paint, if paint.def == 42 || paint.def == 59 { 0 } else { 3 }, out);
+}
+
 /// Seite (0 = T, 1 = CT) des Spielers, der die Waffe gerade trägt.
 fn holder_side(ctx: &Context, entity: &Entity) -> Option<usize> {
     let handle = prop(entity, "m_hOwnerEntity")? as usize;
@@ -301,14 +322,7 @@ pub fn weapon_fields(
         let Some(paint) = paint else {
             return false;
         };
-        let model = knife_model(paint.def).unwrap_or_default();
-        out.push(("m_AttributeManager.m_Item.m_iItemDefinitionIndex".into(), FieldValue::Unsigned16(paint.def as u16)));
-        out.push(("m_nSubclassID".into(), FieldValue::Unsigned32(string_token(&paint.def.to_string()))));
-        out.push((
-            "CBodyComponent.m_skeletonInstance.m_modelState.m_hModel".into(),
-            FieldValue::Unsigned64(resource_id(model)),
-        ));
-        item_fields("m_AttributeManager.m_Item", &paint, if paint.def == 42 || paint.def == 59 { 0 } else { 3 }, out);
+        knife_identity_fields(&paint, out);
         paint_attributes(entity, ATTRIBUTE_PREFIX, &paint, out);
         fallback_fields(&paint, out);
         return true;
@@ -347,7 +361,7 @@ const GLOVE_FIELDS: [&str; 8] = [
 
 /// Trägt der Pawn gerade TecMon-Handschuhe (markierte Item-ID)?
 fn tecmon_gloves(entity: &Entity) -> bool {
-    prop(entity, "m_EconGloves.m_iItemIDHigh").is_some_and(|high| high >> 28 == 0xF)
+    prop(entity, "m_EconGloves.m_iItemIDHigh").is_some_and(is_tecmon_id_high)
 }
 
 /// Echte Handschuhe des Pawns, um sie auf der Seite ohne Wunsch wiederherzustellen.
@@ -463,6 +477,19 @@ mod tests {
     }
 
     #[test]
+    fn knife_identity_leaves_skeleton_to_cs2() {
+        for def in [42, 59, 507, 508, 515] {
+            let paint = Paint { def, paint: 0, seed: 0, wear: 0.01, legacy: None, item_id: 123 };
+            let mut fields = Vec::new();
+            knife_identity_fields(&paint, &mut fields);
+            assert!(fields.contains(&("m_AttributeManager.m_Item.m_iItemDefinitionIndex".into(), FieldValue::Unsigned16(def as u16))));
+            assert!(fields.contains(&("m_nSubclassID".into(), FieldValue::Unsigned32(string_token(&def.to_string())))));
+            assert!(fields.contains(&("m_AttributeManager.m_Item.m_szCustomName".into(), FieldValue::String("www.TecMon.Online".into()))));
+            assert!(!fields.iter().any(|(name, _)| name.starts_with("CBodyComponent.")));
+        }
+    }
+
+    #[test]
     fn skins_are_checked() {
         let id = "76561197992597660";
         let ok = player_skins(id, &[req("weapon", 7, None, 180), req("knife", 507, Some("t"), 0), req("glove", 5030, None, 10037)])
@@ -495,6 +522,9 @@ mod tests {
         let p = Paint { def: 7, paint: 180, seed: 1, wear: 0.1, legacy: None, item_id: 0 };
         assert_eq!(item_id("1", "weapon", &p), item_id("1", "weapon", &p));
         assert_ne!(item_id("1", "weapon", &p), item_id("2", "weapon", &p));
-        assert!(item_id("1", "weapon", &p) >> 60 == 0xF);
+        let id = item_id("1", "weapon", &p);
+        assert!(is_tecmon_id_high(id >> 32));
+        // Keine Faux-ID: sonst liest CS2 Definition/Paintkit aus der ID.
+        assert_ne!(id >> 60, 0xF);
     }
 }

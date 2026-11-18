@@ -6,7 +6,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
-**Stand dieser Übersicht:** Version 0.41.1, 17. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+**Stand dieser Übersicht:** Version 0.42.1, 18. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
 
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
@@ -16,6 +16,12 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [TecMon-Stil](#tecmon-stil)
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
+
+## Neu in 0.42.1
+
+- Messertausch: Der Rewriter lässt CS2 das Modell aus Item-Definition und Unterklasse bestimmen. Das direkte Überschreiben von `m_hModel`, das beim Demo-Sprung einen CS2-Absturz auslösen konnte, entfällt.
+- Getauschte Waffen tragen bei der Demo-Aufnahme das Namensschild „www.TecMon.Online“.
+- Fehler der Windows-Prozessabfrage brechen mit einer eigenen Meldung ab, statt ein Aufnahmeende vorzutäuschen. Bei Aufnahmefehlern bleibt der ursprüngliche Fehler erhalten; `recording-diagnostics.txt` im lokalen Auftragsordner sichert ihn zusammen mit dem Plugin-Protokoll. Ein CS2-Fehlerbericht wird ohne unbestätigte Schuldzuweisung an HLAE oder das Plugin gemeldet.
 
 ## Was der Companion kann
 
@@ -29,7 +35,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - **Kill-Anzeige:** Neben dem TecMon-Logo erscheint bei jedem Kill „1K · KILL“ bis „ACE · ALL 5 ENEMIES“, mit Headshot-Hinweis.
 - **Deathcam:** Oben steht „DEATHCAM: Name“, vorher kommt ein kurzes Intro von vorn auf den Spieler, der stirbt.
 - **36 Filter:** je Szene ein Filter nur aufs Gameplay, auf Wunsch ein eigener für Intro, Spielerwechsel und Outro.
-- **Skin-Tausch für Videos (Zusatz-Addon):** zeigt in einer Szene andere Waffenskins, Messer und Handschuhe. Der Companion schreibt dafür eine Kopie der Demo um; die Original-Demo und dein Live-Spiel bleiben unberührt. Getauschte Waffen tragen das Namensschild „TecMon Skin“. Messer und Handschuhe je Seite (T/CT), alte Skins mit altem Waffenmodell, Original-Sticker auf Wunsch, der Killfeed zeigt das getauschte Messer. Standardmäßig aus, Einschalten nur nach bestätigtem Hinweis.
+- **Skin-Tausch für Videos (Zusatz-Addon):** zeigt in einer Szene andere Waffenskins, Messer und Handschuhe. Der Companion schreibt dafür eine Kopie der Demo um; die Original-Demo und dein Live-Spiel bleiben unberührt. Getauschte Waffen tragen das Namensschild „www.TecMon.Online“. Messer und Handschuhe je Seite (T/CT), alte Skins mit altem Waffenmodell, Original-Sticker auf Wunsch, der Killfeed zeigt das getauschte Messer. Standardmäßig aus, Einschalten nur nach bestätigtem Hinweis.
 - **Agenten-Tausch und Huhn-Modus:** je Spieler und Seite ein anderer Agent fürs ganze Video, mit passenden Handschuhen. Als Experiment wird der Spieler zum Huhn, mit wählbarer Größe, Rasse und Farbe. Beides schreibt der eigene TecMon-Demo-Rewriter in dieselbe Demo-Kopie.
 
 Grenzen: höchstens 40 Szenen und 20 Minuten Spielzeit pro Auftrag. Steam und CS2 müssen installiert sein, und CS2 darf während der Aufnahme nicht schon laufen.
@@ -132,7 +138,7 @@ Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` 
 | Gemeldet | Capabilities |
 | --- | --- |
 | immer | `browser-demo-v1`, `xray-v1`, `insights-v1`, `insights-v2`, `demo-fetch-v1` |
-| mit verwalteter Installation | `clips-v1`, `video-branding-v1`, `video-style-v1`, `video-filter-v1`, `kill-badge-v1`, `deathcam-label-v1`, `camera-points-v1`, `recorder-internal-v1` |
+| mit verwalteter Installation | `clips-v1`, `video-branding-v1`, `video-style-v1`, `video-filter-v1`, `video-filter-v2`, `kill-badge-v1`, `deathcam-label-v1`, `camera-points-v1`, `recorder-internal-v1` |
 | zusätzlich mit eigener Engine | `camera-script-v1`, `camera-session-v1`, `camera-angle-v1`, `auto-highlights-v1`, `skin-swap-setup-v1` |
 | zusätzlich mit mitgeliefertem Rewriter (`tecmon-demo-rewriter.exe`) | `agent-swap-v1`, `chicken-v1`, `chicken-breed-v1` |
 | zusätzlich mit eingeschaltetem Skin-Tausch und mitgeliefertem Rewriter | `skin-swap-v1`, `skin-swap-v2`, `skin-side-v1`, `skin-legacy-v1`, `skin-stickers-v1` |
@@ -173,6 +179,17 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 ## Versionsverlauf
 
 Neueste Version zuerst.
+
+### Neu in 0.42.0: Pro Looks und Intense Looks
+
+Sechs Pro Looks und acht zusätzliche kräftige **Intense Looks** für Szenen und Branding (insgesamt 50 Filter). Die bisherigen Looks bleiben erhalten. Echte Filter-Testbilder, Originalvergleich und Auswahl je Szene auf der Webseite; die 14 neuen Kennungen nur mit `video-filter-v2`.
+
+### Neu in 0.41.2: Kein CS2-Absturz mehr mit getauschten Skins
+
+- Getauschte Waffen, Messer und Handschuhe bekamen eine Item-ID, die CS2 als
+  „Faux-ID“ deutet und daraus eine unsinnige Waffe und Lackierung liest. Das konnte
+  CS2 während der Aufnahme abstürzen lassen und die Handschuhe unsichtbar machen.
+  Die IDs tragen jetzt eine eigene Markierung, die CS2 nicht so liest.
 
 ### Neu in 0.41.1: Killfeed zeigt das getauschte Messer
 
@@ -405,7 +422,7 @@ arbeitet jetzt in einem eigenen Thread mit 256 MB Stack.
   schreibt der Companion eine Kopie der Demo um und nimmt daraus auf; die
   Original-Demo bleibt unverändert, nichts läuft im Spiel oder im Live-Match.
 - Standardmäßig aus, Einschalten nach bestätigtem Hinweis. Getauschte Waffen tragen
-  das Namensschild „TecMon Skin“, damit niemand den Skin für echten Besitz hält.
+  das Namensschild „www.TecMon.Online“, damit niemand den Skin für echten Besitz hält.
 - Den Tausch machte bis 0.40 ein externer Demo-Rewriter, den der Companion beim
   Einschalten geprüft nachlud. Seit 0.41.0 macht ihn der eigene TecMon-Demo-Rewriter.
 
