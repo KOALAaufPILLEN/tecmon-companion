@@ -1,6 +1,7 @@
 import { readFile, writeFile, rename, unlink, mkdir, stat } from "node:fs/promises";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import path from "node:path";
+import { DEFAULT_OFF } from "./game-tips.mjs";
 
 export const GSI_FILE = "gamestate_integration_tecmon.cfg";
 export const GSI_PORT = 31977;
@@ -18,7 +19,7 @@ export function gsiConfigText(token, port = GSI_PORT) {
   "timeout" "1.1"
   "buffer" "0.1"
   "throttle" "0.25"
-  "heartbeat" "10.0"
+  "heartbeat" "2.0"
   "auth"
   {
     "token" "${token}"
@@ -92,9 +93,10 @@ export async function createGsiSettings(directory) {
       settings.enabled = value === true;
       await save();
     },
-    /** Abgeschaltete Funktionen sind false; alles andere gilt als eingeschaltet. */
+    /** Abgeschaltete Funktionen sind false; nicht gespeicherte gelten als an, außer DEFAULT_OFF (z. B. bombLive). */
     feature(id) {
-      return settings.features[id] !== false;
+      const value = settings.features[id];
+      return value === undefined ? !DEFAULT_OFF.has(id) : value !== false;
     },
     get features() {
       return { ...settings.features };

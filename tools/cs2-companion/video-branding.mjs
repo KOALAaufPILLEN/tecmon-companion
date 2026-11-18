@@ -32,8 +32,9 @@ export function brandingTitle(job) {
 export function sequenceFile(sequence, index) {
   return `sequence-${index + 1}-tick-${sequence.startTick}-to-${sequence.endTick}.mp4`;
 }
-const mapLabel = (value) =>
-  value.toLowerCase() === "de_dust2" ? "DUST II" : value.replace(/^(de|cs|ar)_/i, "").toUpperCase();
+/** Karten, deren interner Name nicht zum Anzeigenamen passt (de_cbble = Cobblestone). */
+const MAP_LABELS = { de_dust2: "DUST II", de_cbble: "COBBLESTONE" };
+const mapLabel = (value) => MAP_LABELS[value.toLowerCase()] || value.replace(/^(de|cs|ar)_/i, "").toUpperCase();
 const clipText = (value, max = 100) =>
   String(value)
     .replace(/[\x00-\x1f]/g, " ")

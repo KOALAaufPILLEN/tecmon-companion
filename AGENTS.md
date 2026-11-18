@@ -20,8 +20,17 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   `allplayers_*`, `bomb`, `grenades`, `player_position` und alles, was
   Gegnerinformationen liefert. Der Test in `test/game-tips.test.mjs` prüft das
   und darf nicht gelockert werden.
-- **Kein Bomben-Timer.** Von `phase_countdowns` wird nur der
-  Kaufzeit-Countdown ausgewertet.
+- **Bomben-Timer nur aus offizieller GSI** (Nutzerentscheid vom 18.11.2026, ersetzt das
+  frühere Verbot): `phase_countdowns` liefert Kaufzeit, Bombe (`bomb`) und Entschärfen
+  (`defuse`); die Live-Anzeige `bombLive` zeigt daraus Restzeit und einen Defuse-Check des
+  eigenen Kits. Keine zusätzlichen GSI-Blöcke, keine Gegnerdaten. `bombLive` ist
+  standardmäßig aus (`defaultOff`, `DEFAULT_OFF`); beim Einschalten zeigen Companion-Seite
+  und Figurmenü `BOMB_NOTICE` (FACEIT/Turniere verbieten Bomben-Timer).
+- **Offizielle GSI-Werte des eigenen Spielers nutzen** (Nutzerentscheid vom 18.11.2026):
+  Was CS2 in den erlaubten Blöcken über den eigenen Spieler schickt, darf eingebaut
+  werden, auch wenn es die Bombe betrifft, etwa `player_state.health_c4_preview`
+  (HP nach der Explosion an der eigenen Stelle, seit CS2-Update 17.11.2026). Die Liste
+  der erlaubten Blöcke und das Verbot von Gegnerdaten bleiben unverändert.
 - **Standardmäßig aus.** Die cfg-Datei `gamestate_integration_tecmon.cfg`
   wird nur nach Einschalten angelegt, mit eigenem zufälligem Token, und beim
   Ausschalten wieder entfernt. Während einer Demo-Aufnahme werden GSI-Daten
@@ -36,6 +45,20 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   solange der Spieler lebt (`quiet`). Neue Tipps dürfen das nicht unterlaufen.
 - Erlaubte Zeitpunkte sonst: nach dem eigenen Tod, zur Halbzeit, am
   Matchende.
+- **Live-Anzeigen** (`state().live` aus `liveView()`): stehende Werte in derselben
+  Sprechblase, die sich mit den GSI-Daten ändern (CS2 schickt sie spätestens alle 2 Sekunden,
+  `heartbeat` 2.0). Nie dauerhaft, immer an eine Phase gebunden:
+  `buyLive` nur in der Kaufzeit (Geld, Ausrüstung, Rüstung/Kit, Restzeit), `bombLive` nur
+  nach dem Plant (Timer, Defuse-Check, `health_c4_preview`), `roundLive` 5 s nach einem
+  eigenen Kill und am Rundenende (Bilanz mit Flashes, Feuer, Smoke), `ammoLive` nur bei fast
+  leerem Magazin. Live-Anzeigen lösen nie einen neuen Tipp aus, gehen nicht in die
+  Warteschlange und zählen nicht zum `BRIEFING_LIMIT`. Neue Live-Werte brauchen eine eigene
+  Funktion in `FEATURES` und eine feste Phase.
+- In `TecMon.cs` (`ShowTip`, `ShowRealTip`, `liveKey`, `liveShowing`) haben echte Tipps
+  Vorrang; eine Live-Anzeige wartet, bis der Tipp 8 s stand, und wird nur neu gezeichnet,
+  wenn sich ihr Text ändert (schmale Blase, `Compact`). Kommt ein Tipp erst an, wenn die
+  Runde schon läuft (`quiet`), verfällt er; beim Rundenstart markiert der Server einen
+  offenen Kaufzeit-Tipp als `expired`. So erscheinen keine Kauftipps verspätet.
 
 ### Funktionen und Optionen
 
@@ -46,7 +69,8 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   `gsi.features`.
 - Funktionen sind einzeln abschaltbar, auf der Companion-Seite
   (`/api/gsi/features`) und im Figurmenü „Games → CS2 → Rundentipps“ (`TecMon.cs`).
-  Gespeichert in `gsi.json`; nicht gespeicherte Funktionen gelten als an.
+  Gespeichert in `gsi.json`; nicht gespeicherte Funktionen gelten als an, außer sie tragen
+  `defaultOff` in `FEATURES`. Ein `notice` in `FEATURES` wird beim Einschalten gezeigt.
 
 ### Daten von der Webseite (`insights-v1`)
 
@@ -343,6 +367,16 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   einen selbst gesehenen Auftrag.
 - Das Linksklick-Fenster (`?desktop=1`) gruppiert die Karten in Reiter
   (`desktopSections()` in `public/app.js`). Neue Karten dort einer Gruppe zuordnen.
+
+## Nach Spiel-Updates (CS2, Dota 2, Deadlock)
+
+Nach jedem Update eines unterstützten Spiels die Checkliste in
+`docs/game-updates.md` im Repo `tecmon` abarbeiten. Für den Companion heißt das
+vor allem: neue GSI-Felder (GameTracking-Repos von SteamTracking, Patchnotes) prüfen,
+neue Karten in `MAP_TIPS`, `ALTERNATIVES`, `map-spots.mjs` und `MAP_LABELS`
+(`video-branding.mjs`) ergänzen, neue Waffen in `SKIN_WEAPONS`/Spray-Mustern und neue
+Agenten in `AGENTS` (`agent-swap.mjs`) nachziehen. Was geprüft und bewusst nicht
+eingebaut wurde, steht im Update-Protokoll dort.
 
 ## Prüfen und veröffentlichen
 

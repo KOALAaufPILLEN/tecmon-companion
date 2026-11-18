@@ -24,6 +24,7 @@ function frame({
   weapons = {},
   stats = {},
   map = {},
+  bomb = "",
 } = {}) {
   return {
     provider: { steamid: ME, timestamp: 1 },
@@ -36,7 +37,7 @@ function frame({
       team_t: { score: 1 },
       ...map,
     },
-    round: { phase: roundPhase },
+    round: bomb ? { phase: roundPhase, bomb } : { phase: roundPhase },
     player: {
       steamid,
       team,
@@ -145,8 +146,8 @@ test("Ab Rundenstart still: keine neuen Tipps, solange du lebst", () => {
   assert.equal(tips.state().quiet, true);
   time.advance(30000);
   tips.ingest(frame({ round: 5, roundPhase: "live", state: { money: 300 } }));
-  const during = tips.state().tip.id;
-  assert.ok(during - first <= 1, "höchstens ein weiterer Tipp noch aus der Kaufzeit");
+  assert.ok(first > 0);
+  assert.equal(tips.state().tip, null, "der Kaufzeit-Tipp verfällt beim Rundenstart, nichts kommt verspätet");
   tips.ingest(frame({ round: 5, roundPhase: "live", steamid: MATE }));
   assert.equal(tips.state().quiet, false, "nach dem Tod darf die Sprechblase wieder erscheinen");
 });
@@ -298,6 +299,9 @@ test("Companion: Rundentipps einschalten, GSI-Token prüfen, ausschalten", async
   assert.equal(toggled.gsi.features.find((f) => f.id === "map").enabled, false);
   assert.equal(toggled.gsi.features.find((f) => f.id === "spray").enabled, true);
   assert.equal(toggled.gsi.features.some((f) => f.id === "evil"), false);
+  const bombLive = toggled.gsi.features.find((f) => f.id === "bombLive");
+  assert.equal(bombLive.enabled, false, "Bomben-Anzeige ist ohne eigene Wahl aus");
+  assert.match(bombLive.notice, /FACEIT/);
   assert.match(await readFile(path.join(dir, "data", "gsi.json"), "utf8"), /"map":false/);
   assert.equal((await post("/api/gsi/disable", {})).status, 200);
   assert.equal(await stat(cfg).catch(() => null), null);
@@ -358,6 +362,102 @@ test("Früher Tod und starke Runde", () => {
   time.advance(60000);
   tips.ingest(frame({ round: 7, roundPhase: "over", state: { round_kills: 3, round_killhs: 2 } }));
   assert.match(tips.state().tip.text, /^Starke Runde: 3 Kills, davon 2 Headshots/);
+});
+
+test("Bomben-Anzeige ist standardmäßig aus und trägt den FACEIT-Hinweis", () => {
+  const off = createGameTips(clock());
+  off.ingest(frame({ round: 6, roundPhase: "live", bomb: "planted", state: { health_c4_preview: 0 } }));
+  assert.equal(off.state().live, null);
+  const bomb = FEATURES.find((f) => f.id === "bombLive");
+  assert.equal(bomb.defaultOff, true);
+  assert.match(bomb.notice, /FACEIT/);
+});
+
+test("Bomben-Vorschau aus GSI: stehende Live-Anzeige statt neuer Tipps", () => {
+  const time = clock();
+  const tips = createGameTips({ ...time, enabled: () => true });
+  tips.ingest(frame({ round: 6, roundPhase: "freezetime" }));
+  time.advance(15000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT" }));
+  assert.equal(tips.state().live, null);
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT", bomb: "planted", state: { health: 80, health_c4_preview: 25 } }));
+  const before = tips.state();
+  assert.equal(before.quiet, true);
+  assert.equal(before.live.kind, "c4");
+  assert.equal(before.live.lethal, false);
+  assert.match(before.live.text, /noch 25 von 80 HP/);
+  time.advance(2000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT", bomb: "planted", state: { health: 80, health_c4_preview: 0 } }));
+  const after = tips.state();
+  assert.equal(after.live.lethal, true);
+  assert.match(after.live.text, /töten \(80 HP → 0\)/);
+  /* Nur der Wert ändert sich: kein neuer Tipp. */
+  assert.equal(after.tip?.id, before.tip?.id);
+  /* Ohne Feld (ältere CS2-Version) oder abgeschaltet: keine Anzeige. */
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT", bomb: "planted", state: { health: 80 } }));
+  assert.equal(tips.state().live, null);
+  const off = createGameTips({ ...clock(), enabled: (id) => id !== "bombLive" });
+  off.ingest(frame({ round: 6, roundPhase: "live", bomb: "planted", state: { health_c4_preview: 0 } }));
+  assert.equal(off.state().live, null);
+});
+
+test("Live-Anzeigen je Phase: Kaufzeit, Bomben-Timer, Kills, Magazin, Rundenbilanz", () => {
+  const time = clock();
+  const tips = createGameTips({ ...time, enabled: () => true });
+  const at = (options, countdown) => ({ ...frame(options), ...(countdown ? { phase_countdowns: countdown } : {}) });
+  tips.ingest(at({ round: 6, roundPhase: "over", team: "CT" }));
+  time.advance(2000);
+  tips.ingest(at({ round: 7, roundPhase: "freezetime", team: "CT", state: { money: 3400, equip_value: 1200, armor: 0 } }, { phase: "freezetime", phase_ends_in: "11.4" }));
+  let live = tips.state().live;
+  assert.equal(live.kind, "buy");
+  assert.equal(live.heading, "Kaufzeit · noch 12 s");
+  assert.match(live.text, /Geld 3\.400 \$ · Ausrüstung 1\.200 \$\nkeine Rüstung · kein Kit/);
+  /* Ein Kaufzeit-Tipp, der beim Rundenstart noch aussteht, verfällt. */
+  const pending = tips.state().tip;
+  time.advance(15000);
+  tips.ingest(at({ round: 7, roundPhase: "live", team: "CT" }, { phase: "live", phase_ends_in: "114" }));
+  assert.equal(tips.state().live, null, "keine Kaufanzeige mehr, sobald die Runde läuft");
+  if (pending) assert.equal(tips.state().tip, null);
+  time.advance(2000);
+  tips.ingest(at({ round: 7, roundPhase: "live", team: "CT", state: { round_kills: 1, round_killhs: 1, round_totaldmg: 100 } }));
+  live = tips.state().live;
+  assert.equal(live.kind, "kills");
+  assert.equal(live.text, "1 Kill · 1 Kopfschuss · 100 Schaden");
+  time.advance(6000);
+  const rifle = { weapon_1: { name: "weapon_m4a1", type: "Rifle", state: "active", ammo_clip: 4, ammo_clip_max: 25 } };
+  tips.ingest(at({ round: 7, roundPhase: "live", team: "CT", weapons: rifle, state: { round_kills: 1, round_killhs: 1, round_totaldmg: 100 } }));
+  assert.equal(tips.state().live.kind, "ammo");
+  assert.match(tips.state().live.text, /^4 von 25 Schuss/);
+  tips.ingest(at({ round: 7, roundPhase: "live", team: "CT", bomb: "planted", state: { defusekit: false, health_c4_preview: 40, round_kills: 1, round_killhs: 1, round_totaldmg: 100 } }, { phase: "bomb", phase_ends_in: "8.2" }));
+  live = tips.state().live;
+  assert.equal(live.heading, "Bombe · noch 9 s");
+  assert.match(live.text, /noch 40 von 100 HP\.\nOhne Kit zu spät für den Defuse/);
+  time.advance(9000);
+  tips.ingest(at({ round: 8, roundPhase: "over", team: "CT", bomb: "exploded", state: { round_kills: 1, round_killhs: 1, round_totaldmg: 100 } }));
+  live = tips.state().live;
+  assert.equal(live.kind, "round");
+  assert.match(live.text, /^1 Kill · 1 Kopfschuss · 100 Schaden/);
+  /* Abgeschaltete Live-Anzeigen bleiben weg. */
+  const off = createGameTips({ ...clock(), enabled: (id) => id !== "buyLive" });
+  off.ingest(at({ round: 7, roundPhase: "freezetime" }, { phase: "freezetime", phase_ends_in: "10" }));
+  assert.equal(off.state().live, null);
+});
+
+test("Tod durch die Explosion gibt nach der Runde einen Bomben-Tipp", () => {
+  const time = clock();
+  const tips = createGameTips({ ...time, enabled: () => true });
+  tips.ingest(frame({ round: 6, roundPhase: "freezetime", team: "CT" }));
+  time.advance(15000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT", bomb: "planted", state: { health_c4_preview: 0 } }));
+  time.advance(30000);
+  tips.ingest(frame({ round: 6, roundPhase: "over", team: "CT", bomb: "exploded", state: { health: 0 } }));
+  time.advance(6000);
+  tips.ingest(frame({ round: 6, roundPhase: "over", team: "CT", bomb: "exploded", state: { health: 0 } }));
+  const tip = tips.state().tip;
+  assert.equal(tip.category, "bomb");
+  assert.match(tip.text, /^Die Explosion hat dich erwischt\. Die Vorschau hatte die Stelle als tödlich angezeigt\./);
+  assert.ok(FEATURES.some((f) => f.id === "bomb" && f.categories.includes("bomb")));
+  assert.ok(FEATURES.some((f) => f.id === "bombLive" && f.categories.includes("bomb-live")));
 });
 
 test("Match-Auswertung der Webseite wird geprüft, gekürzt und lokal gespeichert", async (t) => {

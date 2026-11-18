@@ -6,7 +6,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
-**Stand dieser Übersicht:** Version 0.42.1, 18. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+**Stand dieser Übersicht:** Version 0.43.0, 18. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
 
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
@@ -16,6 +16,31 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [TecMon-Stil](#tecmon-stil)
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
+
+## Neu in 0.43.0
+
+Zum CS2-Update vom 17. November 2026 („The Cobbled Road to Singapore“):
+
+- **Live-Anzeigen aus der offiziellen GSI**, je Phase und nie dauerhaft. Der Wert ändert sich
+  in derselben schmalen Sprechblase, es kommt keine neue Blase dazu, und echte Tipps haben Vorrang:
+  - *Kaufzeit:* Geld, Ausrüstungswert, Rüstung/Helm, Kit (CT) und Restzeit. Verschwindet, sobald
+    die Runde läuft.
+  - *Nach dem Plant:* Bomben-Timer, Defuse-Check mit oder ohne Kit und die neue
+    Bomben-Vorschau `health_c4_preview` („Nach der Explosion hättest du hier noch 25 von 80 HP“).
+  - *Nach einem eigenen Kill:* 5 Sekunden lang Kills, Kopfschüsse und Schaden der Runde.
+  - *Magazin fast leer:* kurzer Hinweis mit Restmunition.
+  - *Rundenende:* Bilanz mit Kills, Schaden, vollen Flashes, Sekunden im Feuer und in Smoke.
+  Jede Anzeige lässt sich unter Rundentipps einzeln abschalten. Die Bomben-Anzeige ist
+  **standardmäßig aus**; beim Einschalten weist TecMon darauf hin, dass FACEIT und viele
+  Turniere Bomben-Timer verbieten.
+- **Keine verspäteten Kauftipps mehr:** Ein Tipp aus der Kaufzeit, der erst nach Rundenstart bei
+  der Figur ankäme, verfällt. Die Figur wartet höchstens 1,2 s statt 2,5 s, bis sie einen Tipp zeigt.
+- **Bomben-Auswertung:** Stirbst du an der Explosion, kommt nach der Runde ein kurzer Tipp
+  (als T Abstand halten, als CT rechtzeitig raus und die Waffe retten).
+- CS2 schickt die GSI-Daten jetzt spätestens alle 2 Sekunden (`heartbeat` 2.0 statt 10.0).
+- **Cobblestone (`de_cbble`):** Map-Tipps für T und CT, Routen-Vorschläge für die neuen
+  Callouts, im Video-Branding heißt die Karte „COBBLESTONE“ statt „CBBLE“. Radarbild und
+  Callout-Punkte folgen, sobald das Radarbild lokal exportiert ist.
 
 ## Neu in 0.42.2
 
@@ -64,14 +89,14 @@ Standardmäßig aus. Eingeschaltet nimmt TecMon den Bildschirm laufend auf und b
 
 Diese Funktionen gehören zum Spiel-Paket CS2 (standardmäßig installiert, unter „Pakete“ entfernbar):
 
-- **Rundentipps:** Hinweise in der Kaufzeit (Wirtschaft, Kauf-Check, Spray-Muster der gekauften Waffe, Map-Übersicht mit Callouts), nach deinem Tod, zur Halbzeit und am Matchende. Höchstens 3 Tipps pro Kaufzeit; sobald die Runde läuft und du lebst, ist TecMon still. Jede Tippart lässt sich einzeln abschalten.
+- **Rundentipps:** Hinweise in der Kaufzeit (Wirtschaft, Kauf-Check, Spray-Muster der gekauften Waffe, Map-Übersicht mit Callouts), nach deinem Tod, zur Halbzeit und am Matchende. Höchstens 3 Tipps pro Kaufzeit; sobald die Runde läuft und du lebst, ist TecMon still. Ausnahme sind die Live-Anzeigen (Bomben-Timer und -Vorschau nach dem Plant, Kill-Zähler, Magazin): stehende Werte ohne neue Tipps. Jede Tippart lässt sich einzeln abschalten.
 - **Tipps aus „Meine Stats“:** Öffnest du auf der Webseite „Meine Stats“, schickt sie eine Zusammenfassung deiner eigenen Matches (pro Map, dazu Gewohnheiten wie Eröffnungsduelle, Trades, Kopftreffer, Granaten und deine 8 meistgenutzten Waffen). Daraus kommen persönliche Tipps. Die Daten bleiben lokal in `insights.json` und lassen sich löschen.
 - **Fadenkreuz-Editor:** Vorschau, Vorlagen, CS2-Fadenkreuz-Code übernehmen, speichern als `tecmon_crosshair.cfg`.
 - **Fadenkreuz-Overlay:** zeigt dein Fadenkreuz als eigenes, durchklickbares TecMon-Fenster, nur im Vollbild-Fenstermodus. Standardmäßig aus, Einschalten auf eigenes Risiko nach bestätigtem Hinweis.
 - **Fertige Configs:** 16 cfgs zum Speichern mit einem Klick, etwa Pro-Viewmodel, alle stumm per Taste, Springen aufs Mausrad oder Granaten-Training. Jede ist eine eigene Datei `tecmon_cfg_<name>.cfg`; deine Sensitivity und fremde cfgs bleiben unverändert.
 - **Quiz:** Callout-Quiz und Waffenpreis-Quiz.
 
-Die Rundentipps nutzen nur Valves offizielle Game State Integration und nur deine eigenen Werte. Keine Gegnerdaten, kein Bomben-Timer, keine Eingaben ans Spiel. Bei FACEIT oder in Turnieren können eigene Regeln für Zusatzprogramme gelten.
+Die Rundentipps nutzen nur Valves offizielle Game State Integration und nur deine eigenen Werte. Keine Gegnerdaten, keine Eingaben ans Spiel. Was CS2 per GSI über den eigenen Spieler und die Runde schickt (etwa Bomben-Timer und Bomben-Vorschau), darf TecMon nutzen. Bei FACEIT oder in Turnieren können eigene Regeln für Zusatzprogramme gelten, Bomben-Timer sind dort oft verboten. Darum ist die Bomben-Anzeige standardmäßig aus.
 
 ### Spiele-Reiter: Dota 2
 
@@ -186,6 +211,10 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 ## Versionsverlauf
 
 Neueste Version zuerst.
+
+### Neu in 0.43.0: CS2-Update mit Cobblestone und Live-Anzeigen
+
+Siehe [Neu in 0.43.0](#neu-in-0430) oben.
 
 ### Neu in 0.42.2: Companion-Seite im TecMon-Stil
 
