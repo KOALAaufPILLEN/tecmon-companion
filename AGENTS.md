@@ -225,7 +225,8 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   `weapon_fauxitemid` um; Angreifer und Seite kommen aus Pawn bzw. Controller. Andere Ereignisse
   und Felder bleiben unverändert.
 - `skin-legacy-v1`: Waffen-Skins optional mit `legacy` (0/1, nicht bei Messer/Handschuh). Dann geht
-  `m_MeshGroupMask` auf 2 (altes) bzw. 1 (neues Waffenmodell); ohne Angabe nichts.
+  `m_MeshGroupMask` auf 2 (altes) bzw. 1 (neues Waffenmodell) und `m_nBodyGroupChoices.0000` auf 1
+  bzw. 0 (wie in echten Demos; ohne die Bodygroup zeigt CS2 das neue Modell); ohne Angabe nichts.
 - Sticker der echten Waffe entfernt der eigene Rewriter (`clear_stickers` je Spieler: Item-Definitionen
   der Waffen mit getauschtem Skin). Er setzt nur die Sticker-ID-Attribute (113, 117, …) auf 0, sonst nichts;
   `compare` ignoriert diese Werte und die Skin-Felder (`is_skin_field()`). Mit `keepStickers: true` je Szene (`skin-stickers-v1`) bleiben sie.
@@ -254,7 +255,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Nummer; nie Pfade oder Gruppennamen aus dem Auftrag. Pro Spieler ein Huhn je Video.
 - Bodygroups und Mesh-Maske nie fest setzen: aus der Original-Demo lernen
   (`learn`), lokal in `agent-looks.json` merken, nur für unbekannte Modelle
-  schätzen und das melden (`guessed`).
+  schätzen und das melden (`guessed`). Beim Schätzen gilt die Handschuh-Bodygroup eines bekannten
+  Modells aus demselben Ordner mit gleich vielen Bodygroups (`family_glove_slot()`, Pfade aus
+  `known_models` im Auftrag), sonst die letzte.
 - Vor Änderungen am Rewriter mit einer echten Demo prüfen:
   `tecmon-demo-rewriter compare original.dem umgeschrieben.dem` muss ohne
   Abweichung außerhalb der Modellfelder enden.

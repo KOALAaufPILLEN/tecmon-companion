@@ -160,6 +160,9 @@ struct Request {
     /// Lokale Datei mit gelernten Bodygroups aus früheren Demos (optional).
     #[serde(default)]
     looks_cache: Option<String>,
+    /// Pfade aller bekannten Agenten-Modelle: Handschuh-Bodygroup verwandter Modelle nutzen.
+    #[serde(default)]
+    known_models: Vec<String>,
     players: Vec<PlayerRequest>,
 }
 
@@ -250,23 +253,67 @@ fn mesh_from(bodygroups: &[i32], known: Option<&Look>) -> u64 {
     }
 }
 
+/// Ordner eines Agenten-Modells ("agents/models/ctm_st6/"): gleiche Ordner, gleicher Aufbau.
+fn model_family(path: &str) -> &str {
+    path.rfind('/').map_or(path, |i| &path[..=i])
+}
+
+/// Stelle der Handschuh-Bodygroup aus bekannten Werten: wo „mit Handschuhen“ 1 und
+/// „ohne“ 0 ist (oder, ohne „ohne“-Wert, die einzige 1).
+fn glove_slot_of(kinds: &BTreeMap<String, Look>) -> Option<usize> {
+    let with = kinds.get("gloves")?;
+    let slots: Vec<usize> = match kinds.get("plain") {
+        Some(plain) if plain.bodygroups.len() == with.bodygroups.len() => (0..with.bodygroups.len())
+            .filter(|&i| with.bodygroups[i] == 1 && plain.bodygroups[i] == 0)
+            .collect(),
+        _ => (0..with.bodygroups.len()).filter(|&i| with.bodygroups[i] == 1).collect(),
+    };
+    (slots.len() == 1).then(|| slots[0])
+}
+
+/// Handschuh-Bodygroup eines unbekannten Modells, abgeleitet von einem bekannten
+/// Modell aus demselben Ordner mit gleich vielen Bodygroups. `paths`: Modell-ID -> Pfad.
+pub fn family_glove_slot(looks: &Looks, paths: &HashMap<u64, String>, model: u64, len: usize) -> Option<usize> {
+    let family = model_family(paths.get(&model)?);
+    let mut found = None;
+    for (id, path) in paths {
+        if *id == model || model_family(path) != family {
+            continue;
+        }
+        let Some(kinds) = looks.get(&format!("{id:016x}")) else { continue };
+        if kinds.values().any(|l| l.bodygroups.len() != len) {
+            continue;
+        }
+        match (glove_slot_of(kinds), found) {
+            (Some(slot), None) => found = Some(slot),
+            (Some(slot), Some(other)) if slot != other => return None,
+            _ => {}
+        }
+    }
+    found
+}
+
 /// Wie soll ein Modell mit oder ohne Handschuhe aussehen? `exact` ist
-/// false, wenn geschätzt werden musste.
-pub fn wanted_look(looks: &Looks, model: u64, gloves: bool, fallback_len: usize) -> (Look, bool) {
+/// false, wenn geschätzt werden musste. `slot`: Handschuh-Bodygroup aus
+/// einem verwandten Modell (`family_glove_slot`), sonst die letzte.
+pub fn wanted_look(looks: &Looks, model: u64, gloves: bool, fallback_len: usize, slot: Option<usize>) -> (Look, bool) {
     let entry = looks.get(&format!("{model:016x}"));
     let want = if gloves { "gloves" } else { "plain" };
     let other = if gloves { "plain" } else { "gloves" };
     if let Some(look) = entry.and_then(|e| e.get(want)) {
         return (look.clone(), true);
     }
+    let set_glove = |bodygroups: &mut Vec<i32>| {
+        // Ohne Hinweis: die letzte Bodygroup (Professionals [1], FBI [0, 1]); SEAL/ST6 hat sie vorn.
+        let at = slot.filter(|&i| i < bodygroups.len()).unwrap_or(bodygroups.len().saturating_sub(1));
+        if let Some(value) = bodygroups.get_mut(at) {
+            *value = 1;
+        }
+    };
     if let Some(base) = entry.and_then(|e| e.get(other)) {
         let mut bodygroups = base.bodygroups.clone();
         if gloves {
-            // Handschuh-Bodygroup ist bei allen bekannten Agenten die letzte (Professionals [1],
-            // FBI/SAS [0, 1]); die erste ist bei zweiteiligen Modellen etwas anderes.
-            if let Some(last) = bodygroups.last_mut() {
-                *last = 1;
-            }
+            set_glove(&mut bodygroups);
         } else {
             for value in bodygroups.iter_mut() {
                 *value = 0;
@@ -276,8 +323,8 @@ pub fn wanted_look(looks: &Looks, model: u64, gloves: bool, fallback_len: usize)
         return (Look { bodygroups, mesh }, false);
     }
     let mut bodygroups = vec![0; fallback_len.clamp(1, 4)];
-    if let Some(last) = bodygroups.last_mut() {
-        *last = gloves as i32;
+    if gloves {
+        set_glove(&mut bodygroups);
     }
     let mesh = mesh_from(&bodygroups, None);
     (Look { bodygroups, mesh }, false)
@@ -306,6 +353,8 @@ struct AgentSwap {
     /// Killfeed-Einträge, deren Messer angepasst wurde.
     killfeed: usize,
     looks: Looks,
+    /// Modell-ID -> Pfad (gewünschte Agenten und `known_models`), für verwandte Modelle.
+    paths: HashMap<u64, String>,
     changed: BTreeMap<String, usize>,
     guessed: BTreeSet<String>,
 }
@@ -384,7 +433,8 @@ fn wanted_fields(swap: &mut AgentSwap, ctx: &Context, entity: &Entity, gloves_hi
     let model = player.get(&team).copied().unwrap_or(current);
     let gloves = swap.gloves.contains(&steamid) || gloves_hint.unwrap_or_else(|| prop(entity, GLOVES_FIELD).unwrap_or(0) != 0);
     let len = prop(entity, BODYGROUP_LEN).unwrap_or(1) as usize;
-    let (look, exact) = wanted_look(&swap.looks, model, gloves, len);
+    let slot = family_glove_slot(&swap.looks, &swap.paths, model, len);
+    let (look, exact) = wanted_look(&swap.looks, model, gloves, len, slot);
     if !exact {
         swap.guessed.insert(format!("{model:016x}"));
     }
@@ -626,6 +676,15 @@ impl DemoRewriter for AgentSwap {
     }
 }
 
+/// Modelle mit eingebauten Werten (für verwandte Modelle desselben Ordners).
+const SEED_MODELS: [&str; 5] = [
+    "agents/models/tm_phoenix/tm_phoenix.vmdl",
+    "agents/models/ctm_sas/ctm_sas.vmdl",
+    "agents/models/tm_professional/tm_professional_varf.vmdl",
+    "agents/models/ctm_fbi/ctm_fbi_variantb.vmdl",
+    "agents/models/ctm_st6/ctm_st6_variantl.vmdl",
+];
+
 /// Eingebaute Werte aus echten Demos (Modell-ID -> Aussehen).
 fn seed_looks() -> Looks {
     let mut looks = Looks::new();
@@ -639,6 +698,11 @@ fn seed_looks() -> Looks {
     add("agents/models/ctm_sas/ctm_sas.vmdl", "plain", vec![0, 0], 5);
     add("agents/models/tm_professional/tm_professional_varf.vmdl", "gloves", vec![1], 2);
     add("agents/models/ctm_fbi/ctm_fbi_variantb.vmdl", "gloves", vec![0, 1], 9);
+    // SEAL/ST6: Handschuh-Bodygroup vorn (aus einer im Spiel erzeugten Demo).
+    add("agents/models/ctm_st6/ctm_st6_variantl.vmdl", "plain", vec![0, 0], 5);
+    add("agents/models/ctm_st6/ctm_st6_variantl.vmdl", "gloves", vec![1, 0], 6);
+    add("agents/models/tm_professional/tm_professional_varf5.vmdl", "plain", vec![0], 1);
+    add("agents/models/tm_professional/tm_professional_varf5.vmdl", "gloves", vec![1], 2);
     looks
 }
 
@@ -682,6 +746,14 @@ fn rewrite(request_path: &str) -> Result<()> {
     let mut stickers: HashMap<String, BTreeSet<u64>> = HashMap::new();
     let mut skin_plan: HashMap<String, skins::PlayerSkins> = HashMap::new();
     let mut glove_players: BTreeSet<String> = BTreeSet::new();
+    if request.known_models.len() > 512 {
+        bail!("zu viele Modelle");
+    }
+    let mut paths: HashMap<u64, String> = HashMap::new();
+    for path in request.known_models.iter().chain(SEED_MODELS.iter().map(|p| p.to_string()).collect::<Vec<_>>().iter()) {
+        let path = valid_model(path)?;
+        paths.insert(resource_id(&path), path);
+    }
     for player in &request.players {
         if player.clear_stickers.len() > 64 || player.clear_stickers.iter().any(|d| *d == 0 || *d > 65535) {
             bail!("ungültige Waffenliste");
@@ -711,11 +783,13 @@ fn rewrite(request_path: &str) -> Result<()> {
             continue;
         }
         let entry = models.entry(player.steamid.clone()).or_default();
-        if let Some(t) = &player.t {
-            entry.insert(2, resource_id(&valid_model(t)?));
-        }
-        if let Some(ct) = &player.ct {
-            entry.insert(3, resource_id(&valid_model(ct)?));
+        for (team, path) in [(2u64, &player.t), (3, &player.ct)] {
+            if let Some(path) = path {
+                let path = valid_model(path)?;
+                let id = resource_id(&path);
+                entry.insert(team, id);
+                paths.insert(id, path);
+            }
         }
     }
     if request.input == request.output {
@@ -748,6 +822,7 @@ fn rewrite(request_path: &str) -> Result<()> {
         swap.stickers = stickers;
         swap.skins = skin_plan;
         swap.looks = looks;
+        swap.paths = paths;
     }
     writer.run().map_err(|e| anyhow!("{e}"))?;
     drop(writer);
@@ -1257,10 +1332,27 @@ mod tests {
     fn looks_use_known_values_first() {
         let looks = seed_looks();
         let fbi = resource_id("agents/models/ctm_fbi/ctm_fbi_variantb.vmdl");
-        assert_eq!(wanted_look(&looks, fbi, true, 2), (Look { bodygroups: vec![0, 1], mesh: 9 }, true));
-        assert_eq!(wanted_look(&looks, fbi, false, 2), (Look { bodygroups: vec![0, 0], mesh: 5 }, false));
+        assert_eq!(wanted_look(&looks, fbi, true, 2, None), (Look { bodygroups: vec![0, 1], mesh: 9 }, true));
+        assert_eq!(wanted_look(&looks, fbi, false, 2, None), (Look { bodygroups: vec![0, 0], mesh: 5 }, false));
         let sas = resource_id("agents/models/ctm_sas/ctm_sas.vmdl");
-        assert_eq!(wanted_look(&looks, sas, true, 2), (Look { bodygroups: vec![0, 1], mesh: 9 }, false));
+        assert_eq!(wanted_look(&looks, sas, true, 2, None), (Look { bodygroups: vec![0, 1], mesh: 9 }, false));
+        assert_eq!(wanted_look(&looks, sas, true, 2, Some(0)), (Look { bodygroups: vec![1, 0], mesh: 6 }, false));
+    }
+
+    #[test]
+    fn related_models_share_the_glove_slot() {
+        let looks = seed_looks();
+        let mut paths = HashMap::new();
+        for p in SEED_MODELS.iter().chain(["agents/models/ctm_st6/ctm_st6_variantj.vmdl", "agents/models/ctm_fbi/ctm_fbi_variantf.vmdl"].iter()) {
+            paths.insert(resource_id(p), p.to_string());
+        }
+        let st6 = resource_id("agents/models/ctm_st6/ctm_st6_variantj.vmdl");
+        assert_eq!(family_glove_slot(&looks, &paths, st6, 2), Some(0));
+        assert_eq!(wanted_look(&looks, st6, true, 2, Some(0)).0, Look { bodygroups: vec![1, 0], mesh: 6 });
+        let fbi = resource_id("agents/models/ctm_fbi/ctm_fbi_variantf.vmdl");
+        assert_eq!(family_glove_slot(&looks, &paths, fbi, 2), Some(1));
+        // Andere Zahl an Bodygroups: kein Hinweis.
+        assert_eq!(family_glove_slot(&looks, &paths, st6, 3), None);
     }
 
     #[test]
