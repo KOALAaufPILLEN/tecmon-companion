@@ -299,6 +299,9 @@ test("Companion: Rundentipps einschalten, GSI-Token prüfen, ausschalten", async
   assert.equal(toggled.gsi.features.find((f) => f.id === "map").enabled, false);
   assert.equal(toggled.gsi.features.find((f) => f.id === "spray").enabled, true);
   assert.equal(toggled.gsi.features.some((f) => f.id === "evil"), false);
+  const bombLive = toggled.gsi.features.find((f) => f.id === "bombLive");
+  assert.equal(bombLive.enabled, false, "Bomben-Anzeige ist ohne eigene Wahl aus");
+  assert.match(bombLive.notice, /FACEIT/);
   assert.match(await readFile(path.join(dir, "data", "gsi.json"), "utf8"), /"map":false/);
   assert.equal((await post("/api/gsi/disable", {})).status, 200);
   assert.equal(await stat(cfg).catch(() => null), null);
@@ -361,9 +364,18 @@ test("Früher Tod und starke Runde", () => {
   assert.match(tips.state().tip.text, /^Starke Runde: 3 Kills, davon 2 Headshots/);
 });
 
+test("Bomben-Anzeige ist standardmäßig aus und trägt den FACEIT-Hinweis", () => {
+  const off = createGameTips(clock());
+  off.ingest(frame({ round: 6, roundPhase: "live", bomb: "planted", state: { health_c4_preview: 0 } }));
+  assert.equal(off.state().live, null);
+  const bomb = FEATURES.find((f) => f.id === "bombLive");
+  assert.equal(bomb.defaultOff, true);
+  assert.match(bomb.notice, /FACEIT/);
+});
+
 test("Bomben-Vorschau aus GSI: stehende Live-Anzeige statt neuer Tipps", () => {
   const time = clock();
-  const tips = createGameTips(time);
+  const tips = createGameTips({ ...time, enabled: () => true });
   tips.ingest(frame({ round: 6, roundPhase: "freezetime" }));
   time.advance(15000);
   tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT" }));
@@ -391,7 +403,7 @@ test("Bomben-Vorschau aus GSI: stehende Live-Anzeige statt neuer Tipps", () => {
 
 test("Live-Anzeigen je Phase: Kaufzeit, Bomben-Timer, Kills, Magazin, Rundenbilanz", () => {
   const time = clock();
-  const tips = createGameTips(time);
+  const tips = createGameTips({ ...time, enabled: () => true });
   const at = (options, countdown) => ({ ...frame(options), ...(countdown ? { phase_countdowns: countdown } : {}) });
   tips.ingest(at({ round: 6, roundPhase: "over", team: "CT" }));
   time.advance(2000);
@@ -433,7 +445,7 @@ test("Live-Anzeigen je Phase: Kaufzeit, Bomben-Timer, Kills, Magazin, Rundenbila
 
 test("Tod durch die Explosion gibt nach der Runde einen Bomben-Tipp", () => {
   const time = clock();
-  const tips = createGameTips(time);
+  const tips = createGameTips({ ...time, enabled: () => true });
   tips.ingest(frame({ round: 6, roundPhase: "freezetime", team: "CT" }));
   time.advance(15000);
   tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT", bomb: "planted", state: { health_c4_preview: 0 } }));

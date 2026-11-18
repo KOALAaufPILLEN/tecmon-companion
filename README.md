@@ -6,7 +6,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
-**Stand dieser Übersicht:** Version 0.43.0 (vorbereitet), 18. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+**Stand dieser Übersicht:** Version 0.43.0, 18. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
 
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
@@ -30,7 +30,9 @@ Zum CS2-Update vom 17. November 2026 („The Cobbled Road to Singapore“):
   - *Nach einem eigenen Kill:* 5 Sekunden lang Kills, Kopfschüsse und Schaden der Runde.
   - *Magazin fast leer:* kurzer Hinweis mit Restmunition.
   - *Rundenende:* Bilanz mit Kills, Schaden, vollen Flashes, Sekunden im Feuer und in Smoke.
-  Jede Anzeige lässt sich unter Rundentipps einzeln abschalten.
+  Jede Anzeige lässt sich unter Rundentipps einzeln abschalten. Die Bomben-Anzeige ist
+  **standardmäßig aus**; beim Einschalten weist TecMon darauf hin, dass FACEIT und viele
+  Turniere Bomben-Timer verbieten.
 - **Keine verspäteten Kauftipps mehr:** Ein Tipp aus der Kaufzeit, der erst nach Rundenstart bei
   der Figur ankäme, verfällt. Die Figur wartet höchstens 1,2 s statt 2,5 s, bis sie einen Tipp zeigt.
 - **Bomben-Auswertung:** Stirbst du an der Explosion, kommt nach der Runde ein kurzer Tipp
@@ -94,7 +96,7 @@ Diese Funktionen gehören zum Spiel-Paket CS2 (standardmäßig installiert, unte
 - **Fertige Configs:** 16 cfgs zum Speichern mit einem Klick, etwa Pro-Viewmodel, alle stumm per Taste, Springen aufs Mausrad oder Granaten-Training. Jede ist eine eigene Datei `tecmon_cfg_<name>.cfg`; deine Sensitivity und fremde cfgs bleiben unverändert.
 - **Quiz:** Callout-Quiz und Waffenpreis-Quiz.
 
-Die Rundentipps nutzen nur Valves offizielle Game State Integration und nur deine eigenen Werte. Keine Gegnerdaten, keine Eingaben ans Spiel. Was CS2 per GSI über den eigenen Spieler und die Runde schickt (etwa Bomben-Timer und Bomben-Vorschau), darf TecMon nutzen. Bei FACEIT oder in Turnieren können eigene Regeln für Zusatzprogramme gelten, Bomben-Timer sind dort oft verboten; dann `bombLive` abschalten.
+Die Rundentipps nutzen nur Valves offizielle Game State Integration und nur deine eigenen Werte. Keine Gegnerdaten, keine Eingaben ans Spiel. Was CS2 per GSI über den eigenen Spieler und die Runde schickt (etwa Bomben-Timer und Bomben-Vorschau), darf TecMon nutzen. Bei FACEIT oder in Turnieren können eigene Regeln für Zusatzprogramme gelten, Bomben-Timer sind dort oft verboten. Darum ist die Bomben-Anzeige standardmäßig aus.
 
 ### Spiele-Reiter: Dota 2
 

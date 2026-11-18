@@ -18,7 +18,12 @@
 import { SPRAY_PATTERNS } from "./spray-patterns.mjs";
 import { MAP_SPOTS, radarPoint, nearestSpot } from "./map-spots.mjs";
 
-/** Einzeln abschaltbare Funktionen (Optionen im Companion). */
+/** Hinweis beim Einschalten der Bomben-Anzeige (Bomben-Timer gelten bei FACEIT und in Turnieren oft als unerlaubt). */
+export const BOMB_NOTICE =
+  "Bomben-Timer und Defuse-Check kommen aus Valves offizieller Game State Integration und lösen keinen VAC-Bann aus. " +
+  "FACEIT und viele Turniere verbieten solche Hilfen aber. Spielst du FACEIT oder ein Turnier, lass diese Anzeige ausgeschaltet.";
+
+/** Einzeln abschaltbare Funktionen (Optionen im Companion). defaultOff: aus, bis man sie selbst einschaltet. */
 export const FEATURES = [
   { id: "economy", label: "Wirtschaft und Kaufempfehlung", categories: ["economy"] },
   { id: "buy", label: "Kauf-Check (Helm, Rüstung, Kit, Geld übrig)", categories: ["buy"] },
@@ -34,6 +39,8 @@ export const FEATURES = [
     id: "bombLive",
     label: "Live nach dem Plant: Bomben-Timer, Defuse-Check und HP nach der Explosion an deiner Stelle",
     categories: ["bomb-live"],
+    defaultOff: true,
+    notice: BOMB_NOTICE,
   },
   { id: "roundLive", label: "Live: Kills, Kopfschüsse und Schaden kurz nach einem Kill, Rundenbilanz am Rundenende", categories: ["round-live"] },
   { id: "ammoLive", label: "Live: Hinweis bei fast leerem Magazin", categories: ["ammo-live"] },
@@ -43,6 +50,7 @@ export const FEATURES = [
   /* Anzeige statt Tipp-Art: Tipps derselben Runde in einer größeren Sprechblase sammeln. */
   { id: "stack", label: "Mehrere Tipps zusammen in einer großen Sprechblase", categories: [] },
 ];
+export const DEFAULT_OFF = new Set(FEATURES.filter((f) => f.defaultOff).map((f) => f.id));
 const FEATURE_OF = Object.fromEntries(FEATURES.flatMap((f) => f.categories.map((c) => [c, f.id])));
 
 /** Alternative Routen, wenn du an einem Spot oft stirbst. */
@@ -427,7 +435,7 @@ function halfIndex(round, half) {
 export function createGameTips({
   now = () => Date.now(),
   radarPath = () => "",
-  enabled = () => true,
+  enabled = (id) => !DEFAULT_OFF.has(id),
   insights = () => null,
   /* Persönlichkeit: Einstieg vor dem Tipp je nach Modus; Standard lässt den Text unverändert. */
   flavor = (_category, text) => text,

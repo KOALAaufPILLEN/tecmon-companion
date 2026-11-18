@@ -60,7 +60,7 @@ function gameTips(gsi){
   const featureNext=JSON.stringify(gsi.features||[]);
   if(featureNext!==featuresSignature){
     featuresSignature=featureNext;
-    const boxes=(gsi.features||[]).map(f=>{const label=el('label');const box=document.createElement('input');box.type='checkbox';box.checked=f.enabled;box.addEventListener('change',async()=>{box.disabled=true;try{await api('/api/gsi/features',{features:{[f.id]:box.checked}});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});label.append(box,document.createTextNode(f.label));return label;});
+    const boxes=(gsi.features||[]).map(f=>{const label=el('label');const box=document.createElement('input');box.type='checkbox';box.checked=f.enabled;box.addEventListener('change',async()=>{if(box.checked&&f.notice&&!confirm(`${f.label}\n\n${f.notice}\n\nTrotzdem einschalten?`)){box.checked=false;return;}box.disabled=true;try{await api('/api/gsi/features',{features:{[f.id]:box.checked}});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});label.append(box,document.createTextNode(f.label));if(f.notice)label.append(el('small',f.notice));return label;});
     $('tips-features').replaceChildren(...boxes);
   }
   const account=(gsi.insights||[])[0];

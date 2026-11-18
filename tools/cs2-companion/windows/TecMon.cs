@@ -1294,7 +1294,11 @@ class DesktopPet : Form {
     while(tipsItem.DropDownItems.Count>2)tipsItem.DropDownItems.RemoveAt(2);
     foreach(var entry in list){var feature=entry as Dictionary<string,object>;if(feature==null)continue;string id=Convert.ToString(feature["id"]);bool on=Convert.ToBoolean(feature["enabled"]);
       var item=new ToolStripMenuItem(Convert.ToString(feature["label"])){Checked=on,Tag="toggle"};
-      item.Click+=async(s,e)=>{try{await Request("/api/gsi/features",true,"{\"features\":{\""+id+"\":"+(on?"false":"true")+"}}");}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}};
+      string featureNotice=feature.ContainsKey("notice")?Convert.ToString(feature["notice"]):"";
+      item.Click+=async(s,e)=>{try{await Request("/api/gsi/features",true,"{\"features\":{\""+id+"\":"+(on?"false":"true")+"}}");
+        /* Hinweis (z. B. FACEIT bei der Bomben-Anzeige) als Sprechblase, kein Windows-Dialog. */
+        if(!on&&featureNotice!=""){if(tip==null||tip.IsDisposed)tip=new TipBubble();var area=Screen.PrimaryScreen.WorkingArea;tip.Compact=false;liveShowing=false;liveKey="";tip.Present("Hinweis",featureNotice,Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),null,-3,false);}
+      }catch(Exception error){MessageBox.Show(error.Message,"TecMon");}};
       tipsItem.DropDownItems.Add(item);}
   }
   async Task ToggleTips(){

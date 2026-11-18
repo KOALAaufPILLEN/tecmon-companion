@@ -356,7 +356,7 @@ export async function createCompanion({
       enabled: gsi.enabled,
       available: !!gsiConfigPath(detected.cs2),
       error: gsiError,
-      features: FEATURES.map(({ id, label }) => ({ id, label, enabled: gsi.feature(id) })),
+      features: FEATURES.map(({ id, label, notice }) => ({ id, label, enabled: gsi.feature(id), ...(notice ? { notice } : {}) })),
       insights: insights.summary(),
       ...cs,
       ...(dotaActive

@@ -23,7 +23,9 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
 - **Bomben-Timer nur aus offizieller GSI** (Nutzerentscheid vom 18.11.2026, ersetzt das
   frühere Verbot): `phase_countdowns` liefert Kaufzeit, Bombe (`bomb`) und Entschärfen
   (`defuse`); die Live-Anzeige `bombLive` zeigt daraus Restzeit und einen Defuse-Check des
-  eigenen Kits. Keine zusätzlichen GSI-Blöcke, keine Gegnerdaten.
+  eigenen Kits. Keine zusätzlichen GSI-Blöcke, keine Gegnerdaten. `bombLive` ist
+  standardmäßig aus (`defaultOff`, `DEFAULT_OFF`); beim Einschalten zeigen Companion-Seite
+  und Figurmenü `BOMB_NOTICE` (FACEIT/Turniere verbieten Bomben-Timer).
 - **Offizielle GSI-Werte des eigenen Spielers nutzen** (Nutzerentscheid vom 18.11.2026):
   Was CS2 in den erlaubten Blöcken über den eigenen Spieler schickt, darf eingebaut
   werden, auch wenn es die Bombe betrifft, etwa `player_state.health_c4_preview`
@@ -67,7 +69,8 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   `gsi.features`.
 - Funktionen sind einzeln abschaltbar, auf der Companion-Seite
   (`/api/gsi/features`) und im Figurmenü „Games → CS2 → Rundentipps“ (`TecMon.cs`).
-  Gespeichert in `gsi.json`; nicht gespeicherte Funktionen gelten als an.
+  Gespeichert in `gsi.json`; nicht gespeicherte Funktionen gelten als an, außer sie tragen
+  `defaultOff` in `FEATURES`. Ein `notice` in `FEATURES` wird beim Einschalten gezeigt.
 
 ### Daten von der Webseite (`insights-v1`)
 
