@@ -310,6 +310,11 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 
 ## Oberfläche (Figurmenü, Fenster, Companion-Seite)
 
+- TecMon-Stil (wie `docs/tecmon-style.md` der Webseite, im README unter „TecMon-Stil“):
+  abgeschnittene Ecken statt Rundungen (`clip-path`, `border-radius: 0`, `--cut`/`--edge`/`--fill`),
+  eckige Eingabefelder, Lila für Rahmen und Kanten, Gold für die aktive Wahl, Fokus und die
+  zwei Hauptecken großer Karten; Sternenhimmel als allgemeiner Hintergrund; Statuspunkte als Raute, Reiter als Parallelogramm.
+  Neue Stilregeln dort und im README eintragen.
 - Gleiche UI-Regeln wie auf tecmon.online: TecMon-Farben (Schwarz, Lila, Gold),
   Buttons mit Hover nur bei Maus und sichtbarem Nachgeben beim Drücken
   (`scale(0.96)`, nie unter 0.95), breite Karten ändern nur die Farbe.
@@ -336,6 +341,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   (siehe [BUILDING.md](BUILDING.md)); installierte Companions bekommen es als
   Update. Darum nur mit Freigabe mergen.
 - Neue Funktionen im README unter „Neu in X.Y.Z“ beschreiben.
+- Nach jedem Merge die betroffenen README-Dateien beider Repositories (`tecmon-companion`
+  und `tecmon`) auf den neuen Stand bringen, samt Stand-Zeile oben im README und der
+  Capability-Tabelle. Neue Regeln schriftlich im Repo festhalten (AGENTS.md), nicht nur im Chat.
 - Automatische Updates (`autoUpdateTick()` in `server.mjs`) nutzen dieselbe
   Prüfung wie der Knopf (`checkUpdate()`/`downloadUpdate()`), laufen nie bei
   aktivem Download oder aktiver Aufnahme und sind über `/api/update/auto`
