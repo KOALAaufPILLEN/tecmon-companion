@@ -6,7 +6,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
-**Stand dieser Übersicht:** Version 0.44.0, 18. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+**Stand dieser Übersicht:** Version 0.44.0, 18. November 2026; Website-Download-Hinweise nach Website-PR #131 aktualisiert. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
 
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
@@ -942,3 +942,11 @@ Sharecode-Feld im Website-Auftrag, direkte Verbindung zwischen TecMon und dem lo
 Sharecodes oder Match-Dateien lokal herunterladen; mehrere Spielerperspektiven in einem gemeinsamen Highlight-Auftrag; TecMon-Icon in EXE/Installer/Oberfläche; sicherer Umgang mit einer zurückgebliebenen privaten Datenbank beim Update. Die neue Team-Auswahl erfordert den entsprechenden Website-Stand. Siehe Anleitung unter tools/cs2-companion/README.md.
 
 Für bestehende Installationen gibt es im Release eine kleine Update-EXE. Sie aktualisiert nur Companion-Dateien; Datenbank und große Tools bleiben erhalten. Ab 0.4 ist die Updateprüfung direkt im Companion verfügbar.
+
+## Demo-Downloads auf der Webseite
+
+Website-PR [#131](https://github.com/KOALAaufPILLEN/tecmon/pull/131) macht direkte Valve-Links im Match-Verlauf und Einrichtungsassistenten sichtbar und kopierbar. Ein leerer Download-Tab gilt nicht als Nachweis, dass Valve keinen Link liefert. Demo-Bytes werden weiterhin nicht über TecMon/Vercel geleitet.
+
+Eine zusätzliche Browser-Erweiterung für lokale Downloads ohne Companion wird im Website-Repository entwickelt (`tools/demo-browser-extension/`), mit Browser-Bildern, Paketen und Anleitung auf `/companion#browser-erweiterung`. Sie ist eine eigenständige Website-Änderung und hier nicht als bereits veröffentlichte Companion-Funktion ausgewiesen. Chromium- und Firefox-Testpakete sind getrennt; Firefox benötigt für dauerhafte Installation noch die Mozilla-Signatur, Safari einen Apple-Build. Aufnahmen in echter CS2-Grafik bleiben Aufgabe des Companion.
+
+Steam-Fehler bei der serverseitigen Ermittlung eines neuen Valve-Links betreffen den eingerichteten Bot-Account, nicht zwangsläufig ein lokal laufendes CS2. Die Browser-Erweiterung ersetzt den lokalen Datei-Transport, aber keine fehlgeschlagene Bot-Anmeldung für die Ermittlung eines unbekannten Links.
