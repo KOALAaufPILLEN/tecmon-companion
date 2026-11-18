@@ -10,14 +10,14 @@ textarea { width:100%; margin:7px 0 12px; border:1px solid #3b3c51; border-radiu
 .desktop-panel aside{display:none}.desktop-panel main{margin:0;padding:18px;max-width:none}.desktop-panel header>.eyebrow,.desktop-panel .version{display:none}.desktop-panel header{justify-content:flex-end}.desktop-panel .minimal-hero{padding:8px 0 12px;gap:14px}.desktop-panel .minimal-hero>img{width:65px;height:65px}.desktop-panel .minimal-hero h1{font-size:25px;letter-spacing:-.5px}.desktop-panel .minimal-hero p{font-size:12px}.desktop-panel .card{padding:16px;margin:12px 0;border-radius:14px 14px 4px 14px}.desktop-panel .connection-summary{gap:12px}.desktop-panel h2{font-size:17px}.desktop-panel .setup,.desktop-panel .stats{grid-template-columns:1fr}.desktop-panel .crosshair{display:none}.desktop-panel .hero{display:none}.desktop-panel .stats div+div{border-left:0;border-top:1px solid var(--line)}.desktop-panel .section-head{display:flex;flex-wrap:wrap;gap:12px}.desktop-panel footer{font-size:10px}.desktop-panel .activity-summary .badge{font-size:9px}
 
 /* Desktop speech bubble: matches the TecMon weapon holobuddy palette. */
-html:has(.holo){background:#041420;scrollbar-color:#22b8ce #082c3c;scrollbar-width:thin}
-.holo{--bg:#041420;--card:#082638;--line:#226576;--gold:#a5f3fc;--violet:#67e8f9;--muted:#9dbdca;background:repeating-linear-gradient(0deg,#a5f3fc06 0 1px,transparent 1px 4px),linear-gradient(135deg,#082f49,#041420);color:#cffafe}
-.holo *{scrollbar-width:thin;scrollbar-color:#22b8ce #082c3c}
+html:has(.holo){background:radial-gradient(ellipse 70% 55% at 85% 0%,#7c3aed2e,transparent 70%),radial-gradient(ellipse 55% 45% at 0% 100%,#e8c5730f,transparent 70%),linear-gradient(170deg,#120d1c,#06060b 60%) fixed;background-color:#06060b;scrollbar-color:#a78bfa #1b1626;scrollbar-width:thin}
+.holo{--bg:#06060b;--card:#17121f;--line:#3a2f4d;--gold:#e8c573;--violet:#a78bfa;--muted:#a49cb8;background:transparent;color:#f1eef7}
+.holo *{scrollbar-width:thin;scrollbar-color:#a78bfa #1b1626}
 .holo ::-webkit-scrollbar,html:has(.holo)::-webkit-scrollbar{width:8px;height:8px}
-.holo ::-webkit-scrollbar-track,html:has(.holo)::-webkit-scrollbar-track{background:#082c3c;border-radius:8px}
-.holo ::-webkit-scrollbar-thumb,html:has(.holo)::-webkit-scrollbar-thumb{background:linear-gradient(#67e8f9,#16869e);border:2px solid #082c3c;border-radius:8px}
-.holo ::-webkit-scrollbar-thumb:hover,html:has(.holo)::-webkit-scrollbar-thumb:hover{background:#a5f3fc}
-.holo main{padding:10px 8px 16px}.holo h1,.holo h2{text-shadow:0 0 12px #22d3ee44}.holo .card{background:linear-gradient(135deg,#082f49bc,#041420d9);border:1px solid #67e8f966;box-shadow:inset 0 0 18px #22d3ee0d,0 0 14px #22d3ee0b}.holo button,.holo .button{border:1px solid #67e8f988;color:#cffafe;background:linear-gradient(135deg,#0c5268,#082b3e);box-shadow:inset 0 0 12px #22d3ee18;border-radius:9px}.holo input,.holo select,.holo textarea,.holo pre{background:#041824;border-color:#246276;color:#cffafe}.holo .badge{border-color:#22d3ee77;color:#a5f3fc}.holo .status-orb{background:#22d3ee;box-shadow:0 0 12px #22d3ee66}.holo #notice:not(:empty){background:#123343;border-color:#67e8f9}.holo a:not(.button){color:#a5f3fc}.holo #advanced-panel{border-color:#226576}.holo .minimal-hero>img{filter:drop-shadow(0 0 9px #22d3ee55)}.holo .activity-progress{background:#0c394b}.holo .activity-progress span{background:linear-gradient(90deg,#0b7895,#a5f3fc)}
+.holo ::-webkit-scrollbar-track,html:has(.holo)::-webkit-scrollbar-track{background:#1b1626;border-radius:0}
+.holo ::-webkit-scrollbar-thumb,html:has(.holo)::-webkit-scrollbar-thumb{background:linear-gradient(#a78bfa,#6d4fc4);border:2px solid #1b1626;border-radius:0}
+.holo ::-webkit-scrollbar-thumb:hover,html:has(.holo)::-webkit-scrollbar-thumb:hover{background:#e8c573}
+.holo main{padding:10px 8px 16px}.holo h1,.holo h2{text-shadow:0 0 14px #a78bfa40}.holo .card{background:linear-gradient(160deg,#1d1729e6,#0f0c16f0);border:1px solid #a78bfa66;box-shadow:none}.holo button,.holo .button{border:1px solid #e8c57388;color:#f6e7c1;background:linear-gradient(135deg,#2a2036,#17121f);box-shadow:none}.holo input,.holo select,.holo textarea,.holo pre{background:#120e19;border-color:#3a2f4d;color:#f1eef7}.holo .badge{border-color:#a78bfa77;color:#d8cbff}.holo .status-orb{background:var(--violet);box-shadow:0 0 10px #a78bfa66}.holo .connection-summary.is-connected .status-orb{background:#84d6ac;box-shadow:0 0 10px #84d6ac66}.holo #notice:not(:empty){background:#e8c57312;border-color:#e8c57388}.holo a:not(.button){color:#d8cbff}.holo #advanced-panel{border-color:#3a2f4d}.holo .minimal-hero>img{filter:drop-shadow(0 0 14px #a78bfa66)}.holo .activity-progress{background:#2a2036}.holo .activity-progress span{background:linear-gradient(90deg,#a78bfa,#e8c573)}
 
 /* 0.11: kompakte Ansicht, Update-Hinweis, letzte Videos, Tabs */
 .minimal-hero{padding:18px 0 6px}.minimal-hero>img{width:88px;height:88px}.minimal-hero h1{font-size:clamp(24px,2.6vw,32px);margin:6px 0}.minimal-hero p{margin:4px 0 12px}
@@ -27,10 +27,10 @@ html:has(.holo){background:#041420;scrollbar-color:#22b8ce #082c3c;scrollbar-wid
 .tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:14px 0 4px}.tab{background:transparent;color:var(--muted);border:1px solid transparent;border-bottom:0;border-radius:8px 8px 0 0;padding:9px 14px;font-weight:600}.tab[aria-selected="true"]{color:var(--gold);border-color:var(--line);background:var(--card)}
 .danger-zone{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin:26px 0 6px;padding-top:16px;border-top:1px solid var(--line)}#shutdown-confirm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}#shutdown-confirm[hidden]{display:none}button.danger{background:#e11d48;color:#fff}
 @media(max-width:650px){.update-banner{flex-direction:column;align-items:flex-start}.minimal-hero>img{width:56px;height:56px}}
-.holo .update-banner{border-color:#67e8f9;background:#0c394b}.holo .update-banner b{color:#a5f3fc}.holo .recent-item{border-color:#226576}.holo .tab[aria-selected="true"]{color:#a5f3fc;background:#082638;border-color:#226576}.holo button.danger{background:#be123c;border-color:#fb7185}.holo .danger-zone{border-color:#226576}
-.holo .tab{background:transparent;box-shadow:none;border-color:transparent;border-radius:9px 9px 0 0;color:#9dbdca}.holo .tab[aria-selected="true"]{border-color:#67e8f9;border-bottom-color:transparent;box-shadow:0 -4px 12px #22d3ee22}
+.holo .update-banner{border-color:#e8c57388;background:#e8c57312}.holo .update-banner b{color:var(--gold)}.holo .recent-item{border-color:#3a2f4d}.holo button.danger{background:#be123c;border-color:#fb7185;color:#fff}.holo .danger-zone{border-color:#3a2f4d}
+.holo .tabs{border-color:#3a2f4d}.holo .tab{color:var(--muted)}.holo .tab[aria-selected="true"]{color:#15121a}
 
-.holo aside{background:#06202e;border-color:#226576}.holo .brand{color:#a5f3fc}.holo .local i{background:#22d3ee}.holo .version{border-color:#226576;color:#9dbdca}.holo .stats{background:#082638;border-color:#226576}.holo .stats div+div{border-color:#226576}
+.holo aside{background:linear-gradient(180deg,#140f1ee6,#08070ce6);border-color:#3a2f4d;box-shadow:inset -1px 0 0 #a78bfa22}.holo .brand{color:var(--gold)}.holo .brand img{filter:drop-shadow(0 0 10px #a78bfa66)}.holo .local i{background:#84d6ac;border-radius:0;transform:rotate(45deg)}.holo .version{border-color:#3a2f4d;color:var(--muted)}.holo .stats{background:linear-gradient(100deg,#e8c57308,#a78bfa0d);border-color:#3a2f4d}.holo .stats div+div{border-color:#3a2f4d}
 .game-tips .section-head{align-items:flex-start}.tip-item{border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13px}.tip-item small{display:block;color:var(--muted);font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
 .tips-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 16px;margin:10px 0}.tips-features label{display:flex;gap:8px;align-items:center;font-size:12px;color:#e6f9fc}.tips-features input{width:auto;margin:0}.tips-insights{font-size:12px}
 
@@ -108,7 +108,7 @@ meter::-webkit-meter-bar{background:#1b1626;border:1px solid #3a2f4d;border-radi
 .clips-card .recent-item .actions{flex-wrap:wrap}
 .clips-card .recent-item input{min-width:12rem}
 /* UI-Regeln (wie tecmon.online): Hover nur mit Maus. */
-@media (hover:hover) and (pointer:fine){.holo button:hover,.holo .button:hover{background:#10536a;border-color:#a5f3fc;box-shadow:0 0 13px #22d3ee33}.desktop-panel.holo button:hover,.desktop-panel.holo .button:hover{border-color:var(--gold);background:#2f2440;box-shadow:0 0 10px #a78bfa33}}
+@media (hover:hover) and (pointer:fine){.holo button:hover,.holo .button:hover{border-color:var(--gold);background:#2f2440;box-shadow:0 0 10px #a78bfa33}}
 /* UI-Regeln: Bewegung nur über transform/opacity bzw. benannte Eigenschaften, nie "all". Buttons geben beim Drücken nach (0.96), breite Karten ändern nur die Farbe. */
 :root{--tm-dur-press:150ms;--tm-dur-tooltip:125ms;--tm-dur-popover:200ms;--tm-dur-overlay:250ms;--tm-ease-enter:cubic-bezier(.32,.72,0,1);--tm-ease-exit:cubic-bezier(.55,0,1,.45)}
 button,.button{transition:transform var(--tm-dur-press) var(--tm-ease-enter),background-color var(--tm-dur-press) ease,border-color var(--tm-dur-press) ease,box-shadow var(--tm-dur-press) ease;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -159,48 +159,79 @@ details>summary{cursor:pointer}
 .game-fold:not(:has(>.card-fold>.card:not([hidden]))){display:none}
 @media (hover:hover) and (pointer:fine){.game-fold>summary:hover{background:rgba(167,139,250,.08)}.card-fold>summary:hover{color:#d8cbff}}
 
-/* 0.32.8: Linksklick-Fenster der Figur mit abgeschnittenen Ecken wie der Setup-Assistent auf tecmon.online.
+/* 0.32.8 (seit 0.41.3 auch die Companion-Seite im Browser): abgeschnittene Ecken wie der Setup-Assistent auf tecmon.online.
    Form per clip-path, die schrägen Kanten zeichnen Verläufe in den Ecken (gleiche Farbe wie --edge). */
-body.desktop-panel.holo :where(.card,.game-fold,.panel-tabs,.update-banner,.recent-item,.tip-item,.game-row,.overlay-box,.cfg-group,.cfg-item,.badge,.cfg-count,button,.button,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea,pre,.reaction-box,.aim-field,.crosshair-grid canvas){
+body.holo :where(.card,.game-fold,.panel-tabs,.tab,.version,#notice:not(:empty),.empty,.job,.stats,.update-banner,.recent-item,.tip-item,.game-row,.overlay-box,.cfg-group,.cfg-item,.badge,.cfg-count,button,.button,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea,pre,.reaction-box,.aim-field,.crosshair-grid canvas){
   --cut:8px;--edge:#3a2f4d;--fill:#120e19;
   border:1px solid var(--edge)!important;border-radius:0!important;
   background:linear-gradient(135deg,transparent calc(50% - .8px),var(--edge) calc(50% - .8px) calc(50% + .8px),transparent calc(50% + .8px)) top left/var(--cut) var(--cut) no-repeat,linear-gradient(225deg,transparent calc(50% - .8px),var(--edge) calc(50% - .8px) calc(50% + .8px),transparent calc(50% + .8px)) top right/var(--cut) var(--cut) no-repeat,linear-gradient(315deg,transparent calc(50% - .8px),var(--edge) calc(50% - .8px) calc(50% + .8px),transparent calc(50% + .8px)) bottom right/var(--cut) var(--cut) no-repeat,linear-gradient(45deg,transparent calc(50% - .8px),var(--edge) calc(50% - .8px) calc(50% + .8px),transparent calc(50% + .8px)) bottom left/var(--cut) var(--cut) no-repeat,var(--fill)!important;background-origin:border-box!important;
   clip-path:polygon(var(--cut) 0,calc(100% - var(--cut)) 0,100% var(--cut),100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,var(--cut) 100%,0 calc(100% - var(--cut)),0 var(--cut));
 }
 /* Karten: großer Schnitt, lila Kante, goldene Akzente an den zwei Hauptecken. */
-body.desktop-panel.holo :is(.card,.game-fold){--cut:16px;--edge:#a78bfa66;--fill:linear-gradient(160deg,#1d1729,#0f0c16);position:relative;box-shadow:none}
-body.desktop-panel.holo :is(.card,.game-fold)::after{content:"";position:absolute;inset:-1px;pointer-events:none;background:linear-gradient(135deg,transparent calc(50% - 1px),var(--gold) calc(50% - 1px) calc(50% + 1.6px),transparent calc(50% + 1.6px)) top left/16px 16px no-repeat,linear-gradient(315deg,transparent calc(50% - 1px),var(--gold) calc(50% - 1px) calc(50% + 1.6px),transparent calc(50% + 1.6px)) bottom right/16px 16px no-repeat}
-body.desktop-panel.holo .card-fold>.card{--edge:transparent;--fill:transparent;clip-path:none}
-body.desktop-panel.holo .card-fold>.card::after{display:none}
-body.desktop-panel.holo .game-fold>summary{position:relative;z-index:1}
+body.holo :is(.card,.game-fold){--cut:16px;--edge:#a78bfa66;--fill:linear-gradient(160deg,#1d1729,#0f0c16);position:relative;box-shadow:none}
+body.holo :is(.card,.game-fold)::after{content:"";position:absolute;inset:-1px;pointer-events:none;background:linear-gradient(135deg,transparent calc(50% - 1px),var(--gold) calc(50% - 1px) calc(50% + 1.6px),transparent calc(50% + 1.6px)) top left/16px 16px no-repeat,linear-gradient(315deg,transparent calc(50% - 1px),var(--gold) calc(50% - 1px) calc(50% + 1.6px),transparent calc(50% + 1.6px)) bottom right/16px 16px no-repeat}
+body.holo .card-fold>.card{--edge:transparent;--fill:transparent;clip-path:none}
+body.holo .card-fold>.card::after{display:none}
+body.holo .game-fold>summary{position:relative;z-index:1}
 /* Knöpfe: kleine Schnitte, Gold-Kante; Hover nur mit Maus. */
-body.desktop-panel.holo :is(button,.button){--cut:7px;--edge:#e8c57388;--fill:linear-gradient(135deg,#2a2036,#17121f)}
-body.desktop-panel.holo button.danger{--edge:#fb7185;--fill:#be123c}
-body.desktop-panel.holo .pet-buttons button[aria-checked="true"]{--edge:#f5d36b;--fill:linear-gradient(135deg,#8b5cf6,#d4a72c)}
-body.desktop-panel.holo .reaction-box{--cut:12px;--fill:#1b1626}
-body.desktop-panel.holo .reaction-box.go{--edge:#e8c573;--fill:linear-gradient(135deg,#a78bfa,#6d4fc4)}
-body.desktop-panel.holo .reaction-box.fail{--edge:#fb7185;--fill:#3a1520}
-body.desktop-panel.holo .aim-field{--cut:12px;--edge:rgba(212,167,44,.35);--fill:radial-gradient(circle at 50% 50%,rgba(139,92,246,.12),transparent 70%)}
-body.desktop-panel.holo .aim-target{clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%);border-radius:0}
-body.desktop-panel.holo .memory-pad{border-radius:0;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+body.holo :is(button,.button){--cut:7px;--edge:#e8c57388;--fill:linear-gradient(135deg,#2a2036,#17121f)}
+body.holo button.danger{--edge:#fb7185;--fill:#be123c}
+body.holo .pet-buttons button[aria-checked="true"]{--edge:#f5d36b;--fill:linear-gradient(135deg,#8b5cf6,#d4a72c)}
+body.holo .reaction-box{--cut:12px;--fill:#1b1626}
+body.holo .reaction-box.go{--edge:#e8c573;--fill:linear-gradient(135deg,#a78bfa,#6d4fc4)}
+body.holo .reaction-box.fail{--edge:#fb7185;--fill:#3a1520}
+body.holo .aim-field{--cut:12px;--edge:rgba(212,167,44,.35);--fill:radial-gradient(circle at 50% 50%,rgba(139,92,246,.12),transparent 70%)}
+body.holo .aim-target{clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%);border-radius:0}
+body.holo .memory-pad{border-radius:0;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
 /* Reiter oben: Leiste mit Schnitten, aktiver Reiter als goldenes Parallelogramm. */
-body.desktop-panel.holo .panel-tabs{--cut:10px;--fill:#120e19f2}
-body.desktop-panel.holo .panel-tabs button{--edge:transparent;--fill:transparent;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%)}
-body.desktop-panel.holo .panel-tabs button[aria-selected="true"]{--edge:transparent;--fill:linear-gradient(135deg,#e8c573,#c9a04a)}
-body.desktop-panel.holo .badge,body.desktop-panel.holo .cfg-count{--cut:5px;--edge:#a78bfa77;--fill:transparent}
-body.desktop-panel.holo .cfg-count{--edge:var(--gold)}
-body.desktop-panel.holo :is(.recent-item,.tip-item,.game-row,.overlay-box,.cfg-group,.cfg-item){--cut:9px;--fill:rgba(255,255,255,.02)}
-body.desktop-panel.holo .game-row.installed,body.desktop-panel.holo .cfg-item.on{--edge:#e8c573aa;--fill:rgba(139,92,246,.1)}
-body.desktop-panel.holo .update-banner{--cut:12px;--edge:#e8c57388;--fill:#e8c57312}
-body.desktop-panel.holo :is(input,select,textarea,pre){--cut:6px}
-body.desktop-panel.holo :is(input,select,textarea):focus{outline:none;--edge:var(--gold)}
-body.desktop-panel.holo :is(button,.button):focus-visible{outline:none;--edge:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
-body.desktop-panel.holo .crosshair-grid canvas{--cut:10px;--fill:transparent}
-body.desktop-panel.holo .status-orb{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);box-shadow:none}
-body.desktop-panel.holo meter::-webkit-meter-bar,body.desktop-panel.holo meter::-webkit-meter-optimum-value,body.desktop-panel.holo meter::-webkit-meter-suboptimum-value,body.desktop-panel.holo meter::-webkit-meter-even-less-good-value{border-radius:0}
-body.desktop-panel.holo .overlay-consent{border-radius:0;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+body.holo .panel-tabs{--cut:10px;--fill:#120e19f2}
+body.holo .panel-tabs button{--edge:transparent;--fill:transparent;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%)}
+body.holo .panel-tabs button[aria-selected="true"]{--edge:transparent;--fill:linear-gradient(135deg,#e8c573,#c9a04a)}
+body.holo .badge,body.holo .cfg-count{--cut:5px;--edge:#a78bfa77;--fill:transparent}
+body.holo .cfg-count{--edge:var(--gold)}
+body.holo :is(.recent-item,.tip-item,.game-row,.overlay-box,.cfg-group,.cfg-item){--cut:9px;--fill:rgba(255,255,255,.02)}
+body.holo .game-row.installed,body.holo .cfg-item.on{--edge:#e8c573aa;--fill:rgba(139,92,246,.1)}
+body.holo .update-banner{--cut:12px;--edge:#e8c57388;--fill:#e8c57312}
+body.holo :is(input,select,textarea,pre){--cut:6px}
+body.holo :is(input,select,textarea):focus{outline:none;--edge:var(--gold)}
+body.holo :is(button,.button):focus-visible{outline:none;--edge:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+body.holo .crosshair-grid canvas{--cut:10px;--fill:transparent}
+body.holo .status-orb{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);box-shadow:none}
+body.holo meter::-webkit-meter-bar,body.holo meter::-webkit-meter-optimum-value,body.holo meter::-webkit-meter-suboptimum-value,body.holo meter::-webkit-meter-even-less-good-value{border-radius:0}
+body.holo .overlay-consent{border-radius:0;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
 @media (hover:hover) and (pointer:fine){
-  body.desktop-panel.holo :is(button,.button):not(:disabled):not([aria-selected="true"]):not([aria-checked="true"]):hover{--edge:var(--gold);--fill:#2f2440}
-  body.desktop-panel.holo .panel-tabs button:not([aria-selected="true"]):hover{--edge:transparent;--fill:#a78bfa22}
-  body.desktop-panel.holo .game-fold>summary:hover{background:rgba(167,139,250,.08)}
+  body.holo :is(button,.button):not(:disabled):not([aria-selected="true"]):not([aria-checked="true"]):hover{--edge:var(--gold);--fill:#2f2440}
+  body.holo .panel-tabs button:not([aria-selected="true"]):hover{--edge:transparent;--fill:#a78bfa22}
+  body.holo .game-fold>summary:hover{background:rgba(167,139,250,.08)}
 }
+/* 0.41.3: Companion-Seite im Browser im TecMon-Stil (Regeln: docs/tecmon-style.md im Repo tecmon).
+   Sternenhimmel als Hintergrund: drei Gruppen kleiner Sterne, versetzt funkelnd, hinter allem. */
+body.holo::before,body.holo::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none}
+body.holo::before{background:radial-gradient(1px 1px at 12% 18%,#fff9 50%,transparent 51%) 0 0/233px 211px,radial-gradient(1px 1px at 67% 41%,#d8cbffaa 50%,transparent 51%) 0 0/307px 263px,radial-gradient(1.4px 1.4px at 38% 77%,#fffb 50%,transparent 51%) 0 0/389px 347px;animation:tm-twinkle 5.2s ease-in-out infinite alternate}
+body.holo::after{background:radial-gradient(1.2px 1.2px at 81% 9%,#f6e7c1aa 50%,transparent 51%) 0 0/277px 241px,radial-gradient(1px 1px at 23% 58%,#ffffffa0 50%,transparent 51%) 0 0/353px 293px,radial-gradient(1.6px 1.6px at 55% 30%,#c4b5fdcc 50%,transparent 51%) 0 0/461px 419px;animation:tm-twinkle 7.4s ease-in-out -3.1s infinite alternate}
+@keyframes tm-twinkle{from{opacity:.35}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){body.holo::before,body.holo::after{animation:none;opacity:.75}}
+/* Kleine Überschriften in Versalien, Akzentfarbe Lila. */
+body.holo .eyebrow{color:var(--violet);letter-spacing:.16em}
+body.holo .eyebrow.gold,body.holo header>.eyebrow{color:var(--gold)}
+body.holo .minimal-hero h1{color:#f6e7c1}
+body.holo .advanced-title{text-shadow:0 0 18px #e8c57333}
+/* Seitenleiste: goldene Linie oben, Markenschrift wie auf tecmon.online. */
+body.holo:not(.desktop-panel) aside{border-right:1px solid #3a2f4d}
+body.holo:not(.desktop-panel) aside::before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,var(--gold),#a78bfa 60%,transparent)}
+body.holo aside>a:not(.brand){color:var(--muted);text-decoration:none;letter-spacing:.08em}
+@media (hover:hover) and (pointer:fine){body.holo aside>a:not(.brand):hover{color:var(--gold)}}
+/* Erweitert-Reiter: Parallelogramm, aktiver Reiter Gold. */
+body.holo .tabs{gap:6px;border-bottom:1px solid #3a2f4d;padding-bottom:6px}
+body.holo .tab{--edge:transparent;--fill:transparent;clip-path:polygon(9px 0,100% 0,calc(100% - 9px) 100%,0 100%);padding:9px 20px;letter-spacing:.06em}
+body.holo .tab[aria-selected="true"]{--edge:transparent;--fill:linear-gradient(135deg,#e8c573,#c9a04a);color:#15121a}
+@media (hover:hover) and (pointer:fine){body.holo .tab:not([aria-selected="true"]):hover{--edge:transparent;--fill:#a78bfa22;color:#f1eef7}}
+/* Abzeichen, Hinweise, leere Zustände. */
+body.holo .version{--cut:5px;--edge:#a78bfa77;--fill:transparent;letter-spacing:.12em}
+body.holo #notice:not(:empty){--cut:9px;--edge:#e8c57388;--fill:linear-gradient(90deg,#e8c57322,#e8c5730a);box-shadow:inset 3px 0 0 var(--gold)}
+body.holo :is(.empty,.job,.stats){--cut:10px;--edge:#3a2f4d;--fill:rgba(255,255,255,.02)}
+body.holo #bridge-connections>.job{--edge:#e8c57388;--fill:#e8c57308}
+body.holo .stats{--fill:linear-gradient(100deg,#e8c57308,#a78bfa0d)}
+body.holo .card-fold>.card,body.holo .card .card{--cut:12px}
+/* Checkboxen eckig, gewählt Gold. */
+body.holo input[type=checkbox]{accent-color:var(--gold)}

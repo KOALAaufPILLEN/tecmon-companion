@@ -180,6 +180,16 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 
 Neueste Version zuerst.
 
+### Neu in 0.42.2: Companion-Seite im TecMon-Stil
+
+- Die lokale Seite unter `http://127.0.0.1:31977` sieht jetzt aus wie tecmon.online
+  statt im türkisen Holo-Look: dunkler Sternenhimmel mit lila Glow, Karten und Knöpfe
+  mit abgeschnittenen Ecken, lila Rahmen, Gold für die aktive Wahl und den Fokus,
+  Reiter im erweiterten Modus als goldenes Parallelogramm. Funktionen bleiben gleich.
+- Oben auf der Seite steht jetzt die neue 3D-Figur statt des alten Fliegers.
+- Das Linksklick-Fenster der Figur bekommt denselben Sternenhimmel.
+- Die Stilregeln stehen in `docs/tecmon-style.md` (Repo `tecmon`) und in der `AGENTS.md`.
+
 ### Neu in 0.42.0: Pro Looks und Intense Looks
 
 Sechs Pro Looks und acht zusätzliche kräftige **Intense Looks** für Szenen und Branding (insgesamt 50 Filter). Die bisherigen Looks bleiben erhalten. Echte Filter-Testbilder, Originalvergleich und Auswahl je Szene auf der Webseite; die 14 neuen Kennungen nur mit `video-filter-v2`.
