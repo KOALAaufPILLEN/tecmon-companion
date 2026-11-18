@@ -95,7 +95,7 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
       body: JSON.stringify(body),
     });
   const get = (route, token) =>
-    fetch(base + route, { headers: { origin, "x-tecmon-bridge-token": token } });
+    fetch(base + route, { headers: { origin, "x-tecmon-bridge-token": token }, signal: AbortSignal.timeout(10000) });
   const local = async (route, body) =>
     fetch(base + route, {
       method: body ? "POST" : "GET",
