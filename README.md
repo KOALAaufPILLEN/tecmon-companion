@@ -6,7 +6,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
-**Stand dieser Übersicht:** Version 0.44.0, 18. November 2026; Website-Download-Hinweise nach Website-PR #131 aktualisiert. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+**Stand dieser Übersicht:** Version 0.44.0, 18. November 2026; Tagesübersicht mit Website-Änderungen bis #131, offenem Add-on-PR #132 und lokalem Entwicklungsstand. Diese Dokumentationsänderung liegt in PR #77. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
 
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
@@ -16,6 +16,23 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [TecMon-Stil](#tecmon-stil)
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
+
+## Änderungen vom 18. November 2026
+
+**Bereits auf `main`:**
+
+- [#68](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/68): README auf 0.42.1 gebracht; TecMon-Stil und Pflege beider READMEs als Arbeitsregel festgehalten.
+- 0.42.2: [#70](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/70) bringt die Companion-Seite in den TecMon-Stil mit neuer 3D-Figur; [#73](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/73) korrigiert alte Waffenmodelle und Handschuhe weiterer Agenten.
+- 0.43.0, [#74](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/74): GSI-Live-Anzeigen, Bomben-Auswertung, kürzere Tipp-Verfallszeiten, GSI-Heartbeat und Cobblestone-Unterstützung. Die Bomben-Anzeige ist standardmäßig ausgeschaltet.
+- 0.43.1, [#76](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/76): Cobblestone mit 19 Radar-Callouts, Bombenplätzen und Spawns.
+- 0.44.0, [#75](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/75): flüssige GLB-Figur, gespeicherte Figur-Einstellungen, Windows-Autostart und kompaktes Linksklick-Menü; Änderungen aus 0.43.0 und 0.43.1 übernommen.
+- Webseite: [#119](https://github.com/KOALAaufPILLEN/tecmon/pull/119) schaltet den Demo-Dateitransfer über Vercel ab; #126/#129 aktualisieren Companion-Dokumentation und Design, #127/#128 CS2-Kartenpools und Cobblestone mit Voxel-Karte, Radar und Taktikboard. [#130](https://github.com/KOALAaufPILLEN/tecmon/pull/130) erhält Companion-Downloadfehler und startet den Worker erst nach dem Download; [#131](https://github.com/KOALAaufPILLEN/tecmon/pull/131) zeigt kopierbare Valve-Links und vermeidet leere Download-Tabs.
+
+**Offene PRs:** Website-[#132](https://github.com/KOALAaufPILLEN/tecmon/pull/132) enthält Browser-Erweiterung 0.1.0, lokale Demo-Downloads, Browser-Logos und Testpakete unter `/companion#browser-erweiterung` sowie das Freigeben eigener Steam-Bot-Sitzungen nach Metadatenabfragen. Companion-[#77](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/77) dokumentiert diese Website-Änderungen und die neuen Regeln; es ist kein neues Companion-Programmrelease.
+
+**Noch lokal in Arbeit:** Add-on 0.2.0 soll den eigenen angemeldeten Steam-Browser-Verlauf mit SteamID-Prüfung und direkten Demo-Links anbieten. Ohne Add-on soll bei vorübergehenden Bot-Fehlern nach einem sichtbaren 10-Sekunden-Countdown erneut versucht werden, höchstens dreimal und mit Abbruch. Hinweis: „Wartezeit umgehen? Nutze das Browser-Add-on.“. Keine globale Warteschlange. Diese Änderungen sind noch nicht als fertig oder veröffentlicht ausgewiesen; ein echter Download aus einer angemeldeten Steam-Sitzung ist noch zu prüfen.
+
+Ein Merge bestätigt kein Produktions-Deployment. Firefox-Testpakete benötigen für dauerhafte Installation eine Mozilla-Signatur; Safari benötigt einen eigenen Apple-Build. Die CS2-Aufnahme bleibt lokal im Companion.
 
 ## Neu in 0.44.0
 
@@ -949,4 +966,4 @@ Website-PR [#131](https://github.com/KOALAaufPILLEN/tecmon/pull/131) macht direk
 
 Eine zusätzliche Browser-Erweiterung für lokale Downloads ohne Companion wird im Website-Repository entwickelt (`tools/demo-browser-extension/`), mit Browser-Bildern, Paketen und Anleitung auf `/companion#browser-erweiterung`. Sie ist eine eigenständige Website-Änderung und hier nicht als bereits veröffentlichte Companion-Funktion ausgewiesen. Chromium- und Firefox-Testpakete sind getrennt; Firefox benötigt für dauerhafte Installation noch die Mozilla-Signatur, Safari einen Apple-Build. Aufnahmen in echter CS2-Grafik bleiben Aufgabe des Companion.
 
-Steam-Fehler bei der serverseitigen Ermittlung eines neuen Valve-Links betreffen den eingerichteten Bot-Account, nicht zwangsläufig ein lokal laufendes CS2. Die Browser-Erweiterung ersetzt den lokalen Datei-Transport, aber keine fehlgeschlagene Bot-Anmeldung für die Ermittlung eines unbekannten Links.
+Steam-Fehler bei der serverseitigen Ermittlung eines neuen Valve-Links betreffen den eingerichteten Bot-Account, nicht zwangsläufig ein lokal laufendes CS2. Erweiterung 0.1.0 ersetzt den lokalen Datei-Transport, aber keine fehlgeschlagene Bot-Anmeldung für die Ermittlung eines unbekannten Links. Der noch in Arbeit befindliche eigene Steam-Verlauf in 0.2.0 soll dafür eine Alternative ohne diesen Bot bieten; dabei wird die im Browser angemeldete Steam-Sitzung verwendet, nicht der Nutzer als serverseitiger Bot angemeldet.

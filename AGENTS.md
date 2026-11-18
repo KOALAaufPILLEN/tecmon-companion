@@ -394,6 +394,11 @@ eingebaut wurde, steht im Update-Protokoll dort.
 
 ## Prüfen und veröffentlichen
 
+- Nutzerentscheid 18.11.2026: Alle Änderungen eines Arbeitstags in den bestehenden README-Dateien dokumentieren, bei gemeinsamen Änderungen in beiden Repositories. Datum und relevante Grenzen nennen; gemergten Stand, offene PRs und lokale Arbeit unterscheiden. Ein Merge ist kein Nachweis des Produktions-Deployments.
+- Neue dauerhaft geltende Regeln in diese vorhandene `AGENTS.md` aufnehmen und mit den README-Änderungen committen und auf GitHub hochladen. Nicht nur im Chat oder in einer zweiten Agentendatei festhalten.
+- Für Website-Demo-Downloads gilt: Datei-Bytes ausschließlich lokal über Browser-Erweiterung oder Companion übertragen, nie über TecMon/Vercel. Der eigene angemeldete Steam-Browser-Verlauf soll als Alternative zum Bot dienen, ohne Export von Passwörtern oder Cookies und mit SteamID-Prüfung. Keine Match-Zuordnung anhand bloßer Datums- oder Dateinamenähnlichkeit erfinden.
+- Nutzerentscheid für vorübergehende Bot-Fehler: sichtbarer 10-Sekunden-Countdown, begrenzte Wiederholungen und Abbruch statt globaler Warteschlange; dauerhafte Zugangsdatenfehler nicht automatisch wiederholen. Hinweis „Wartezeit umgehen? Nutze das Browser-Add-on.“ nicht als Garantie gegen Valve-Ausfälle darstellen.
+
 - Vor jedem Push `npm test` und `node scripts/version.mjs check` im Repo-Stamm.
 - Version nur gemeinsam erhöhen: `node scripts/version.mjs set X.Y.Z`. Jeder
   Merge auf `main` mit neuer Version veröffentlicht automatisch ein Release
