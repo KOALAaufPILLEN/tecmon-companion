@@ -6,7 +6,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
-**Stand dieser Übersicht:** Version 0.44.0, 18. November 2026; Tagesübersicht einschließlich Website-PR #132 mit Add-on 0.2.0, eigenem Steam-Verlauf und 10-Sekunden-Countdown. Dokumentationsnachführung in Companion-PR #77, ohne neue Companion-Version. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+**Stand dieser Übersicht:** Version 0.44.1, 19. November 2026; Fix des lokalen Demo-Downloads über die Browser-Bridge. Bis zum Merge und GitHub-Release dieses Fixes ist 0.44.1 ein Entwicklungsstand. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
 
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
@@ -16,6 +16,13 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [TecMon-Stil](#tecmon-stil)
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
+
+## Neu in 0.44.1 · 19. November 2026
+
+- **Demo-Download über die Webseite repariert:** In `createCompanion()` überschrieb die interne Sharecode-Funktion `fetchDemo` den gleichnamigen HTTP-Zugriff der Browser-Bridge. Trotz Verbindung und funktionierendem Valve-Link erschien dadurch „Valves Replay-Server ist nicht erreichbar“. Die interne Funktion heißt jetzt `fetchJobDemo`; die Bridge verwendet wieder den HTTP-Zugriff. Kein Server-Proxy und keine geänderten Valve-URL-Freigaben.
+- Der Regressionstest koppelt einen Browser, lädt eine gepackte Testdemo über `/bridge/demo-fetch`, prüft die unveränderten Bytes und stellt sicher, dass kein Sharecode-Auftrag gestartet wird. Der gemeldete echte Valve-Link antwortete bei der Prüfung direkt mit HTTP 200 und BZh9-Signatur; ein vollständiger echter Match-Download ist dadurch noch nicht bestätigt.
+- **Für bestehende Installationen:** Companion aktualisieren. Erneutes Koppeln allein repariert die fehlerhafte ältere Version nicht.
+- **Website, eigener Änderungsstand:** YouTube-Uploads setzen keinen Discord-Webhook voraus; auch ein fehlerhafter optionaler Discord-Versand lässt das fertige YouTube-Ergebnis bestehen. Der Demo-Assistent bietet eine direkt erreichbare lokale Dateiauswahl ohne Add-on/Companion sowie Verbindungsbedienung bei Steam und Sharecodes. Die Webseite muss dafür ebenfalls den neuen Stand erhalten.
 
 ## Änderungen vom 18. November 2026
 

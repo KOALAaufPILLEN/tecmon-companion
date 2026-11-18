@@ -50,6 +50,8 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
   const installation = { dataDir: dir, profileDir: path.join(dir, "profile"), hlaeExe: "", ffmpegExe: "", cs2Exe: "" };
   await mkdir(installation.profileDir, { recursive: true });
   const calls = [];
+  const networkCalls = [];
+  const packedDemo = Buffer.from("BZh91AY&SY bridge fixture");
   let release;
   const hold = new Promise((resolve) => {
     release = resolve;
@@ -57,6 +59,11 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
   const { server, token: localToken } = await createCompanion({
     installation,
     detectTools: async () => ({ cs2: "" }),
+    fetchDemo: async (url, init) => {
+      networkCalls.push(url);
+      assert.equal(init.redirect, "error");
+      return new Response(packedDemo, { headers: { "content-length": String(packedDemo.length) } });
+    },
     // Aufnahme-Stub: läuft bis zur eigenen Engine, die ohne CS2 sauber abbricht.
     engineSystem: { recorder: { isRunning: async () => false } },
     downloadDemo: async ({ code: value, directory }) => {
@@ -131,6 +138,12 @@ test("website bridge enforces CORS, pairing, confirmation, fixed paths, job owne
   assert.ok(caps.includes("video-filter-v1") && caps.includes("video-filter-v2"));
   assert.equal((await get("/bridge/demo-fetch?url=" + encodeURIComponent("http://replay1.valve.net/730/1_2.dem.bz2"), "wrong")).status, 401);
   assert.equal((await get("/bridge/demo-fetch?url=" + encodeURIComponent("http://127.0.0.1/secret"), grant)).status, 400);
+  const replayUrl = "http://replay445.valve.net/730/003854826342507872519_0776935510.dem.bz2";
+  const replay = await get("/bridge/demo-fetch?url=" + encodeURIComponent(replayUrl), grant);
+  assert.equal(replay.status, 200);
+  assert.deepEqual(Buffer.from(await replay.arrayBuffer()), packedDemo);
+  assert.deepEqual(networkCalls, [replayUrl]);
+  assert.deepEqual(calls, [], "Bridge-Dateitransfer darf keinen Sharecode-Auftrag starten");
   assert.equal((await post("/bridge/capture", { job, confirm: false }, grant)).status, 400);
   assert.equal(
     (await post("/bridge/capture", { job: { ...job, shareCode: undefined }, confirm: true }, grant))
