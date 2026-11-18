@@ -22,11 +22,11 @@ export const SKIN_SETUP_CAPABILITY = "skin-swap-setup-v1";
 /** Ändert sich der Hinweis inhaltlich, Version erhöhen: dann muss neu bestätigt werden. */
 export const SKIN_NOTICE_VERSION = 1;
 export const SKIN_NOTICE =
-  "Skin-Tausch schreibt mit dem TecMon-Demo-Rewriter nur eine Kopie der Demo für die Aufnahme um. Nichts davon läuft im Spiel oder im Live-Match. Getauschte Skins gehören nicht dem Spieler; das Video bekommt den Namensschild-Text „TecMon Skin“.";
+  "Skin-Tausch schreibt mit dem TecMon-Demo-Rewriter nur eine Kopie der Demo für die Aufnahme um. Nichts davon läuft im Spiel oder im Live-Match. Getauschte Skins gehören nicht dem Spieler; das Video bekommt den Namensschild-Text „www.TecMon.Online“.";
 /** Höchstens so viele Waffen mit neuem Skin je Szene. */
 export const MAX_SKINS = 4;
 /** Namensschild auf getauschten Waffen; macht im Video sichtbar, dass der Skin nicht echt ist. */
-export const SKIN_TAG = "TecMon Skin";
+export const SKIN_TAG = "www.TecMon.Online";
 
 /** Waffen, deren Skin sich tauschen lässt: Item-Definition aus CS2 → Name. */
 export const SKIN_WEAPONS = {

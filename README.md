@@ -14,6 +14,12 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
 
+## Neu in 0.42.1
+
+- Messertausch: Der Rewriter lässt CS2 das Modell aus Item-Definition und Unterklasse bestimmen. Das direkte Überschreiben von `m_hModel`, das beim Demo-Sprung einen CS2-Absturz auslösen konnte, entfällt.
+- Getauschte Waffen tragen bei der Demo-Aufnahme das Namensschild „www.TecMon.Online“.
+- Fehler der Windows-Prozessabfrage brechen mit einer eigenen Meldung ab, statt ein Aufnahmeende vorzutäuschen. Bei Aufnahmefehlern bleibt der ursprüngliche Fehler erhalten; `recording-diagnostics.txt` im lokalen Auftragsordner sichert ihn zusammen mit dem Plugin-Protokoll. Ein CS2-Fehlerbericht wird ohne unbestätigte Schuldzuweisung an HLAE oder das Plugin gemeldet.
+
 ## Was der Companion kann
 
 ### Highlight-Videos aus CS2-Demos
@@ -25,7 +31,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - **Kill-Anzeige:** Neben dem TecMon-Logo erscheint bei jedem Kill „1K · KILL“ bis „ACE · ALL 5 ENEMIES“, mit Headshot-Hinweis.
 - **Deathcam:** Oben steht „DEATHCAM: Name“, vorher kommt ein kurzes Intro von vorn auf den Spieler, der stirbt.
 - **36 Filter:** je Szene ein Filter nur aufs Gameplay, auf Wunsch ein eigener für Intro, Spielerwechsel und Outro.
-- **Skin-Tausch für Videos (Zusatz-Addon):** zeigt in einer Szene andere Waffenskins, Messer und Handschuhe. Der Companion schreibt dafür eine Kopie der Demo um; die Original-Demo und dein Live-Spiel bleiben unberührt. Getauschte Waffen tragen das Namensschild „TecMon Skin“. Standardmäßig aus, Einschalten nur nach bestätigtem Hinweis.
+- **Skin-Tausch für Videos (Zusatz-Addon):** zeigt in einer Szene andere Waffenskins, Messer und Handschuhe. Der Companion schreibt dafür eine Kopie der Demo um; die Original-Demo und dein Live-Spiel bleiben unberührt. Getauschte Waffen tragen das Namensschild „www.TecMon.Online“. Standardmäßig aus, Einschalten nur nach bestätigtem Hinweis.
 
 Grenzen: höchstens 40 Szenen und 20 Minuten Spielzeit pro Auftrag. Steam und CS2 müssen installiert sein, und CS2 darf während der Aufnahme nicht schon laufen.
 
@@ -152,14 +158,19 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 
 Neueste Version zuerst.
 
-### Neu in 0.41.3: Companion-Seite im TecMon-Stil
+### Neu in 0.42.2: Companion-Seite im TecMon-Stil
 
 - Die lokale Seite unter `http://127.0.0.1:31977` sieht jetzt aus wie tecmon.online
   statt im türkisen Holo-Look: dunkler Sternenhimmel mit lila Glow, Karten und Knöpfe
   mit abgeschnittenen Ecken, lila Rahmen, Gold für die aktive Wahl und den Fokus,
   Reiter im erweiterten Modus als goldenes Parallelogramm. Funktionen bleiben gleich.
+- Oben auf der Seite steht jetzt die neue 3D-Figur statt des alten Fliegers.
 - Das Linksklick-Fenster der Figur bekommt denselben Sternenhimmel.
 - Die Stilregeln stehen in `docs/tecmon-style.md` (Repo `tecmon`) und in der `AGENTS.md`.
+
+### Neu in 0.42.0: Pro Looks und Intense Looks
+
+Sechs Pro Looks und acht zusätzliche kräftige **Intense Looks** für Szenen und Branding (insgesamt 50 Filter). Die bisherigen Looks bleiben erhalten. Echte Filter-Testbilder, Originalvergleich und Auswahl je Szene auf der Webseite; die 14 neuen Kennungen nur mit `video-filter-v2`.
 
 ### Neu in 0.41.2: Kein CS2-Absturz mehr mit getauschten Skins
 
@@ -399,7 +410,7 @@ arbeitet jetzt in einem eigenen Thread mit 256 MB Stack.
   schreibt der Companion eine Kopie der Demo um und nimmt daraus auf; die
   Original-Demo bleibt unverändert, nichts läuft im Spiel oder im Live-Match.
 - Standardmäßig aus, Einschalten nach bestätigtem Hinweis. Getauschte Waffen tragen
-  das Namensschild „TecMon Skin“, damit niemand den Skin für echten Besitz hält.
+  das Namensschild „www.TecMon.Online“, damit niemand den Skin für echten Besitz hält.
 - Den Tausch machte bis 0.40 ein externer Demo-Rewriter, den der Companion beim
   Einschalten geprüft nachlud. Seit 0.41.0 macht ihn der eigene TecMon-Demo-Rewriter.
 

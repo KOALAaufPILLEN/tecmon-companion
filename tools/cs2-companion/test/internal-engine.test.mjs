@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { validateJob, recordingConfig, jobCameras } from "../job.mjs";
 import {
+  tasklist,
   buildActions,
   jobSlots,
   installPlugin,
@@ -318,4 +319,11 @@ test("Demo-Download über Steam und Valve, lokal entpackt", async () => {
     /CS2 schließen/,
   );
   await rm(dir, { recursive: true, force: true });
+});
+
+
+test("Prozessabfrage unterscheidet geschlossenes CS2 von einem Windows-Fehler", async () => {
+  await assert.rejects(tasklist("cs2.exe", (_exe, _args, _opts, cb) => cb(new Error("tasklist failed"), "")), /Aufnahmestatus ist unbekannt/);
+  assert.equal(await tasklist("cs2.exe", (_exe, _args, _opts, cb) => cb(null, '"cs2.exe","1234"')), true);
+  assert.equal(await tasklist("cs2.exe", (_exe, _args, _opts, cb) => cb(null, "INFO: Keine Aufgaben")), false);
 });
