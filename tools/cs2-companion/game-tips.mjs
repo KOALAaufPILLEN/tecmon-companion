@@ -4,14 +4,15 @@
  * Grundsätze:
  * - Ausgewertet werden nur die eigenen Daten des Spielers, die CS2 ohnehin schickt.
  *   Zuschauer-, GOTV- und Demo-Daten anderer Spieler werden ignoriert.
- * - Kein Bomben-Countdown, keine Gegnerinfos, keine Eingaben an das Spiel. Die offizielle
+ * - Keine Gegnerinfos, keine Eingaben an das Spiel. Bomben-Timer nur aus phase_countdowns
+ *   (Nutzerentscheid 18.11.2026). Die offizielle
  *   Schaden-Vorschau der Bombe (player_state.health_c4_preview, seit CS2-Update 17.11.2026)
  *   gehört zum eigenen Spieler und wird genutzt.
  * - Tipps erscheinen nur in ruhigen Momenten: vor allem in der Kaufzeit zu Rundenbeginn,
  *   außerdem am Rundenende, nach dem eigenen Tod, in der Aufwärmphase, zur Halbzeit und
  *   am Matchende. Sobald die Runde läuft und du lebst, ist der Companion still. Einzige
- *   Ausnahme ist die Live-Anzeige der Bomben-Vorschau (Funktion „bombLive“): ein stehender
- *   Wert, der sich ändert, aber keine neuen Tipps auslöst.
+ *   Ausnahme sind die Live-Anzeigen (buyLive, bombLive, roundLive, ammoLive): stehende Werte
+ *   je Phase, die sich ändern, aber keine neuen Tipps auslösen.
  */
 
 import { SPRAY_PATTERNS } from "./spray-patterns.mjs";
@@ -27,11 +28,15 @@ export const FEATURES = [
   { id: "team", label: "Spielstand und Momentum (Serien, Timeout, Rundenenden)", categories: ["team"] },
   { id: "death", label: "Tipps nach deinem Tod", categories: ["death"] },
   { id: "bomb", label: "Bombe: Auswertung der Explosion nach der Runde (Schaden-Vorschau aus GSI)", categories: ["bomb"] },
+  /* Live-Anzeigen: stehende Werte je Phase, ändern sich in derselben Sprechblase, keine neuen Tipps. */
+  { id: "buyLive", label: "Live in der Kaufzeit: Geld, Ausrüstung, Rüstung/Kit und Restzeit", categories: ["buy-live"] },
   {
     id: "bombLive",
-    label: "Bombe: Live-Anzeige nach dem Plant, wie viele HP dir die Explosion an deiner Stelle lässt",
+    label: "Live nach dem Plant: Bomben-Timer, Defuse-Check und HP nach der Explosion an deiner Stelle",
     categories: ["bomb-live"],
   },
+  { id: "roundLive", label: "Live: Kills, Kopfschüsse und Schaden kurz nach einem Kill, Rundenbilanz am Rundenende", categories: ["round-live"] },
+  { id: "ammoLive", label: "Live: Hinweis bei fast leerem Magazin", categories: ["ammo-live"] },
   { id: "habits", label: "Gewohnheiten (Nachladen, Flashes, Feuer, Schaden)", categories: ["habit"] },
   { id: "mindset", label: "Kopf und Lob (Tilt, Pausen, starke Runden)", categories: ["mindset", "praise"] },
   { id: "summary", label: "Aufwärmen, Halbzeit- und Match-Bilanz", categories: ["summary", "warmup"] },
@@ -801,29 +806,119 @@ export function createGameTips({
       );
   }
 
+  /** Sekunden aus phase_countdowns, wenn die Phase passt; sonst null. */
+  function secondsLeft(countdown, ...phases) {
+    if (!countdown || !phases.includes(countdown.phase)) return null;
+    const left = Number(countdown.phase_ends_in);
+    return Number.isFinite(left) && left >= 0 ? Math.ceil(left) : null;
+  }
+
   /**
-   * Offizielle Schaden-Vorschau der Bombe (player_state.health_c4_preview): HP, die dir
-   * die Explosion an deiner jetzigen Stelle lässt. Nur eigene Daten, kein Timer.
+   * Live-Anzeige je Phase (stehende Sprechblase, kein Tipp). Nichts davon ist dauerhaft:
+   * Kaufzeit nur in der Kaufzeit, Bombe nur nach dem Plant, Kill-Zähler nur wenige Sekunden
+   * nach einem Kill, Magazin nur wenn fast leer, Rundenbilanz nur am Rundenende.
+   * Billig gerechnet: nur Werte aus dem aktuellen GSI-Paket, ganze Sekunden.
    */
-  function bombPreview(own, round) {
-    const raw = own.state?.health_c4_preview;
-    if (raw === undefined || raw === null || raw === "" || !allowed("bomb-live")) return null;
-    const health = number(own.state?.health);
-    const left = Math.max(0, Math.min(health, Math.round(Number(raw))));
-    if (!Number.isFinite(left) || health <= 0) return null;
-    const lethal = left === 0;
-    if (lethal) match.c4LethalRound = round;
-    return {
-      kind: "c4",
-      round,
-      lethal,
-      health,
-      preview: left,
-      heading: lethal ? "Bombe · tödlich" : "Bombe · Vorschau",
-      text: lethal
-        ? `Hier würde dich die Explosion töten (${health} HP → 0).`
-        : `Nach der Explosion hättest du hier noch ${left} von ${health} HP.`,
-    };
+  function liveView({ own, roundPhase, mapPhase, bomb, countdown, round, dead }) {
+    if (!match || !own || mapPhase !== "live") return null;
+    const state = own.state || {};
+    const health = number(state.health);
+    const time = now();
+    if (roundPhase === "freezetime" && health > 0 && allowed("buy-live")) {
+      const left = secondsLeft(countdown, "freezetime");
+      if (left === 0) return null;
+      const armor = number(state.armor) > 0 ? (state.helmet ? "Rüstung mit Helm" : "Rüstung ohne Helm") : "keine Rüstung";
+      const kit = own.team === "CT" ? (state.defusekit ? " · Kit dabei" : " · kein Kit") : "";
+      return {
+        kind: "buy",
+        round,
+        heading: left !== null ? `Kaufzeit · noch ${left} s` : "Kaufzeit",
+        text: `Geld ${dollars(state.money)} · Ausrüstung ${dollars(state.equip_value)}\n${armor}${kit}`,
+      };
+    }
+    if (roundPhase === "live" && !dead) {
+      if (bomb === "planted" && allowed("bomb-live")) {
+        const view = bombView(own, countdown, round);
+        if (view) return view;
+      }
+      if (allowed("round-live") && match.killFlashUntil > time) {
+        return { kind: "kills", round, heading: "Diese Runde", text: roundLine(state) };
+      }
+      if (allowed("ammo-live")) {
+        const weapon = activeWeapon(own);
+        const clip = number(weapon?.ammo_clip);
+        const max = number(weapon?.ammo_clip_max);
+        if (weapon && weapon.state !== "reloading" && max >= 5 && clip > 0 && clip <= Math.max(2, Math.floor(max * 0.2)))
+          return {
+            kind: "ammo",
+            round,
+            heading: "Magazin fast leer",
+            text: `${clip} von ${max} Schuss. Nachladen, sobald du sicher stehst.`,
+          };
+      }
+      return null;
+    }
+    /* map.round kann am Rundenende schon weitergezählt sein: die Werte der gerade gespielten Runde nehmen. */
+    if (roundPhase === "over" && allowed("round-live") && match.roundStats?.last && time - match.roundStats.at < 20000) {
+      const stats = match.roundStats;
+      const extra = [
+        stats.flashes ? `${stats.flashes}× voll geblendet` : "",
+        stats.burnMs >= 1000 ? `${Math.round(stats.burnMs / 1000)} s im Feuer` : "",
+        stats.smokedMs >= 1000 ? `${Math.round(stats.smokedMs / 1000)} s in Smoke` : "",
+      ].filter(Boolean);
+      return {
+        kind: "round",
+        round,
+        heading: "Rundenbilanz",
+        text: roundLine(stats.last || state) + (extra.length ? `\n${extra.join(" · ")}` : ""),
+      };
+    }
+    return null;
+  }
+
+  function roundLine(state) {
+    const kills = number(state.round_kills);
+    const hs = number(state.round_killhs);
+    const damage = number(state.round_totaldmg);
+    return `${kills} ${kills === 1 ? "Kill" : "Kills"} · ${hs} Kopfschuss${hs === 1 ? "" : "e"} · ${damage} Schaden`;
+  }
+
+  /**
+   * Bombe nach dem Plant: Restzeit aus phase_countdowns („bomb“/„defuse“), Defuse-Check für CT
+   * (5 s mit Kit, 10 s ohne) und die offizielle Schaden-Vorschau player_state.health_c4_preview
+   * (HP, die dir die Explosion an deiner jetzigen Stelle lässt). Nur eigene Daten.
+   */
+  function bombView(own, countdown, round) {
+    const state = own.state || {};
+    const health = number(state.health);
+    const lines = [];
+    let lethal = false;
+    const raw = state.health_c4_preview;
+    if (raw !== undefined && raw !== null && raw !== "" && Number.isFinite(Number(raw))) {
+      const left = Math.max(0, Math.min(health, Math.round(Number(raw))));
+      lethal = left === 0;
+      if (lethal) match.c4LethalRound = round;
+      lines.push(lethal ? `Hier würde dich die Explosion töten (${health} HP → 0).` : `Nach der Explosion hättest du hier noch ${left} von ${health} HP.`);
+    }
+    const bombLeft = secondsLeft(countdown, "bomb", "defuse");
+    if (own.team === "CT" && bombLeft !== null && countdown.phase === "bomb") {
+      const need = state.defusekit ? 5 : 10;
+      lines.push(
+        bombLeft > need
+          ? `Defuse ${state.defusekit ? "mit Kit (5 s)" : "ohne Kit (10 s)"} reicht noch.`
+          : state.defusekit
+            ? "Für den Defuse ist es zu spät. Waffe retten."
+            : "Ohne Kit zu spät für den Defuse (10 s).",
+      );
+    }
+    if (!lines.length && bombLeft === null) return null;
+    const heading =
+      bombLeft === null
+        ? lethal ? "Bombe · tödlich" : "Bombe · Vorschau"
+        : countdown.phase === "defuse"
+          ? `Entschärfen · noch ${bombLeft} s`
+          : `Bombe · noch ${bombLeft} s`;
+    return { kind: "c4", round, lethal, heading, text: lines.join("\n") || "Bombe liegt." };
   }
 
   function onBombDeath(previous, round) {
@@ -842,6 +937,20 @@ export function createGameTips({
   function trackOwn(own, previous, phase, round) {
     const state = own.state || {};
     const health = number(state.health);
+    /* Werte je Runde für die Live-Anzeigen (Kill-Zähler, Rundenbilanz). */
+    const time = now();
+    if (!match.roundStats || (match.roundStats.round !== round && phase !== "over"))
+      match.roundStats = { round, flashes: 0, burnMs: 0, smokedMs: 0, at: time, last: null };
+    const stats = match.roundStats;
+    const step = Math.min(2500, Math.max(0, time - stats.at));
+    stats.at = time;
+    if (phase === "live" && health > 0) {
+      if (number(state.burning) > 0) stats.burnMs += step;
+      if (number(state.smoked) > 0) stats.smokedMs += step;
+      if (number(state.flashed) >= 200 && number(previous?.state?.flashed) < 200) stats.flashes++;
+      if (number(state.round_kills) > number(stats.last?.round_kills)) match.killFlashUntil = time + 5000;
+      stats.last = { round_kills: state.round_kills, round_killhs: state.round_killhs, round_totaldmg: state.round_totaldmg };
+    }
     if (health > 0 && health <= 30) {
       if (!match.lowHpSince) match.lowHpSince = now();
     } else match.lowHpSince = 0;
@@ -1083,8 +1192,11 @@ export function createGameTips({
         }
       }
       /* Runde läuft: alles, was nicht zum eigenen Tod gehört, verfällt. */
-      if (roundPhase === "live" && last?.roundPhase !== "live")
+      if (roundPhase === "live" && last?.roundPhase !== "live") {
         queue = queue.filter((entry) => entry.category === "summary" || entry.category === "death");
+        /* Ein Kaufzeit-Tipp, den die Figur wegen Verzögerung noch nicht gezeigt hat, verfällt jetzt. */
+        if (current && current.category !== "summary" && current.category !== "death") current.expired = true;
+      }
     }
     if (roundPhase === "over" && last?.roundPhase === "live") roundOver(round);
     if (mapPhase === "intermission" && last?.mapPhase !== "intermission" && half)
@@ -1111,7 +1223,7 @@ export function createGameTips({
       (roundPhase === "live" && dead);
     flush(windowOpen, roundPhase === "freezetime" && mapPhase === "live");
     quiet = mapPhase === "live" && roundPhase === "live" && !dead;
-    live = quiet && bomb === "planted" && own ? bombPreview(own, round) : null;
+    live = liveView({ own, roundPhase, mapPhase, bomb, countdown: payload.phase_countdowns, round, dead });
     last = { round, roundPhase, mapPhase };
   }
 
@@ -1127,7 +1239,7 @@ export function createGameTips({
       /* Runde läuft und du lebst: Sprechblase ausblenden. */
       quiet: quiet && !!lastSeen && time - lastSeen < 20000,
       live: live && !!lastSeen && time - lastSeen < 20000 ? { ...live } : null,
-      tip: current ? { ...current, age: time - current.at } : null,
+      tip: current && !current.expired ? { ...current, age: time - current.at } : null,
       history: history.map((entry) => ({ ...entry, age: time - entry.at })),
     };
   }

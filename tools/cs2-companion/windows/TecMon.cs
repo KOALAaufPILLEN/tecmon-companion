@@ -802,7 +802,9 @@ class TipBubble : Form {
   Rectangle Frame(){return new Rectangle(Edge+(tailLeft?Tail:0),Edge,ClientSize.Width-2*Edge-Tail,ClientSize.Height-2*Edge);}
   int ContentLeft(){return Frame().Left+Pad;}
   int ContentWidth(){return Frame().Width-2*Pad;}
-  static Color Dot(string title){switch(title){case "Stark":case "Zusammenfassung":case "Aufwärmen":return Color.FromArgb(74,222,128);case "Nach dem Tod":case "Kopf frei":return Color.FromArgb(251,113,133);case "Deine Matches":case "Map":case "Team":return Color.FromArgb(167,139,250);default:return TecMon.Gold;}}
+  /* Live-Anzeigen: schmalere Blase, Farbe nach Lage (Bombe rot, Magazin orange, Rundenwerte grün). */
+  public bool Compact;
+  static Color Dot(string title){if(title.StartsWith("Bombe")||title.StartsWith("Entschärfen"))return Color.FromArgb(251,113,133);if(title.StartsWith("Magazin"))return Orange;if(title=="Diese Runde"||title=="Rundenbilanz")return Green;switch(title){case "Stark":case "Zusammenfassung":case "Aufwärmen":return Color.FromArgb(74,222,128);case "Nach dem Tod":case "Kopf frei":return Color.FromArgb(251,113,133);case "Deine Matches":case "Map":case "Team":return Color.FromArgb(167,139,250);default:return TecMon.Gold;}}
   public void Present(string heading,string text,Rectangle anchor,Dictionary<string,object> picture,long round,bool stack){Present(heading,text,anchor,picture,round,stack,false);}
   /* sticky: bleibt stehen, bis die nächste Meldung kommt oder jemand klickt (Fortschritt beim Video). */
   public void Present(string heading,string text,Rectangle anchor,Dictionary<string,object> picture,long round,bool stack,bool sticky){
@@ -813,7 +815,7 @@ class TipBubble : Form {
     if(kind=="map"&&!LoadRadar(Convert.ToString(picture["image"])))kind="";
     if(kind=="map"||kind=="spray")visual=picture;
     kind=Kind(visual);
-    int inner=visual!=null?Visual:entries.Count>1?430:360;
+    int inner=visual!=null?Visual:entries.Count>1?430:Compact?300:360;
     int width=inner+2*Pad+2*Edge+Tail;
     heights.Clear();int body=0,letters=0;
     using(var g=CreateGraphics())for(int i=entries.Count-1;i>=0;i--){bool newest=i==entries.Count-1;var size=g.MeasureString(entries[i][1],newest?bodyFont:olderFont,inner);int h=(int)Math.Ceiling(size.Height);heights.Add(h);body+=newest?h+16:h+42;letters+=entries[i][1].Length;}
@@ -1029,7 +1031,7 @@ class DesktopPet : Form {
     /* Erst zum Nutzer umdrehen, dann sprechen. */
     /* Vorn angekommen: kurz staunen, dann sprechen. */
     bool facing=Math.Abs(Turn(0))<4;if(pendingTip==null||!facing)frontSince=-1;else if(frontSince<0)frontSince=now;
-    if(pendingTip!=null&&(model==null||!animate||(frontSince>=0&&now-frontSince>0.45)||now-pendingSince>2.5)){var show=pendingTip;pendingTip=null;frontSince=-1;show();}
+    if(pendingTip!=null&&(model==null||!animate||(frontSince>=0&&now-frontSince>0.45)||now-pendingSince>1.2)){var show=pendingTip;pendingTip=null;frontSince=-1;show();}
     if(hover||dragging||(panel!=null&&panel.Visible)||MenuOpen()||Talking(now)||pendingTip!=null||watching)activeAt=now;
     /* Ab und zu ein anderer Ausdruck, wenn TecMon gerade nichts zu tun hat. */
     if(now>moodAt){moodAt=now+9+random.NextDouble()*9;if(facing&&!Talking(now)&&now>happyUntil&&pendingTip==null&&!watching&&now-activeAt<SleepAfter){mood=Moods[random.Next(Moods.Length)];moodUntil=now+1.7;}}
@@ -1087,7 +1089,7 @@ class DesktopPet : Form {
   /* Vorschau ohne Fenster: Drehwinkel in Grad, Ausdruck als Bildnummer (-1 = automatisch). */
   public Bitmap Preview(double degrees,int face){activeAt=clock.Elapsed.TotalSeconds;yaw=face>=0?0:degrees;forced=face;var bitmap=Frame3D();forced=-1;return bitmap;}
   public bool HasModel{get{return model!=null;}}
-  bool wasBusy,updateChecked,tipsEnabled;ToolStripMenuItem statusItem,updateItem,tipsItem,tipsOn;string featureSignature="",liveKey="";string offeredUpdate="";TipBubble tip;long lastTip=-1;
+  bool wasBusy,updateChecked,tipsEnabled;ToolStripMenuItem statusItem,updateItem,tipsItem,tipsOn;string featureSignature="",liveKey="";bool liveShowing;double tipShownAt=-100;string offeredUpdate="";TipBubble tip;long lastTip=-1;
   static string TipTitle(string category){switch(category){case "economy":return "Wirtschaft";case "buy":return "Kauf-Check";case "death":return "Nach dem Tod";case "bomb":return "Bombe";case "habit":return "Gewohnheit";case "mindset":return "Kopf frei";case "summary":return "Zusammenfassung";case "weapon":return "Waffe";case "map":return "Map";case "warmup":return "Aufwärmen";case "praise":return "Stark";case "history":return "Deine Matches";case "team":return "Team";case "farm":return "Farm";case "buyback":return "Buyback";case "actives":return "Items";case "gold":return "Gold";default:return "Rundentipp";}}
   /* Neue Tipps aus der CS2 Game State Integration neben der Figur zeigen, nie während einer Demo-Aufnahme. */
   /* Sprechblase mit dem aktuellen Schritt beim Video (Download, Aufnahme, Branding, fertig). Bleibt stehen, bis der nächste Schritt kommt; Klick blendet sie aus. */
@@ -1102,7 +1104,7 @@ class DesktopPet : Form {
     string heading=status=="error"?"Video":status=="done"?"Video fertig":steps>1&&step>0?"Video · Schritt "+step+" von "+steps:"Video";
     string text=Convert.ToString(work["text"])??"";
     if(tip==null||tip.IsDisposed)tip=new TipBubble();var area=Screen.PrimaryScreen.WorkingArea;
-    tip.Present(heading,text,Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),null,-1,false,!finished);
+    tip.Compact=false;liveShowing=false;liveKey="";tip.Present(heading,text,Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),null,-1,false,!finished);
     if(finished){double now=clock.Elapsed.TotalSeconds;happyUntil=now+4;afterTalk=status=="done"?Star:Sad;}
   }
   void ShowTip(Dictionary<string,object> state){
@@ -1112,23 +1114,39 @@ class DesktopPet : Form {
     /* Dota-2-Tipps: eigener Schalter im Companion; die Figur zeigt sie, wenn Dota zuletzt Daten geschickt hat. */
     if(gsi.ContainsKey("dotaActive")&&Convert.ToBoolean(gsi["dotaActive"]))tipsEnabled=true;
     watching=tipsEnabled&&gsi.ContainsKey("quiet")&&Convert.ToBoolean(gsi["quiet"]);
-    /* Live-Anzeige (Bomben-Vorschau): dieselbe stehende Sprechblase, nur der Wert ändert sich, kein neuer Tipp. */
+    if(watching)pendingTip=null;
     object liveRaw;var live=gsi.TryGetValue("live",out liveRaw)?liveRaw as Dictionary<string,object>:null;
+    /* Neue Tipps haben Vorrang. Ein Tipp, der erst nach Rundenstart ankommt (quiet), verfällt statt verspätet zu erscheinen. */
+    object tipRaw;var current=gsi.TryGetValue("tip",out tipRaw)?tipRaw as Dictionary<string,object>:null;
+    if(current!=null){
+      long id=Convert.ToInt64(current["id"]);
+      if(id!=lastTip){
+        lastTip=id;
+        if(!busy&&tipsEnabled&&!watching&&Convert.ToInt64(current["age"])<=20000){ShowRealTip(gsi,current);return;}
+      }
+    }
+    /* Live-Anzeigen je Phase: dieselbe stehende Sprechblase, nur der Wert ändert sich, keine neue Blase. Sie wartet, bis ein Tipp gelesen ist (8 s). */
     if(live!=null&&tipsEnabled&&!busy){
-      string liveHeading=Convert.ToString(live["heading"])??"Bombe",liveText=Convert.ToString(live["text"])??"",liveId=liveHeading+"|"+liveText;pendingTip=null;
-      if(liveId!=liveKey||tip==null||tip.IsDisposed||!tip.Visible){liveKey=liveId;if(tip==null||tip.IsDisposed)tip=new TipBubble();var liveArea=Screen.PrimaryScreen.WorkingArea;tip.Present(liveHeading,liveText,Visible?Bounds:new Rectangle(liveArea.Right-180,liveArea.Bottom-205,144,164),null,-2,false,true);}
+      bool free=tip==null||tip.IsDisposed||!tip.Visible||liveShowing||clock.Elapsed.TotalSeconds-tipShownAt>8;
+      if(free&&pendingTip==null){
+        string liveHeading=Convert.ToString(live["heading"])??"TecMon",liveText=Convert.ToString(live["text"])??"",liveId=liveHeading+"|"+liveText;
+        if(liveId!=liveKey||!liveShowing||tip==null||tip.IsDisposed||!tip.Visible){
+          liveKey=liveId;liveShowing=true;if(tip==null||tip.IsDisposed)tip=new TipBubble();tip.Compact=true;var liveArea=Screen.PrimaryScreen.WorkingArea;
+          tip.Present(liveHeading,liveText,Visible?Bounds:new Rectangle(liveArea.Right-180,liveArea.Bottom-205,144,164),null,-2,false,true);
+        }
+      }
       return;
     }
-    if(liveKey!=""){liveKey="";if(tip!=null&&!tip.IsDisposed)tip.Quiet();}
+    if(liveShowing){liveShowing=false;liveKey="";if(tip!=null&&!tip.IsDisposed)tip.Quiet();}
     if(watching){pendingTip=null;if(tip!=null&&!tip.IsDisposed)tip.Quiet();}
-    object tipRaw;var current=gsi.TryGetValue("tip",out tipRaw)?tipRaw as Dictionary<string,object>:null;if(current==null)return;
-    long id=Convert.ToInt64(current["id"]);if(id==lastTip)return;lastTip=id;
-    if(busy||!tipsEnabled||Convert.ToInt64(current["age"])>20000)return;
+  }
+  void ShowRealTip(Dictionary<string,object> gsi,Dictionary<string,object> current){
     object picture;current.TryGetValue("visual",out picture);
     long round=current.ContainsKey("round")?Convert.ToInt64(current["round"]):-1;
     string category=current.ContainsKey("category")?Convert.ToString(current["category"]):"";int after=category=="death"?Sad:category=="praise"?Star:category=="mindset"?Love:Happy;string title=TipTitle(category),text=Convert.ToString(current["text"])??"";var visualData=picture as Dictionary<string,object>;bool stack=FeatureOn(gsi,"stack");
     Action show=()=>{
       if(tip==null||tip.IsDisposed)tip=new TipBubble();var area=Screen.PrimaryScreen.WorkingArea;
+      liveShowing=false;liveKey="";tipShownAt=clock.Elapsed.TotalSeconds;tip.Compact=false;
       tip.Present(title,text,Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),visualData,round,stack);
       /* Mund bewegt sich ungefähr so lange, wie man zum Lesen braucht (höchstens 6 s), danach kurz ein Lächeln. */
       double now=clock.Elapsed.TotalSeconds;talkUntil=now+Math.Min(6,1.2+text.Length*0.045);happyUntil=talkUntil+1.1;afterTalk=after;
@@ -1264,7 +1282,7 @@ class DesktopPet : Form {
     if(ev.ContainsKey("spin")&&Convert.ToBoolean(ev["spin"]))spinLeft=360;
     activeAt=clock.Elapsed.TotalSeconds;mood=-1;
     /* Ist das Fenster offen, steht der Spruch dort; die Figur spricht dann nur mit Gesicht und Mund. */
-    if(panel==null||panel.IsDisposed||!panel.Visible){if(tip==null||tip.IsDisposed)tip=new TipBubble();var area=Screen.PrimaryScreen.WorkingArea;tip.Present(label,text,Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),null,-1,false);}
+    if(panel==null||panel.IsDisposed||!panel.Visible){if(tip==null||tip.IsDisposed)tip=new TipBubble();var area=Screen.PrimaryScreen.WorkingArea;tip.Compact=false;liveShowing=false;liveKey="";tip.Present(label,text,Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),null,-1,false);}
     double now=clock.Elapsed.TotalSeconds;talkUntil=now+Math.Min(4,1+text.Length*0.04);happyUntil=talkUntil+1.6;
   }
   /* Nicht gelieferte Funktionen gelten als an, wie im Companion. */

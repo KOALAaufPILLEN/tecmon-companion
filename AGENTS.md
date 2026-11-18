@@ -20,8 +20,10 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   `allplayers_*`, `bomb`, `grenades`, `player_position` und alles, was
   Gegnerinformationen liefert. Der Test in `test/game-tips.test.mjs` prüft das
   und darf nicht gelockert werden.
-- **Kein Bomben-Timer.** Von `phase_countdowns` wird nur der
-  Kaufzeit-Countdown ausgewertet.
+- **Bomben-Timer nur aus offizieller GSI** (Nutzerentscheid vom 18.11.2026, ersetzt das
+  frühere Verbot): `phase_countdowns` liefert Kaufzeit, Bombe (`bomb`) und Entschärfen
+  (`defuse`); die Live-Anzeige `bombLive` zeigt daraus Restzeit und einen Defuse-Check des
+  eigenen Kits. Keine zusätzlichen GSI-Blöcke, keine Gegnerdaten.
 - **Offizielle GSI-Werte des eigenen Spielers nutzen** (Nutzerentscheid vom 18.11.2026):
   Was CS2 in den erlaubten Blöcken über den eigenen Spieler schickt, darf eingebaut
   werden, auch wenn es die Bombe betrifft, etwa `player_state.health_c4_preview`
@@ -41,12 +43,20 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   solange der Spieler lebt (`quiet`). Neue Tipps dürfen das nicht unterlaufen.
 - Erlaubte Zeitpunkte sonst: nach dem eigenen Tod, zur Halbzeit, am
   Matchende.
-- **Live-Anzeigen** (`state().live`, zurzeit nur die Bomben-Vorschau `bombLive`): ein
-  stehender Wert in derselben Sprechblase, der sich mit den GSI-Daten ändert (CS2 schickt
-  sie spätestens alle 2 Sekunden, `heartbeat` 2.0). Live-Anzeigen lösen nie einen neuen
-  Tipp aus, gehen nicht in die Warteschlange und zählen nicht zum `BRIEFING_LIMIT`.
-  `TecMon.cs` (`ShowTip`, `liveKey`) zeichnet die Blase nur neu, wenn sich der Text ändert.
-  Neue Live-Werte brauchen eine eigene Funktion in `FEATURES`.
+- **Live-Anzeigen** (`state().live` aus `liveView()`): stehende Werte in derselben
+  Sprechblase, die sich mit den GSI-Daten ändern (CS2 schickt sie spätestens alle 2 Sekunden,
+  `heartbeat` 2.0). Nie dauerhaft, immer an eine Phase gebunden:
+  `buyLive` nur in der Kaufzeit (Geld, Ausrüstung, Rüstung/Kit, Restzeit), `bombLive` nur
+  nach dem Plant (Timer, Defuse-Check, `health_c4_preview`), `roundLive` 5 s nach einem
+  eigenen Kill und am Rundenende (Bilanz mit Flashes, Feuer, Smoke), `ammoLive` nur bei fast
+  leerem Magazin. Live-Anzeigen lösen nie einen neuen Tipp aus, gehen nicht in die
+  Warteschlange und zählen nicht zum `BRIEFING_LIMIT`. Neue Live-Werte brauchen eine eigene
+  Funktion in `FEATURES` und eine feste Phase.
+- In `TecMon.cs` (`ShowTip`, `ShowRealTip`, `liveKey`, `liveShowing`) haben echte Tipps
+  Vorrang; eine Live-Anzeige wartet, bis der Tipp 8 s stand, und wird nur neu gezeichnet,
+  wenn sich ihr Text ändert (schmale Blase, `Compact`). Kommt ein Tipp erst an, wenn die
+  Runde schon läuft (`quiet`), verfällt er; beim Rundenstart markiert der Server einen
+  offenen Kaufzeit-Tipp als `expired`. So erscheinen keine Kauftipps verspätet.
 
 ### Funktionen und Optionen
 
