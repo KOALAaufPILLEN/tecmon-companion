@@ -6,7 +6,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
-**Stand dieser Übersicht:** Version 0.43.1, 18. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+**Stand dieser Übersicht:** Version 0.44.0, 18. November 2026. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
 
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
@@ -16,6 +16,20 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [TecMon-Stil](#tecmon-stil)
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
+
+## Neu in 0.44.0
+
+- **Flüssige 3D-Figur:** TecMon auf dem Desktop wird jetzt live aus dem 3D-Modell (GLB) gezeichnet
+  und dreht sich stufenlos statt in 5°-Schritten; Gesichter und Ausdrücke bleiben gleich.
+  Unter **Figur & Start** wählst du die Darstellung: **3D-Modell · High process** (Standard)
+  oder **Bilder · Low process** (die bisherigen Bilder, am sparsamsten).
+- **Einstellungen bleiben gespeichert:** Umherfliegen, Animation, Im Vordergrund und die
+  Darstellung gelten nach einem Neustart und nach Updates weiter (`desktop.json`).
+- **Mit Windows starten:** schaltbar im Fenster, im Schnellmenü und unter „Figur“ im
+  vollständigen Menü. Trägt nur den Companion in deinen Benutzer-Autostart ein.
+- **Linksklick-Fenster kompakter:** statt fünf Reitern eine sortierte Liste zugeklappter
+  Kategorien (Status & Videos, Figur & Start, CS2, Dota 2, Clips, TecMon, Spiel-Pakete).
+  Immer nur eine ist offen, rechts im Kopf steht ein kurzer Stand wie „Verbunden“ oder „Puffer aus“.
 
 ## Neu in 0.43.1
 
@@ -110,9 +124,10 @@ Installierbares Paket mit Dota-2-Tipps über die offizielle Game State Integrati
 
 ### Die TecMon-Figur
 
-- **Desktopfigur:** TecMon schwebt als 3D-Figur über dem Desktop, mit Augen, die je Stimmung Farbe und Ausdruck wechseln. Tipps erscheinen in einer goldenen Holo-Sprechblase, die CS2 nie den Fokus nimmt.
+- **Desktopfigur:** TecMon schwebt als 3D-Figur über dem Desktop, mit Augen, die je Stimmung Farbe und Ausdruck wechseln. Standard ist das echte 3D-Modell, das sich flüssig dreht (High process); sparsamer sind die vorab gerenderten Bilder (Low process). Tipps erscheinen in einer goldenen Holo-Sprechblase, die CS2 nie den Fokus nimmt.
 - **Rechtsklick: Schnellmenü** mit Kacheln (Einstellungen, Highlights, Clip speichern, Letzte Videos, Minispiele, TecMon.online), Schaltern für Highlight-Video nach dem Match, Rundentipps, Clip-Puffer und Figur sowie der Persönlichkeit. „Alle Optionen …“ öffnet das vollständige Menü.
-- **Linksklick: Fenster mit Reitern** Start, Spiele, Clips, TecMon und Pakete.
+- **Linksklick: Fenster mit zugeklappten Kategorien** Status & Videos, Figur & Start, CS2, Dota 2, Clips, TecMon und Spiel-Pakete; immer nur eine offen.
+- **Figur & Start:** Darstellung (High/Low process), Umherfliegen, Animation, Im Vordergrund und „Mit Windows starten“. Alles bleibt über Neustarts gespeichert.
 - **Persönlichkeit:** Super nett, Normal, Nerdy oder **HUAN-Modus (ab 18)** mit derbem Trashtalk über dein eigenes Spiel, nie über Personen. HUAN muss vor dem Einschalten bestätigt werden. Der Modus ändert nur den Ton der Tipps, nicht Inhalt oder Zeitpunkt.
 - **Mit TecMon spielen:** Level, Laune, Energie und Freundschaft (lokal in `pet.json`), dazu Reaktionstest, Schere-Stein-Papier, Ziele treffen, Muster merken und Zahl raten.
 
@@ -195,6 +210,7 @@ Companion-Seite, Linksklick-Fenster, Schnellmenü und Sprechblase folgen denselb
 - **Aktive Wahl ist Gold:** gewählter Reiter als goldenes Parallelogramm, eingeschaltete Optionen und installierte Pakete mit goldener Kante. Nicht gewählte Optionen bleiben Lila oder neutral.
 - **Hintergrund:** Sternenhimmel als allgemeiner Hintergrund (feine, versetzt funkelnde Sterne mit lila Glow), bei ausgeschalteter Animation stehend. Bestehende Fenster bekommen ihn bei der nächsten Überarbeitung.
 - **Formen:** Statuspunkte als Raute, Reiter als Parallelogramm, keine Kreise und Pillen in neuen Bereichen.
+- **Kategorien statt Reiter in kleinen Fenstern:** zugeklappte Abschnitte mit abgeschnittenen Ecken, Name in Gold und Versalien, kurzer Stand rechts, Raute als Pfeil (lila zu, gold offen); offene Kategorie mit goldener Kante, immer nur eine offen.
 - **Bewegung:** Übergänge nur mit benannten Eigenschaften und den `--tm-dur-*`-Zeiten, nie `transition: all`. Drücken mit `scale(0.96)`, nie unter 0,95. Hover nur bei Maus (`@media (hover: hover) and (pointer: fine)`); breite Karten ändern nur die Farbe.
 - **Bedienung:** Trefferflächen mindestens 40 px, Esc schließt Rückfragen, keine Windows-Standarddialoge während des Spiels, die Sprechblase nimmt CS2 nie den Fokus.
 - **Marke:** vorhandenes TecMon-Logo und die TecMon-Figur, keine fremden Icons oder Marken-Overlays.
@@ -217,6 +233,21 @@ Drittanbieter behalten ihre eigenen Lizenzen, einschließlich MIT, GPL und AGPL.
 ## Versionsverlauf
 
 Neueste Version zuerst.
+
+### Neu in 0.44.0: Flüssige 3D-Figur, gespeicherte Einstellungen, Autostart
+
+- Die Desktopfigur wird live aus dem 3D-Modell gezeichnet (eigener kleiner Software-Renderer
+  in `TecMon.cs`, kein 3D-Framework, keine GPU-Treiber nötig). Das Modell entsteht aus
+  `base.glb` mit `scripts/figure-3d/model.py`: Visier geglättet, auf etwa 28.000 Dreiecke
+  vereinfacht, Texturen und LED-Gesichter in `windows/desktop-bot-model.zip` (Ressource `TecMonModel`).
+  Neu gezeichnet wird nur, wenn sich Winkel oder Gesicht ändern; Schweben und Neigen laufen wie bisher.
+- „Bilder · Low process“ nutzt die bisherigen 72 Drehbilder. Fehlt das Modell oder lädt es nicht,
+  bleibt die Figur automatisch bei den Bildern.
+- Figur-Einstellungen liegen in `desktop.json` (`GET /api/state` → `desktop`,
+  `POST /api/desktop/settings`) und gelten nach Neustart und Update weiter.
+- „Mit Windows starten“ setzt nur den Eintrag `TecMon Companion` unter
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; Deinstallieren entfernt ihn.
+- Linksklick-Fenster: Kategorien statt Reiter, Stand im Kopf, eine Kategorie offen.
 
 ### Neu in 0.43.0: CS2-Update mit Cobblestone und Live-Anzeigen
 

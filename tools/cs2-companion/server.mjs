@@ -39,6 +39,7 @@ import { verifyCs2 } from "./cs2-verify.mjs";
 import { createDemoFetch, DEMO_FETCH_CAPABILITY } from "./demo-fetch.mjs";
 import { readInstallation, runTool } from "./managed-installation.mjs";
 import { copyRadars, radarFile } from "./radars.mjs";
+import { createDesktopSettings } from "./desktop-settings.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const local = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
@@ -258,6 +259,7 @@ export async function createCompanion({
   }
   const crosshair = await createCrosshairSettings(installation?.profileDir || dataDir);
   const overlay = await createOverlaySettings(installation?.profileDir || dataDir);
+  const desktop = await createDesktopSettings(installation?.profileDir || dataDir);
   const cfgs = await createCfgLibrary(installation?.profileDir || dataDir);
   const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES, overlay: { ...overlay.get(), mode: windowMode, notice: OVERLAY_NOTICE, noticeVersion: OVERLAY_NOTICE_VERSION } });
   /* CS2-Anzeigemodus aus cs2_video.txt, höchstens alle 10 Sekunden gelesen und nur bei eingeschaltetem Overlay. */
@@ -930,6 +932,7 @@ export async function createCompanion({
           games: games.state(),
           clips: clips.state(),
           overlay: overlayState(),
+          desktop: desktop.get(),
           downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
@@ -1060,6 +1063,7 @@ export async function createCompanion({
           gsi: gsiState(),
         });
       }
+      if (url.pathname === "/api/desktop/settings") return json(res, 200, { desktop: await desktop.set(input) });
       if (url.pathname === "/api/pet/mode") return json(res, 200, { pet: await pet.setMode(String(input.mode || "")) });
       if (url.pathname === "/api/pet/interact") return json(res, 200, { pet: await pet.interact(String(input.action || "")) });
       if (url.pathname === "/api/pet/game") return json(res, 200, { pet: await pet.game(String(input.game || ""), { win: input.win === true, score: input.score }) });

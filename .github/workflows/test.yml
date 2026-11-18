@@ -39,10 +39,17 @@ jobs:
           $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
           $output=Join-Path $env:RUNNER_TEMP 'TecMon Companion.exe'
           $native=(Resolve-Path -LiteralPath 'tools/cs2-companion/windows/TecMon.cs').Path
-          & $compiler /nologo /target:winexe /platform:x64 /optimize+ /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /r:Microsoft.CSharp.dll "/out:$output" ("/win32icon:"+(Resolve-Path -LiteralPath 'tools/cs2-companion/windows/tecmon.ico').Path) $native
+          & $compiler /nologo /target:winexe /platform:x64 /optimize+ /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /r:Microsoft.CSharp.dll ("/resource:"+(Resolve-Path -LiteralPath 'tools/cs2-companion/windows/desktop-bot-model.zip').Path+",TecMonModel") ("/resource:"+(Resolve-Path -LiteralPath 'tools/cs2-companion/public/desktop-bot-3d.png').Path+",TecMonBot3D") "/out:$output" ("/win32icon:"+(Resolve-Path -LiteralPath 'tools/cs2-companion/windows/tecmon.ico').Path) $native
           if($LASTEXITCODE -ne 0) { throw 'Compilation failed' }
           $test=Start-Process -FilePath $output -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
           if($test.ExitCode -ne 0) { throw 'Native self-test failed' }
+          # Echtzeit-3D-Figur: Modell laden, einige Bilder zeichnen und die Zeit je Bild ausgeben.
+          $preview=Join-Path $env:RUNNER_TEMP 'figure-preview'
+          New-Item -ItemType Directory -Path $preview -Force | Out-Null
+          $model=Start-Process -FilePath $output -ArgumentList '--desktop-preview-model',$preview -WindowStyle Hidden -Wait -PassThru
+          if($model.ExitCode -ne 0) { throw '3D-Figur konnte nicht gezeichnet werden' }
+          Get-Content -LiteralPath (Join-Path $preview 'timing.txt')
+          if((Get-ChildItem -LiteralPath $preview -Filter 'model-*.png').Count -ne 9) { throw '3D-Vorschaubilder fehlen' }
       - name: Verify native file update preserves user data
         if: runner.os == 'Windows'
         shell: pwsh

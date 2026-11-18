@@ -156,7 +156,7 @@ details>summary{cursor:pointer}
 .card-fold>.card{margin:0 0 10px;border:0;background:transparent;padding:4px 6px 8px}
 .card-fold>.card .section-head>div:first-child{display:none}
 .card-fold:has(>.card[hidden]){display:none}
-.game-fold:not(:has(>.card-fold>.card:not([hidden]))){display:none}
+.game-fold:not(.panel-cat):not(:has(>.card-fold>.card:not([hidden]))){display:none}
 @media (hover:hover) and (pointer:fine){.game-fold>summary:hover{background:rgba(167,139,250,.08)}.card-fold>summary:hover{color:#d8cbff}}
 
 /* 0.32.8 (seit 0.41.3 auch die Companion-Seite im Browser): abgeschnittene Ecken wie der Setup-Assistent auf tecmon.online.
@@ -235,3 +235,26 @@ body.holo .stats{--fill:linear-gradient(100deg,#e8c57308,#a78bfa0d)}
 body.holo .card-fold>.card,body.holo .card .card{--cut:12px}
 /* Checkboxen eckig, gewählt Gold. */
 body.holo input[type=checkbox]{accent-color:var(--gold)}
+/* 0.44.0: Linksklick-Fenster als kompakte Liste zugeklappter Kategorien (statt Reiter), immer nur eine offen.
+   Kopfzeile: Name in Gold links, kurzer Stand rechts, Raute als Pfeil; offene Kategorie mit goldener Kante. */
+.panel-categories{display:flex;flex-direction:column;gap:6px;margin:6px 0 10px}
+.desktop-panel .panel-cat{margin:0}
+.panel-cat>summary{list-style:none;gap:10px;min-height:42px;padding:0 14px;font-size:14px;letter-spacing:.06em;text-transform:uppercase}
+.panel-cat>summary::-webkit-details-marker{display:none}
+.panel-cat>summary::before{content:"";flex:none;width:8px;height:8px;background:var(--violet,#a78bfa);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);transition:transform var(--tm-dur-press) ease,background-color var(--tm-dur-press) ease}
+.panel-cat[open]>summary::before{background:var(--gold,#e8c573);transform:rotate(45deg) scale(1.15)}
+.panel-cat .cat-label{flex:1}
+.panel-cat .cat-hint{font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--muted,#a49cb8);text-align:right}
+.panel-cat>.card-fold{margin:0 10px}.panel-cat>.card-fold:last-child{margin-bottom:8px}
+.panel-cat>.cat-card{margin:0;border:0;background:transparent;padding:8px 14px 12px}
+.panel-cat>.cat-card .section-head>div:first-child .eyebrow{display:none}
+.panel-cat>.cat-card>.section-head h2{font-size:13px}
+.panel-cat:not(:has(>.card-fold>.card:not([hidden]),>.cat-card:not([hidden]))){display:none}
+body.holo .panel-cat[open]{--edge:#e8c57388}
+body.holo .panel-cat>.cat-card{--edge:transparent;--fill:transparent;clip-path:none}
+body.holo .panel-cat>.cat-card::after{display:none}
+.figure-flags{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;margin:8px 0}
+.figure-flags label{display:flex;flex-direction:row;justify-content:flex-start;align-items:center;gap:8px;min-height:40px;margin:0;font-size:13px;cursor:pointer;text-align:left}
+.figure-flags input{width:auto;margin:0;flex:none}
+.panel-cat>.cat-card>.section-head:not(:has(button)){display:none}
+#figure-quality-note{font-size:11px}

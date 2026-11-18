@@ -152,12 +152,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.43.1",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.44.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.43.1");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.44.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -172,7 +172,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.43.1"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.44.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -224,10 +224,19 @@ static class TecMon {
     if(progress!=null)progress("Studio öffnen · Tools starten erst bei Bedarf");
 
   }
+  /* „Mit Windows starten“: nur der eigene Eintrag im Benutzer-Autostart (HKCU\…\Run), keine Aufgabenplanung, keine Adminrechte. */
+  const string RunKey=@"Software\Microsoft\Windows\CurrentVersion\Run",RunName="TecMon Companion";
+  static string AutostartCommand(){return Q(Path.Combine(Root,"TecMon Companion.exe"));}
+  public static bool AutostartOn(){using(var key=Registry.CurrentUser.OpenSubKey(RunKey))return key!=null&&Convert.ToString(key.GetValue(RunName,""))==AutostartCommand();}
+  public static void SetAutostart(bool on){
+    if(on&&!File.Exists(Path.Combine(Root,"TecMon Companion.exe")))return;
+    using(var key=Registry.CurrentUser.CreateSubKey(RunKey)){if(on)key.SetValue(RunName,AutostartCommand());else if(key.GetValue(RunName)!=null)key.DeleteValue(RunName,false);}
+  }
   public static void Uninstall() {
     if(!File.Exists(Path.Combine(Root,"tecmon-app.marker"))) throw new Exception("Kein gültiger TecMon-Programmordner.");
     if(MessageBox.Show("TecMon Companion und die mitgelieferten Programmdateien entfernen?\n\nDeine Demos, Videos und Einstellungen bleiben im gewählten Datenordner erhalten. Vorher den Companion beenden.","TecMon entfernen",MessageBoxButtons.YesNo,MessageBoxIcon.Question) != DialogResult.Yes) return;
     Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",false);
+    try{SetAutostart(false);}catch(Exception){}
     foreach(var file in new [] { Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk") }) if(File.Exists(file)) File.Delete(file);
     // A helper removes only this marked installation directory after the executable has exited.
     string literal = Root.Replace("'","''");
@@ -280,6 +289,9 @@ static class TecMon {
       if(args.Length > 0 && args[0] == "--apply-update-cli") {
         try {ApplyUpdate(args[1],"",false);return 0;} catch(Exception error) {WriteUpdateResult(args[1],"error",error.Message);Console.Error.WriteLine(error.Message);return 1;}
       }
+      /* Echtzeit-3D-Figur prüfen: einige Winkel und Gesichter als PNG und die Zeit je Bild. */
+      if(args.Length>1 && args[0]=="--desktop-preview-model") {using(var pet=new DesktopPet(true)){if(!pet.LoadFigureNow())throw new Exception("3D-Modell fehlt");int n=0;foreach(var spec in new[]{"0,-1","32.5,-1","90,-1","150,-1","180,-1","0,73","0,74","0,85","20,82"}){var parts=spec.Split(',');using(var frame=pet.Preview(double.Parse(parts[0],System.Globalization.CultureInfo.InvariantCulture),int.Parse(parts[1])))frame.Save(Path.Combine(args[1],"model-"+(n++)+".png"),System.Drawing.Imaging.ImageFormat.Png);}
+        var watch=Stopwatch.StartNew();for(int i=0;i<120;i++)using(var frame=pet.Preview(i*3.1,-1)){}string timing="3D-Figur: "+(watch.Elapsed.TotalMilliseconds/120).ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)+" ms je Bild, "+Environment.ProcessorCount+" Kerne";File.WriteAllText(Path.Combine(args[1],"timing.txt"),timing);Console.WriteLine(timing);}return 0;}
       if(args.Length>1 && args[0]=="--desktop-preview-3d") {using(var pet=new DesktopPet(true)){if(!pet.HasModel)throw new Exception("3D-Figur fehlt");int n=0;foreach(var spec in new[]{"0,-1","32.5,-1","90,-1","150,-1","180,-1","0,72","0,73","0,74","0,75","0,77","0,78","0,79","0,85","0,88","0,89"}){var parts=spec.Split(',');using(var frame=pet.Preview(double.Parse(parts[0]),int.Parse(parts[1])))frame.Save(Path.Combine(args[1],"pet-"+(n++)+".png"),System.Drawing.Imaging.ImageFormat.Png);}}using(var bubble=new TipBubble())using(var image=bubble.Preview("Kauf-Check","Volle Ausrüstung möglich: Rifle, Kevlar + Helm und zwei Granaten."))image.Save(Path.Combine(args[1],"bubble.png"),System.Drawing.Imaging.ImageFormat.Png);using(var pet=new DesktopPet(true))using(var menu=pet.BuildQuick(Point.Empty)){menu.Fit();using(var shot=new Bitmap(menu.Width,menu.Height)){menu.DrawToBitmap(shot,new Rectangle(0,0,menu.Width,menu.Height));shot.Save(Path.Combine(args[1],"menu.png"),System.Drawing.Imaging.ImageFormat.Png);}}using(var panel=new DesktopPanel()){panel.ClientSize=new Size(520,640);using(var shot=new Bitmap(panel.Width,panel.Height)){panel.DrawToBitmap(shot,new Rectangle(0,0,panel.Width,panel.Height));shot.Save(Path.Combine(args[1],"panel.png"),System.Drawing.Imaging.ImageFormat.Png);}}return 0;}
       if(args.Length>1 && args[0]=="--quick-preview") {using(var pet=new DesktopPet(true))using(var menu=pet.BuildQuick(Point.Empty)){menu.Status="● Mit TecMon verbunden";menu.Fit();using(var shot=new Bitmap(menu.Width,menu.Height)){menu.DrawToBitmap(shot,new Rectangle(0,0,menu.Width,menu.Height));shot.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);}}return 0;}
       if(args.Length>1 && args[0]=="--desktop-preview") {using(var pet=new DesktopPet(true))using(var frame=pet.Frame())frame.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);return 0;}
@@ -301,7 +313,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.43.1 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.44.0 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -573,6 +585,188 @@ static class Layered {
     try{Point origin=Point.Empty;Size size=bitmap.Size;var blend=new Blend{alpha=255,format=1};UpdateLayeredWindow(form.Handle,screen,ref position,ref size,memory,ref origin,0,ref blend,2);}
     finally{SelectObject(memory,previous);DeleteObject(image);DeleteDC(memory);ReleaseDC(IntPtr.Zero,screen);}
   }
+}
+
+/*
+ * Echtzeit-3D-Figur ("High process"): kleiner Software-Renderer für das aus der GLB erzeugte Modell
+ * (scripts/figure-3d/model.py, Ressource TecMonModel). Kein GPU-Zugriff, kein 3D-Framework: nur
+ * Dreiecke mit Tiefenpuffer in ein Bild, das wie bisher per Pixel-Alpha (Layered.Push) erscheint.
+ * Licht, Kamera und Tonemapping folgen scripts/figure-3d/index.html, damit beide Darstellungen gleich aussehen.
+ */
+sealed class FigureModel : IDisposable {
+  public const int OutW=200,OutH=130;const int SS=2,W=OutW*SS,H=OutH*SS;
+  float[] pos,nrm,uv,metal,rough;int[] index;int vertices;
+  byte[] diffuse,emissive,texels;int tex;Rectangle box;string face="";
+  readonly Dictionary<string,byte[]> patches=new Dictionary<string,byte[]>();readonly Dictionary<string,Bitmap> extras=new Dictionary<string,Bitmap>();
+  /* Arbeitsspeicher je Bild, einmal angelegt. */
+  readonly float[] depth=new float[W*H];readonly float[] cr=new float[W*H],cg=new float[W*H],cb=new float[W*H];readonly bool[] covered=new bool[W*H];readonly int[] tri=new int[W*H];readonly float[] bw0=new float[W*H],bw1=new float[W*H];
+  float[] sx,sy,sz,er,eg,eb,qr,qg,qb,vm;readonly int[] output=new int[OutW*OutH];
+  static readonly float[] Linear=new float[256];static readonly byte[] Encode=new byte[4097];
+  static FigureModel(){
+    for(int i=0;i<256;i++){double c=i/255.0;Linear[i]=(float)(c<=0.04045?c/12.92:Math.Pow((c+0.055)/1.055,2.4));}
+    for(int i=0;i<=4096;i++){double c=i/4096.0;c=c<=0.0031308?c*12.92:1.055*Math.Pow(c,1/2.4)-0.055;Encode[i]=(byte)Math.Max(0,Math.Min(255,Math.Round(c*255)));}
+  }
+  public static FigureModel Load(Stream stream){
+    var model=new FigureModel();
+    using(var zip=new ZipArchive(stream,ZipArchiveMode.Read)){
+      foreach(var entry in zip.Entries){
+        string name=entry.FullName;
+        using(var raw=entry.Open())using(var memory=new MemoryStream()){raw.CopyTo(memory);memory.Position=0;
+          if(name=="mesh.bin")model.ReadMesh(memory.ToArray());
+          else if(name=="box.json"){var info=TecMon.Json.Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(memory.ToArray()));var b=(System.Collections.ArrayList)info["box"];model.tex=Convert.ToInt32(info["tex"]);model.box=Rectangle.FromLTRB(Convert.ToInt32(b[0]),Convert.ToInt32(b[1]),Convert.ToInt32(b[2]),Convert.ToInt32(b[3]));}
+          else if(name=="diffuse.png")model.diffuse=Rgb(memory);
+          else if(name=="emissive.png")model.emissive=Rgb(memory);
+          else if(name.StartsWith("face-")&&name.EndsWith(".png"))model.patches[name.Substring(5,name.Length-9)]=Rgb(memory);
+          else if(name.StartsWith("extra-")&&name.EndsWith(".png"))using(var image=Image.FromStream(memory))model.extras[name.Substring(6,name.Length-10)]=new Bitmap(image);
+        }
+      }
+    }
+    if(model.index==null||model.diffuse==null||model.emissive==null||model.tex<=0||model.diffuse.Length!=model.tex*model.tex*3)throw new InvalidDataException("3D-Modell unvollständig");
+    model.texels=new byte[model.tex*model.tex*6];
+    for(int i=0;i<model.tex*model.tex;i++){Buffer.BlockCopy(model.diffuse,i*3,model.texels,i*6,3);Buffer.BlockCopy(model.emissive,i*3,model.texels,i*6+3,3);}
+    model.diffuse=null;model.emissive=null;model.face="idle";return model;
+  }
+  void ReadMesh(byte[] data){
+    if(data.Length<12||Encoding.ASCII.GetString(data,0,4)!="TMB1")throw new InvalidDataException("3D-Modell: falsches Format");
+    vertices=BitConverter.ToInt32(data,4);int count=BitConverter.ToInt32(data,8);
+    if(vertices<=0||vertices>200000||count<=0||count>600000||count%3!=0||data.Length!=12+vertices*40+count*4)throw new InvalidDataException("3D-Modell: falsche Größe");
+    pos=new float[vertices*3];nrm=new float[vertices*3];uv=new float[vertices*2];metal=new float[vertices];rough=new float[vertices];index=new int[count];
+    for(int i=0;i<vertices;i++){int o=12+i*40;
+      for(int k=0;k<3;k++){pos[i*3+k]=BitConverter.ToSingle(data,o+k*4);nrm[i*3+k]=BitConverter.ToSingle(data,o+12+k*4);}
+      uv[i*2]=BitConverter.ToSingle(data,o+24);uv[i*2+1]=BitConverter.ToSingle(data,o+28);metal[i]=BitConverter.ToSingle(data,o+32);rough[i]=BitConverter.ToSingle(data,o+36);}
+    int start=12+vertices*40;
+    for(int i=0;i<count;i++){int v=BitConverter.ToInt32(data,start+i*4);if(v<0||v>=vertices)throw new InvalidDataException("3D-Modell: falscher Index");index[i]=v;}
+    sx=new float[vertices];sy=new float[vertices];sz=new float[vertices];er=new float[vertices];eg=new float[vertices];eb=new float[vertices];qr=new float[vertices];qg=new float[vertices];qb=new float[vertices];vm=new float[vertices];
+  }
+  static byte[] Rgb(Stream stream){
+    using(var image=Image.FromStream(stream))using(var bitmap=new Bitmap(image.Width,image.Height,System.Drawing.Imaging.PixelFormat.Format32bppArgb)){
+      using(var g=Graphics.FromImage(bitmap))g.DrawImage(image,0,0,image.Width,image.Height);
+      var data=bitmap.LockBits(new Rectangle(0,0,bitmap.Width,bitmap.Height),System.Drawing.Imaging.ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+      var argb=new int[bitmap.Width*bitmap.Height];System.Runtime.InteropServices.Marshal.Copy(data.Scan0,argb,0,argb.Length);bitmap.UnlockBits(data);
+      var rgb=new byte[argb.Length*3];for(int i=0;i<argb.Length;i++){int c=argb[i];rgb[i*3]=(byte)(c>>16);rgb[i*3+1]=(byte)(c>>8);rgb[i*3+2]=(byte)c;}
+      return rgb;
+    }
+  }
+  public bool HasFace(string name){return patches.ContainsKey(name);}
+  /* Gesicht wechseln: nur den Visier-Ausschnitt der Textur ersetzen (links Farbe, rechts Leuchten). */
+  public void SetFace(string name){
+    byte[] patch;if(name==face||!patches.TryGetValue(name,out patch))return;face=name;
+    int w=box.Width,h=box.Height;if(patch.Length!=w*2*h*3)return;
+    for(int y=0;y<h;y++)for(int x=0;x<w;x++){int t=((box.Top+y)*tex+box.Left+x)*6,d=(y*w*2+x)*3,e=d+w*3;texels[t]=patch[d];texels[t+1]=patch[d+1];texels[t+2]=patch[d+2];texels[t+3]=patch[e];texels[t+4]=patch[e+1];texels[t+5]=patch[e+2];}
+  }
+  public Bitmap Extra(string name){Bitmap b;return extras.TryGetValue(name,out b)?b:null;}
+
+  /* Licht wie index.html (Helligkeit 0.3): Himmel/Boden, Haupt-, Rand- und Fülllicht; Farben linear. */
+  static float Lin(int c){return Linear[c];}
+  static readonly float[] Sky={Lin(0xe6),Lin(0xdc),Lin(0xff)},Ground={Lin(0x3a),Lin(0x30),Lin(0x50)};
+  const float HemiI=1.64f,Exposure=1.22f,EmissiveI=1.8f;
+  static readonly float[][] Lights={Light(2,3,4,0xff,0xff,0xff,2.9f),Light(-3,2,-3,0xa7,0x8b,0xfa,2.2f),Light(-3,0.5,3,0xff,0xe2,0xa8,1.04f)};
+  static float[] Light(double x,double y,double z,int r,int g,int b,float i){double l=Math.Sqrt(x*x+y*y+z*z);return new[]{(float)(x/l),(float)(y/l),(float)(z/l),Lin(r)*i,Lin(g)*i,Lin(b)*i};}
+  /* Umgebungslicht (RoomEnvironment, Stärke 0.255) als gleichmäßiger Anteil. */
+  public float Ambient=0.40f,EnvSpec=0.85f;
+
+  /* Kamera: Blickwinkel 22°, Position (0, 0.1, 5.6) auf den Ursprung; Ausschnitt wie sheet.py (CROP 6,70,378,312 von 384). */
+  const double Fov=22,CamY=0.1,CamZ=5.6,Shot=384,CropX=6,CropY=70,CropW=372,CropH=242,Lift=-0.635;
+  /* yaw/pitch in Grad: Drehung wie pivot.rotation.set(pitch, yaw, 0) in index.html. */
+  public Bitmap Render(double yawDeg,double pitchDeg){
+    double yaw=yawDeg*Math.PI/180,pitch=pitchDeg*Math.PI/180,cy=Math.Cos(yaw),sy_=Math.Sin(yaw),cp=Math.Cos(pitch),sp=Math.Sin(pitch);
+    double camLen=Math.Sqrt(CamY*CamY+CamZ*CamZ),zy=CamY/camLen,zz=CamZ/camLen;/* z-Achse der Kamera; x-Achse = (1,0,0); y-Achse = (0, zz, -zy) */
+    double focal=1/Math.Tan(Fov*Math.PI/360),scaleX=W/CropW,scaleY=H/CropH;
+    for(int i=0;i<vertices;i++){
+      double x=pos[i*3],y=pos[i*3+1]+Lift,z=pos[i*3+2];
+      /* Erst um y (yaw), dann um x (pitch). */
+      double x1=x*cy+z*sy_,z1=-x*sy_+z*cy,y2=y*cp-z1*sp,z2=y*sp+z1*cp;
+      double nx=nrm[i*3],ny=nrm[i*3+1],nz=nrm[i*3+2];double nx1=nx*cy+nz*sy_,nz1=-nx*sy_+nz*cy,ny2=ny*cp-nz1*sp,nz2=ny*sp+nz1*cp;
+      double dx=x1,dy=y2-CamY,dz=z2-CamZ;double xc=dx,yc=dy*zz-dz*zy,zc=dy*zy+dz*zz;
+      double px=(xc/-zc*focal+1)/2*Shot,py=(1-yc/-zc*focal)/2*Shot;
+      sx[i]=(float)((px-CropX)*scaleX);sy[i]=(float)((py-CropY)*scaleY);sz[i]=(float)-zc;
+      /* Zur Kamera zeigende Seite beleuchten (beidseitiges Material). */
+      double vx=-dx,vy=-dy,vz=-dz,vl=Math.Sqrt(vx*vx+vy*vy+vz*vz);vx/=vl;vy/=vl;vz/=vl;
+      if(nx1*vx+ny2*vy+nz2*vz<0){nx1=-nx1;ny2=-ny2;nz2=-nz2;}
+      double w=0.5*ny2+0.5;float hr=(float)((Ground[0]+(Sky[0]-Ground[0])*w)*HemiI),hg=(float)((Ground[1]+(Sky[1]-Ground[1])*w)*HemiI),hb=(float)((Ground[2]+(Sky[2]-Ground[2])*w)*HemiI);
+      double r=Math.Max(0.06,rough[i]),a2=r*r*r*r;float sr=0,sg=0,sb=0;
+      foreach(var l in Lights){
+        double nl=nx1*l[0]+ny2*l[1]+nz2*l[2];if(nl<=0)continue;
+        hr+=(float)(l[3]*nl);hg+=(float)(l[4]*nl);hb+=(float)(l[5]*nl);
+        double hx=l[0]+vx,hy=l[1]+vy,hz=l[2]+vz,hl=Math.Sqrt(hx*hx+hy*hy+hz*hz);hx/=hl;hy/=hl;hz/=hl;
+        double nh=Math.Max(0,nx1*hx+ny2*hy+nz2*hz),nv=Math.Max(1e-3,nx1*vx+ny2*vy+nz2*vz),d=nh*nh*(a2-1)+1;
+        double D=a2/(Math.PI*d*d),k=a2/2,V=0.25/((nl*(1-k)+k)*(nv*(1-k)+k));double s=D*V*nl;
+        sr+=(float)(l[3]*s);sg+=(float)(l[4]*s);sb+=(float)(l[5]*s);
+      }
+      float m=metal[i];vm[i]=m;
+      er[i]=(float)(hr/Math.PI)+Ambient;eg[i]=(float)(hg/Math.PI)+Ambient;eb[i]=(float)(hb/Math.PI)+Ambient;
+      float env=(float)(EnvSpec*(1-r*0.6));qr[i]=sr+env;qg[i]=sg+env;qb[i]=sb+env;
+    }
+    /* Bild in waagerechte Streifen teilen; jeder Kern zeichnet seinen Streifen. */
+    int bands=Math.Max(1,Math.Min(4,Environment.ProcessorCount-1));
+    System.Threading.Tasks.Parallel.For(0,bands,k=>{
+      int top=H*k/bands,bottom=H*(k+1)/bands;
+      for(int i=top*W;i<bottom*W;i++){depth[i]=float.MaxValue;tri[i]=-1;}
+      for(int t=0;t<index.Length;t+=3)Triangle(t,top,bottom-1);
+      /* Erst sichtbare Dreiecke bestimmen, dann jedes Pixel nur einmal schattieren. */
+      for(int p=top*W;p<bottom*W;p++){int t=tri[p];covered[p]=t>=0;if(t>=0)Shade(p,index[t],index[t+1],index[t+2],bw0[p],bw1[p]);}
+    });
+    /* 2×2 Abtastungen je Pixel: weiche Kanten, vormultipliertes Alpha. */
+    for(int y=0;y<OutH;y++)for(int x=0;x<OutW;x++){
+      int n=0;float r=0,g=0,b=0;
+      for(int j=0;j<SS;j++)for(int i=0;i<SS;i++){int p=(y*SS+j)*W+x*SS+i;if(!covered[p])continue;n++;r+=cr[p];g+=cg[p];b+=cb[p];}
+      int o=y*OutW+x;if(n==0){output[o]=0;continue;}
+      /* Tonemapping erst nach dem Mitteln: ein Viertel der Rechenarbeit, an Kanten kaum ein Unterschied. */
+      float k=1f/n;r*=k;g*=k;b*=k;Aces(ref r,ref g,ref b);int al=n*255/(SS*SS);
+      output[o]=(int)((uint)al<<24)|((Encode[Tone(r)]*al/255)<<16)|((Encode[Tone(g)]*al/255)<<8)|(Encode[Tone(b)]*al/255);
+    }
+    var bitmap=new Bitmap(OutW,OutH,System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+    var data=bitmap.LockBits(new Rectangle(0,0,OutW,OutH),System.Drawing.Imaging.ImageLockMode.WriteOnly,System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+    System.Runtime.InteropServices.Marshal.Copy(output,0,data.Scan0,output.Length);bitmap.UnlockBits(data);
+    return bitmap;
+  }
+  /* Farbwerte sind schon tonemapped und linear; hier nur in den LUT-Bereich. */
+  static int Tone(float v){return v<=0?0:v>=1?4096:(int)(v*4096);}
+  /* Rückseiten auslassen: die Hülle ist geschlossen, verdeckte Innenflächen sieht man nie. */
+  public bool Cull=true;
+  void Triangle(int t,int top,int bottom){
+    int a=index[t],b=index[t+1],c=index[t+2];
+    float ax=sx[a],ay=sy[a],bx=sx[b],by=sy[b],cx=sx[c],cy=sy[c];
+    float area=(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);if(Math.Abs(area)<1e-6f||(Cull&&area>0))return;
+    int x0=Math.Max(0,(int)Math.Floor(Math.Min(ax,Math.Min(bx,cx)))),x1=Math.Min(W-1,(int)Math.Ceiling(Math.Max(ax,Math.Max(bx,cx))));
+    int y0=Math.Max(top,(int)Math.Floor(Math.Min(ay,Math.Min(by,cy)))),y1=Math.Min(bottom,(int)Math.Ceiling(Math.Max(ay,Math.Max(by,cy))));
+    if(x0>x1||y0>y1)return;
+    float inv=1/area,za=sz[a],zb=sz[b],zc=sz[c];
+    /* Kantenfunktionen schrittweise: je Pixel nach rechts nur eine Addition. */
+    float s0x=-(cy-by)*inv,s1x=-(ay-cy)*inv;
+    for(int y=y0;y<=y1;y++){float py=y+0.5f,px=x0+0.5f;
+      float w0=((bx-px)*(cy-py)-(by-py)*(cx-px))*inv,w1=((cx-px)*(ay-py)-(cy-py)*(ax-px))*inv;int p=y*W+x0;
+      for(int x=x0;x<=x1;x++,p++,w0+=s0x,w1+=s1x){
+        float w2=1-w0-w1;if(w0<0||w1<0||w2<0)continue;
+        float z=w0*za+w1*zb+w2*zc;if(z>=depth[p])continue;depth[p]=z;tri[p]=t;bw0[p]=w0;bw1[p]=w1;
+      }
+    }
+  }
+  void Shade(int p,int a,int b,int c,float w0,float w1){
+        float w2=1-w0-w1;
+        float u=w0*uv[a*2]+w1*uv[b*2]+w2*uv[c*2],v=w0*uv[a*2+1]+w1*uv[b*2+1]+w2*uv[c*2+1];
+        /* Bilinear, Ursprung oben links (flipY=false wie in index.html); Farbe und Leuchten liegen nebeneinander. */
+        float fx=u*tex-0.5f,fy=v*tex-0.5f;int ix=(int)fx,iy=(int)fy;if(fx<0)ix--;if(fy<0)iy--;float ax=fx-ix,ay=fy-iy;
+        int x0=ix<0?0:ix>=tex?tex-1:ix,x1=ix+1<0?0:ix+1>=tex?tex-1:ix+1,y0=iy<0?0:iy>=tex?tex-1:iy,y1=iy+1<0?0:iy+1>=tex?tex-1:iy+1;
+        int p00=(y0*tex+x0)*6,p10=(y0*tex+x1)*6,p01=(y1*tex+x0)*6,p11=(y1*tex+x1)*6;
+        float w00=(1-ax)*(1-ay),w10=ax*(1-ay),w01=(1-ax)*ay,w11=ax*ay;var t=texels;var L=Linear;
+        float dr=L[t[p00]]*w00+L[t[p10]]*w10+L[t[p01]]*w01+L[t[p11]]*w11,dg=L[t[p00+1]]*w00+L[t[p10+1]]*w10+L[t[p01+1]]*w01+L[t[p11+1]]*w11,db=L[t[p00+2]]*w00+L[t[p10+2]]*w10+L[t[p01+2]]*w01+L[t[p11+2]]*w11;
+        float mr=L[t[p00+3]]*w00+L[t[p10+3]]*w10+L[t[p01+3]]*w01+L[t[p11+3]]*w11,mg=L[t[p00+4]]*w00+L[t[p10+4]]*w10+L[t[p01+4]]*w01+L[t[p11+4]]*w11,mb=L[t[p00+5]]*w00+L[t[p10+5]]*w10+L[t[p01+5]]*w01+L[t[p11+5]]*w11;
+        float m=w0*vm[a]+w1*vm[b]+w2*vm[c],dm=1-m;
+        float Er=w0*er[a]+w1*er[b]+w2*er[c],Eg=w0*eg[a]+w1*eg[b]+w2*eg[c],Eb=w0*eb[a]+w1*eb[b]+w2*eb[c];
+        float Qr=w0*qr[a]+w1*qr[b]+w2*qr[c],Qg=w0*qg[a]+w1*qg[b]+w2*qg[c],Qb=w0*qb[a]+w1*qb[b]+w2*qb[c];
+        float r=dr*dm*Er+(0.04f*dm+dr*m)*Qr+mr*EmissiveI,g=dg*dm*Eg+(0.04f*dm+dg*m)*Qg+mg*EmissiveI,bl=db*dm*Eb+(0.04f*dm+db*m)*Qb+mb*EmissiveI;
+        cr[p]=r;cg[p]=g;cb[p]=bl;
+  }
+  /* ACES Filmic wie three.js (ACESFilmicToneMapping). */
+  static void Aces(ref float r,ref float g,ref float b){
+    float k=Exposure/0.6f;r*=k;g*=k;b*=k;
+    float ir=0.59719f*r+0.35458f*g+0.04823f*b,ig=0.07600f*r+0.90834f*g+0.01566f*b,ib=0.02840f*r+0.13383f*g+0.83777f*b;
+    ir=Fit(ir);ig=Fit(ig);ib=Fit(ib);
+    r=1.60475f*ir-0.53108f*ig-0.07367f*ib;g=-0.10208f*ir+1.10813f*ig-0.00605f*ib;b=-0.00327f*ir-0.07276f*ig+1.07602f*ib;
+  }
+  static float Fit(float v){float a=v*(v+0.0245786f)-0.000090537f,d=v*(0.983729f*v+0.4329510f)+0.238081f;return a/d;}
+  public void Dispose(){foreach(var b in extras.Values)b.Dispose();extras.Clear();}
 }
 
 /*
@@ -947,6 +1141,8 @@ class DesktopPet : Form {
     if(!preview){
       var config=TecMon.Json.Deserialize<Dictionary<string,object>>(File.ReadAllText(Path.Combine(TecMon.Root,"installation.json")));
       openOnStart=config.ContainsKey("desktopOpenOnStart") && Convert.ToBoolean(config["desktopOpenOnStart"]);
+      /* Gespeicherte Figur-Einstellungen sofort beim Start, nicht erst nach der ersten Abfrage: sonst fliegt die Figur kurz los. */
+      try{if(config.ContainsKey("profileDir")){var saved=Path.Combine(Convert.ToString(config["profileDir"]),"desktop.json");if(File.Exists(saved))startSettings=TecMon.Json.Deserialize<Dictionary<string,object>>(File.ReadAllText(saved));}}catch(Exception){}
       singleton=new Mutex(true,"Local\\TecMonDesktop-"+Convert.ToString(config["installationId"]),out owns);openSignal=new EventWaitHandle(false,EventResetMode.AutoReset,"Local\\TecMonDesktopOpen-"+Convert.ToString(config["installationId"]));
     }
     var menu=new ContextMenuStrip();
@@ -963,7 +1159,7 @@ class DesktopPet : Form {
     personality=new ToolStripMenuItem("Persönlichkeit");
     foreach(var pair in new[]{new[]{"Super nett","nett"},new[]{"Normal","normal"},new[]{"Nerdy","nerdy"},new[]{"HUAN-Modus (18+)","huan"}}){string mode=pair[1];var item=new ToolStripMenuItem(pair[0]){Tag=mode,Checked=mode=="normal"};item.Click+=async(s,e)=>{if(mode=="huan"&&!ConfirmHuan())return;await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");};personality.DropDownItems.Add(item);}
     menu.Items.Add(personality);menu.Items.Add(new ToolStripSeparator());
-    menu.Items.Add("Einstellungen öffnen",null,(s,e)=>{Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();});
+    menu.Items.Add("Einstellungen öffnen",null,(s,e)=>OpenPanel("figur",""));
     menu.Items.Add("TecMon öffnen",null,(s,e)=>DesktopPanel.OpenExternal("https://tecmon.online"));
     updateItem=new ToolStripMenuItem("Nach Updates suchen",null,async(s,e)=>await CheckUpdate(false));menu.Items.Add(updateItem);
     /* Games: spielbezogene Integrationen, zuerst CS2. Weitere Spiele sind geplant. */
@@ -991,9 +1187,15 @@ class DesktopPet : Form {
     clipsRoot.DropDownItems.Add("Clips-Ordner öffnen",null,async(s,e)=>{try{await Request("/api/clips/folder",true);}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}});
     menu.Items.Add(clipsRoot);
     var figure=new ToolStripMenuItem("Figur");
-    var fly=new ToolStripMenuItem("Umherfliegen"){Checked=true,CheckOnClick=true};flyItem=fly;fly.CheckedChanged+=(s,e)=>wandering=fly.Checked;figure.DropDownItems.Add(fly);
-    var motion=new ToolStripMenuItem("Animation"){Checked=true,CheckOnClick=true};motion.CheckedChanged+=(s,e)=>{animate=motion.Checked;Render();};figure.DropDownItems.Add(motion);
-    var top=new ToolStripMenuItem("Im Vordergrund"){Checked=true,CheckOnClick=true};topItem=top;top.CheckedChanged+=(s,e)=>{foreground=top.Checked;TopMost=OnTop();};figure.DropDownItems.Add(top);
+    /* Alle Schalter hier werden gespeichert (desktop.json) und gelten nach einem Neustart weiter. */
+    var fly=new ToolStripMenuItem("Umherfliegen"){Checked=true,CheckOnClick=true};flyItem=fly;fly.CheckedChanged+=(s,e)=>{wandering=fly.Checked;SaveDesktop();};figure.DropDownItems.Add(fly);
+    var motion=new ToolStripMenuItem("Animation"){Checked=true,CheckOnClick=true};motionItem=motion;motion.CheckedChanged+=(s,e)=>{animate=motion.Checked;Render();SaveDesktop();};figure.DropDownItems.Add(motion);
+    var top=new ToolStripMenuItem("Im Vordergrund"){Checked=true,CheckOnClick=true};topItem=top;top.CheckedChanged+=(s,e)=>{foreground=top.Checked;TopMost=OnTop();SaveDesktop();};figure.DropDownItems.Add(top);
+    figure.DropDownItems.Add(new ToolStripSeparator());
+    highItem=new ToolStripMenuItem("3D-Modell · High process"){Checked=true,Tag="toggle"};highItem.Click+=(s,e)=>SetQuality(true);figure.DropDownItems.Add(highItem);
+    lowItem=new ToolStripMenuItem("Bilder · Low process"){Tag="toggle"};lowItem.Click+=(s,e)=>SetQuality(false);figure.DropDownItems.Add(lowItem);
+    figure.DropDownItems.Add(new ToolStripSeparator());
+    autostartItem=new ToolStripMenuItem("Mit Windows starten"){CheckOnClick=true};autostartItem.CheckedChanged+=(s,e)=>{if(applying)return;autostart=autostartItem.Checked;ApplyAutostart();SaveDesktop();};figure.DropDownItems.Add(autostartItem);
     figure.DropDownItems.Add(new ToolStripSeparator());figure.DropDownItems.Add("Figur ausblenden",null,(s,e)=>Hide());menu.Items.Add(figure);
     var more=new ToolStripMenuItem("Mehr");more.DropDownItems.Add("Studio im Browser öffnen",null,(s,e)=>Process.Start(new ProcessStartInfo("http://127.0.0.1:31977"){UseShellExecute=true}));
     var webview=new ToolStripMenuItem("WebView2 von Microsoft installieren",null,(s,e)=>DesktopPanel.OpenExternal("https://developer.microsoft.com/microsoft-edge/webview2/"));more.DropDownItems.Add(webview);menu.Items.Add(more);
@@ -1013,9 +1215,9 @@ class DesktopPet : Form {
     KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&panel!=null)panel.Hide();else if(e.KeyCode==Keys.Enter||e.KeyCode==Keys.Space)Toggle();};
     /* Etwa 60 Bilder pro Sekunde; Bewegung nach vergangener Zeit statt pro Takt, damit sie gleichmäßig bleibt. */
     animation.Interval=15;animation.Tick+=(s,e)=>Tick();
-    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowWork(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowAuto(state);ShowOverlay(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
-    Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
-    FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(overlay!=null)overlay.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
+    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowWork(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowAuto(state);ShowOverlay(state);ShowDesktop(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
+    Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}if(startSettings!=null)ApplyDesktop(startSettings);else if(!preview)LoadFigure();Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
+    FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(overlay!=null)overlay.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(figure!=null)figure.Dispose();if(figureFrame!=null)figureFrame.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
   Bitmap model,canvas;Bitmap[] cells;double yaw,yawVel,clockLast,talkUntil,happyUntil,blinkAt=3,blinkUntil,pendingSince,frontSince=-1,moodAt=10,moodUntil,activeAt;int mood=-1,afterTalk=-1,forced=-1;double busyFrame;bool watching;Action pendingTip;
   readonly Stopwatch clock=Stopwatch.StartNew();readonly Random random=new Random();/* Bogen: 72 Drehwinkel in 5°-Schritten, danach die LED-Ausdrücke (Reihenfolge wie FACES in scripts/figure-3d/faces.py). */
@@ -1080,6 +1282,13 @@ class DesktopPet : Form {
     if(live&&Talking(now))bob-=(float)Math.Abs(Math.Sin(now*9))*1.6f;
     g.TranslateTransform(Width/2f,Height/2f+bob);g.RotateTransform(roll);
     var target=new Rectangle(-CellW/2,-CellH/2,CellW,CellH);
+    /* High process: das Modell selbst, stufenlos gedreht; nur neu zeichnen, wenn sich Winkel oder Gesicht ändern. */
+    if(highQuality&&figure!=null){
+      string name=face>=Turns&&face-Turns<FaceList.Length?FaceList[face-Turns]:"idle";
+      double angle=face>=0&&forced>=0?0:yaw;string key=name+"|"+Math.Round(angle*20);
+      if(figureFrame==null||key!=frameKey){figure.SetFace(name);var next=figure.Render(angle,0);if(figureFrame!=null)figureFrame.Dispose();figureFrame=next;frameKey=key;}
+      g.DrawImage(figureFrame,target);var extra=figure.Extra(name);if(extra!=null)g.DrawImage(extra,target);return;
+    }
     if(face>=0){g.DrawImage(cells[face],target);return;}
     /* Nächster Blickwinkel ohne Überblendung: halbdurchsichtige Mischbilder zogen einen Schleier nach. */
     int turn=((int)Math.Round(yaw/Step)%Turns+Turns)%Turns;
@@ -1089,6 +1298,49 @@ class DesktopPet : Form {
   /* Vorschau ohne Fenster: Drehwinkel in Grad, Ausdruck als Bildnummer (-1 = automatisch). */
   public Bitmap Preview(double degrees,int face){activeAt=clock.Elapsed.TotalSeconds;yaw=face>=0?0:degrees;forced=face;var bitmap=Frame3D();forced=-1;return bitmap;}
   public bool HasModel{get{return model!=null;}}
+  /* Ausdrücke ab Bild 72 in der Reihenfolge von render.cjs/faces.py (ohne idle). */
+  static readonly string[] FaceList={"blink","happy","talkA","talkB","focus","busy","wink","surprised","dizzy","laugh","love","kiss","angry","sleepy","tongue","sad","cool","star","confused","busy2","busy3","busy4","lookL","lookR"};
+  FigureModel figure;Bitmap figureFrame;string frameKey="";bool highQuality=true,figureLoading,figureFailed,applying,autostart,desktopKnown;Dictionary<string,object> startSettings;ToolStripMenuItem motionItem,highItem,lowItem,autostartItem;string desktopSignature="";
+  /* Modell aus der Ressource im Hintergrund laden; fehlt es oder ist es kaputt, bleibt die Bild-Figur. */
+  void LoadFigure(){
+    if(!highQuality||figure!=null||figureLoading||figureFailed||cells==null)return;figureLoading=true;
+    Task.Run(()=>{using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("TecMonModel")){if(stream==null)return (FigureModel)null;return FigureModel.Load(stream);}}).ContinueWith(t=>{
+      figureLoading=false;if(t.IsFaulted||t.Result==null){figureFailed=true;return;}
+      if(IsDisposed){t.Result.Dispose();return;}figure=t.Result;frameKey="";Render();
+    },TaskScheduler.FromCurrentSynchronizationContext());
+  }
+  /* Für Vorschau und Tests: Modell sofort laden. */
+  public bool LoadFigureNow(){using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("TecMonModel")){if(stream==null)return false;figure=FigureModel.Load(stream);highQuality=true;return true;}}
+  void SetQuality(bool high){highQuality=high;SyncDesktopMenu();if(high)LoadFigure();frameKey="";Render();SaveDesktop();}
+  void SyncDesktopMenu(){
+    applying=true;
+    try{if(flyItem!=null)flyItem.Checked=wandering;if(motionItem!=null)motionItem.Checked=animate;if(topItem!=null)topItem.Checked=foreground;if(highItem!=null)highItem.Checked=highQuality;if(lowItem!=null)lowItem.Checked=!highQuality;if(autostartItem!=null)autostartItem.Checked=autostart;}
+    finally{applying=false;}
+  }
+  static bool Flag(Dictionary<string,object> d,string key,bool fallback){object v;return d.TryGetValue(key,out v)&&v is bool?(bool)v:fallback;}
+  void ApplyDesktop(Dictionary<string,object> d){
+    desktopKnown=true;
+    wandering=Flag(d,"wander",true);animate=Flag(d,"animate",true);foreground=Flag(d,"foreground",true);autostart=Flag(d,"autostart",false);
+    object q;highQuality=!(d.TryGetValue("quality",out q)&&Convert.ToString(q)=="low");
+    TopMost=OnTop();SyncDesktopMenu();ApplyAutostart();if(highQuality)LoadFigure();frameKey="";
+  }
+  /* Einstellungen aus dem Companion (auch aus dem Fenster geändert) übernehmen. */
+  void ShowDesktop(Dictionary<string,object> state){
+    object raw;var d=state.TryGetValue("desktop",out raw)?raw as Dictionary<string,object>:null;if(d==null)return;
+    var signature=TecMon.Json.Serialize(d);if(signature==desktopSignature)return;desktopSignature=signature;ApplyDesktop(d);Render();
+  }
+  bool autostartApplied,autostartState;
+  void ApplyAutostart(){
+    if(preview||(autostartApplied&&autostartState==autostart))return;
+    try{if(TecMon.AutostartOn()!=autostart)TecMon.SetAutostart(autostart);autostartApplied=true;autostartState=autostart;}
+    catch(Exception error){if(tray!=null)tray.ShowBalloonTip(5000,"TecMon","Autostart konnte nicht geändert werden: "+error.Message,ToolTipIcon.Warning);}
+  }
+  async void SaveDesktop(){
+    if(applying||preview)return;
+    string body=TecMon.Json.Serialize(new Dictionary<string,object>{{"quality",highQuality?"high":"low"},{"wander",wandering},{"animate",animate},{"foreground",foreground},{"autostart",autostart}});
+    try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/desktop/settings",true,body));object d;if(result.TryGetValue("desktop",out d))desktopSignature=TecMon.Json.Serialize(d);}
+    catch(Exception error){if(tray!=null)tray.ShowBalloonTip(4000,"TecMon","Einstellung nicht gespeichert: "+error.Message,ToolTipIcon.Warning);}
+  }
   bool wasBusy,updateChecked,tipsEnabled;ToolStripMenuItem statusItem,updateItem,tipsItem,tipsOn;string featureSignature="",liveKey="";bool liveShowing;double tipShownAt=-100;string offeredUpdate="";TipBubble tip;long lastTip=-1;
   static string TipTitle(string category){switch(category){case "economy":return "Wirtschaft";case "buy":return "Kauf-Check";case "death":return "Nach dem Tod";case "bomb":return "Bombe";case "habit":return "Gewohnheit";case "mindset":return "Kopf frei";case "summary":return "Zusammenfassung";case "weapon":return "Waffe";case "map":return "Map";case "warmup":return "Aufwärmen";case "praise":return "Stark";case "history":return "Deine Matches";case "team":return "Team";case "farm":return "Farm";case "buyback":return "Buyback";case "actives":return "Items";case "gold":return "Gold";default:return "Rundentipp";}}
   /* Neue Tipps aus der CS2 Game State Integration neben der Figur zeigen, nie während einer Demo-Aufnahme. */
@@ -1172,7 +1424,7 @@ class DesktopPet : Form {
   public QuickMenu BuildQuick(Point at){
     var q=new QuickMenu();q.Status=statusItem!=null?statusItem.Text:"";
     q.Heading("SCHNELLZUGRIFF");
-    q.Tile("Einstellungen","Verbindung & Optionen",()=>{Show();if(panel==null||panel.IsDisposed||!panel.Visible)Toggle();});
+    q.Tile("Einstellungen","Figur, Start & mehr",()=>OpenPanel("figur",""));
     q.Tile("Highlights","Aufnehmen auf TecMon",()=>OpenPanel("games",""));
     q.Tile("Clip speichern","Strg+Alt+C",async()=>await SaveClip());
     q.Tile("Letzte Videos","Fertige Aufnahmen",()=>OpenPanel("videos",""));
@@ -1185,6 +1437,8 @@ class DesktopPet : Form {
     q.Toggle("Clip-Puffer",()=>clipsEnabled,async()=>await ToggleClips());
     q.Toggle("Figur fliegt umher",()=>wandering,()=>{if(flyItem!=null)flyItem.Checked=!flyItem.Checked;});
     q.Toggle("Figur im Vordergrund",()=>foreground,()=>{if(topItem!=null)topItem.Checked=!topItem.Checked;});
+    q.Toggle("3D-Modell (High process)",()=>highQuality,()=>SetQuality(!highQuality));
+    q.Toggle("Mit Windows starten",()=>autostart,()=>{if(autostartItem!=null)autostartItem.Checked=!autostartItem.Checked;});
     q.Heading("PERSÖNLICHKEIT");
     q.Chips(new[]{"Nett","Normal","Nerdy","HUAN"},new[]{"nett","normal","nerdy","huan"},()=>petMode,async mode=>{if(mode=="huan"&&!ConfirmHuan())return;petMode=mode;await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");});
     if(offeredUpdate!="")q.Footer("Update "+offeredUpdate+" installieren",async()=>await CheckUpdate(false),false);
