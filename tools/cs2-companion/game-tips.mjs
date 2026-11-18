@@ -4,10 +4,14 @@
  * Grundsätze:
  * - Ausgewertet werden nur die eigenen Daten des Spielers, die CS2 ohnehin schickt.
  *   Zuschauer-, GOTV- und Demo-Daten anderer Spieler werden ignoriert.
- * - Kein Bomben-Countdown, keine Gegnerinfos, keine Eingaben an das Spiel.
+ * - Kein Bomben-Countdown, keine Gegnerinfos, keine Eingaben an das Spiel. Die offizielle
+ *   Schaden-Vorschau der Bombe (player_state.health_c4_preview, seit CS2-Update 17.11.2026)
+ *   gehört zum eigenen Spieler und wird genutzt.
  * - Tipps erscheinen nur in ruhigen Momenten: vor allem in der Kaufzeit zu Rundenbeginn,
  *   außerdem am Rundenende, nach dem eigenen Tod, in der Aufwärmphase, zur Halbzeit und
- *   am Matchende. Sobald die Runde läuft und du lebst, ist der Companion still.
+ *   am Matchende. Sobald die Runde läuft und du lebst, ist der Companion still. Einzige
+ *   Ausnahme ist die Live-Anzeige der Bomben-Vorschau (Funktion „bombLive“): ein stehender
+ *   Wert, der sich ändert, aber keine neuen Tipps auslöst.
  */
 
 import { SPRAY_PATTERNS } from "./spray-patterns.mjs";
@@ -22,6 +26,12 @@ export const FEATURES = [
   { id: "history", label: "Tipps aus deinen TecMon-Matches", categories: ["history"] },
   { id: "team", label: "Spielstand und Momentum (Serien, Timeout, Rundenenden)", categories: ["team"] },
   { id: "death", label: "Tipps nach deinem Tod", categories: ["death"] },
+  { id: "bomb", label: "Bombe: Auswertung der Explosion nach der Runde (Schaden-Vorschau aus GSI)", categories: ["bomb"] },
+  {
+    id: "bombLive",
+    label: "Bombe: Live-Anzeige nach dem Plant, wie viele HP dir die Explosion an deiner Stelle lässt",
+    categories: ["bomb-live"],
+  },
   { id: "habits", label: "Gewohnheiten (Nachladen, Flashes, Feuer, Schaden)", categories: ["habit"] },
   { id: "mindset", label: "Kopf und Lob (Tilt, Pausen, starke Runden)", categories: ["mindset", "praise"] },
   { id: "summary", label: "Aufwärmen, Halbzeit- und Match-Bilanz", categories: ["summary", "warmup"] },
@@ -36,7 +46,13 @@ const ALTERNATIVES = {
   de_mirage: { "A-Ramp": "Palace", Palace: "A-Ramp oder Mid zu Connector", "Top-Mid": "Apartments zu B", Apartments: "Mid zu Short", Underpass: "Apartments", Short: "Apartments" },
   de_inferno: { Banana: "Apartments zu A", Apartments: "Mid zu Short", Mid: "Banana", Short: "Apartments" },
   de_ancient: { "A Main": "Mid zu Donut", Mid: "A Main", "B Ramp": "Mid zu Cave", Cave: "B Ramp" },
+  de_cbble: { "Long A": "Mid zu A Ramp", "B Halls": "Long A", Drop: "B Main", "B Main": "Drop", Courtyard: "Crypt zu B Halls" },
 };
+
+/** Anzeigenamen für Karten ohne Eintrag in MAP_SPOTS (interner Name weicht stark ab). */
+const MAP_NAMES = { de_cbble: "Cobblestone", de_dust2: "Dust2" };
+const mapTitle = (mapName) =>
+  MAP_SPOTS[mapName]?.name || MAP_NAMES[mapName] || String(mapName).replace(/^(de|cs|ar)_/, "");
 
 /** Spielmodi mit Wirtschaft und festen Halbzeiten. */
 const HALF = { competitive: 12, premier: 12, scrimcomp2v2: 8 };
@@ -173,6 +189,18 @@ const MAP_TIPS = {
     CT: [
       "Anubis: Mid nicht kampflos abgeben, sonst kommen Splits auf beide Plätze.",
       "Anubis: B Main früh mit Molotov verzögern und erst mit Unterstützung peeken.",
+    ],
+  },
+  de_cbble: {
+    T: [
+      "Cobblestone: Courtyard und Long A früh mit Smokes zumachen, dann gemeinsam über Long auf A.",
+      "Cobblestone: Für B über Crypt und B Halls kommen und Drop gleichzeitig mit Flash öffnen.",
+      "Cobblestone: B Halls hat jetzt einen Weg Richtung A. Splits über Halls und Long verunsichern die CTs.",
+    ],
+    CT: [
+      "Cobblestone: B ist groß und offen. Drop und B Main mit Molotov verzögern und auf Hilfe über Connector warten.",
+      "Cobblestone: Long A früh mit Utility verzögern, sonst stehen die Ts schnell auf A.",
+      "Cobblestone: Die Wege zwischen den Plätzen sind lang. Früh rotieren, sobald Infos kommen.",
     ],
   },
   de_vertigo: {
@@ -411,6 +439,8 @@ export function createGameTips({
   let match = null;
   let last = null;
   let quiet = false;
+  /* Stehende Live-Anzeige (z. B. Bomben-Vorschau): wird aktualisiert, löst keinen neuen Tipp aus. */
+  let live = null;
 
   function newMatch(map) {
     return {
@@ -586,7 +616,7 @@ export function createGameTips({
     const stats = data?.maps?.[mapName];
     const spots = MAP_SPOTS[mapName];
     if (!stats || !stats.matches) return;
-    const name = spots?.name || mapName.replace(/^de_/, "");
+    const name = mapTitle(mapName);
     const recent = `In deinen letzten ${stats.matches} ${stats.matches === 1 ? "Match" : "Matches"} auf ${name}`;
     const sideKey = side === "CT" ? 1 : 0;
     const deaths = (stats.deaths || []).filter((d) => d[2] === sideKey || d[2] === -1);
@@ -647,7 +677,7 @@ export function createGameTips({
   function habitTips(mapName, side, round, steamId, priority = 2) {
     const data = insights(steamId);
     if (!data?.maps) return false;
-    const name = MAP_SPOTS[mapName]?.name || mapName.replace(/^de_/, "");
+    const name = mapTitle(mapName);
     const here = data.maps[mapName];
     let habits = here?.habits;
     let weapons = here?.weapons || null;
@@ -769,6 +799,44 @@ export function createGameTips({
         "Zweimal mit der AWP ohne Kill gestorben, das kostet jedes Mal 4.750 $. Spiel sie passiver oder nimm diesmal ein Gewehr.",
         { priority: 2, category: "death", round },
       );
+  }
+
+  /**
+   * Offizielle Schaden-Vorschau der Bombe (player_state.health_c4_preview): HP, die dir
+   * die Explosion an deiner jetzigen Stelle lässt. Nur eigene Daten, kein Timer.
+   */
+  function bombPreview(own, round) {
+    const raw = own.state?.health_c4_preview;
+    if (raw === undefined || raw === null || raw === "" || !allowed("bomb-live")) return null;
+    const health = number(own.state?.health);
+    const left = Math.max(0, Math.min(health, Math.round(Number(raw))));
+    if (!Number.isFinite(left) || health <= 0) return null;
+    const lethal = left === 0;
+    if (lethal) match.c4LethalRound = round;
+    return {
+      kind: "c4",
+      round,
+      lethal,
+      health,
+      preview: left,
+      heading: lethal ? "Bombe · tödlich" : "Bombe · Vorschau",
+      text: lethal
+        ? `Hier würde dich die Explosion töten (${health} HP → 0).`
+        : `Nach der Explosion hättest du hier noch ${left} von ${health} HP.`,
+    };
+  }
+
+  function onBombDeath(previous, round) {
+    match.deadThisRound = true;
+    match.bombDeaths = (match.bombDeaths || 0) + 1;
+    if (match.bombDeaths !== 1 && match.bombDeaths % 3 !== 0) return;
+    const warned = match.c4LethalRound === round ? " Die Vorschau hatte die Stelle als tödlich angezeigt." : "";
+    const again = match.bombDeaths > 1 ? ` Das ist schon das ${match.bombDeaths}. Mal in dieser Partie.` : "";
+    const text =
+      previous.team === "T"
+        ? `Die eigene Bombe hat dich erwischt.${warned} Nach dem Plant mit Abstand zur Bombe spielen und vor der Explosion aus dem Radius gehen.${again}`
+        : `Die Explosion hat dich erwischt.${warned} Reicht die Zeit nicht für den Defuse, rechtzeitig aus dem Radius gehen und die Waffe retten.${again}`;
+    push(text, { priority: 3, category: "bomb", round });
   }
 
   function trackOwn(own, previous, phase, round) {
@@ -894,6 +962,7 @@ export function createGameTips({
       match = null;
       last = null;
       quiet = false;
+      live = null;
       return;
     }
     const half = HALF[map.mode];
@@ -914,9 +983,20 @@ export function createGameTips({
     }
     if (roundPhase === "live" && last?.roundPhase !== "live") match.liveSince = time;
     else if (roundPhase !== "live") match.liveSince = 0;
+    const bomb = typeof payload.round?.bomb === "string" ? payload.round.bomb : "";
     if (own) {
       match.ownSeen = true;
       const health = number(own.state?.health);
+      /* Explosion: die Runde ist dann schon „over“, darum zählt das nicht als normaler Tod. */
+      if (
+        bomb === "exploded" &&
+        previous &&
+        number(previous.state?.health) > 0 &&
+        health === 0 &&
+        last?.round === round &&
+        !match.deadThisRound
+      )
+        onBombDeath(previous, round);
       if (
         roundPhase === "live" &&
         previous &&
@@ -1031,6 +1111,7 @@ export function createGameTips({
       (roundPhase === "live" && dead);
     flush(windowOpen, roundPhase === "freezetime" && mapPhase === "live");
     quiet = mapPhase === "live" && roundPhase === "live" && !dead;
+    live = quiet && bomb === "planted" && own ? bombPreview(own, round) : null;
     last = { round, roundPhase, mapPhase };
   }
 
@@ -1045,6 +1126,7 @@ export function createGameTips({
       side: own?.team || null,
       /* Runde läuft und du lebst: Sprechblase ausblenden. */
       quiet: quiet && !!lastSeen && time - lastSeen < 20000,
+      live: live && !!lastSeen && time - lastSeen < 20000 ? { ...live } : null,
       tip: current ? { ...current, age: time - current.at } : null,
       history: history.map((entry) => ({ ...entry, age: time - entry.at })),
     };

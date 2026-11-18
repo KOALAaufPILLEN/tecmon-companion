@@ -18,7 +18,7 @@ export function gsiConfigText(token, port = GSI_PORT) {
   "timeout" "1.1"
   "buffer" "0.1"
   "throttle" "0.25"
-  "heartbeat" "10.0"
+  "heartbeat" "2.0"
   "auth"
   {
     "token" "${token}"

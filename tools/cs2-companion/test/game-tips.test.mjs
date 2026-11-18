@@ -24,6 +24,7 @@ function frame({
   weapons = {},
   stats = {},
   map = {},
+  bomb = "",
 } = {}) {
   return {
     provider: { steamid: ME, timestamp: 1 },
@@ -36,7 +37,7 @@ function frame({
       team_t: { score: 1 },
       ...map,
     },
-    round: { phase: roundPhase },
+    round: bomb ? { phase: roundPhase, bomb } : { phase: roundPhase },
     player: {
       steamid,
       team,
@@ -358,6 +359,51 @@ test("Früher Tod und starke Runde", () => {
   time.advance(60000);
   tips.ingest(frame({ round: 7, roundPhase: "over", state: { round_kills: 3, round_killhs: 2 } }));
   assert.match(tips.state().tip.text, /^Starke Runde: 3 Kills, davon 2 Headshots/);
+});
+
+test("Bomben-Vorschau aus GSI: stehende Live-Anzeige statt neuer Tipps", () => {
+  const time = clock();
+  const tips = createGameTips(time);
+  tips.ingest(frame({ round: 6, roundPhase: "freezetime" }));
+  time.advance(15000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT" }));
+  assert.equal(tips.state().live, null);
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT", bomb: "planted", state: { health: 80, health_c4_preview: 25 } }));
+  const before = tips.state();
+  assert.equal(before.quiet, true);
+  assert.equal(before.live.preview, 25);
+  assert.equal(before.live.lethal, false);
+  assert.match(before.live.text, /noch 25 von 80 HP/);
+  time.advance(2000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT", bomb: "planted", state: { health: 80, health_c4_preview: 0 } }));
+  const after = tips.state();
+  assert.equal(after.live.lethal, true);
+  assert.match(after.live.text, /töten \(80 HP → 0\)/);
+  /* Nur der Wert ändert sich: kein neuer Tipp. */
+  assert.equal(after.tip?.id, before.tip?.id);
+  /* Ohne Feld (ältere CS2-Version) oder abgeschaltet: keine Anzeige. */
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT", bomb: "planted", state: { health: 80 } }));
+  assert.equal(tips.state().live, null);
+  const off = createGameTips({ ...clock(), enabled: (id) => id !== "bombLive" });
+  off.ingest(frame({ round: 6, roundPhase: "live", bomb: "planted", state: { health_c4_preview: 0 } }));
+  assert.equal(off.state().live, null);
+});
+
+test("Tod durch die Explosion gibt nach der Runde einen Bomben-Tipp", () => {
+  const time = clock();
+  const tips = createGameTips(time);
+  tips.ingest(frame({ round: 6, roundPhase: "freezetime", team: "CT" }));
+  time.advance(15000);
+  tips.ingest(frame({ round: 6, roundPhase: "live", team: "CT", bomb: "planted", state: { health_c4_preview: 0 } }));
+  time.advance(30000);
+  tips.ingest(frame({ round: 6, roundPhase: "over", team: "CT", bomb: "exploded", state: { health: 0 } }));
+  time.advance(6000);
+  tips.ingest(frame({ round: 6, roundPhase: "over", team: "CT", bomb: "exploded", state: { health: 0 } }));
+  const tip = tips.state().tip;
+  assert.equal(tip.category, "bomb");
+  assert.match(tip.text, /^Die Explosion hat dich erwischt\. Die Vorschau hatte die Stelle als tödlich angezeigt\./);
+  assert.ok(FEATURES.some((f) => f.id === "bomb" && f.categories.includes("bomb")));
+  assert.ok(FEATURES.some((f) => f.id === "bombLive" && f.categories.includes("bomb-live")));
 });
 
 test("Match-Auswertung der Webseite wird geprüft, gekürzt und lokal gespeichert", async (t) => {

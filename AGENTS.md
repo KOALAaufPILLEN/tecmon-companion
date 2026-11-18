@@ -22,6 +22,11 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   und darf nicht gelockert werden.
 - **Kein Bomben-Timer.** Von `phase_countdowns` wird nur der
   Kaufzeit-Countdown ausgewertet.
+- **Offizielle GSI-Werte des eigenen Spielers nutzen** (Nutzerentscheid vom 18.11.2026):
+  Was CS2 in den erlaubten Blöcken über den eigenen Spieler schickt, darf eingebaut
+  werden, auch wenn es die Bombe betrifft, etwa `player_state.health_c4_preview`
+  (HP nach der Explosion an der eigenen Stelle, seit CS2-Update 17.11.2026). Die Liste
+  der erlaubten Blöcke und das Verbot von Gegnerdaten bleiben unverändert.
 - **Standardmäßig aus.** Die cfg-Datei `gamestate_integration_tecmon.cfg`
   wird nur nach Einschalten angelegt, mit eigenem zufälligem Token, und beim
   Ausschalten wieder entfernt. Während einer Demo-Aufnahme werden GSI-Daten
@@ -36,6 +41,12 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
   solange der Spieler lebt (`quiet`). Neue Tipps dürfen das nicht unterlaufen.
 - Erlaubte Zeitpunkte sonst: nach dem eigenen Tod, zur Halbzeit, am
   Matchende.
+- **Live-Anzeigen** (`state().live`, zurzeit nur die Bomben-Vorschau `bombLive`): ein
+  stehender Wert in derselben Sprechblase, der sich mit den GSI-Daten ändert (CS2 schickt
+  sie spätestens alle 2 Sekunden, `heartbeat` 2.0). Live-Anzeigen lösen nie einen neuen
+  Tipp aus, gehen nicht in die Warteschlange und zählen nicht zum `BRIEFING_LIMIT`.
+  `TecMon.cs` (`ShowTip`, `liveKey`) zeichnet die Blase nur neu, wenn sich der Text ändert.
+  Neue Live-Werte brauchen eine eigene Funktion in `FEATURES`.
 
 ### Funktionen und Optionen
 
@@ -343,6 +354,16 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   einen selbst gesehenen Auftrag.
 - Das Linksklick-Fenster (`?desktop=1`) gruppiert die Karten in Reiter
   (`desktopSections()` in `public/app.js`). Neue Karten dort einer Gruppe zuordnen.
+
+## Nach Spiel-Updates (CS2, Dota 2, Deadlock)
+
+Nach jedem Update eines unterstützten Spiels die Checkliste in
+`docs/game-updates.md` im Repo `tecmon` abarbeiten. Für den Companion heißt das
+vor allem: neue GSI-Felder (GameTracking-Repos von SteamTracking, Patchnotes) prüfen,
+neue Karten in `MAP_TIPS`, `ALTERNATIVES`, `map-spots.mjs` und `MAP_LABELS`
+(`video-branding.mjs`) ergänzen, neue Waffen in `SKIN_WEAPONS`/Spray-Mustern und neue
+Agenten in `AGENTS` (`agent-swap.mjs`) nachziehen. Was geprüft und bewusst nicht
+eingebaut wurde, steht im Update-Protokoll dort.
 
 ## Prüfen und veröffentlichen
 

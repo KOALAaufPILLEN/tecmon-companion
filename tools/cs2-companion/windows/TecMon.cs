@@ -152,12 +152,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.42.2",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.43.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.42.2");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.43.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -172,7 +172,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.42.2"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.43.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -301,7 +301,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.42.2 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.43.0 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -1087,8 +1087,8 @@ class DesktopPet : Form {
   /* Vorschau ohne Fenster: Drehwinkel in Grad, Ausdruck als Bildnummer (-1 = automatisch). */
   public Bitmap Preview(double degrees,int face){activeAt=clock.Elapsed.TotalSeconds;yaw=face>=0?0:degrees;forced=face;var bitmap=Frame3D();forced=-1;return bitmap;}
   public bool HasModel{get{return model!=null;}}
-  bool wasBusy,updateChecked,tipsEnabled;ToolStripMenuItem statusItem,updateItem,tipsItem,tipsOn;string featureSignature="";string offeredUpdate="";TipBubble tip;long lastTip=-1;
-  static string TipTitle(string category){switch(category){case "economy":return "Wirtschaft";case "buy":return "Kauf-Check";case "death":return "Nach dem Tod";case "habit":return "Gewohnheit";case "mindset":return "Kopf frei";case "summary":return "Zusammenfassung";case "weapon":return "Waffe";case "map":return "Map";case "warmup":return "Aufwärmen";case "praise":return "Stark";case "history":return "Deine Matches";case "team":return "Team";case "farm":return "Farm";case "buyback":return "Buyback";case "actives":return "Items";case "gold":return "Gold";default:return "Rundentipp";}}
+  bool wasBusy,updateChecked,tipsEnabled;ToolStripMenuItem statusItem,updateItem,tipsItem,tipsOn;string featureSignature="",liveKey="";string offeredUpdate="";TipBubble tip;long lastTip=-1;
+  static string TipTitle(string category){switch(category){case "economy":return "Wirtschaft";case "buy":return "Kauf-Check";case "death":return "Nach dem Tod";case "bomb":return "Bombe";case "habit":return "Gewohnheit";case "mindset":return "Kopf frei";case "summary":return "Zusammenfassung";case "weapon":return "Waffe";case "map":return "Map";case "warmup":return "Aufwärmen";case "praise":return "Stark";case "history":return "Deine Matches";case "team":return "Team";case "farm":return "Farm";case "buyback":return "Buyback";case "actives":return "Items";case "gold":return "Gold";default:return "Rundentipp";}}
   /* Neue Tipps aus der CS2 Game State Integration neben der Figur zeigen, nie während einer Demo-Aufnahme. */
   /* Sprechblase mit dem aktuellen Schritt beim Video (Download, Aufnahme, Branding, fertig). Bleibt stehen, bis der nächste Schritt kommt; Klick blendet sie aus. */
   string workKey="",workSeen="";
@@ -1112,6 +1112,14 @@ class DesktopPet : Form {
     /* Dota-2-Tipps: eigener Schalter im Companion; die Figur zeigt sie, wenn Dota zuletzt Daten geschickt hat. */
     if(gsi.ContainsKey("dotaActive")&&Convert.ToBoolean(gsi["dotaActive"]))tipsEnabled=true;
     watching=tipsEnabled&&gsi.ContainsKey("quiet")&&Convert.ToBoolean(gsi["quiet"]);
+    /* Live-Anzeige (Bomben-Vorschau): dieselbe stehende Sprechblase, nur der Wert ändert sich, kein neuer Tipp. */
+    object liveRaw;var live=gsi.TryGetValue("live",out liveRaw)?liveRaw as Dictionary<string,object>:null;
+    if(live!=null&&tipsEnabled&&!busy){
+      string liveHeading=Convert.ToString(live["heading"])??"Bombe",liveText=Convert.ToString(live["text"])??"",liveId=liveHeading+"|"+liveText;pendingTip=null;
+      if(liveId!=liveKey||tip==null||tip.IsDisposed||!tip.Visible){liveKey=liveId;if(tip==null||tip.IsDisposed)tip=new TipBubble();var liveArea=Screen.PrimaryScreen.WorkingArea;tip.Present(liveHeading,liveText,Visible?Bounds:new Rectangle(liveArea.Right-180,liveArea.Bottom-205,144,164),null,-2,false,true);}
+      return;
+    }
+    if(liveKey!=""){liveKey="";if(tip!=null&&!tip.IsDisposed)tip.Quiet();}
     if(watching){pendingTip=null;if(tip!=null&&!tip.IsDisposed)tip.Quiet();}
     object tipRaw;var current=gsi.TryGetValue("tip",out tipRaw)?tipRaw as Dictionary<string,object>:null;if(current==null)return;
     long id=Convert.ToInt64(current["id"]);if(id==lastTip)return;lastTip=id;
