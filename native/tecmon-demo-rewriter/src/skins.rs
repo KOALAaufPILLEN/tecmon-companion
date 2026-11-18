@@ -334,12 +334,24 @@ pub fn weapon_fields(
     paint_attributes(entity, ATTRIBUTE_PREFIX, paint, out);
     fallback_fields(paint, out);
     if let Some(legacy) = paint.legacy {
-        out.push((
-            "CBodyComponent.m_skeletonInstance.m_modelState.m_MeshGroupMask".into(),
-            FieldValue::Unsigned64(if legacy == 1 { 2 } else { 1 }),
-        ));
+        legacy_fields(entity, legacy, out);
     }
     true
+}
+
+const LEGACY_BODYGROUP: &str = "CBodyComponent.m_skeletonInstance.m_modelState.m_nBodyGroupChoices.0000";
+
+/// Altes oder neues Waffenmodell. Echte Demos: alte Skins haben Bodygroup 0 = 1 und
+/// Mesh-Maske 2, neue 0 und 1. CS2 baut das Modell in der Hand aus der Bodygroup;
+/// nur die Maske zu setzen ergab ein neues Modell mit Textur fürs alte.
+fn legacy_fields(entity: &Entity, legacy: u8, out: &mut Vec<(String, FieldValue)>) {
+    out.push((
+        "CBodyComponent.m_skeletonInstance.m_modelState.m_MeshGroupMask".into(),
+        FieldValue::Unsigned64(if legacy == 1 { 2 } else { 1 }),
+    ));
+    if entity.get_property(LEGACY_BODYGROUP).is_ok() {
+        out.push((LEGACY_BODYGROUP.into(), FieldValue::Signed32(legacy as i32)));
+    }
 }
 
 fn fallback_fields(paint: &Paint, out: &mut Vec<(String, FieldValue)>) {

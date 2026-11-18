@@ -183,6 +183,9 @@ export function agentRequest(job, { input, output, original, cache, skins = fals
     output,
     learn: original,
     looks_cache: cache,
+    // Alle Agenten-Pfade: Für unbekannte Modelle nimmt der Rewriter die Handschuh-Bodygroup
+    // eines bekannten Modells aus demselben Ordner (etwa SEAL/ST6 vorn, FBI hinten).
+    known_models: [...new Set(Object.values(AGENTS).map((a) => a[1]))],
     players: [...players].map(([steamId, sides]) => ({
       // SteamID64 bleibt Text, nie über Number runden.
       steamid: steamId,

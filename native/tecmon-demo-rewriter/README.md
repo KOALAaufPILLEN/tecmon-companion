@@ -49,13 +49,15 @@ Auftrag (`agent-swap.mjs` im Companion erzeugt ihn):
   vom Modell ab. Der Rewriter lernt es aus der Original-Demo (wie CS2 selbst es
   gesetzt hat), merkt es sich in `looks_cache` und schätzt nur, wenn ein Modell
   noch nie mit und ohne Handschuhe gesehen wurde (`guessed` in der Antwort).
+  Geschätzt wird mit dem Platz eines bekannten Modells aus demselben Ordner
+  (`known_models` im Auftrag; etwa SEAL/ST6 vorn, FBI hinten), sonst der letzte.
 - Skins (`src/skins.rs`): Für Waffen des Spielers (`m_OriginalOwnerXuid…`)
   setzt der Rewriter die Attribute 6 (Paintkit), 7 (Muster) und 8 (Abnutzung)
   in `m_NetworkedDynamicAttributes`, die Fallback-Werte, eine eigene markierte
   Item-ID (oberstes Byte `0x7E`; nie `0xF…`, das liest CS2 als Faux-ID mit
   Definition und Paintkit und stürzt bei Unsinn-Werten ab), Qualität und das Namensschild
-  „www.TecMon.Online“. `legacy` stellt `m_MeshGroupMask` auf das alte (2) oder neue
-  (1) Waffenmodell.
+  „www.TecMon.Online“. `legacy` stellt `m_MeshGroupMask` (2/1) und
+  `m_nBodyGroupChoices.0000` (1/0) auf das alte oder neue Waffenmodell.
 - Messer: Item-Definition und `m_nSubclassID` (String-Token der Definition)
   bestimmen das Modell auf Clientseite. `m_hModel` wird nicht direkt ersetzt,
   damit beim Demo-Sprung keine fremden Skelett-/Animationsdaten am neuen Modell

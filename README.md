@@ -14,6 +14,13 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
 
+## Neu in 0.42.2
+
+- Alte Skins wie Howl, Dragon Lore oder Medusa zeigen wieder das alte Waffenmodell. Bisher
+  bekam die Waffe nur die Mesh-Maske, nicht die Bodygroup, die CS2 dafür liest.
+- Getauschte Handschuhe bei Agenten, deren Handschuhe der Companion schätzen muss: Er nimmt jetzt
+  den Platz eines bekannten Agenten derselben Reihe (etwa SEAL/ST6), statt immer den letzten.
+
 ## Neu in 0.42.1
 
 - Messertausch: Der Rewriter lässt CS2 das Modell aus Item-Definition und Unterklasse bestimmen. Das direkte Überschreiben von `m_hModel`, das beim Demo-Sprung einen CS2-Absturz auslösen konnte, entfällt.
