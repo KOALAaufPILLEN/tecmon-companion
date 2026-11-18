@@ -31,6 +31,12 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
   Kategorien (Status & Videos, Figur & Start, CS2, Dota 2, Clips, TecMon, Spiel-Pakete).
   Immer nur eine ist offen, rechts im Kopf steht ein kurzer Stand wie „Verbunden“ oder „Puffer aus“.
 
+## Neu in 0.43.1
+
+- **Cobblestone auf dem Radar:** 19 Callouts, beide Bombenplätze und Spawns für die
+  Radar-Tipps zum Halbzeitstart und die Auswertung deiner Todesorte. Die Positionen stammen
+  aus den Ortsangaben der Karte selbst (CS2-Update vom 17.11.2026), nicht geschätzt.
+
 ## Neu in 0.43.0
 
 Zum CS2-Update vom 17. November 2026 („The Cobbled Road to Singapore“):
