@@ -1,11 +1,28 @@
 # 3D-Figur: GLB zu Sprite-Sheet
 
-Die Desktop-Figur (`windows/TecMon.cs`) hat keinen 3D-Renderer (nur .NET
-Framework 4, C# 5). Das 3D-Modell wird darum vorab gerendert: 72 Drehwinkel (5°)
+Seit 0.44.0 zeichnet die Desktop-Figur (`windows/TecMon.cs`, Klasse `FigureModel`) das Modell
+standardmäßig live („High process“, siehe unten „Echtzeit-Modell“). Für „Low process“ wird das
+3D-Modell vorab gerendert: 72 Drehwinkel (5°)
 plus 24 LED-Ausdrücke (seit 0.32.3 mit Animationsbildern `busy2`–`busy4`, `lookL`, `lookR`), zusammen in `tools/cs2-companion/public/desktop-bot-3d.png`.
 Das Bild wird als Ressource `TecMonBot3D` in die EXE eingebaut.
 
 Das Modell (`base.glb`, ~26 MB) und seine Texturen liegen nicht im Repository.
+
+## Echtzeit-Modell (High process)
+
+Nach `bake.py` (gleiche Umgebung wie oben) und mit [gltfpack](https://github.com/zeux/meshoptimizer)
+(`npm i gltfpack@0.22.0`):
+
+```bash
+python3 model.py "$TECMON_3D_WORK/node_modules/.bin/gltfpack" ../../tools/cs2-companion/windows/desktop-bot-model.zip
+```
+
+`model.py` glättet das Visier wie `index.html`, vereinfacht auf etwa 4 % der Dreiecke
+(`TECMON_MODEL_RATIO`), berechnet weiche Normalen und packt Gitter (`mesh.bin`), Texturen mit
+Gesicht `idle` (1024², `TECMON_MODEL_TEX`), je Ausdruck den Visier-Ausschnitt (`face-*.png`) und
+die Zeichen neben dem Kopf (`extra-*.png`, aus `extras.py`) in eine ZIP-Datei. Die EXE bekommt sie
+als Ressource `TecMonModel`. Prüfen: `"TecMon Companion.exe" --desktop-preview-model <ordner>`
+schreibt Vorschaubilder und die Zeit je Bild.
 
 ## Neu rendern
 

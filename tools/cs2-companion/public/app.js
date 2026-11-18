@@ -73,6 +73,22 @@ function gameTips(gsi){
 }
 $('tips-insights-clear').addEventListener('click',async()=>{const button=$('tips-insights-clear');button.disabled=true;try{await api('/api/gsi/insights/clear',{});await refresh();}catch(error){notice(error);}finally{button.disabled=false;}});
 $('tips-toggle').addEventListener('click',async()=>{const button=$('tips-toggle');button.disabled=true;try{const on=latestState?.gsi?.enabled;const result=await api(on?'/api/gsi/disable':'/api/gsi/enable',on?{}:{confirm:true});notice({message:result.message});await refresh();}catch(error){notice(error);}finally{button.disabled=false;}});
+/* Desktop-Figur: Darstellung und Schalter, gespeichert im Companion (desktop.json). */
+let figureState;
+function showFigure(desktop){
+  figureState=desktop;
+  for(const b of document.querySelectorAll('#figure-quality [data-quality]'))b.setAttribute('aria-checked',String(b.dataset.quality===desktop.quality));
+  for(const box of document.querySelectorAll('.figure-flags [data-flag]'))if(!box.disabled)box.checked=!!desktop[box.dataset.flag];
+  const hint=document.querySelector('[data-fold="cat-figur"] .cat-hint');
+  if(hint)hint.textContent=`${desktop.quality==='low'?'Bilder':'3D'} · ${desktop.wander?'fliegt':'bleibt stehen'}${desktop.autostart?' · Autostart':''}`;
+}
+async function figureSettings(change,control){
+  if(control)control.disabled=true;
+  try{const r=await api('/api/desktop/settings',change);if(control)control.disabled=false;showFigure(r.desktop);}
+  catch(error){notice(error);if(control)control.disabled=false;if(figureState)showFigure(figureState);}
+}
+for(const b of document.querySelectorAll('#figure-quality [data-quality]'))b.addEventListener('click',()=>figureSettings({quality:b.dataset.quality}));
+for(const box of document.querySelectorAll('.figure-flags [data-flag]'))box.addEventListener('change',()=>figureSettings({[box.dataset.flag]:box.checked},box));
 async function refresh() {
   if(restarting)return;
   const state = await api('/api/state');
@@ -95,6 +111,8 @@ async function refresh() {
     }
     if(state.bridge?.devices?.length) container.append(connections);
   }
+  if(state.desktop)showFigure(state.desktop);
+  panelHints(state);
   gameTips(state.gsi);
   if(state.auto)showAuto(state.auto);
   if(state.skins)showSkins(state.skins,!!state.managed);
@@ -528,54 +546,56 @@ $('skins-toggle').addEventListener('click',async()=>{
   try{const r=await api('/api/skins/settings',{enabled:on,accept:on?skinState?.noticeVersion:undefined});$('skins-consent').hidden=true;showSkins(r.skins,true);if(r.message)$('notice').textContent=r.message;}
   catch(error){notice(error);}finally{button.disabled=false;}
 });
+/* Linksklick-Fenster der Figur: alles in zugeklappten Kategorien, immer nur eine offen.
+   Reihenfolge nach Häufigkeit; rechts im Kopf steht ein kurzer Stand, damit man nicht aufklappen muss. */
+const PANEL_CATEGORIES=[
+  ['status','Status & Videos',[['.connection-summary','Verbindung'],['.activity-summary','Aufnahme'],['#videos','Letzte Videos']]],
+  ['figur','Figur & Start',[['#figur']]],
+  ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#fadenkreuz','Fadenkreuz & Overlay'],['#cfgs','Configs'],['#quiz','Quiz']]],
+  ['dota2','Dota 2',[['#dota-tipps','Dota-2-Tipps']]],
+  ['clips','Clips',[['#clips']]],
+  ['tecmon','TecMon',[['#tecmon','Werte & Persönlichkeit'],['#spiele','Minispiele']]],
+  ['pakete','Spiel-Pakete',[['#games']]],
+];
+function panelHints(state){
+  if(!document.body.classList.contains('desktop-panel'))return;
+  const set=(key,text)=>{const hint=document.querySelector(`[data-fold="cat-${key}"] .cat-hint`);if(hint)hint.textContent=text;};
+  const devices=state.bridge?.devices?.length||0,pending=state.bridge?.pending?.length||0;
+  set('status',`${pending?'Verbindung bestätigen':devices?'Verbunden':'Nicht verbunden'}${state.active?' · Aufnahme läuft':''}`);
+  set('cs2',`Tipps ${state.gsi?.enabled?'an':'aus'} · Highlights ${state.auto?.enabled?'an':'aus'}`);
+  set('dota2',`Tipps ${state.dota?.enabled?'an':'aus'}`);
+  set('clips',state.clips?.enabled?'Puffer an':'Puffer aus');
+  if(state.pet)set('tecmon',`Level ${state.pet.level}`);
+}
 (function desktopSections(){
   if(!document.body.classList.contains('desktop-panel'))return;
-  const groups=[
-    ['start','Start',['.connection-summary','.activity-summary','#videos']],
-    ['cs2','Spiele',['#auto-highlights','#skin-tausch','#rundentipps','#dota-tipps','#fadenkreuz','#cfgs','#quiz']],
-    ['clips','Clips',['#clips']],
-    ['tecmon','TecMon',['#tecmon','#spiele']],
-    ['pakete','Pakete',['#games']],
-  ];
-  /* „Spiele“: je Spiel ein aufklappbarer Punkt, darin jede Karte als eigener Unterpunkt in fester Reihenfolge. */
-  const GAME_FOLDS=[
-    ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#fadenkreuz','Fadenkreuz & Overlay'],['#cfgs','Configs'],['#quiz','Quiz']]],
-    ['dota2','Dota 2',[['#dota-tipps','Dota-2-Tipps']]],
-  ];
+  let open='status';try{open=localStorage.getItem('tecmon-panel-open')??'status';}catch{}
   const remembered=(()=>{try{return JSON.parse(localStorage.getItem('tecmon-panel-folds')||'{}')||{};}catch{return {};}})();
-  const remember=(key,open)=>{remembered[key]=open;try{localStorage.setItem('tecmon-panel-folds',JSON.stringify(remembered));}catch{}};
-  const fold=(key,label,cls,openByDefault)=>{const d=document.createElement('details');d.className=cls;d.dataset.fold=key;d.open=key in remembered?remembered[key]:openByDefault;const s=document.createElement('summary');s.textContent=label;d.append(s);d.addEventListener('toggle',()=>remember(key,d.open));return d;};
-  const gameFolds=[];
-  for(const [game,label,cards] of GAME_FOLDS){
+  const remember=(key,value)=>{remembered[key]=value;try{localStorage.setItem('tecmon-panel-folds',JSON.stringify(remembered));}catch{}};
+  const anchor=document.querySelector('.minimal-hero');const list=document.createElement('div');list.className='panel-categories';anchor?.after(list);
+  const categories=[];
+  for(const [key,label,cards] of PANEL_CATEGORIES){
     const present=cards.map(([sel,name])=>[document.querySelector(sel),name]).filter(([card])=>card);
     if(!present.length)continue;
-    const outer=fold('game-'+game,label,'game-fold',game==='cs2');
-    present[0][0].before(outer);
-    for(const [card,name] of present){const inner=fold('card-'+card.id,name,'card-fold',false);inner.append(card);outer.append(inner);}
-    gameFolds.push(outer);
+    const cat=document.createElement('details');cat.className='game-fold panel-cat';cat.dataset.fold='cat-'+key;cat.open=key===open;
+    const summary=document.createElement('summary');summary.append(el('span',label,'cat-label'),el('span','','cat-hint'));cat.append(summary);
+    for(const [card,name] of present){
+      /* Mehrere Karten: je Karte ein eigener Unterpunkt; eine einzelne Karte steht direkt darin. */
+      if(present.length===1||!name){card.classList.add('cat-card');cat.append(card);continue;}
+      const inner=document.createElement('details');inner.className='card-fold';inner.dataset.fold='card-'+(card.id||key);
+      inner.open=inner.dataset.fold in remembered?remembered[inner.dataset.fold]:key==='status'&&card===present[0][0];
+      inner.append(el('summary',name));inner.append(card);inner.addEventListener('toggle',()=>remember(inner.dataset.fold,inner.open));cat.append(inner);
+    }
+    cat.addEventListener('toggle',()=>{
+      if(cat.open)for(const other of categories)if(other!==cat)other.open=false;
+      if(cat.open||categories.every(c=>!c.open))try{localStorage.setItem('tecmon-panel-open',cat.open?key:'');}catch{}
+    });
+    list.append(cat);categories.push(cat);
   }
-  const owner=new Map();
-  for(const [id,,selectors] of groups)for(const s of selectors){const el=document.querySelector(s);if(!el)continue;const target=el.closest('.game-fold')||el;target.dataset.section=id;owner.set(target,id);}
-  const nav=document.createElement('nav');nav.className='panel-tabs';nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Bereiche');
-  const buttons={};
-  for(const [id,label] of groups){const b=document.createElement('button');b.type='button';b.role='tab';b.textContent=label;b.dataset.target=id;b.addEventListener('click',()=>show(id));nav.append(b);buttons[id]=b;}
-  document.querySelector('.minimal-hero')?.after(nav);
-  function show(id){
-    for(const [el,group] of owner)el.hidden=group!==id;
-    for(const [key,b] of Object.entries(buttons))b.setAttribute('aria-selected',String(key===id));
-    try{sessionStorage.setItem('tecmon-panel-section',id);}catch{}
-  }
-  nav.addEventListener('keydown',e=>{
-    if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;
-    const ids=groups.map(g=>g[0]);const now=ids.findIndex(k=>buttons[k].getAttribute('aria-selected')==='true');
-    const next=ids[(now+(e.key==='ArrowRight'?1:ids.length-1))%ids.length];show(next);buttons[next].focus();
-  });
+  /* Sprünge aus dem Figurmenü (scrollIntoView) klappen die passende Kategorie und Karte auf. */
   const scroll=Element.prototype.scrollIntoView;
-  Element.prototype.scrollIntoView=function(options){const group=owner.get(this)||owner.get(this.closest?.('[data-section]'));if(group)show(group);for(let d=this.closest?.('details');d;d=d.parentElement?.closest('details'))d.open=true;return scroll.call(this,options);};
-  let start='start';try{start=sessionStorage.getItem('tecmon-panel-section')||'start';}catch{}
+  Element.prototype.scrollIntoView=function(options){for(let d=this.closest?.('details');d;d=d.parentElement?.closest('details'))d.open=true;return scroll.call(this,options);};
   const fromHash=location.hash&&document.querySelector(location.hash);
-  const hashGroup=fromHash&&(owner.get(fromHash)||owner.get(fromHash.closest('[data-section]')));
-  if(hashGroup)for(let d=fromHash.closest('details');d;d=d.parentElement?.closest('details'))d.open=true;
-  show(hashGroup||(buttons[start]?start:'start'));
+  if(fromHash)for(let d=fromHash.closest('details');d;d=d.parentElement?.closest('details'))d.open=true;
 })();
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('skins-consent').hidden){$('skins-consent').hidden=true;$('skins-accept').checked=false;}});

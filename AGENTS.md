@@ -122,10 +122,23 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   -r:System.Core.dll -r:System.IO.Compression.dll
   -r:System.IO.Compression.FileSystem.dll -out:/tmp/t.exe TecMon.cs`
 - Die Sprechblase nimmt CS2 nie den Fokus.
-- Die 3D-Figur ist ein vorab gerendertes Sprite-Sheet
-  (`public/desktop-bot-3d.png`, Ressource `TecMonBot3D`, Pipeline in
-  `scripts/figure-3d/`). Kein 3D-Renderer im Companion. Figur und Sprechblase
-  zeichnen per Pixel-Alpha (`Layered.Push`), nicht über `Region`.
+- Die 3D-Figur hat zwei Darstellungen (Einstellung `quality` in `desktop.json`):
+  „High process“ (`high`, Standard) zeichnet das Modell live mit dem eigenen
+  Software-Renderer `FigureModel` in `TecMon.cs` (Ressource `TecMonModel` =
+  `windows/desktop-bot-model.zip`, erzeugt mit `scripts/figure-3d/model.py` aus `base.glb`).
+  „Low process“ (`low`) nutzt das vorab gerenderte Sprite-Sheet
+  (`public/desktop-bot-3d.png`, Ressource `TecMonBot3D`). Kein 3D-Framework, kein
+  WPF/DirectX/WebView für die Figur; fehlt das Modell oder lädt es nicht, bleibt das Sprite-Sheet.
+  Neu zeichnen nur bei geändertem Winkel oder Gesicht. Licht, Kamera und Ausschnitt
+  folgen `scripts/figure-3d/index.html` und `sheet.py`; ändern sie sich, beides anpassen.
+  Figur und Sprechblase zeichnen per Pixel-Alpha (`Layered.Push`), nicht über `Region`.
+- Figur-Einstellungen (Darstellung, Umherfliegen, Animation, Vordergrund, Autostart)
+  liegen in `desktop.json` (`desktop-settings.mjs`, `POST /api/desktop/settings`) und
+  bleiben über Neustarts und Updates erhalten. Neue Figur-Schalter dort ergänzen, nicht
+  nur im Speicher der Figur halten. Die Figur liest die Datei beim Start direkt.
+- „Mit Windows starten“: nur der eigene Wert `TecMon Companion` unter
+  `HKCU\…\CurrentVersion\Run` (`TecMon.SetAutostart()`), standardmäßig aus, beim
+  Deinstallieren entfernen. Keine Aufgabenplanung, keine Adminrechte.
 
 ## Persönlichkeit und TecMon-Werte (`personality.mjs`)
 
@@ -341,8 +354,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   nur Status, Schritt und feste Texte, keine Pfade oder Protokollzeilen. `ShowWork()` in
   `TecMon.cs` zeigt ihn als stehende Sprechblase (`Present(..., sticky)`), „Fertig“ nur für
   einen selbst gesehenen Auftrag.
-- Das Linksklick-Fenster (`?desktop=1`) gruppiert die Karten in Reiter
-  (`desktopSections()` in `public/app.js`). Neue Karten dort einer Gruppe zuordnen.
+- Das Linksklick-Fenster (`?desktop=1`) zeigt die Karten in zugeklappten Kategorien
+  (`PANEL_CATEGORIES` und `desktopSections()` in `public/app.js`), immer nur eine offen,
+  mit kurzem Stand im Kopf (`panelHints()`). Neue Karten dort einer Kategorie zuordnen.
 
 ## Prüfen und veröffentlichen
 

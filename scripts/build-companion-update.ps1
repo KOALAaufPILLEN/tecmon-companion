@@ -26,6 +26,8 @@ $refs=@('/nologo','/target:winexe','/platform:x64','/optimize+','/r:System.Windo
 $refs+=('/resource:'+(Join-Path $source 'public/splash-logo.png')+',TecMonLogo')
 $refs+=('/resource:'+(Join-Path $source 'public/desktop-bot.png')+',TecMonBot')
 $refs+=('/resource:'+(Join-Path $source 'public/desktop-bot-3d.png')+',TecMonBot3D')
+# Echtzeit-3D-Figur (High process), erzeugt mit scripts/figure-3d/model.py
+$refs+=('/resource:'+(Join-Path $source 'windows/desktop-bot-model.zip')+',TecMonModel')
 & $compiler @refs ('/out:'+(Join-Path $stage 'TecMon Companion.exe')) $native
 if($LASTEXITCODE -ne 0){throw 'Launcher build failed'}
 Add-Type -AssemblyName System.IO.Compression.FileSystem
