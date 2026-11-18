@@ -93,6 +93,36 @@ export const MAP_SPOTS = {
     T: ["A Main", "Mid", "B Ramp"],
     CT: ["Donut", "Cave", "Mid"],
   },
+  // Positionen aus den env_cs_place-/func_bomb_target-/Spawn-Entities der Karte (Update 17.11.2026),
+  // umgerechnet mit der Overview (pos_x -3615, pos_y 2712, scale 4.724792). Der T-Spawn liegt
+  // knapp außerhalb des gezeichneten Radars.
+  de_cbble: {
+    radar: { minX: -3615, maxY: 2712, unitsPerPx: 4.724792 },
+    name: "Cobblestone",
+    spots: [
+      p("A", 193, 924, "site"),
+      p("B", 803, 756, "site"),
+      p("T", 606, 77, "spawn"),
+      p("CT", 288, 897, "spawn"),
+      p("Tower", 474, 41),
+      p("Courtyard", 291, 232),
+      p("Crypt", 559, 266),
+      p("Side Hall", 447, 417),
+      p("Stairs", 305, 478),
+      p("Middle", 282, 531),
+      p("Long A", 92, 569),
+      p("A Ramp", 294, 696),
+      p("Balcony", 381, 865),
+      p("Connector", 494, 809),
+      p("B Halls", 609, 493),
+      p("B Main", 712, 610),
+      p("B Platform", 891, 603),
+      p("Drop", 594, 685),
+      p("Back of B", 895, 869),
+    ],
+    T: ["Courtyard", "Long A", "B Halls", "Drop"],
+    CT: ["A Ramp", "Connector", "Drop", "B Main"],
+  },
 };
 
 /** Spielkoordinaten (x, y) als Anteil des 1024er-Radars, oder null außerhalb. */
