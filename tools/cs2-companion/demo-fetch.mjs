@@ -2,8 +2,8 @@
  * Demo-Download für die Webseite (`demo-fetch-v1`).
  *
  * Valve liefert Demos nur über http; eine https-Seite darf sie nicht direkt
- * laden. Ohne Companion reicht die Webseite sie über ihren Server durch, was
- * dort Datenverkehr kostet. Mit Companion holt dieser PC die Demo selbst bei
+ * laden. Ohne Companion oder Browser-Erweiterung gibt es keinen automatischen
+ * Download über die Webseite. Mit Companion holt dieser PC die Demo selbst bei
  * Valve und gibt sie unverändert (.dem.bz2) an den Browser weiter. Nichts wird
  * gespeichert. Erlaubt sind nur Links auf Valves Replay-Server.
  */

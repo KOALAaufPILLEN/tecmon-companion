@@ -129,6 +129,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 
 ## Browser-Bridge
 
+- Fix-Regel 19.11.2026: Injizierten HTTP-Zugriff `fetchDemo` in `createCompanion()` nicht durch lokale Funktionsdeklarationen überschreiben. Der interne Sharecode-Auftrag heißt `fetchJobDemo`. Den autorisierten `/bridge/demo-fetch`-Erfolgsfall auf Server-Ebene prüfen, einschließlich unveränderter Bytes und ohne Start eines Sharecode-Auftrags; reine Tests von `createDemoFetch()` reichen dafür nicht.
+- Website-Regel 19.11.2026: YouTube benötigt keinen Discord-Webhook und kein verbundenes Discord-Konto. Discord ist eine optionale Aktion nach erfolgreichem Upload; bei Fehlern den Videolink erhalten und keinen zweiten Upload erzwingen. Im Demo-Assistenten lokale Dateiauswahl ohne Add-on/Companion erreichbar halten.
+
 - `/bridge/*` nur mit geprüftem Origin und Bridge-Token. Neue Funktionen
   bekommen eine eigene Capability in `/bridge/state`; bestehende Capabilities
   nicht ändern oder entfernen, weil ältere Webseiten-Versionen darauf prüfen.

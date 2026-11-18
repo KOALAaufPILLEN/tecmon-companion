@@ -465,7 +465,7 @@ export async function createCompanion({
     }
     return "";
   }
-  async function fetchDemo({ code, directory, entry }) {
+  async function fetchJobDemo({ code, directory, entry }) {
     const known = await knownDemo(code);
     if (known) {
       entry.log += "\nDemo dieses Matches liegt schon auf dem PC.";
@@ -777,7 +777,7 @@ export async function createCompanion({
             const entry = { id: randomUUID(), code, status: "downloading", log: "", demo: "" };
             downloads.set(entry.id, entry);
             try {
-              demo = await fetchDemo({
+              demo = await fetchJobDemo({
                 code,
                 directory: path.join(dataDir, "Downloads", entry.id),
                 entry,
@@ -837,7 +837,7 @@ export async function createCompanion({
           if (code) {
             const entry = { id: randomUUID(), code, status: "downloading", log: "", demo: "" };
             downloads.set(entry.id, entry);
-            demo = await fetchDemo({ code, directory: path.join(dataDir, "Downloads", entry.id), entry });
+            demo = await fetchJobDemo({ code, directory: path.join(dataDir, "Downloads", entry.id), entry });
             entry.demo = demo;
             entry.status = "done";
           }
@@ -1208,7 +1208,7 @@ export async function createCompanion({
               for (const entry of entries) {
                 entry.status = "downloading";
                 try {
-                  entry.demo = await fetchDemo({
+                  entry.demo = await fetchJobDemo({
                     code: entry.code,
                     directory: path.join(dataDir, "Downloads", entry.id),
                     entry,
