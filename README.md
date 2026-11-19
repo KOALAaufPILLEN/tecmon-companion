@@ -6,7 +6,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
-**Stand dieser Übersicht:** Version 0.44.1, 19. November 2026; Fix des lokalen Demo-Downloads über die Browser-Bridge. Bis zum Merge und GitHub-Release dieses Fixes ist 0.44.1 ein Entwicklungsstand. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+**Stand dieser Übersicht:** Version 0.44.1, 19. November 2026; Fix des lokalen Demo-Downloads über die Browser-Bridge. Bis zum Merge und GitHub-Release dieses Fixes ist 0.44.1 ein Entwicklungsstand. Website-PR #134 (Major-Hub in „Pro-Szene“, Upload nur mit Betreiber-Steam-ID) ist gemergt; er ändert am Companion nichts und braucht keine neue Capability. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
 
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
