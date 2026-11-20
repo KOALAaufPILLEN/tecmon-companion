@@ -306,7 +306,7 @@ export async function createClips({ dir, settingsDir = dir, ffmpeg, spawnProcess
       encoder,
       error,
       available: !!ffmpeg,
-      hotkey: "Strg+Alt+C",
+      hotkey: "Strg+Alt+T",
     }),
     get: () => ({ ...settings }),
     async setSettings(input) {

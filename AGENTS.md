@@ -203,7 +203,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Gehört zum Companion, nicht zu einem Spiel-Paket. Standardmäßig aus
   (`clips.json`). Nur Bildschirmaufnahme per FFmpeg `ddagrab`; kein Hook, keine
   Injektion, kein Overlay im Spiel, kein Mitlesen der Tastatur. Die Figur
-  registriert nur Strg+Alt+C (`RegisterHotKey`) und zeigt Rückmeldungen als
+  registriert nur Strg+Alt+T (`RegisterHotKey`) und zeigt Rückmeldungen als
   Windows-Hinweis, ohne den Fokus zu nehmen.
 - Der Ringpuffer (`Clips/puffer`) enthält Bildschirminhalt: beim Ausschalten,
   Beenden und Start löschen. Argumente für FFmpeg nur als Liste, nie über eine

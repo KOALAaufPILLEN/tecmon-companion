@@ -1181,7 +1181,7 @@ class DesktopPet : Form {
     /* Clip-Puffer: Bildschirmaufnahme der letzten Sekunden, fuer alle Spiele. Standardmaessig aus. */
     var clipsRoot=new ToolStripMenuItem("Clips");
     clipsOn=new ToolStripMenuItem("Clip-Puffer eingeschaltet",null,async(s,e)=>await ToggleClips());clipsRoot.DropDownItems.Add(clipsOn);
-    clipsRoot.DropDownItems.Add("Clip jetzt speichern (Strg+Alt+C)",null,async(s,e)=>await SaveClip());
+    clipsRoot.DropDownItems.Add("Clip jetzt speichern (Strg+Alt+T)",null,async(s,e)=>await SaveClip());
     clipsRoot.DropDownItems.Add(new ToolStripSeparator());
     clipsRoot.DropDownItems.Add("Clips verwalten",null,(s,e)=>OpenPanel("clips",""));
     clipsRoot.DropDownItems.Add("Clips-Ordner öffnen",null,async(s,e)=>{try{await Request("/api/clips/folder",true);}catch(Exception error){MessageBox.Show(error.Message,"TecMon");}});
@@ -1426,7 +1426,7 @@ class DesktopPet : Form {
     q.Heading("SCHNELLZUGRIFF");
     q.Tile("Einstellungen","Figur, Start & mehr",()=>OpenPanel("figur",""));
     q.Tile("Highlights","Aufnehmen auf TecMon",()=>OpenPanel("games",""));
-    q.Tile("Clip speichern","Strg+Alt+C",async()=>await SaveClip());
+    q.Tile("Clip speichern","Strg+Alt+T",async()=>await SaveClip());
     q.Tile("Letzte Videos","Fertige Aufnahmen",()=>OpenPanel("videos",""));
     q.Tile("Mit TecMon spielen","Minispiele & Werte",()=>OpenPanel("tecmon",""));
     q.Tile("TecMon.online","Im Browser öffnen",()=>DesktopPanel.OpenExternal("https://tecmon.online"));
@@ -1461,11 +1461,11 @@ class DesktopPet : Form {
     try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request(route,true,body));var wrap=new Dictionary<string,object>();wrap["pet"]=result.ContainsKey("pet")?result["pet"]:null;ShowPet(wrap);if(result.ContainsKey("games"))ShowGames(result);}
     catch(Exception error){if(tray!=null)tray.ShowBalloonTip(4000,"TecMon",error.Message,ToolTipIcon.Warning);}
   }
-  /* Clips: Strg+Alt+C ueber RegisterHotKey. Das ist eine einzelne systemweite Taste, kein Mitlesen der Tastatur, und nimmt dem Spiel nicht den Fokus. */
+  /* Clips: Strg+Alt+T ueber RegisterHotKey. Das ist eine einzelne systemweite Taste, kein Mitlesen der Tastatur, und nimmt dem Spiel nicht den Fokus. */
   [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr window,int id,uint modifiers,uint key);
   [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr window,int id);
   const int ClipHotkey=0x7C1;bool clipsEnabled,clipHotkey,savingClip;ToolStripMenuItem clipsOn;
-  protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);if(!preview)clipHotkey=RegisterHotKey(Handle,ClipHotkey,0x0001|0x0002|0x4000,(uint)Keys.C);}
+  protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);if(!preview)clipHotkey=RegisterHotKey(Handle,ClipHotkey,0x0001|0x0002|0x4000,(uint)Keys.T);}
   protected override void OnHandleDestroyed(EventArgs e){if(clipHotkey)UnregisterHotKey(Handle,ClipHotkey);clipHotkey=false;base.OnHandleDestroyed(e);}
   CrosshairOverlay overlay;
   void ShowOverlay(Dictionary<string,object> state){

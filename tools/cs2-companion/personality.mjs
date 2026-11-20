@@ -737,7 +737,7 @@ const LINES = {
     normal: [
       "Alles ruhig auf dem Desktop.",
       "Bereit für dein nächstes Match.",
-      "Mit Strg+Alt+C speicherst du jederzeit deine letzten Sekunden als Clip.",
+      "Mit Strg+Alt+T speicherst du jederzeit deine letzten Sekunden als Clip.",
     ],
     nerdy: [
       "Hintergrund-Telemetrie läuft mit minimaler CPU-Last.",
