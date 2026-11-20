@@ -12,7 +12,7 @@ test("Spiel-Pakete: CS2 standardmäßig installiert, geplante Spiele nicht insta
   t.after(() => rm(dir, { recursive: true, force: true }));
   const games = await createGamePackages(dir);
   assert.equal(games.has("cs2"), true);
-  assert.deepEqual(GAME_CATALOG.filter((g) => g.status === "planned").map((g) => g.id), ["valorant", "deadlock", "wardogs"]);
+  assert.deepEqual(GAME_CATALOG.filter((g) => g.status === "planned").map((g) => g.id), ["valorant", "deadlock"]);
   await assert.rejects(games.install("valorant"), /geplant/);
   await assert.rejects(games.install("deadlock"), /geplant/);
   assert.match(GAME_CATALOG.find((g) => g.id === "deadlock").web, /Webseite/, "Deadlock verweist auf die Replay-Auswertung der Webseite");

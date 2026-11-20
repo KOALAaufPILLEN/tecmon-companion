@@ -26,6 +26,7 @@ import { cleanDotaPayload, dotaGsiConfigPath, installDotaGsiConfig, removeDotaGs
 import { createInsightsStore } from "./insights.mjs";
 import { createGamePackages } from "./games.mjs";
 import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
+import { createScoreboard, SCOREBOARD_CAPABILITY, summary as scoreboardSummary } from "./scoreboard.mjs";
 import { workState } from "./work-status.mjs";
 import { createSkinSwap, hasSkins, SKIN_CAPABILITY, SKIN_KNIFE_CAPABILITY, SKIN_SETUP_CAPABILITY, SKIN_SIDE_CAPABILITY, SKIN_LEGACY_CAPABILITY, SKIN_STICKER_CAPABILITY } from "./skin-swap.mjs";
 import { AGENT_CAPABILITY, CHICKEN_BREED_CAPABILITY, CHICKEN_CAPABILITY, createAgentSwap, hasAgents } from "./agent-swap.mjs";
@@ -214,6 +215,12 @@ export async function createCompanion({
     settingsDir: installation?.profileDir || dataDir,
     ffmpeg: installation?.ffmpegExe || "",
     ...(engineSystem.clipSpawn ? { spawnProcess: engineSystem.clipSpawn, settleMs: 5 } : {}),
+  });
+  // Wardogs: Scoreboard-Foto auf Hotkey, lokale Windows-Texterkennung, nur eigene Werte.
+  const scoreboard = await createScoreboard({
+    dir: path.join(installation?.profileDir || dataDir, "wardogs"),
+    ffmpeg: installation?.ffmpegExe || "",
+    ...(engineSystem.scoreboard || {}),
   });
   let clipBranding = false;
   function brandClip(id, game, title) {
@@ -672,7 +679,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",DEMO_FETCH_CAPABILITY,...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1",FILTER_V2_CAPABILITY,"kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled && agentSwap.available ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY,SKIN_SIDE_CAPABILITY,SKIN_LEGACY_CAPABILITY,SKIN_STICKER_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY,CHICKEN_CAPABILITY,CHICKEN_BREED_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",DEMO_FETCH_CAPABILITY,...(installation && games.has("wardogs") ? [SCOREBOARD_CAPABILITY] : []),...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1",FILTER_V2_CAPABILITY,"kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled && agentSwap.available ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY,SKIN_SIDE_CAPABILITY,SKIN_LEGACY_CAPABILITY,SKIN_STICKER_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY,CHICKEN_CAPABILITY,CHICKEN_BREED_CAPABILITY] : [])] : [])],
       });
     // Skin-Tausch von der Webseite ein- und ausschalten (skin-swap-setup-v1); Einschalten nur mit bestätigtem Hinweis.
     if (url.pathname === "/bridge/skins" && (req.method === "GET" || req.method === "POST")) {
@@ -686,6 +693,14 @@ export async function createCompanion({
       const input = await readInput(req, 262144);
       if (!games.has("cs2")) return json(res, 409, { error: "Das CS2-Paket ist im Companion nicht installiert." });
       return json(res, 200, await insights.put(input));
+    }
+    // Eigene Wardogs-Werte aus Scoreboard-Fotos (scoreboard-v1): nur Zahlen der eigenen Zeile, keine Bilder.
+    if (req.method === "GET" && url.pathname === "/bridge/scoreboard") {
+      if (!installation || !games.has("wardogs")) return json(res, 409, { error: "Das Wardogs-Paket ist im Companion nicht installiert." });
+      return json(res, 200, {
+        game: "wardogs",
+        snapshots: scoreboard.list().map((s) => ({ time: s.time, values: s.values, confidence: s.confidence, moneySource: s.moneySource })),
+      });
     }
     if (req.method === "GET" && url.pathname === "/bridge/clips") {
       if (!installation) return json(res, 409, { error: "Clips brauchen den installierten Windows-Companion." });
@@ -931,6 +946,7 @@ export async function createCompanion({
           pet: pet.state(),
           games: games.state(),
           clips: clips.state(),
+          scoreboard: games.has("wardogs") ? scoreboard.state() : null,
           overlay: overlayState(),
           desktop: desktop.get(),
           downloads: [...downloads.values()],
@@ -940,6 +956,10 @@ export async function createCompanion({
       if (req.method === "GET" && url.pathname === "/api/pet/quiz") return json(res, 200, quizQuestion());
       if (req.method === "GET" && url.pathname === "/api/crosshair") return json(res, 200, crosshairState());
       if (req.method === "GET" && url.pathname === "/api/cfgs") return json(res, 200, cfgs.state(detected.cs2));
+      if (req.method === "GET" && url.pathname === "/api/wardogs/scoreboard") {
+        if (!games.has("wardogs")) throw new Error("Das Wardogs-Paket ist nicht installiert. Unter „Games“ installieren.");
+        return json(res, 200, { scoreboard: scoreboard.state(), snapshots: scoreboard.list().slice(0, 50) });
+      }
       if (req.method === "GET" && url.pathname === "/api/clips")
         return json(res, 200, { clips: await clips.list(), buffer: clips.state(), folder: clips.dir });
       if (req.method === "GET" && url.pathname === "/api/clips/devices")
@@ -1016,12 +1036,27 @@ export async function createCompanion({
           await cfgs.reset(detected.cs2);
         }
         await games.remove(id);
+        if (id === "wardogs") await scoreboard.reset();
         if (id === "dota2") {
           await dotaGsi.setEnabled(false);
           await dotaGsi.setFeatures(Object.fromEntries(DOTA_FEATURES.map((f) => [f.id, true])));
           await syncDotaConfig();
         }
         return json(res, 200, { message: "Paket entfernt. Seine Daten wurden gelöscht.", games: games.state(), gsi: gsiState() });
+      }
+      if (url.pathname.startsWith("/api/wardogs/") && !games.has("wardogs"))
+        throw new Error("Das Wardogs-Paket ist nicht installiert. Unter „Games“ installieren.");
+      if (url.pathname === "/api/wardogs/settings") {
+        const state = await scoreboard.setSettings(input);
+        return json(res, 200, { scoreboard: state, message: state.enabled ? `Scoreboard-Foto an. ${state.hotkey} drücken und ${state.seconds} Sekunden Tab halten.` : "Scoreboard-Foto aus." });
+      }
+      if (url.pathname === "/api/wardogs/capture") {
+        const snapshot = await scoreboard.capture();
+        return json(res, 200, { snapshot, message: `Gespeichert: ${scoreboardSummary(snapshot.values)}` });
+      }
+      if (url.pathname === "/api/wardogs/remove") {
+        await scoreboard.remove(input.time);
+        return json(res, 200, { snapshots: scoreboard.list().slice(0, 50) });
       }
       if (url.pathname.startsWith("/api/dota2/") && !games.has("dota2"))
         throw new Error("Das Dota-2-Paket ist nicht installiert. Unter „Games“ installieren.");
