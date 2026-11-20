@@ -17,6 +17,10 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
 
+## Website: Browser-Add-on 0.3.0 · 20. November 2026
+
+[Website-PR #146](https://github.com/KOALAaufPILLEN/tecmon/pull/146) ist gemergt. Das Browser-Add-on (im Website-Repo, kein Companion-Release) übernimmt drei Wege ohne Companion: „In TecMon analysieren“ neben jedem Replay-Link auf der eigenen Steam-CS2-Spieldatenseite (Übergabe nur an den vom Add-on geöffneten TecMon-Tab, einmal, 2 Minuten), Sharecode per Rechtsklick und ein Popup mit Schnellzugriff. Neue Rechte nur `contextMenus` und in Chromium `storage`. Am Companion ändert sich nichts: Rundentipps/GSI, Overlay, Aufnahme, Clip-Puffer, Skin-/Agenten-Tausch und cfg-Dateien bleiben hier. Ein echter Lauf auf steamcommunity.com sowie Firefox-Signatur und Safari-Build stehen aus.
+
 ## Website: Major- und Team-Stats · 19. November 2026
 
 [Website-PR #138](https://github.com/KOALAaufPILLEN/tecmon/pull/138) ist gemergt. Unter CS2 führt eine eigene Einstiegsseite mit sechs Major- und 57 Teamlogos zu den jeweiligen Stats. Die Ansichten nutzen Team-/Majorfarben und einen Sternenhintergrund, zum Beispiel Singapur Rot-Weiß, FURIA Schwarz-Weiß und 9z Silber-Lila.
