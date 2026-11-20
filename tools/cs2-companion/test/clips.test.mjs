@@ -11,7 +11,7 @@ import { createCompanion } from "../server.mjs";
 const exists = (file) => access(file).then(() => true, () => false);
 
 /** Nachgebautes FFmpeg: Ringpuffer schreibt Stücke, Concat schreibt die Ausgabedatei. */
-function fakeFfmpeg({ failing = [] } = {}) {
+function fakeFfmpeg({ failing = [], noAudio = false, crashAfter = 0 } = {}) {
   const calls = [];
   const spawn = (exe, args, options) => {
     const proc = new EventEmitter();
@@ -31,8 +31,21 @@ function fakeFfmpeg({ failing = [] } = {}) {
           proc.emit("close", 1);
           return;
         }
-        for (let i = 0; i < 6; i++) {
-          await writeFile(path.join(options.cwd, `seg${String(i).padStart(3, "0")}.ts`), `segment-${i}`);
+        if (noAudio && args.includes("dshow")) {
+          proc.stderr.emit("data", "audio=Stereomix: I/O error\n");
+          proc.emit("close", 1);
+          return;
+        }
+        if (crashAfter && calls.filter((c) => c.args.includes("segment")).length === 1) {
+          call.crashed = true;
+          setTimeout(() => {
+            call.dead = true;
+            proc.stderr.emit("data", "ddagrab: Failed to acquire next frame\n");
+            proc.emit("close", 1);
+          }, crashAfter);
+        }
+        for (let i = 0; i < 6 && !proc.killed && !call.dead; i++) {
+          await writeFile(path.join(options.cwd, `seg${String(i).padStart(3, "0")}.ts`), `segment-${i}`).catch(() => {});
           await new Promise((r) => setTimeout(r, 5));
         }
       } else if (args.includes("concat")) {
@@ -155,4 +168,44 @@ test("Clips: lokale API ohne Windows-Companion meldet fehlendes FFmpeg, Bridge o
   const brand = await fetch(base + "/api/clips/brand", { method: "POST", headers, body: JSON.stringify({ id: "clip-20261113-123005.mp4" }) });
   assert.match((await brand.json()).error, /Windows-Companion/);
   assert.equal((await fetch(base + "/api/clips")).status, 401, "nur mit lokalem Token");
+});
+
+test("Clip-Puffer: startet nach einem Absturz von FFmpeg selbst neu", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clips-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const ff = fakeFfmpeg({ crashAfter: 30 });
+  const clips = await createClips({ dir, ffmpeg: "ffmpeg.exe", spawnProcess: ff.spawn, settleMs: 5, restartMs: 100 });
+  t.after(() => clips.stop());
+  await clips.setSettings({ enabled: true });
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(clips.state().recording, false, "nach dem Absturz kurz aus");
+  await assert.rejects(clips.save(), /läuft gerade nicht.*erneut versuchen/);
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(clips.state().recording, true, "von selbst neu gestartet");
+  assert.equal(clips.state().error, "");
+  assert.equal(ff.calls.filter((c) => c.args.includes("segment")).length, 2);
+});
+
+test("Clip-Puffer: kaputte Tonquelle → Aufnahme ohne Ton mit Hinweis", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clips-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const ff = fakeFfmpeg({ noAudio: true });
+  const clips = await createClips({ dir, ffmpeg: "ffmpeg.exe", spawnProcess: ff.spawn, settleMs: 5 });
+  t.after(() => clips.stop());
+  const state = await clips.setSettings({ enabled: true, audioDevice: "Stereomix" });
+  assert.equal(state.recording, true);
+  assert.equal(state.audio, false);
+  assert.match(state.error, /Tonquelle „Stereomix“.*ohne Ton/);
+  const last = ff.calls.filter((c) => c.args.includes("segment")).at(-1);
+  assert.ok(last.args.includes("-an"));
+});
+
+test("Clip-Puffer: startet die Aufnahme beim Einschalten nicht, bleibt der Schalter aus", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clips-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const ff = fakeFfmpeg({ failing: ENCODERS });
+  const clips = await createClips({ dir, ffmpeg: "ffmpeg.exe", spawnProcess: ff.spawn, settleMs: 5 });
+  await assert.rejects(clips.setSettings({ enabled: true }), /Bildschirmaufnahme konnte nicht starten: No NVENC/);
+  assert.equal(clips.state().enabled, false);
+  assert.equal(JSON.parse(await readFile(path.join(dir, "clips.json"), "utf8")).enabled, false);
 });

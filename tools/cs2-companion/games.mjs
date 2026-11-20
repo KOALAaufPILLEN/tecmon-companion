@@ -38,7 +38,16 @@ export const GAME_CATALOG = [
     // laeuft deshalb auf der Webseite im Browser, nicht im Companion.
     web: "Replay-Auswertung auf der Webseite unter Games → Deadlock → Replay",
   },
-  { id: "wardogs", label: "Wardogs", short: "Wardogs", status: "planned", features: [], data: [] },
+  {
+    id: "wardogs",
+    label: "Wardogs",
+    short: "Wardogs",
+    status: "available",
+    // Wardogs hat keine offizielle Schnittstelle. Werte kommen nur aus einem Scoreboard-Foto
+    // auf Tastendruck, lokal mit der Windows-Texterkennung gelesen; die Fotos werden gelöscht.
+    features: ["Scoreboard-Foto (Strg+Alt+S): eigene Kills, Tode, Assists, Punkte und Geld lokal auslesen"],
+    data: ["wardogs/scoreboard.json und wardogs/scoreboard-stats.json im Companion-Profil"],
+  },
 ];
 
 /** Ohne gespeicherte Auswahl ist CS2 installiert, damit bestehende Installationen nichts verlieren. */

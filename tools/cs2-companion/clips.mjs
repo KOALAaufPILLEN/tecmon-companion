@@ -11,6 +11,8 @@ import { randomUUID } from "node:crypto";
  */
 export const CLIP_CAPABILITY = "clips-v1";
 export const SEGMENT_SECONDS = 2;
+const MAX_RESTARTS = 5;
+const RESTART_WINDOW_MS = 10 * 60 * 1000;
 export const SECONDS = [10, 120];
 export const FPS = [30, 60];
 export const HEIGHTS = [0, 720, 1080];
@@ -120,7 +122,7 @@ function runOnce(spawnProcess, exe, args, cwd, timeout = 120000) {
   });
 }
 
-export async function createClips({ dir, settingsDir = dir, ffmpeg, spawnProcess = nodeSpawn, now = () => new Date(), settleMs = 4000 }) {
+export async function createClips({ dir, settingsDir = dir, ffmpeg, spawnProcess = nodeSpawn, now = () => new Date(), settleMs = 4000, restartMs = 3000 }) {
   const clipsDir = path.join(dir, "Clips");
   const ringDir = path.join(clipsDir, "puffer");
   const settingsFile = path.join(settingsDir, "clips.json");
@@ -136,6 +138,9 @@ export async function createClips({ dir, settingsDir = dir, ffmpeg, spawnProcess
   let encoder = "";
   let error = "";
   let stopping = false;
+  let audioFailed = false;
+  let restartTimer = null;
+  const restarts = [];
   const meta = new Map();
 
   async function save() {
@@ -145,9 +150,9 @@ export async function createClips({ dir, settingsDir = dir, ffmpeg, spawnProcess
   }
   const wrap = () => Math.ceil(SECONDS[1] / SEGMENT_SECONDS) + 4;
 
-  function launch(candidate) {
+  function launch(candidate, audio = true) {
     return new Promise((resolve, reject) => {
-      const args = ringArgs({ ...settings, encoder: candidate, wrap: wrap() });
+      const args = ringArgs({ ...settings, audioDevice: audio ? settings.audioDevice : "", encoder: candidate, wrap: wrap() });
       const proc = spawnProcess(ffmpeg, args, { cwd: ringDir, windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
       let errors = "";
       let settled = false;
@@ -172,10 +177,52 @@ export async function createClips({ dir, settingsDir = dir, ffmpeg, spawnProcess
         }
         if (child === proc) {
           child = null;
-          if (!stopping) error = "Der Clip-Puffer wurde unerwartet beendet. " + (errors.trim().split("\n").pop() || "");
+          encoder = "";
+          if (!stopping) {
+            error = "Der Clip-Puffer wurde unerwartet beendet. " + (errors.trim().split("\n").pop() || "");
+            scheduleRestart();
+          }
         }
       });
     });
+  }
+
+  /**
+   * FFmpeg kann mitten im Spiel aussteigen, etwa wenn ein Spiel die Auflösung oder den
+   * Vollbildmodus wechselt (Desktop Duplication verliert dann den Zugriff). Dann den Puffer
+   * selbst neu starten, höchstens MAX_RESTARTS-mal in RESTART_WINDOW_MS.
+   */
+  function scheduleRestart() {
+    if (!settings.enabled || restartTimer) return;
+    const time = Date.now();
+    while (restarts.length && time - restarts[0] > RESTART_WINDOW_MS) restarts.shift();
+    if (restarts.length >= MAX_RESTARTS) {
+      error += " Mehrfach abgestürzt, bitte den Clip-Puffer aus- und wieder einschalten.";
+      return;
+    }
+    restarts.push(time);
+    restartTimer = setTimeout(() => {
+      restartTimer = null;
+      if (!settings.enabled || child) return;
+      start().catch(() => {});
+    }, restartMs);
+    restartTimer.unref?.();
+  }
+
+  async function tryEncoders(audio) {
+    let last = null;
+    for (const candidate of ENCODERS) {
+      try {
+        child = await launch(candidate, audio);
+        encoder = candidate;
+        return null;
+      } catch (e) {
+        last = e;
+        await rm(ringDir, { recursive: true, force: true });
+        await mkdir(ringDir, { recursive: true });
+      }
+    }
+    return last || new Error("unbekannt");
   }
 
   async function start() {
@@ -184,25 +231,28 @@ export async function createClips({ dir, settingsDir = dir, ffmpeg, spawnProcess
     await rm(ringDir, { recursive: true, force: true });
     await mkdir(ringDir, { recursive: true });
     error = "";
+    audioFailed = false;
     stopping = false;
-    let last = null;
-    for (const candidate of ENCODERS) {
-      try {
-        child = await launch(candidate);
-        encoder = candidate;
+    let last = await tryEncoders(true);
+    if (!last) return;
+    // Häufigste Ursache: Tonquelle (z. B. Stereomix) ist in Windows deaktiviert. Dann ohne Ton aufnehmen.
+    if (settings.audioDevice) {
+      const silent = await tryEncoders(false);
+      if (!silent) {
+        audioFailed = true;
+        error = `Tonquelle „${settings.audioDevice}“ ließ sich nicht öffnen, der Puffer nimmt ohne Ton auf. (${last.message})`;
         return;
-      } catch (e) {
-        last = e;
-        await rm(ringDir, { recursive: true, force: true });
-        await mkdir(ringDir, { recursive: true });
       }
+      last = silent;
     }
-    error = "Bildschirmaufnahme konnte nicht starten: " + (last?.message || "unbekannt");
+    error = "Bildschirmaufnahme konnte nicht starten: " + last.message;
     throw new Error(error);
   }
 
   async function stop() {
     stopping = true;
+    clearTimeout(restartTimer);
+    restartTimer = null;
     const proc = child;
     child = null;
     encoder = "";
@@ -252,22 +302,34 @@ export async function createClips({ dir, settingsDir = dir, ffmpeg, spawnProcess
     state: () => ({
       ...settings,
       recording: !!child,
+      audio: !!child && !!settings.audioDevice && !audioFailed,
       encoder,
       error,
       available: !!ffmpeg,
-      hotkey: "Strg+Alt+C",
+      hotkey: "Strg+Alt+T",
     }),
     get: () => ({ ...settings }),
     async setSettings(input) {
       const next = cleanClipSettings(input, settings);
       const restart = !!child && ["seconds", "fps", "height", "audioDevice"].some((k) => next[k] !== settings[k]);
+      const enabling = next.enabled && !settings.enabled;
       settings = next;
+      restarts.length = 0;
       await save();
-      if (!settings.enabled) await stop();
-      else if (!child) await start();
-      else if (restart) {
-        await stop();
-        await start();
+      try {
+        if (!settings.enabled) await stop();
+        else if (!child) await start();
+        else if (restart) {
+          await stop();
+          await start();
+        }
+      } catch (e) {
+        // Startet die Aufnahme beim Einschalten nicht, bleibt der Schalter aus statt „startet …“.
+        if (enabling) {
+          settings = { ...settings, enabled: false };
+          await save();
+        }
+        throw e;
       }
       return this.state();
     },
@@ -283,6 +345,8 @@ export async function createClips({ dir, settingsDir = dir, ffmpeg, spawnProcess
     },
     /** Letzte `seconds` aus dem Puffer als eigenen Clip speichern. */
     async save(seconds = settings.seconds) {
+      if (!child && settings.enabled)
+        throw new Error(`Der Clip-Puffer läuft gerade nicht${error ? ` (${error})` : ""}. In ein paar Sekunden erneut versuchen.`);
       if (!child) throw new Error("Der Clip-Puffer ist aus. Zuerst einschalten.");
       seconds = Math.max(SECONDS[0], Math.min(SECONDS[1], Math.round(Number(seconds)) || settings.seconds));
       if ((await list()).length >= MAX_CLIPS) throw new Error(`Höchstens ${MAX_CLIPS} Clips. Alte Clips zuerst löschen.`);

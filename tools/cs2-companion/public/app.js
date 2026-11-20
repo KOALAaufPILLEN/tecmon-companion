@@ -382,6 +382,7 @@ let gamesSignature='';
 function showGames(list){
   const cs2=list.find(g=>g.id==='cs2');document.querySelectorAll('.cs2-only').forEach(n=>{n.hidden=!(cs2&&cs2.installed);});
   const dota=list.find(g=>g.id==='dota2');document.querySelectorAll('.dota2-only').forEach(n=>{n.hidden=!(dota&&dota.installed);});
+  const wardogs=list.find(g=>g.id==='wardogs');document.querySelectorAll('.wardogs-only').forEach(n=>{n.hidden=!(wardogs&&wardogs.installed);});
   const signature=JSON.stringify(list.map(g=>[g.id,g.installed,g.status]));if(signature===gamesSignature)return;gamesSignature=signature;
   $('game-library').replaceChildren(...list.map(g=>{
     const row=el('li','','game-row'+(g.installed?' installed':''));const info=el('div','');info.append(el('b',g.label));
@@ -461,7 +462,7 @@ function guessGame(){
 }
 document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>(gameArea=b.closest('.card').querySelector('.game-area'),{reaction:reactionGame,rps:rpsGame,quiz:quizGame,price:priceGame,aim:aimGame,memory:memoryGame,guess:guessGame})[b.dataset.game]()));
 loadPet();setInterval(loadPet,5000);
-if(['#spiele','#tecmon','#games','#clips','#quiz','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
+if(['#spiele','#tecmon','#games','#clips','#wardogs','#quiz','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
 
 /* Clip-Puffer: Einstellungen, Liste, Branding. Hochladen zu YouTube läuft auf der Webseite. */
 const CLIP_GAMES=[['cs2','CS2'],['valorant','Valorant'],['dota2','Dota 2'],['deadlock','Deadlock'],['wardogs','Wardogs'],['lol','League of Legends'],['other','Anderes Spiel']];
@@ -553,6 +554,7 @@ const PANEL_CATEGORIES=[
   ['figur','Figur & Start',[['#figur']]],
   ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#fadenkreuz','Fadenkreuz & Overlay'],['#cfgs','Configs'],['#quiz','Quiz']]],
   ['dota2','Dota 2',[['#dota-tipps','Dota-2-Tipps']]],
+  ['wardogs','Wardogs',[['#wardogs']]],
   ['clips','Clips',[['#clips']]],
   ['tecmon','TecMon',[['#tecmon','Werte & Persönlichkeit'],['#spiele','Minispiele']]],
   ['pakete','Spiel-Pakete',[['#games']]],
@@ -565,6 +567,7 @@ function panelHints(state){
   set('cs2',`Tipps ${state.gsi?.enabled?'an':'aus'} · Highlights ${state.auto?.enabled?'an':'aus'}`);
   set('dota2',`Tipps ${state.dota?.enabled?'an':'aus'}`);
   set('clips',state.clips?.enabled?'Puffer an':'Puffer aus');
+  set('wardogs',state.scoreboard?`Scoreboard-Foto ${state.scoreboard.enabled?'an':'aus'}`:'nicht installiert');
   if(state.pet)set('tecmon',`Level ${state.pet.level}`);
 }
 (function desktopSections(){
@@ -599,3 +602,40 @@ function panelHints(state){
   if(fromHash)for(let d=fromHash.closest('details');d;d=d.parentElement?.closest('details'))d.open=true;
 })();
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('skins-consent').hidden){$('skins-consent').hidden=true;$('skins-accept').checked=false;}});
+
+/* Wardogs: Scoreboard-Foto (scoreboard.mjs). Werte nur der eigenen Zeile, Differenz zum vorigen Foto. */
+const WARDOGS_LABELS={kills:'Kills',deaths:'Tode',assists:'Assists',revives:'Wiederbelebungen',score:'Punkte',money:'Geld',cash:'Kontostand'};
+let wardogsState=null,wardogsSignature='';
+function wardogsText(values,previous){
+  return Object.keys(WARDOGS_LABELS).filter(k=>values[k]!==undefined).map(k=>{
+    const diff=previous&&previous[k]!==undefined?values[k]-previous[k]:null;
+    return `${WARDOGS_LABELS[k]} ${values[k].toLocaleString('de-DE')}${diff?` (${diff>0?'+':''}${diff.toLocaleString('de-DE')})`:''}`;
+  }).join(' · ');
+}
+async function loadWardogs(){
+  if($('wardogs').hidden)return;
+  const {scoreboard,snapshots}=await api('/api/wardogs/scoreboard');wardogsState=scoreboard;
+  $('wardogs-heading').textContent=scoreboard.enabled?`Scoreboard-Foto an · ${scoreboard.hotkey}`:'Scoreboard-Foto ist aus';
+  $('wardogs-toggle').textContent=scoreboard.enabled?'Ausschalten':'Einschalten';
+  $('wardogs-capture').disabled=!scoreboard.enabled||!scoreboard.available||scoreboard.busy;
+  if(document.activeElement!==$('wardogs-name'))$('wardogs-name').value=scoreboard.playerName||'';
+  if(!scoreboard.available)$('wardogs-note').dataset.hint='Braucht den installierten Windows-Companion.';
+  const signature=JSON.stringify(snapshots.map(s=>s.time));if(signature===wardogsSignature)return;wardogsSignature=signature;
+  const list=$('wardogs-list');list.replaceChildren();
+  if(!snapshots.length){list.append(el('li','Noch keine Werte.','recent-empty'));return;}
+  snapshots.slice(0,20).forEach((shot,i)=>{
+    const row=el('li','');const previous=snapshots[i+1];
+    const sameMatch=previous&&shot.time-previous.time<3*3600*1000&&(shot.values.kills??0)>=(previous.values.kills??0);
+    row.append(el('b',new Date(shot.time).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})));
+    row.append(el('span',' '+wardogsText(shot.values,sameMatch?previous.values:null)));
+    if(shot.moneySource==='hud')row.append(el('small',' · Geld aus dem HUD'));
+    const remove=el('button','Löschen','subtle');remove.type='button';
+    remove.addEventListener('click',()=>api('/api/wardogs/remove',{time:shot.time}).then(()=>{wardogsSignature='';loadWardogs();}).catch(notice));
+    row.append(remove);list.append(row);
+  });
+}
+const wardogsSettings=body=>api('/api/wardogs/settings',body).then(r=>{if(r.message)$('notice').textContent=r.message;wardogsSignature='';return loadWardogs();}).catch(notice);
+$('wardogs-toggle').addEventListener('click',()=>wardogsSettings({enabled:!wardogsState?.enabled,playerName:$('wardogs-name').value}));
+$('wardogs-save').addEventListener('click',()=>wardogsSettings({playerName:$('wardogs-name').value}));
+$('wardogs-capture').addEventListener('click',()=>{$('notice').textContent='Scoreboard-Foto läuft: Wardogs nach vorn holen und Tab halten …';api('/api/wardogs/capture',{}).then(r=>{$('notice').textContent=r.message;wardogsSignature='';loadWardogs();}).catch(notice);});
+setInterval(()=>{if(!restarting)loadWardogs().catch(()=>{});},5000);setTimeout(()=>loadWardogs().catch(()=>{}),800);
