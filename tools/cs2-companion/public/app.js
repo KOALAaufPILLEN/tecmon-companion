@@ -604,7 +604,7 @@ function panelHints(state){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('skins-consent').hidden){$('skins-consent').hidden=true;$('skins-accept').checked=false;}});
 
 /* Wardogs: Scoreboard-Foto (scoreboard.mjs). Werte nur der eigenen Zeile, Differenz zum vorigen Foto. */
-const WARDOGS_LABELS={kills:'Kills',deaths:'Tode',assists:'Assists',score:'Punkte',money:'Geld'};
+const WARDOGS_LABELS={kills:'Kills',deaths:'Tode',assists:'Assists',revives:'Wiederbelebungen',score:'Punkte',money:'Geld',cash:'Kontostand'};
 let wardogsState=null,wardogsSignature='';
 function wardogsText(values,previous){
   return Object.keys(WARDOGS_LABELS).filter(k=>values[k]!==undefined).map(k=>{

@@ -233,7 +233,11 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Werte als „per Texterkennung gelesen“ kennzeichnen, nicht als gemessen. Bridge
   `scoreboard-v1` (`GET /bridge/scoreboard`) gibt nur Zeit, Werte, `confidence`,
   `moneySource`. Neue Spiele brauchen eigene Spaltennamen in `COLUMNS` und Tests mit
-  echten Screenshots.
+  echten Screenshots (Wardogs: Koordinaten in `wardogs()` in `test/scoreboard.test.mjs`).
+- Nicht lesbare Werte fehlen im Ergebnis, nie als 0 eintragen. `readMoney()` (verlesenes „$“)
+  nur für eine Geld-Spalte mit nachweislich „$“-Werten. Die RELAY-Kennung ersetzt den Namen
+  nur, wenn genau eine Zeile passt (`matchedBy: "relay"`, geringere `confidence`); `cash`
+  (Kontostand) nur aus einem „$…“ über der Kopfzeile.
 
 ## Filter und HUD v2 (`video-filters.mjs`, `cyber-hud.mjs`)
 

@@ -9,6 +9,8 @@ import {
   parseScoreboard,
   pickBest,
   readNumber,
+  readMoney,
+  columnOf,
   burstArgs,
   parseOcrOutput,
   summary,
@@ -68,6 +70,57 @@ test("Scoreboard: ohne Geld-Spalte zählt das Geld aus dem HUD", () => {
   assert.equal(parsed.values.money, 4800);
   assert.equal(parsed.moneySource, "hud");
   assert.equal(summary(parsed.values), "Kills 5 · Tode 2 · Assists 3 · Punkte 1250 · Geld 4800");
+});
+
+/**
+ * Wardogs-„PUNKTELISTE“ mit den Koordinaten aus echten Screenshots (1920×1080): zweizeilige
+ * Kopfzeile, abgeschnittenes „WIEDERBELEBUN…“, „VERDIENTES GELD“ aus zwei Wörtern, „$“ als
+ * „8“/„s“ verlesen, Kontostand oben rechts, RELAY-Kennung auch in der eigenen Zeile.
+ */
+function wardogs({ name = "KOALA", relay = "2EP2-NOY" } = {}) {
+  const words = [
+    word("PUNKTELISTE", 317, 11, 120), word("|", 1704, 11, 4), word("$6685", 1714, 11, 60), word("|", 1804, 11, 4),
+    word("RELAY", 1497, 206, 50), word("96", 1528, 192, 20), word(relay, 1530, 206, 80),
+    word('"WIEDERBELEBUN!', 1456, 252, 130),
+    word("SPIELER", 761, 266, 70), word("VERDIENTES", 894, 266, 85), word("GELD", 984, 266, 40),
+    word("TÖTUNGEN", 1086, 266, 80), word("ASSISTS", 1243, 266, 65), word("TODESFÄLLE", 1354, 266, 90),
+    word("a", 325, 330, 10), word("Psychomyco007", 478, 330, 120), word("36ms", 759, 330, 40),
+    word("89.501", 889, 330, 55), word("4", 1084, 330, 10), word("1", 1250, 330, 10), word("3", 1367, 330, 10), word("2", 1460, 330, 10),
+    word("eos500", 454, 402, 60), word("$8.429", 888, 402, 55),
+    word("Colonia", 462, 513, 70), word("$7.321", 890, 513, 55),
+    word("[TCMN]", 419, 699, 60), word(name, 494, 699, 60), word("2eP2-Noy", 669, 699, 70), word("45ms", 759, 699, 40),
+    word("82.413", 889, 699, 55), word("0", 1084, 699, 10), word("0", 1250, 699, 10), word("1", 1366, 699, 10), word("0", 1460, 699, 10),
+    word("Cyborg3000", 421, 925, 90), word("so", 902, 937, 20),
+  ];
+  return { width: 1920, height: 1080, words };
+}
+
+test("Wardogs: deutsche, abgeschnittene und zweizeilige Spaltenköpfe", () => {
+  assert.equal(columnOf("TÖTUNGEN"), "kills");
+  assert.equal(columnOf("TODESFÄLLE"), "deaths");
+  assert.equal(columnOf("WIEDERBELEBUN:"), "revives", "abgeschnitten");
+  assert.equal(columnOf("VERDIENTES"), "money");
+  assert.equal(columnOf("PUNKTELISTE"), "", "Überschrift ist keine Punkte-Spalte");
+  assert.equal(readMoney("82.413"), 2413, "$ als 8 gelesen");
+  assert.equal(readMoney("so"), 0, "$0 als so gelesen");
+  assert.equal(readMoney("$8.429"), 8429);
+  assert.equal(readMoney("s485"), 485);
+});
+
+test("Wardogs: eigene Zeile aus echtem Layout, Kontostand oben rechts", () => {
+  const parsed = parseScoreboard(wardogs(), "KOALA");
+  assert.deepEqual(parsed.values, { money: 2413, kills: 0, assists: 0, deaths: 1, revives: 0, cash: 6685 });
+  assert.equal(parsed.moneySource, "scoreboard");
+  assert.equal(parsed.confidence, 1);
+  assert.equal(summary(parsed.values), "Kills 0 · Tode 1 · Assists 0 · Wiederbelebungen 0 · Geld 2413 · Kontostand 6685");
+});
+
+test("Wardogs: Name unlesbar → eigene Zeile über die RELAY-Kennung, nur wenn eindeutig", () => {
+  const parsed = parseScoreboard(wardogs({ name: "K#@!%" }), "KOALA");
+  assert.equal(parsed.matchedBy, "relay");
+  assert.equal(parsed.values.deaths, 1);
+  assert.ok(parsed.confidence < 1);
+  assert.equal(parseScoreboard(wardogs({ name: "K#@!%", relay: "ZZZZ-999" }), "KOALA"), null, "andere Kennung → nichts raten");
 });
 
 test("Scoreboard: aus einer Foto-Serie zählt das Foto mit Scoreboard", () => {

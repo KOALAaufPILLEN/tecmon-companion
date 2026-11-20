@@ -22,18 +22,21 @@ const MAX_SNAPSHOTS = 500;
 const NAME_MAX = 32;
 
 /**
- * Spaltenköpfe, die die Texterkennung als Kopfzeile erkennt (klein, ohne Satzzeichen).
- * Mehrere Sprachen, weil Spiele ihre Oberfläche übersetzen.
+ * Spaltenköpfe, die die Texterkennung als Kopfzeile erkennt (klein, ohne Satzzeichen und
+ * Umlaut-Punkte). Mehrere Sprachen, weil Spiele ihre Oberfläche übersetzen. Abgeschnittene
+ * Köpfe (Wardogs: „WIEDERBELEBUN…“) zählen ab 5 Buchstaben über den Wortanfang.
  */
 export const COLUMNS = {
-  kills: ["k", "kills", "kill", "abschüsse", "abschusse", "elims", "eliminations", "eliminierungen", "kos"],
-  deaths: ["d", "deaths", "death", "tode", "tod"],
-  assists: ["a", "assists", "assist", "vorlagen", "unterstützungen"],
+  kills: ["k", "kills", "kill", "abschüsse", "abschusse", "elims", "eliminations", "eliminierungen", "kos", "totungen", "toetungen"],
+  deaths: ["d", "deaths", "death", "tode", "tod", "todesfalle", "todesfaelle"],
+  assists: ["a", "assists", "assist", "vorlagen", "unterstützungen", "unterstutzungen"],
+  revives: ["revives", "revive", "wiederbelebungen", "wiederbelebt"],
   score: ["score", "punkte", "pts", "points"],
-  money: ["$", "money", "geld", "cash", "credits", "funds", "bank"],
+  money: ["$", "money", "geld", "cash", "credits", "funds", "bank", "verdientes", "verdientesgeld", "earned"],
 };
-export const VALUE_KEYS = Object.keys(COLUMNS);
-export const LABELS = { kills: "Kills", deaths: "Tode", assists: "Assists", score: "Punkte", money: "Geld" };
+/** `cash` ist der Kontostand oben im HUD (über dem Scoreboard), `money` die Geld-Spalte. */
+export const VALUE_KEYS = [...Object.keys(COLUMNS), "cash"];
+export const LABELS = { kills: "Kills", deaths: "Tode", assists: "Assists", revives: "Wiederbelebungen", score: "Punkte", money: "Geld", cash: "Kontostand" };
 
 const norm = (text) =>
   String(text || "")
@@ -74,6 +77,19 @@ export function readNumber(text) {
   return Number.isSafeInteger(value) && value >= 0 && value <= 99999999 ? value : null;
 }
 
+/**
+ * Geldbetrag aus einer Spalte, in der jeder Wert mit „$“ beginnt. Die Texterkennung liest
+ * das „$“ oft als „s“, „S“, „5“, „8“ oder „9“: „so“ = $0, „82.413“ = $2.413. Nur benutzen,
+ * wenn die Spalte nachweislich „$“-Werte hat (`dollarColumn`), sonst `readNumber()`.
+ */
+export function readMoney(text) {
+  let t = String(text || "").trim().replace(/^[|[(]+/, "");
+  if (/^[sS$][oO0]$/.test(t)) return 0;
+  if (/^[sS]\d/.test(t)) t = t.slice(1);
+  else if (/^[5689]\d[.,]\d{3}$/.test(t)) t = t.slice(1);
+  return readNumber(t);
+}
+
 /** Wörter einer Texterkennung zu Zeilen gruppieren (gleiche Höhe, ±60 % der Wortgröße). */
 export function groupLines(words) {
   const sorted = words
@@ -93,15 +109,46 @@ export function groupLines(words) {
   return lines;
 }
 
-function headerOf(line) {
-  const found = {};
-  for (const word of line.words) {
-    const key = norm(word.t);
+/** Spalte zu einem Wort der Kopfzeile, auch für abgeschnittene Köpfe ab 5 Buchstaben. */
+export function columnOf(text) {
+  const key = norm(text);
+  if (!key) return "";
+  for (const [column, names] of Object.entries(COLUMNS)) if (names.includes(key)) return column;
+  if (key.length >= 5)
     for (const [column, names] of Object.entries(COLUMNS))
-      if (!found[column] && names.includes(key)) found[column] = word.cx;
+      if (names.some((name) => name.length > key.length && name.startsWith(key))) return column;
+  return "";
+}
+
+/**
+ * Kopfzeile, deren unterste Zeile `lines[h]` ist. Spaltenköpfe dürfen zwei Zeilen hoch sein
+ * (Wardogs setzt „WIEDERBELEBUN…“ etwas höher); aus den oberen Zeilen zählen nur Wörter mit
+ * mindestens 3 Buchstaben, damit einzelne Zeichen nicht als „K“, „D“ oder „A“ gelten.
+ * Mehrwortköpfe („VERDIENTES GELD“) werden zu einer Spalte zusammengefasst.
+ */
+function headerAt(lines, h) {
+  const bottom = lines[h];
+  const band = Math.max(bottom.h, 10) * 2.5;
+  const found = {};
+  for (let i = h; i >= 0 && bottom.cy - lines[i].cy <= band; i--) {
+    for (const word of lines[i].words) {
+      if (i !== h && norm(word.t).length < 3) continue;
+      const column = columnOf(word.t);
+      if (!column) continue;
+      const span = (found[column] ||= { left: word.x, right: word.x + word.w, top: word.y, sum: 0, count: 0 });
+      span.left = Math.min(span.left, word.x);
+      span.right = Math.max(span.right, word.x + word.w);
+      span.top = Math.min(span.top, word.y);
+      span.sum += word.cx;
+      span.count++;
+    }
   }
+  for (const span of Object.values(found)) span.cx = span.sum / span.count;
   return found;
 }
+
+/** Abstand einer Zahl zu einer Spalte: Werte stehen linksbündig oder mittig unter dem Kopf. */
+const gapTo = (word, span) => Math.min(Math.abs(word.x - span.left), Math.abs(word.cx - span.cx));
 
 function nameMatch(line, name) {
   const wanted = norm(name);
@@ -120,61 +167,111 @@ function nameMatch(line, name) {
   return best;
 }
 
+/** Kennung so vereinheitlichen, wie die Texterkennung sie verwechselt (O/0, I/l/1). */
+const codeNorm = (text) =>
+  String(text || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .replace(/O/g, "0")
+    .replace(/[IL]/g, "1");
+
+/**
+ * Wardogs zeigt oben rechts „RELAY XXXX-XXX“; dieselbe Kennung steht in der eigenen Zeile.
+ * Ersatz, wenn der Name nicht lesbar ist: gilt nur, wenn genau eine Zeile passt.
+ */
+function relayRow(lines, from) {
+  let code = "";
+  for (const line of lines) {
+    const relay = line.words.find((w) => norm(w.t) === "relay");
+    if (!relay) continue;
+    // Rechts daneben das erste Wort, das wie eine Kennung aussieht (davor kann der Ping stehen).
+    const next = line.words.find((w) => w.x > relay.x && codeNorm(w.t).length >= 6);
+    if (next) code = codeNorm(next.t);
+    if (code) break;
+  }
+  if (code.length < 6) return -1;
+  const hits = [];
+  for (let r = from; r < lines.length; r++)
+    if (lines[r].words.some((w) => { const c = codeNorm(w.t); return c.length >= code.length - 1 && distance(c, code) <= 2; }))
+      hits.push(r);
+  return hits.length === 1 ? hits[0] : -1;
+}
+
+/** Hat die Geld-Spalte „$“-Werte? Dann darf `readMoney()` ein verlesenes „$“ abschneiden. */
+function dollarColumn(lines, from, span, tolerance) {
+  let count = 0;
+  for (let r = from; r < lines.length; r++)
+    for (const word of lines[r].words) if (/^\$\s?\d/.test(word.t.trim()) && gapTo(word, span) <= tolerance) count++;
+  return count >= 2;
+}
+
+function rowValues(line, header, columns, tolerance, dollars) {
+  const picks = {};
+  for (const word of line.words) {
+    let best = null;
+    for (const column of columns) {
+      const value = column === "money" && dollars ? readMoney(word.t) : readNumber(word.t);
+      if (value === null) continue;
+      const gap = gapTo(word, header[column]);
+      if (gap <= tolerance && (!best || gap < best.gap)) best = { column, gap, value };
+    }
+    if (best && (!picks[best.column] || best.gap < picks[best.column].gap)) picks[best.column] = best;
+  }
+  return Object.fromEntries(Object.entries(picks).map(([column, pick]) => [column, pick.value]));
+}
+
 /**
  * Eine Texterkennung auswerten: Kopfzeile mit mindestens zwei bekannten Spalten finden,
- * darunter die Zeile mit dem eigenen Namen, und je Spalte die Zahl, die am nächsten unter
- * dem Spaltenkopf steht. Fehlt die Geld-Spalte, gilt ein „$1234“ außerhalb der Tabelle als
- * Geld aus dem HUD. Gibt `null` zurück, wenn kein Scoreboard mit eigenem Namen zu sehen ist.
+ * darunter die Zeile mit dem eigenen Namen (sonst über die RELAY-Kennung), und jede Zahl
+ * der Zeile der nächsten Spalte zuordnen. Ein „$1234“ über der Tabelle gilt als Kontostand
+ * (`cash`); fehlt die Geld-Spalte, zählt ein „$1234“ außerhalb der Tabelle als Geld aus dem
+ * HUD. Gibt `null` zurück, wenn kein Scoreboard mit eigener Zeile zu sehen ist.
  */
 export function parseScoreboard({ words = [], width = 0 } = {}, playerName) {
   const lines = groupLines(words);
+  const tolerance = Math.max(40, (width || 1920) * 0.04);
   let best = null;
   for (let h = 0; h < lines.length; h++) {
-    const header = headerOf(lines[h]);
+    const header = headerAt(lines, h);
     const columns = Object.keys(header);
     if (columns.length < 2) continue;
+    const dollars = header.money ? dollarColumn(lines, h + 1, header.money, tolerance) : false;
+    const rows = [];
     for (let r = h + 1; r < lines.length; r++) {
       const match = nameMatch(lines[r], playerName);
-      if (!match) continue;
-      const values = {};
-      const used = new Set();
-      const tolerance = Math.max(40, (width || 1920) * 0.04);
-      for (const column of columns) {
-        let pick = null;
-        for (const word of lines[r].words) {
-          if (used.has(word)) continue;
-          const value = readNumber(word.t);
-          if (value === null) continue;
-          const gap = Math.abs(word.cx - header[column]);
-          if (gap <= tolerance && (!pick || gap < pick.gap)) pick = { word, value, gap };
-        }
-        if (pick) {
-          values[column] = pick.value;
-          used.add(pick.word);
-        }
-      }
-      const score = Object.keys(values).length + columns.length * 0.1 + match;
-      if (Object.keys(values).length && (!best || score > best.score))
-        best = { score, values, columns, match, source: { money: values.money !== undefined ? "scoreboard" : "" } };
+      if (match) rows.push({ r, match });
+    }
+    if (!rows.length) {
+      const r = relayRow(lines, h + 1);
+      if (r >= 0) rows.push({ r, match: 0.6, relay: true });
+    }
+    for (const { r, match, relay } of rows) {
+      const values = rowValues(lines[r], header, columns, tolerance, dollars);
+      const count = Object.keys(values).length;
+      const score = count + columns.length * 0.1 + match;
+      if (count && (!best || score > best.score))
+        best = { score, values, columns, match, relay: !!relay, top: Math.min(...Object.values(header).map((s) => s.top)) };
     }
   }
   if (!best) return null;
-  if (best.values.money === undefined) {
-    for (const word of words) {
-      if (!/^\$\s?\d/.test(String(word.t || "").trim())) continue;
-      const value = readNumber(word.t);
-      if (value !== null) {
-        best.values.money = value;
-        best.source.money = "hud";
-        break;
-      }
+  let moneySource = best.values.money !== undefined ? "scoreboard" : "";
+  for (const word of [...words].sort((a, b) => a.y - b.y)) {
+    if (!/^\$\s?\d/.test(String(word.t || "").trim())) continue;
+    const value = readNumber(word.t);
+    if (value === null) continue;
+    if (word.y + (word.h || 10) < best.top) {
+      if (best.values.cash === undefined) best.values.cash = value;
+    } else if (best.values.money === undefined && !best.columns.includes("money")) {
+      best.values.money = value;
+      moneySource = "hud";
     }
   }
   return {
     values: best.values,
     columns: best.columns,
     confidence: Math.round(Math.min(1, best.match) * 100) / 100,
-    moneySource: best.source.money || "",
+    moneySource,
+    ...(best.relay ? { matchedBy: "relay" } : {}),
   };
 }
 

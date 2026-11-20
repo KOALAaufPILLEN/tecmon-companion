@@ -31,11 +31,12 @@ Wardogs hat keine offizielle Schnittstelle, keine Game State Integration und kei
 
 - **Strg+Alt+S** drücken und **Tab** halten. TecMon macht 4 Sekunden lang Bildschirmfotos (FFmpeg `ddagrab`, wie beim Clip-Puffer) und nimmt das Foto, auf dem das Scoreboard zu sehen ist. Die Reihenfolge ist egal.
 - Die **Texterkennung von Windows** (Windows.Media.Ocr über Windows PowerShell) liest das Foto lokal aus. Es wird nichts heruntergeladen und nichts ins Internet geschickt. Die Fotos werden direkt danach gelöscht.
-- Gespeichert werden nur die Werte der **eigenen Zeile**, erkannt am Ingame-Namen: Kills, Tode, Assists, Punkte und Geld. Fehlt die Geld-Spalte, gilt ein „$…“ aus dem HUD. Die Werte liegen in `wardogs/scoreboard-stats.json` (höchstens 500 Fotos).
+- Gespeichert werden nur die Werte der **eigenen Zeile**, erkannt am Ingame-Namen: in der Wardogs-„PUNKTELISTE“ verdientes Geld, Tötungen, Assists, Todesfälle und Wiederbelebungen, dazu der Kontostand oben rechts. Ist der Name nicht lesbar, findet TecMon die eigene Zeile über die RELAY-Kennung (nur wenn genau eine Zeile passt). Fehlt eine Geld-Spalte (andere Spiele), gilt ein „$…“ aus dem HUD. Die Werte liegen in `wardogs/scoreboard-stats.json` (höchstens 500 Fotos).
 - Die Companion-Seite zeigt die letzten Fotos mit der Differenz zum vorigen Foto. Für Match-Stats also zu Rundenbeginn und am Ende ein Foto machen.
 - Standardmäßig aus. Der Hotkey wird nur angemeldet, solange die Funktion an ist. Entfernen des Pakets löscht Einstellungen und Werte.
 - Bridge `scoreboard-v1`: `GET /bridge/scoreboard` gibt der Webseite nur Zeit, Werte und Erkennungs-Sicherheit, keine Bilder.
-- Grenzen: Die Texterkennung kann einzelne Ziffern falsch lesen. Die Erkennung ist allgemein gebaut (Spaltenköpfe wie K/D/A, Kills, Tode, Score, Geld) und noch nicht an echten Wardogs-Screenshots geprüft.
+- Abgestimmt auf echte Wardogs-Screenshots (20. November 2026): deutsche und abgeschnittene Spaltenköpfe, zweizeilige Kopfzeile, „$“, das die Texterkennung als „8“ oder „s“ liest. Geprüft mit nachgebautem Layout und einer Texterkennung unter Linux, noch nicht mit der Windows-Texterkennung auf einem echten PC.
+- Grenzen: Die Texterkennung kann einzelne Ziffern falsch lesen, besonders kleine Nullen. Was nicht lesbar ist, fehlt im Ergebnis und wird nicht als 0 gespeichert.
 
 ### Clip-Puffer
 
