@@ -194,6 +194,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Dateien des Pakets. Neue spielbezogene Funktionen gehören zu einem Paket und
   müssen beim Entfernen mit aufgeräumt werden.
 - Dota 2 ist seit 0.22.0 verfügbar (`/gsi/dota2`, `/api/dota2/*`).
+- Wardogs ist seit 0.45.0 verfügbar (Scoreboard-Foto, `/api/wardogs/*`).
 - Geplante Spiele (`status: "planned"`) lassen sich nicht installieren, bis es
   echte Funktionen dafür gibt.
 - Die Highlight-Aufnahme gehört zum Companion, nicht zu einem Paket.
@@ -215,6 +216,24 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Keine Live-Auswertung des Bildschirms im Spiel. Eine spätere KI-Analyse nur
   für fertige Clips, nur mit dem eigenen API-Schlüssel des Nutzers und nur
   nach ausdrücklichem Einschalten.
+
+## Wardogs-Scoreboard (`scoreboard.mjs`)
+
+- Nutzerentscheid vom 20.11.2026: Für Spiele ohne Schnittstelle (zuerst Wardogs) darf der
+  Companion auf ausdrücklichen Tastendruck (Strg+Alt+S) ein Scoreboard-Foto lokal auslesen,
+  auch Geld. Das ist die einzige Ausnahme von „keine Live-Auswertung des Bildschirms“: kein
+  Dauerlauf, nur die kurze Foto-Serie (`BURST_SECONDS`) nach dem Hotkey, keine Tipps oder
+  Hinweise aus den Werten während der Runde.
+- Nur Bildschirmfotos per FFmpeg `ddagrab`, nur die Texterkennung von Windows
+  (`OCR_SCRIPT`, Windows PowerShell, nichts nachladen). Kein Hook, kein Speicherzugriff,
+  keine Eingaben. Tab+Taste geht nicht, weil das ein Mitlesen der Tastatur bräuchte.
+- Fotos liegen nur im Arbeitsordner `wardogs/foto-*` und werden danach immer gelöscht.
+  Gespeichert werden nur Werte der eigenen Zeile (`VALUE_KEYS`), nie Namen oder Werte
+  anderer Spieler. Standardmäßig aus; der Hotkey ist nur angemeldet, solange es an ist.
+- Werte als „per Texterkennung gelesen“ kennzeichnen, nicht als gemessen. Bridge
+  `scoreboard-v1` (`GET /bridge/scoreboard`) gibt nur Zeit, Werte, `confidence`,
+  `moneySource`. Neue Spiele brauchen eigene Spaltennamen in `COLUMNS` und Tests mit
+  echten Screenshots.
 
 ## Filter und HUD v2 (`video-filters.mjs`, `cyber-hud.mjs`)
 

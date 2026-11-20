@@ -152,12 +152,12 @@ static class TecMon {
     if(launch) {Root=target; Application.Run(new SplashWindow());}
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.44.2",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.45.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.44.2");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.45.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -172,7 +172,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.44.2"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.45.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -313,7 +313,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.44.2 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.45.0 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -1175,7 +1175,11 @@ class DesktopPet : Form {
     cs2.DropDownItems.Add(new ToolStripSeparator());cs2.DropDownItems.Add("CS2-Paket entfernen …",null,(s,e)=>OpenPanel("games",""));
     cs2Item=cs2;cs2Install=new ToolStripMenuItem("CS2 installieren",null,async(s,e)=>await PetRequest("/api/games/install","{\"id\":\"cs2\"}")){Visible=false};
     gamesRoot.DropDownItems.Add(cs2);gamesRoot.DropDownItems.Add(cs2Install);gamesRoot.DropDownItems.Add(new ToolStripSeparator());
-    foreach(var planned in new[]{"Valorant","Dota 2","Deadlock","Wardogs"})gamesRoot.DropDownItems.Add(new ToolStripMenuItem(planned+" · geplant"){Enabled=false});
+    foreach(var planned in new[]{"Valorant","Dota 2","Deadlock"})gamesRoot.DropDownItems.Add(new ToolStripMenuItem(planned+" · geplant"){Enabled=false});
+    var wardogs=new ToolStripMenuItem("Wardogs");
+    wardogs.DropDownItems.Add("Scoreboard-Foto jetzt (Strg+Alt+S)",null,async(s,e)=>await CaptureScoreboard());
+    wardogs.DropDownItems.Add("Wardogs-Stats und Einstellungen",null,(s,e)=>OpenPanel("wardogs",""));
+    gamesRoot.DropDownItems.Add(wardogs);
     gamesRoot.DropDownItems.Add(new ToolStripSeparator());gamesRoot.DropDownItems.Add("Spiel-Pakete verwalten",null,(s,e)=>OpenPanel("games",""));
     gamesRoot.DropDownOpening+=(s,e)=>{cs2Item.Visible=cs2Installed;cs2Install.Visible=!cs2Installed;};menu.Items.Add(gamesRoot);
     /* Clip-Puffer: Bildschirmaufnahme der letzten Sekunden, fuer alle Spiele. Standardmaessig aus. */
@@ -1215,7 +1219,7 @@ class DesktopPet : Form {
     KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&panel!=null)panel.Hide();else if(e.KeyCode==Keys.Enter||e.KeyCode==Keys.Space)Toggle();};
     /* Etwa 60 Bilder pro Sekunde; Bewegung nach vergangener Zeit statt pro Takt, damit sie gleichmäßig bleibt. */
     animation.Interval=15;animation.Tick+=(s,e)=>Tick();
-    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowWork(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowAuto(state);ShowOverlay(state);ShowDesktop(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
+    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowWork(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowScoreboard(state);ShowAuto(state);ShowOverlay(state);ShowDesktop(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
     Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}if(startSettings!=null)ApplyDesktop(startSettings);else if(!preview)LoadFigure();Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
     FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(overlay!=null)overlay.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(figure!=null)figure.Dispose();if(figureFrame!=null)figureFrame.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
@@ -1466,7 +1470,7 @@ class DesktopPet : Form {
   [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr window,int id);
   const int ClipHotkey=0x7C1;bool clipsEnabled,clipHotkey,savingClip;ToolStripMenuItem clipsOn;
   protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);if(!preview)clipHotkey=RegisterHotKey(Handle,ClipHotkey,0x0001|0x0002|0x4000,(uint)Keys.T);}
-  protected override void OnHandleDestroyed(EventArgs e){if(clipHotkey)UnregisterHotKey(Handle,ClipHotkey);clipHotkey=false;base.OnHandleDestroyed(e);}
+  protected override void OnHandleDestroyed(EventArgs e){if(clipHotkey)UnregisterHotKey(Handle,ClipHotkey);clipHotkey=false;if(scoreHotkey)UnregisterHotKey(Handle,ScoreHotkey);scoreHotkey=false;base.OnHandleDestroyed(e);}
   CrosshairOverlay overlay;
   void ShowOverlay(Dictionary<string,object> state){
     object raw;var o=state.TryGetValue("overlay",out raw)?raw as Dictionary<string,object>:null;
@@ -1474,6 +1478,26 @@ class DesktopPet : Form {
     if(!on&&overlay==null)return;
     if(overlay==null){overlay=new CrosshairOverlay();overlay.CreateControl();var ignored=overlay.Handle;}
     overlay.Apply(on,o!=null&&o.ContainsKey("crosshair")?o["crosshair"] as Dictionary<string,object>:null);
+  }
+  /* Wardogs: Strg+Alt+S nur angemeldet, solange das Scoreboard-Foto eingeschaltet ist; sonst bleibt die Taste frei. */
+  const int ScoreHotkey=0x7C2;bool scoreHotkey,capturingScore;
+  void ShowScoreboard(Dictionary<string,object> state){
+    object raw;var sb=state.TryGetValue("scoreboard",out raw)?raw as Dictionary<string,object>:null;
+    bool on=sb!=null&&sb.ContainsKey("enabled")&&Convert.ToBoolean(sb["enabled"]);
+    if(preview||!IsHandleCreated)return;
+    if(on&&!scoreHotkey)scoreHotkey=RegisterHotKey(Handle,ScoreHotkey,0x0001|0x0002|0x4000,(uint)Keys.S);
+    else if(!on&&scoreHotkey){UnregisterHotKey(Handle,ScoreHotkey);scoreHotkey=false;}
+  }
+  /* Rueckmeldung nur als Windows-Hinweis, kein Fokuswechsel. Waehrend der Fotos haelt der Spieler Tab. */
+  async Task CaptureScoreboard(){
+    if(capturingScore)return;capturingScore=true;
+    try{
+      if(tray!=null)tray.ShowBalloonTip(2500,"TecMon Wardogs","Scoreboard-Foto: jetzt Tab halten (4 Sekunden).",ToolTipIcon.Info);
+      var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/wardogs/capture",true));
+      if(tray!=null)tray.ShowBalloonTip(5000,"TecMon Wardogs",Convert.ToString(result["message"]),ToolTipIcon.Info);
+    }
+    catch(Exception error){if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Wardogs",error.Message,ToolTipIcon.Warning);}
+    finally{capturingScore=false;}
   }
   void ShowClips(Dictionary<string,object> state){object raw;var clips=state.TryGetValue("clips",out raw)?raw as Dictionary<string,object>:null;if(clips==null)return;clipsEnabled=clips.ContainsKey("recording")&&Convert.ToBoolean(clips["recording"]);if(clipsOn!=null)clipsOn.Checked=clipsEnabled;}
   /* Highlight-Video nach dem Match: Frage erst, wenn CS2 geschlossen ist (der Companion prueft das), daher darf ein Dialog erscheinen. */
@@ -1562,7 +1586,7 @@ class DesktopPet : Form {
       if(tray!=null)tray.ShowBalloonTip(5000,"TecMon Companion",Convert.ToString(result["message"]),ToolTipIcon.Info);
     }catch(Exception error){MessageBox.Show("Rundentipps konnten nicht umgeschaltet werden. Wird CS2 auf diesem PC gefunden?\n\n"+error.Message,"TecMon");}
   }
-  protected override void WndProc(ref Message message){if(message.Msg==0x8001){Show();Toggle();return;}if(message.Msg==0x0312&&message.WParam.ToInt32()==ClipHotkey){var ignored=SaveClip();return;}base.WndProc(ref message);}
+  protected override void WndProc(ref Message message){if(message.Msg==0x8001){Show();Toggle();return;}if(message.Msg==0x0312&&message.WParam.ToInt32()==ClipHotkey){var ignored=SaveClip();return;}if(message.Msg==0x0312&&message.WParam.ToInt32()==ScoreHotkey){var ignoredScore=CaptureScoreboard();return;}base.WndProc(ref message);}
   public static Point Fit(Point point,Rectangle area,Size size){return new Point(Math.Max(area.Left,Math.Min(area.Right-size.Width,point.X)),Math.Max(area.Top,Math.Min(area.Bottom-size.Height,point.Y)));}
   /* Fenster neben die Figur setzen; die Spitze zeigt auf ihre Mitte, auch wenn das Fenster am Bildschirmrand verschoben wird. */
   Point PanelSpot(){var area=Screen.FromRectangle(Bounds).WorkingArea;var preferred=new Point(Left-panel.Width+2,Top+Height/2-panel.Height+77);bool onRight=preferred.X<area.Left;if(onRight)preferred.X=Right-2;panel.TailLeft=onRight;var spot=Fit(preferred,area,panel.Size);panel.TailY=Top+Height/2-spot.Y;return spot;}
@@ -1613,7 +1637,7 @@ class DesktopPet : Form {
     }catch{}
     return error;
   }
-  async Task<string> RawRequest(string route,bool post,string body){var request=(System.Net.HttpWebRequest)System.Net.WebRequest.Create("http://127.0.0.1:31977"+route);request.Proxy=null;int timeout=route=="/api/update/install"?240000:route=="/api/update/check"||route.StartsWith("/api/clips/")?45000:8000;request.Timeout=timeout;request.ReadWriteTimeout=timeout;if(token!="")request.Headers["x-tecmon-token"]=token;if(post){request.Method="POST";request.ContentType="application/json";byte[] bytes=Encoding.UTF8.GetBytes(body);using(var stream=await request.GetRequestStreamAsync())await stream.WriteAsync(bytes,0,bytes.Length);}var pending=request.GetResponseAsync();if(await Task.WhenAny(pending,Task.Delay(timeout))!=pending){request.Abort();throw new TimeoutException("Lokaler Dienst antwortet nicht.");}using(var response=await pending)using(var reader=new StreamReader(response.GetResponseStream()))return await reader.ReadToEndAsync();}
+  async Task<string> RawRequest(string route,bool post,string body){var request=(System.Net.HttpWebRequest)System.Net.WebRequest.Create("http://127.0.0.1:31977"+route);request.Proxy=null;int timeout=route=="/api/update/install"?240000:route=="/api/update/check"||route.StartsWith("/api/clips/")?45000:route=="/api/wardogs/capture"?90000:8000;request.Timeout=timeout;request.ReadWriteTimeout=timeout;if(token!="")request.Headers["x-tecmon-token"]=token;if(post){request.Method="POST";request.ContentType="application/json";byte[] bytes=Encoding.UTF8.GetBytes(body);using(var stream=await request.GetRequestStreamAsync())await stream.WriteAsync(bytes,0,bytes.Length);}var pending=request.GetResponseAsync();if(await Task.WhenAny(pending,Task.Delay(timeout))!=pending){request.Abort();throw new TimeoutException("Lokaler Dienst antwortet nicht.");}using(var response=await pending)using(var reader=new StreamReader(response.GetResponseStream()))return await reader.ReadToEndAsync();}
   static int Count(Dictionary<string,object> parent,string key){object value;return parent!=null&&parent.TryGetValue(key,out value)&&value is System.Collections.ICollection?((System.Collections.ICollection)value).Count:0;}
   void ShowStatus(Dictionary<string,object> state){if(statusItem==null)return;object raw;var bridge=state.TryGetValue("bridge",out raw)?raw as Dictionary<string,object>:null;statusItem.Text=busy?"● Aufnahme läuft …":Count(bridge,"pending")>0?"● Verbindung bestätigen":Count(bridge,"devices")>0?"● Mit TecMon verbunden":"○ Noch nicht mit TecMon verbunden";}
   async Task CheckUpdate(bool silent){

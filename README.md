@@ -6,7 +6,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 **Download:** [tecmon.online/companion](https://tecmon.online/companion) · [neuestes GitHub-Release](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/latest)
 
-**Stand dieser Übersicht:** Version 0.44.2, 20. November 2026; Fix für den Clip-Puffer (Hotkey jetzt Strg+Alt+T, lesbare Fehlermeldungen in der Figur, Neustart nach einem FFmpeg-Absturz, Aufnahme ohne Ton bei kaputter Tonquelle). Dieser Fix liegt als offener PR vor und ist noch nicht gemergt. Davor: Version 0.44.1, 19. November 2026; Fix des lokalen Demo-Downloads über die Browser-Bridge. Der Fix ist mit [#78](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/78) gemergt und als [v0.44.1](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/tag/v0.44.1) veröffentlicht. Website-PR #134 (Major-Hub in „Pro-Szene“, Upload nur mit Betreiber-Steam-ID) ist gemergt; er ändert am Companion nichts und braucht keine neue Capability. Website-PR [#138](https://github.com/KOALAaufPILLEN/tecmon/pull/138) mit eigenständigen Major-/Team-Stats, Logo-Einstieg, Farbwelten und Sternenhintergrund ist ebenfalls gemergt; Companion-Version und Capabilities bleiben unverändert. Website-PR [#139](https://github.com/KOALAaufPILLEN/tecmon/pull/139) baut die Major-Stats (`/games/cs2/pro-scene`) mit Kopfleiste, Fußzeile und durchscheinendem Sternenhimmel in die Webseite ein und ist gemergt; am Companion ändert sich nichts. [#140](https://github.com/KOALAaufPILLEN/tecmon/pull/140) gibt den Major-Stats den regulären TecMon-Hintergrund (Sternennetz, Datenströme), ebenfalls ohne Companion-Änderung. [#141](https://github.com/KOALAaufPILLEN/tecmon/pull/141) ergänzt einen automatischen Major-Ordnerimport im Browser (lokaler Wächter-Skript der Webseite, nur Stats nach D1); der Companion ist nicht beteiligt. Ein Merge ist kein Nachweis des Produktions-Deployments. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
+**Stand dieser Übersicht:** Version 0.45.0, 20. November 2026; Wardogs-Paket mit Scoreboard-Foto (Strg+Alt+S, lokale Windows-Texterkennung) und Fix für den Clip-Puffer (Hotkey jetzt Strg+Alt+T, lesbare Fehlermeldungen in der Figur, Neustart nach einem FFmpeg-Absturz, Aufnahme ohne Ton bei kaputter Tonquelle). Beides liegt als offener PR vor und ist noch nicht gemergt. Davor: Version 0.44.1, 19. November 2026; Fix des lokalen Demo-Downloads über die Browser-Bridge. Der Fix ist mit [#78](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/78) gemergt und als [v0.44.1](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/tag/v0.44.1) veröffentlicht. Website-PR #134 (Major-Hub in „Pro-Szene“, Upload nur mit Betreiber-Steam-ID) ist gemergt; er ändert am Companion nichts und braucht keine neue Capability. Website-PR [#138](https://github.com/KOALAaufPILLEN/tecmon/pull/138) mit eigenständigen Major-/Team-Stats, Logo-Einstieg, Farbwelten und Sternenhintergrund ist ebenfalls gemergt; Companion-Version und Capabilities bleiben unverändert. Website-PR [#139](https://github.com/KOALAaufPILLEN/tecmon/pull/139) baut die Major-Stats (`/games/cs2/pro-scene`) mit Kopfleiste, Fußzeile und durchscheinendem Sternenhimmel in die Webseite ein und ist gemergt; am Companion ändert sich nichts. [#140](https://github.com/KOALAaufPILLEN/tecmon/pull/140) gibt den Major-Stats den regulären TecMon-Hintergrund (Sternennetz, Datenströme), ebenfalls ohne Companion-Änderung. [#141](https://github.com/KOALAaufPILLEN/tecmon/pull/141) ergänzt einen automatischen Major-Ordnerimport im Browser (lokaler Wächter-Skript der Webseite, nur Stats nach D1); der Companion ist nicht beteiligt. Ein Merge ist kein Nachweis des Produktions-Deployments. Nach jedem Merge wird dieses README (und das README der Webseite) auf den neuen Stand gebracht.
 
 - [Was der Companion kann](#was-der-companion-kann)
 - [So fängst du an](#so-fängst-du-an)
@@ -23,9 +23,22 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 Gezeigt werden Begegnungen, historische Besetzungen sowie Team- und Spieler-Deep-Stats. Spieler-Overall zählt die erfassten Majors auch bei Teamwechseln. Ausschließlich Stats: keine Demo-Downloads, Replays oder Videos in diesem Bereich. Demos werden lokal ausgewertet; der geschützte Betreiber-Upload speichert die numerischen Ergebnisse aller Spieler beider Teams in Cloudflare D1. Ein echter Upload zu D1 ist weiterhin separat zu prüfen. Für den Companion ändern sich weder Version noch Capabilities; ein neues Companion-Release ist dafür nicht erforderlich.
 
-## Neu in 0.44.2 · 20. November 2026
+## Neu in 0.45.0 · 20. November 2026
 
-Fix für den Clip-Puffer:
+### Wardogs: Scoreboard-Foto mit lokaler Texterkennung
+
+Wardogs hat keine offizielle Schnittstelle, keine Game State Integration und keine Replays. Das Wardogs-Paket (unter „Games“ installieren) liest deshalb nur ein Bildschirmfoto aus:
+
+- **Strg+Alt+S** drücken und **Tab** halten. TecMon macht 4 Sekunden lang Bildschirmfotos (FFmpeg `ddagrab`, wie beim Clip-Puffer) und nimmt das Foto, auf dem das Scoreboard zu sehen ist. Die Reihenfolge ist egal.
+- Die **Texterkennung von Windows** (Windows.Media.Ocr über Windows PowerShell) liest das Foto lokal aus. Es wird nichts heruntergeladen und nichts ins Internet geschickt. Die Fotos werden direkt danach gelöscht.
+- Gespeichert werden nur die Werte der **eigenen Zeile**, erkannt am Ingame-Namen: Kills, Tode, Assists, Punkte und Geld. Fehlt die Geld-Spalte, gilt ein „$…“ aus dem HUD. Die Werte liegen in `wardogs/scoreboard-stats.json` (höchstens 500 Fotos).
+- Die Companion-Seite zeigt die letzten Fotos mit der Differenz zum vorigen Foto. Für Match-Stats also zu Rundenbeginn und am Ende ein Foto machen.
+- Standardmäßig aus. Der Hotkey wird nur angemeldet, solange die Funktion an ist. Entfernen des Pakets löscht Einstellungen und Werte.
+- Bridge `scoreboard-v1`: `GET /bridge/scoreboard` gibt der Webseite nur Zeit, Werte und Erkennungs-Sicherheit, keine Bilder.
+- Grenzen: Die Texterkennung kann einzelne Ziffern falsch lesen. Die Erkennung ist allgemein gebaut (Spaltenköpfe wie K/D/A, Kills, Tode, Score, Geld) und noch nicht an echten Wardogs-Screenshots geprüft.
+
+### Clip-Puffer
+
 
 - **Neuer Hotkey Strg+Alt+T** (T wie TecMon) statt Strg+Alt+C zum Speichern eines Clips.
 - **Lesbare Fehler in der Figur.** Rechtsklick-Menü und Strg+Alt+T zeigten bei einem Fehler nur „(400) Ungültige Anforderung“. Jetzt erscheint der Grund aus dem lokalen Dienst, etwa „Der Clip-Puffer ist aus“ oder die FFmpeg-Meldung. Das gilt für alle Aktionen der Figur.
