@@ -666,6 +666,8 @@ async function loadChat(){
   $('chat-overlay-status').textContent=chat.overlay?'An':'Aus';$('chat-overlay-status').classList.toggle('on',chat.overlay);
   $('chat-notice').replaceChildren(...chat.notice.map(t=>el('li',t)));
   $('chat-overlay-toggle').textContent=chat.overlay?'Overlay ausschalten':chat.accepted?'Overlay einschalten':'Overlay einschalten …';
+  const hint=!chat.enabled?'':!chat.overlay?'Das Overlay ist aus: Übersetzungen erscheinen dann nur hier in der Liste. Schalte es ein, um sie im Spiel über dem Chat zu sehen.':chat.windowMode==='fullscreen'?'CS2 läuft im echten Vollbild: dort kann kein Fenster darüber liegen. Stelle in CS2 unter Video den Anzeigemodus auf „Vollbild-Fenstermodus“.':chat.windowMode==='windowed'?'CS2 läuft im Fenster: das Overlay erscheint nur im Vollbild-Fenstermodus.':'';
+  $('chat-overlay-hint').textContent=hint;$('chat-overlay-hint').hidden=!hint;
   const next=JSON.stringify(messages.map(m=>[m.id,m.status]));if(next===chatSignature)return;chatSignature=next;
   const list=$('chat-list');list.replaceChildren();
   if(!messages.length){list.append(el('li',chat.enabled?'Noch keine Chatnachrichten.':'Einschalten, dann erscheinen hier die Chats aus CS2.','recent-empty'));return;}
@@ -681,7 +683,7 @@ async function loadChat(){
   }
 }
 const chatSettings=body=>api('/api/chat/settings',body).then(r=>{if(r.message)$('notice').textContent=r.message;chatOptions='';chatSignature='';return loadChat();}).catch(notice);
-$('chat-toggle')?.addEventListener('click',()=>chatSettings({enabled:!chatState?.enabled}));
+$('chat-toggle')?.addEventListener('click',()=>{const on=!chatState?.enabled;chatSettings({enabled:on}).then(()=>{if(on&&chatState&&!chatState.overlay&&!chatState.accepted)$('chat-consent').hidden=false;});});
 $('chat-language')?.addEventListener('change',e=>chatSettings({language:e.target.value}));
 $('chat-key-all')?.addEventListener('change',e=>chatSettings({keys:{all:e.target.value,team:$('chat-key-team').value}}));
 $('chat-key-team')?.addEventListener('change',e=>chatSettings({keys:{all:$('chat-key-all').value,team:e.target.value}}));

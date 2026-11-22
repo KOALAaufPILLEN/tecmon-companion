@@ -428,8 +428,18 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       defaultLaunchOptions: CHAT_LAUNCH_OPTIONS,
     }),
     messages: (limit = MAX_MESSAGES) => messages.slice(0, limit).map(({ error, ...m }) => (error ? { ...m, error } : m)),
+    /** Kopfzeile des Overlays: steht immer da, solange das Overlay an ist, damit man sieht, dass TecMon mitliest. */
+    overlayHeader() {
+      const target = (settings.language || "de").toUpperCase();
+      const state = condebug();
+      if (state === "missing") return { text: "TECMON CHAT · kein Chat-Log: CS2 über TecMon mit -condebug starten", warn: true };
+      if (state === "stale") return { text: "TECMON CHAT · wartet auf CS2 (console.log alt, -condebug aktiv?)", warn: true };
+      if (engine.status === "error") return { text: "TECMON CHAT · Übersetzung fehlgeschlagen", warn: true };
+      if (engine.status === "download") return { text: `TECMON CHAT · lade Sprachmodell → ${target} …`, warn: false };
+      return { text: `TECMON CHAT · übersetzt automatisch → ${target}`, warn: false };
+    },
     /** Für das Overlay der Figur: nur frische Zeilen. */
-    overlayLines(maxAge = 20000, limit = 6) {
+    overlayLines(maxAge = 30000, limit = 6) {
       return messages.filter((m) => now() - m.time <= maxAge).slice(0, limit).reverse().map((m) => ({
         id: m.id, channel: m.channel, team: m.team, dead: m.dead, name: m.name, lang: m.lang,
         text: m.status === "done" ? m.translated : m.text, translated: m.status === "done",

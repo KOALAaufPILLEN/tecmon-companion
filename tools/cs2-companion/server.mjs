@@ -289,7 +289,8 @@ export async function createCompanion({
     const c = chatTranslator.state();
     if (!games.has("cs2") || !c.enabled || !c.overlay) return { enabled: false };
     refreshWindowMode(true);
-    return { enabled: windowMode === "borderless" || windowMode === "unknown", mode: windowMode, lines: chatTranslator.overlayLines() };
+    const header = chatTranslator.overlayHeader();
+    return { enabled: windowMode === "borderless" || windowMode === "unknown", mode: windowMode, lines: chatTranslator.overlayLines(), header: header.text, warn: header.warn };
   };
   const radarPath = (map) => radarFile(radarDir, map);
   const insights = await createInsightsStore(installation?.profileDir || dataDir);
@@ -974,7 +975,8 @@ export async function createCompanion({
       if (req.method === "GET" && url.pathname === "/api/crosshair") return json(res, 200, crosshairState());
       if (req.method === "GET" && url.pathname === "/api/chat") {
         if (!games.has("cs2")) throw new Error("Das CS2-Paket ist nicht installiert. Unter „Games“ installieren.");
-        return json(res, 200, { chat: chatTranslator.state(), messages: chatTranslator.messages() });
+        if (chatTranslator.state().overlay) refreshWindowMode(true);
+        return json(res, 200, { chat: { ...chatTranslator.state(), windowMode }, messages: chatTranslator.messages() });
       }
       if (req.method === "GET" && url.pathname === "/api/cfgs") return json(res, 200, cfgs.state(detected.cs2));
       if (req.method === "GET" && url.pathname === "/api/wardogs/scoreboard") {
