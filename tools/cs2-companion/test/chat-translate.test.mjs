@@ -49,6 +49,8 @@ test("Chatzeilen aus console.log", () => {
 
 test("Sprache erkennen", () => {
   assert.equal(detectLanguage("давай быстрее на б"), "ru");
+  // Echte Zeile vom 22.11.2026: Kyrillisch mit Umschrift in Klammern.
+  assert.equal(detectLanguage("Ты хороший игрок. (Ty khoroshiy igrok)"), "ru");
   assert.equal(detectLanguage("я тут, їх двоє"), "uk");
   assert.equal(detectLanguage("ich bin B, kommt alle"), "de");
   assert.equal(detectLanguage("hola amigos, vamos a"), "es");
@@ -116,6 +118,13 @@ test("console.log mitlesen: nur neue Zeilen, Neustart von vorn", async () => {
   await writeFile(file, "[ALL] c: neu\n");
   await tail.poll();
   assert.equal(lines.at(-1), "[ALL] c: neu");
+  // Ein kyrillisches Zeichen (2 Bytes), das genau zwischen zwei Lesevorgängen geteilt ist.
+  const bytes = Buffer.from("[ALL] d: игрок\n", "utf8");
+  await appendFile(file, bytes.subarray(0, 10));
+  await tail.poll();
+  await appendFile(file, bytes.subarray(10));
+  await tail.poll();
+  assert.equal(lines.at(-1), "[ALL] d: игрок");
 });
 
 test("console.log nach dem Start: die letzten Bytes kommen als „alt“, dann nur Neues", async () => {
