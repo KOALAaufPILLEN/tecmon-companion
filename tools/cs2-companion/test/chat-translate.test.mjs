@@ -7,7 +7,7 @@ import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import {
   parseChatLine, detectLanguage, modelsFor, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail, lineTime, sourceText,
-  ensureEngine, ensureModel, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
+  ensureEngine, ensureModel, patchEngineFile, ENGINE_PATCH, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
 } from "../chat-translate.mjs";
 import { CHAT_MODELS } from "../chat-models.mjs";
 import { CHAT_LAUNCH_URL, cleanLaunchOptions, launchUrl } from "../chat-translate.mjs";
@@ -301,4 +301,16 @@ test("Türkisch und Polnisch: Modelle mit fester Prüfsumme, über Englisch nach
     assert.match(info.sha256, /^[0-9a-f]{64}$/);
     assert.ok(info.size > 100000 && info.size < 40 * 1024 * 1024);
   }
+});
+
+test("Bergamot-Worker: Windows-Pfad zur .wasm wird genau an einer Stelle repariert", () => {
+  // Ausschnitt aus worker/translator-worker.js von Bergamot 0.4.9: url.pathname ergibt unter Windows „/C:/…“.
+  const original = Buffer.from("if (url.protocol === 'file:') {\n  const buffer = await readFile(url.pathname);\n}");
+  const patched = patchEngineFile(ENGINE_PATCH.file, original).toString();
+  assert.match(patched, /fileURLToPath\(url\)/);
+  assert.doesNotMatch(patched, /readFile\(url\.pathname\)/);
+  // Andere Dateien bleiben unverändert, eine unerwartete Engine bricht ab.
+  assert.equal(patchEngineFile("translator.js", original), original);
+  assert.throws(() => patchEngineFile(ENGINE_PATCH.file, Buffer.from("anders")), /unerwartet/);
+  assert.throws(() => patchEngineFile(ENGINE_PATCH.file, Buffer.concat([original, original])), /unerwartet/);
 });

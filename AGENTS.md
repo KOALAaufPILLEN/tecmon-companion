@@ -394,7 +394,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Standardmäßig aus, Teil des CS2-Pakets, beim Entfernen des Pakets Einstellungen und die eigenen
   cfgs (`CHAT_FILES`) löschen. Während einer Demo-Aufnahme nichts annehmen (`busy`).
 - **Übersetzung nur lokal:** Bergamot (MPL-2.0, WebAssembly im Node-Worker). Engine nur aus dem
-  npm-Paket mit fester Integrität (`ENGINE`), Modelle nur aus `CHAT_MODELS` mit fester SHA-256 und
+  npm-Paket mit fester Integrität (`ENGINE`; danach nur die eine Windows-Pfad-Zeile aus `ENGINE_PATCH`, bei Abweichung abbrechen, Marker `tecmon-patch-N` erhöhen, wenn sich der Patch ändert), Modelle nur aus `CHAT_MODELS` mit fester SHA-256 und
   Größe; die Modellliste aus dem Netz nie benutzen. Quellen nur `bergamot.s3.amazonaws.com/models/` und für Sprachen,
   die es dort nicht gibt (seit 0.46.4 Türkisch, Polnisch), die Firefox-Release-Modelle unter
   `firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/`; neue Modelle vorher mit der

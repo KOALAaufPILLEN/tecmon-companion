@@ -282,11 +282,28 @@ async function writeAtomic(file, data) {
   await rename(temporary, file);
 }
 
+/* Windows-Fehler in Bergamot 0.4.9: der Worker liest seine .wasm über `url.pathname` („/C:/…“), Windows macht daraus
+   „C:\C:\…“ und die Übersetzung hängt. Genau diese eine Zeile wird nach der Prüfsummen-Prüfung ersetzt (geprüft 22.11.2026). */
+export const ENGINE_PATCH = {
+  file: "worker/translator-worker.js",
+  from: "await readFile(url.pathname)",
+  to: "await readFile(require(/* TecMon: Windows-Pfad */ 'node:url').fileURLToPath(url))",
+};
+const ENGINE_MARKER = `${ENGINE.integrity} tecmon-patch-1`;
+
+/** Ersetzt nur ENGINE_PATCH; fehlt die Stelle, stimmt die Engine nicht und es wird abgebrochen. */
+export function patchEngineFile(name, bytes) {
+  if (name !== ENGINE_PATCH.file) return bytes;
+  const text = bytes.toString("utf8");
+  if (text.split(ENGINE_PATCH.from).length !== 2) throw new Error("Übersetzungs-Engine unerwartet. Download abgebrochen.");
+  return Buffer.from(text.replace(ENGINE_PATCH.from, ENGINE_PATCH.to), "utf8");
+}
+
 /** Bergamot-Engine einmal laden und prüfen (feste npm-Prüfsumme), danach aus dem Cache. */
 export async function ensureEngine(cacheDir, request = fetch) {
   const folder = path.join(cacheDir, `bergamot-${ENGINE.version}`);
   const marker = path.join(folder, "integrity.txt");
-  if (existsSync(path.join(folder, "translator.js")) && (await readFile(marker, "utf8").catch(() => "")) === ENGINE.integrity) return folder;
+  if (existsSync(path.join(folder, "translator.js")) && (await readFile(marker, "utf8").catch(() => "")) === ENGINE_MARKER) return folder;
   const archive = await download(ENGINE.url, 20 * 1024 * 1024, request);
   const digest = "sha512-" + createHash("sha512").update(archive).digest("base64");
   if (digest !== ENGINE.integrity) throw new Error("Prüfsumme der Übersetzungs-Engine stimmt nicht. Download abgebrochen.");
@@ -297,13 +314,13 @@ export async function ensureEngine(cacheDir, request = fetch) {
     for (const name of ENGINE_FILES) {
       const bytes = entries.get(`package/${name}`);
       if (!bytes) throw new Error("Übersetzungs-Engine unvollständig.");
-      await writeFile(path.join(temporary, name), bytes);
+      await writeFile(path.join(temporary, name), patchEngineFile(name, bytes));
     }
     // translator.js ist ein ES-Modul, die Worker-Dateien sind CommonJS.
     await writeFile(path.join(temporary, "package.json"), '{"type":"module"}');
     await writeFile(path.join(temporary, "worker", "package.json"), '{"type":"commonjs"}');
-    await writeFile(path.join(temporary, "LICENSE.txt"), "bergamot-translator (https://github.com/browsermt/bergamot-translator), Mozilla Public License 2.0, unverändert.\n");
-    await writeFile(marker.replace(folder, temporary), ENGINE.integrity);
+    await writeFile(path.join(temporary, "LICENSE.txt"), "bergamot-translator (https://github.com/browsermt/bergamot-translator), Mozilla Public License 2.0. Von TecMon geändert: in worker/translator-worker.js eine Zeile für Windows-Pfade (fileURLToPath), sonst unverändert.\n");
+    await writeFile(marker.replace(folder, temporary), ENGINE_MARKER);
     await rm(folder, { recursive: true, force: true });
     await rename(temporary, folder);
   } catch (error) {
