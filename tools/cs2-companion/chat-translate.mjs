@@ -27,8 +27,29 @@ export const CHAT_FILES = ["tecmon_chat_all.cfg", "tecmon_chat_team.cfg", "tecmo
 export const CHAT_SETUP_EXEC = "exec tecmon_chat_keys";
 /** Startoptionen für den Chat-Übersetzer (Nutzerwunsch 22.11.2026: dazu rohe Tastatureingabe von CS2). */
 export const CHAT_LAUNCH_OPTIONS = "+cl_input_enable_raw_keyboard true -condebug";
+/**
+ * Eigene Startoptionen (Nutzerwunsch 22.11.2026). Nur einfache Wörter: `-name`, `+name` und Werte aus
+ * Buchstaben, Ziffern, `_ . : -`; keine Anführungszeichen, Strichpunkte, Schrägstriche oder Leerzeichen
+ * innerhalb eines Werts. `-condebug` wird immer ergänzt, sonst gibt es keine console.log.
+ */
+export function cleanLaunchOptions(value) {
+  const text = String(value ?? "").trim();
+  if (text.length > 300) throw new Error("Startoptionen zu lang (höchstens 300 Zeichen).");
+  const words = text ? text.split(/\s+/) : [];
+  if (words.length > 30) throw new Error("Zu viele Startoptionen (höchstens 30).");
+  for (const word of words)
+    if (!/^(?:[-+][A-Za-z][A-Za-z0-9_.]{0,63}|[A-Za-z0-9_.:-]{1,64})$/.test(word))
+      throw new Error(`„${word.slice(0, 40)}“ ist als Startoption nicht erlaubt. Nur -name, +name und einfache Werte.`);
+  if (words[0] && !/^[-+]/.test(words[0])) throw new Error("Startoptionen beginnen mit - oder +.");
+  if (!words.some((w) => w.toLowerCase() === "-condebug")) words.push("-condebug");
+  return words.join(" ");
+}
+
 /** CS2 einmalig über Steam mit diesen Optionen starten; Steam fragt selbst nach. Die Steam-Einstellungen bleiben unverändert. */
-export const CHAT_LAUNCH_URL = `steam://run/730//${encodeURIComponent(CHAT_LAUNCH_OPTIONS)}/`;
+export function launchUrl(options = CHAT_LAUNCH_OPTIONS) {
+  return `steam://run/730//${encodeURIComponent(cleanLaunchOptions(options))}/`;
+}
+export const CHAT_LAUNCH_URL = launchUrl();
 export const LANGUAGES = {
   de: "Deutsch", en: "Englisch", es: "Spanisch", fr: "Französisch", it: "Italienisch", pt: "Portugiesisch",
   ru: "Russisch", uk: "Ukrainisch", bg: "Bulgarisch", cs: "Tschechisch", et: "Estnisch",
@@ -291,7 +312,7 @@ export async function ensureModel(modelDir, key, request = fetch) {
 
 export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request = fetch, now = Date.now, loadEngine, busy = () => false } = {}) {
   const file = path.join(dir, "chat-translate.json");
-  let settings = { enabled: false, language: "de", overlay: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true };
+  let settings = { enabled: false, language: "de", overlay: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
   try {
     const saved = JSON.parse(await readFile(file, "utf8"));
     settings = {
@@ -301,6 +322,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       accepted: Number.isInteger(saved?.accepted) ? saved.accepted : 0,
       keys: { all: CHAT_HOTKEYS.includes(saved?.keys?.all) ? saved.keys.all : "F7", team: CHAT_HOTKEYS.includes(saved?.keys?.team) ? saved.keys.team : "F8" },
       assumeEnglish: saved?.assumeEnglish !== false,
+      launchOptions: (() => { try { return cleanLaunchOptions(saved?.launchOptions ?? CHAT_LAUNCH_OPTIONS); } catch { return CHAT_LAUNCH_OPTIONS; } })(),
     };
   } catch { /* noch nichts gespeichert */ }
   if (settings.accepted !== CHAT_OVERLAY_NOTICE_VERSION) settings.overlay = false;
@@ -402,7 +424,8 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       engineError: engine.error,
       replyLanguage: lastForeign || "en",
       setupExec: CHAT_SETUP_EXEC,
-      launchOptions: CHAT_LAUNCH_OPTIONS,
+      launchOptions: settings.launchOptions,
+      defaultLaunchOptions: CHAT_LAUNCH_OPTIONS,
     }),
     messages: (limit = MAX_MESSAGES) => messages.slice(0, limit).map(({ error, ...m }) => (error ? { ...m, error } : m)),
     /** Für das Overlay der Figur: nur frische Zeilen. */
@@ -416,6 +439,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       if (typeof input.enabled === "boolean") settings.enabled = input.enabled;
       if (LANGUAGES[input.language]) settings.language = input.language;
       if (typeof input.assumeEnglish === "boolean") settings.assumeEnglish = input.assumeEnglish;
+      if (typeof input.launchOptions === "string") settings.launchOptions = cleanLaunchOptions(input.launchOptions || CHAT_LAUNCH_OPTIONS);
       if (input.keys) {
         const all = CHAT_HOTKEYS.includes(input.keys.all) ? input.keys.all : settings.keys.all;
         const team = CHAT_HOTKEYS.includes(input.keys.team) ? input.keys.team : settings.keys.team;
@@ -438,6 +462,8 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
     },
     /** Während einer Demo-Aufnahme schreibt CS2 die Chats der Demo: dann nichts annehmen. */
     pause(value) { paused = Boolean(value); },
+    /** Steam-Link mit den gespeicherten Startoptionen. */
+    launchUrl: () => launchUrl(settings.launchOptions),
     /** Antwort übersetzen und als cfg ablegen. `to` = Zielsprache oder "auto" (letzte fremde Sprache). */
     async reply({ text, to = "auto", team = false } = {}) {
       const source = cleanSay(text);
@@ -457,7 +483,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
     async reset() {
       stopTimer();
       messages = [];
-      settings = { enabled: false, language: "de", overlay: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true };
+      settings = { enabled: false, language: "de", overlay: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
       for (const target of [file, ...(cfgDir ? CHAT_FILES.map((f) => path.join(cfgDir, f)) : [])])
         try { await unlink(target); } catch (error) { if (error.code !== "ENOENT") throw error; }
     },

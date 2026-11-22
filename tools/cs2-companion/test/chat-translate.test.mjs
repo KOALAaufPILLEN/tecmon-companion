@@ -10,10 +10,16 @@ import {
   ensureEngine, ensureModel, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
 } from "../chat-translate.mjs";
 import { CHAT_MODELS } from "../chat-models.mjs";
-import { CHAT_LAUNCH_URL } from "../chat-translate.mjs";
+import { CHAT_LAUNCH_URL, cleanLaunchOptions, launchUrl } from "../chat-translate.mjs";
 
 test("Fester Steam-Startlink mit -condebug", () => {
   assert.equal(CHAT_LAUNCH_URL, "steam://run/730//%2Bcl_input_enable_raw_keyboard%20true%20-condebug/");
+  assert.equal(cleanLaunchOptions("-novid +fps_max 400"), "-novid +fps_max 400 -condebug");
+  assert.equal(cleanLaunchOptions("-condebug -high"), "-condebug -high");
+  assert.equal(cleanLaunchOptions(""), "-condebug");
+  for (const bad of ['-x "a b"', "-x; quit", "+exec /etc/x", "-x\\..\\y", "+connect 1.2.3.4/x", "novid", "-x `y`", "a".repeat(400)])
+    assert.throws(() => cleanLaunchOptions(bad), undefined, bad);
+  assert.equal(launchUrl("-novid"), "steam://run/730//-novid%20-condebug/");
 });
 
 test("Chatzeilen aus console.log", () => {

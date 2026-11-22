@@ -661,6 +661,7 @@ async function loadChat(){
     const to=$('chat-reply-to').value||'auto';fillSelect($('chat-reply-to'),[['auto','Sprache der letzten Nachricht'],...langs],to);
   }
   $('chat-english').checked=chat.assumeEnglish;
+  if(document.activeElement!==$('chat-launch-options'))$('chat-launch-options').value=chat.launchOptions||'';
   const autoOption=$('chat-reply-to').querySelector('option[value="auto"]');if(autoOption)autoOption.textContent=`Sprache der letzten Nachricht (${chat.languages[chat.replyLanguage]||chat.replyLanguage})`;
   $('chat-overlay-status').textContent=chat.overlay?'An':'Aus';$('chat-overlay-status').classList.toggle('on',chat.overlay);
   $('chat-notice').replaceChildren(...chat.notice.map(t=>el('li',t)));
@@ -685,7 +686,8 @@ $('chat-language')?.addEventListener('change',e=>chatSettings({language:e.target
 $('chat-key-all')?.addEventListener('change',e=>chatSettings({keys:{all:e.target.value,team:$('chat-key-team').value}}));
 $('chat-key-team')?.addEventListener('change',e=>chatSettings({keys:{all:$('chat-key-all').value,team:e.target.value}}));
 $('chat-english')?.addEventListener('change',e=>chatSettings({assumeEnglish:e.target.checked}));
-$('chat-launch')?.addEventListener('click',()=>api('/api/chat/launch',{}).then(r=>{$('notice').textContent=r.message;}).catch(notice));
+$('chat-launch-save')?.addEventListener('click',()=>chatSettings({launchOptions:$('chat-launch-options').value}));
+$('chat-launch')?.addEventListener('click',()=>api('/api/chat/settings',{launchOptions:$('chat-launch-options').value}).then(()=>api('/api/chat/launch',{})).then(r=>{$('notice').textContent=r.message;}).catch(notice));
 $('chat-copy-option')?.addEventListener('click',()=>navigator.clipboard.writeText(chatState?.launchOptions||'+cl_input_enable_raw_keyboard true -condebug').then(()=>{$('notice').textContent='Startoptionen kopiert. In Steam: Rechtsklick auf CS2 → Eigenschaften → Startoptionen einfügen (nicht in die CS2-Konsole).';}).catch(notice));
 $('chat-overlay-toggle')?.addEventListener('click',async()=>{
   if(!chatState)return;const button=$('chat-overlay-toggle');

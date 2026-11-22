@@ -26,7 +26,7 @@ import { cleanDotaPayload, dotaGsiConfigPath, installDotaGsiConfig, removeDotaGs
 import { createInsightsStore } from "./insights.mjs";
 import { createGamePackages } from "./games.mjs";
 import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
-import { createChatTranslator, CHAT_LAUNCH_URL } from "./chat-translate.mjs";
+import { createChatTranslator } from "./chat-translate.mjs";
 import { createScoreboard, SCOREBOARD_CAPABILITY, summary as scoreboardSummary } from "./scoreboard.mjs";
 import { workState } from "./work-status.mjs";
 import { createSkinSwap, hasSkins, SKIN_CAPABILITY, SKIN_KNIFE_CAPABILITY, SKIN_SETUP_CAPABILITY, SKIN_SIDE_CAPABILITY, SKIN_LEGACY_CAPABILITY, SKIN_STICKER_CAPABILITY } from "./skin-swap.mjs";
@@ -1140,10 +1140,10 @@ export async function createCompanion({
         return json(res, 200, { chat: state, message: state.enabled ? "Chat-Übersetzer an. CS2 braucht -condebug in Steam unter Eigenschaften → Startoptionen (nicht in der CS2-Konsole)." : "Chat-Übersetzer aus." });
       }
       if (url.pathname === "/api/chat/launch") {
-        // Fester Steam-Link, kein Text aus dem Auftrag. Steam zeigt selbst eine Rückfrage zu den Startoptionen.
+        // Steam-Link nur mit geprüften Startoptionen (cleanLaunchOptions). Steam zeigt selbst eine Rückfrage zu den Startoptionen.
         if (process.platform !== "win32") throw new Error("Nur unter Windows mit Steam möglich.");
-        spawn("explorer.exe", [CHAT_LAUNCH_URL], { windowsHide: true, stdio: "ignore" }).unref();
-        return json(res, 200, { message: "Steam startet CS2 mit +cl_input_enable_raw_keyboard true -condebug. Bestätige die Rückfrage von Steam." });
+        spawn("explorer.exe", [chatTranslator.launchUrl()], { windowsHide: true, stdio: "ignore" }).unref();
+        return json(res, 200, { message: `Steam startet CS2 mit ${chatTranslator.state().launchOptions}. Bestätige die Rückfrage von Steam.` });
       }
       if (url.pathname === "/api/chat/reply") {
         const result = await chatTranslator.reply({ text: String(input.text || ""), to: String(input.to || "auto"), team: input.team === true });
