@@ -62,3 +62,9 @@ Download und Aufnahme laufen ohne CS-Demo-Manager-Programm und ohne PostgreSQL (
 ## Automatische Updates ab 0.17.1
 
 Automatische Updates nutzen dieselben Prüfungen wie der Knopf (Manifest, Größe, SHA-256), laufen nie während Download, Aufnahme oder Kamera-Sitzung und lassen sich unter „Erweitert → Updates & Info“ abschalten (`updates.json`). Für die Grenzen der Hash-Prüfung gilt der Abschnitt „Programm-Updates ab 0.4“.
+
+## Chat-Übersetzer ab 0.46
+
+- Liest nur `game/csgo/console.log`, die CS2 mit der Startoption `-condebug` selbst schreibt. Kein Zugriff auf den Spielprozess, keine Eingaben; Antworten gehen nur über eigene cfg-Dateien, die der Spieler per Taste ausführt, oder über die Zwischenablage.
+- Freier Text aus der Oberfläche landet nur in `tecmon_chat_all.cfg`/`tecmon_chat_team.cfg`, bereinigt durch `cleanSay()` (eine `say`-Zeile, keine Anführungszeichen, Strichpunkte oder Steuerzeichen). Ein Befehl kann so nicht angehängt werden.
+- Bergamot-Engine (npm, feste sha512) und Modelle (feste SHA-256 und Größe) werden vor der Nutzung geprüft. Chattexte bleiben im Arbeitsspeicher und verlassen den PC nicht.

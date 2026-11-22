@@ -26,6 +26,7 @@ import { cleanDotaPayload, dotaGsiConfigPath, installDotaGsiConfig, removeDotaGs
 import { createInsightsStore } from "./insights.mjs";
 import { createGamePackages } from "./games.mjs";
 import { createClips, CLIP_CAPABILITY } from "./clips.mjs";
+import { createChatTranslator } from "./chat-translate.mjs";
 import { createScoreboard, SCOREBOARD_CAPABILITY, summary as scoreboardSummary } from "./scoreboard.mjs";
 import { workState } from "./work-status.mjs";
 import { createSkinSwap, hasSkins, SKIN_CAPABILITY, SKIN_KNIFE_CAPABILITY, SKIN_SETUP_CAPABILITY, SKIN_SIDE_CAPABILITY, SKIN_LEGACY_CAPABILITY, SKIN_STICKER_CAPABILITY } from "./skin-swap.mjs";
@@ -271,8 +272,8 @@ export async function createCompanion({
   const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES, overlay: { ...overlay.get(), mode: windowMode, notice: OVERLAY_NOTICE, noticeVersion: OVERLAY_NOTICE_VERSION } });
   /* CS2-Anzeigemodus aus cs2_video.txt, höchstens alle 10 Sekunden gelesen und nur bei eingeschaltetem Overlay. */
   let windowMode = "unknown", windowModeAt = 0;
-  const refreshWindowMode = () => {
-    if (!overlay.get().enabled || Date.now() - windowModeAt < 10000) return;
+  const refreshWindowMode = (force = false) => {
+    if ((!force && !overlay.get().enabled) || Date.now() - windowModeAt < 10000) return;
     windowModeAt = Date.now();
     cs2WindowMode().then((mode) => { windowMode = mode; }, () => {});
   };
@@ -282,6 +283,13 @@ export async function createCompanion({
     refreshWindowMode();
     const on = games.has("cs2") && o.enabled && o.accepted;
     return { enabled: on && (windowMode === "borderless" || windowMode === "unknown"), wanted: on, mode: windowMode, crosshair: crosshair.get() };
+  };
+  /** Für die Figur: Chat-Overlay wie das Fadenkreuz nur mit CS2-Paket, bestätigt und nicht im echten Vollbild. */
+  const chatOverlayState = () => {
+    const c = chatTranslator.state();
+    if (!games.has("cs2") || !c.enabled || !c.overlay) return { enabled: false };
+    refreshWindowMode(true);
+    return { enabled: windowMode === "borderless" || windowMode === "unknown", mode: windowMode, lines: chatTranslator.overlayLines() };
   };
   const radarPath = (map) => radarFile(radarDir, map);
   const insights = await createInsightsStore(installation?.profileDir || dataDir);
@@ -428,6 +436,14 @@ export async function createCompanion({
   }
   /* Eigene TecMon-Engine: Download und Aufnahme ohne CS Demo Manager und ohne Datenbank. */
   const engineCache = installation ? path.join(path.dirname(installation.profileDir), "engine") : path.join(dataDir, "engine");
+  // CS2-Chat-Übersetzer: liest nur console.log (-condebug), übersetzt lokal (Bergamot), nichts verlässt den PC.
+  const chatTranslator = await createChatTranslator({
+    dir: installation?.profileDir || dataDir,
+    cacheDir: engineCache,
+    cs2Exe: detected.cs2,
+    busy: () => active,
+    ...(engineSystem.chat || {}),
+  });
   /** Skin-Tausch für Video-Szenen (skin-swap-v1): freiwilliges Addon, standardmäßig aus. */
   const skinSwap = await createSkinSwap({ dir: installation?.profileDir || dataDir });
   // Bis 0.40 nachgeladener fremder Rewriter: eigener Cache-Ordner, wird nicht mehr gebraucht.
@@ -948,6 +964,7 @@ export async function createCompanion({
           clips: clips.state(),
           scoreboard: games.has("wardogs") ? scoreboard.state() : null,
           overlay: overlayState(),
+          chat: chatOverlayState(),
           desktop: desktop.get(),
           downloads: [...downloads.values()],
           dataDir,
@@ -955,6 +972,10 @@ export async function createCompanion({
         });
       if (req.method === "GET" && url.pathname === "/api/pet/quiz") return json(res, 200, quizQuestion());
       if (req.method === "GET" && url.pathname === "/api/crosshair") return json(res, 200, crosshairState());
+      if (req.method === "GET" && url.pathname === "/api/chat") {
+        if (!games.has("cs2")) throw new Error("Das CS2-Paket ist nicht installiert. Unter „Games“ installieren.");
+        return json(res, 200, { chat: chatTranslator.state(), messages: chatTranslator.messages() });
+      }
       if (req.method === "GET" && url.pathname === "/api/cfgs") return json(res, 200, cfgs.state(detected.cs2));
       if (req.method === "GET" && url.pathname === "/api/wardogs/scoreboard") {
         if (!games.has("wardogs")) throw new Error("Das Wardogs-Paket ist nicht installiert. Unter „Games“ installieren.");
@@ -1034,6 +1055,7 @@ export async function createCompanion({
           await crosshair.reset(detected.cs2);
           await overlay.reset();
           await cfgs.reset(detected.cs2);
+          await chatTranslator.reset();
         }
         await games.remove(id);
         if (id === "wardogs") await scoreboard.reset();
@@ -1110,6 +1132,16 @@ export async function createCompanion({
             ? `Fadenkreuz gespeichert. In CS2 einmal in die Konsole tippen: ${CROSSHAIR_EXEC}`
             : "Fadenkreuz gespeichert. CS2 wurde nicht gefunden: Befehle kopieren und in die CS2-Konsole einfügen.",
         });
+      }
+      if (url.pathname.startsWith("/api/chat/") && !games.has("cs2"))
+        throw new Error("Das CS2-Paket ist nicht installiert. Unter „Games“ installieren.");
+      if (url.pathname === "/api/chat/settings") {
+        const state = await chatTranslator.setSettings(input);
+        return json(res, 200, { chat: state, message: state.enabled ? "Chat-Übersetzer an. CS2 braucht die Startoption -condebug." : "Chat-Übersetzer aus." });
+      }
+      if (url.pathname === "/api/chat/reply") {
+        const result = await chatTranslator.reply({ text: String(input.text || ""), to: String(input.to || "auto"), team: input.team === true });
+        return json(res, 200, { reply: result, message: result.written ? `Bereit: in CS2 ${result.key} drücken. Der Text ist auch in der Zwischenablage.` : "Übersetzt. Der Text ist in der Zwischenablage; CS2-cfg-Ordner nicht gefunden." });
       }
       if (url.pathname === "/api/crosshair/overlay") {
         const state = await overlay.set(input.enabled === true, input.accept);
@@ -1399,6 +1431,7 @@ export async function createCompanion({
   server.on("close", () => {
     clearInterval(autoTimer);
     clips.stop().catch(() => {});
+    chatTranslator.close();
     if (updateTimer) clearTimeout(updateTimer);
   });
   return { server, token, autoUpdateTick };

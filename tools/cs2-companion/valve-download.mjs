@@ -110,7 +110,7 @@ export function demoLinks(buf) {
 }
 
 /* ---------- boiler-writter einmalig laden und prüfen ---------- */
-function tarEntries(tar) {
+export function tarEntries(tar) {
   const entries = new Map();
   for (let pos = 0; pos + 512 <= tar.length; ) {
     const header = tar.subarray(pos, pos + 512);

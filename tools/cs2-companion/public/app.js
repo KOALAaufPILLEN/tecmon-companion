@@ -462,7 +462,7 @@ function guessGame(){
 }
 document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>(gameArea=b.closest('.card').querySelector('.game-area'),{reaction:reactionGame,rps:rpsGame,quiz:quizGame,price:priceGame,aim:aimGame,memory:memoryGame,guess:guessGame})[b.dataset.game]()));
 loadPet();setInterval(loadPet,5000);
-if(['#spiele','#tecmon','#games','#clips','#wardogs','#quiz','#rundentipps','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
+if(['#spiele','#tecmon','#games','#clips','#wardogs','#quiz','#rundentipps','#chat','#fadenkreuz','#videos'].includes(location.hash))setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth'}),300);
 
 /* Clip-Puffer: Einstellungen, Liste, Branding. Hochladen zu YouTube läuft auf der Webseite. */
 const CLIP_GAMES=[['cs2','CS2'],['valorant','Valorant'],['dota2','Dota 2'],['deadlock','Deadlock'],['wardogs','Wardogs'],['lol','League of Legends'],['other','Anderes Spiel']];
@@ -552,7 +552,7 @@ $('skins-toggle').addEventListener('click',async()=>{
 const PANEL_CATEGORIES=[
   ['status','Status & Videos',[['.connection-summary','Verbindung'],['.activity-summary','Aufnahme'],['#videos','Letzte Videos']]],
   ['figur','Figur & Start',[['#figur']]],
-  ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#fadenkreuz','Fadenkreuz & Overlay'],['#cfgs','Configs'],['#quiz','Quiz']]],
+  ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#chat','Chat-Übersetzer'],['#fadenkreuz','Fadenkreuz & Overlay'],['#cfgs','Configs'],['#quiz','Quiz']]],
   ['dota2','Dota 2',[['#dota-tipps','Dota-2-Tipps']]],
   ['wardogs','Wardogs',[['#wardogs']]],
   ['clips','Clips',[['#clips']]],
@@ -564,7 +564,7 @@ function panelHints(state){
   const set=(key,text)=>{const hint=document.querySelector(`[data-fold="cat-${key}"] .cat-hint`);if(hint)hint.textContent=text;};
   const devices=state.bridge?.devices?.length||0,pending=state.bridge?.pending?.length||0;
   set('status',`${pending?'Verbindung bestätigen':devices?'Verbunden':'Nicht verbunden'}${state.active?' · Aufnahme läuft':''}`);
-  set('cs2',`Tipps ${state.gsi?.enabled?'an':'aus'} · Highlights ${state.auto?.enabled?'an':'aus'}`);
+  set('cs2',`Tipps ${state.gsi?.enabled?'an':'aus'} · Highlights ${state.auto?.enabled?'an':'aus'}${state.chat?.enabled?' · Chat-Overlay an':''}`);
   set('dota2',`Tipps ${state.dota?.enabled?'an':'aus'}`);
   set('clips',state.clips?.enabled?'Puffer an':'Puffer aus');
   set('wardogs',state.scoreboard?`Scoreboard-Foto ${state.scoreboard.enabled?'an':'aus'}`:'nicht installiert');
@@ -639,3 +639,72 @@ $('wardogs-toggle').addEventListener('click',()=>wardogsSettings({enabled:!wardo
 $('wardogs-save').addEventListener('click',()=>wardogsSettings({playerName:$('wardogs-name').value}));
 $('wardogs-capture').addEventListener('click',()=>{$('notice').textContent='Scoreboard-Foto läuft: Wardogs nach vorn holen und Tab halten …';api('/api/wardogs/capture',{}).then(r=>{$('notice').textContent=r.message;wardogsSignature='';loadWardogs();}).catch(notice);});
 setInterval(()=>{if(!restarting)loadWardogs().catch(()=>{});},5000);setTimeout(()=>loadWardogs().catch(()=>{}),800);
+
+/* CS2-Chat-Übersetzer (chat-translate.mjs): liest console.log, übersetzt lokal, Antwort per eigener cfg und Zwischenablage. */
+let chatState=null,chatSignature='',chatOptions='';
+const CHAT_STATUS={off:'',missing:'Wartet auf CS2 mit -condebug: console.log wurde nicht gefunden.',stale:'console.log ist älter als 10 Minuten. Läuft CS2 mit -condebug?',active:'Liest mit.','no-cs2':'CS2 wurde auf diesem PC nicht gefunden.'};
+const CHAT_ENGINE={download:' · Modell wird geladen …',loading:' · Übersetzung startet …',error:' · Übersetzung fehlgeschlagen'};
+function chatLabel(m){return m.channel==='team'?(m.team==='ct'?'[CT]':m.team==='t'?'[T]':'[Team]'):m.channel==='spec'?'[Zuschauer]':'[Alle]';}
+function fillSelect(select,entries,value){if(!select)return;select.replaceChildren(...entries.map(([v,t])=>{const o=el('option',t);o.value=v;return o;}));select.value=value;}
+async function loadChat(){
+  const card=$('chat');if(!card||card.hidden)return;
+  const {chat,messages}=await api('/api/chat');chatState=chat;
+  $('chat-heading').textContent=chat.enabled?(chat.condebug==='active'?'Chat-Übersetzer liest mit':'Chat-Übersetzer an · wartet auf CS2'):'Chat-Übersetzer ist aus';
+  const toggle=$('chat-toggle');toggle.textContent=chat.enabled?'Ausschalten':'Einschalten';toggle.className=chat.enabled?'subtle':'';toggle.disabled=!chat.enabled&&!chat.available;
+  $('chat-status').textContent=(CHAT_STATUS[chat.condebug]||'')+(chat.enabled?(CHAT_ENGINE[chat.engine]||''):'')+(chat.engineError?` (${chat.engineError})`:'');
+  if(chat.condebug==='missing')$('chat-setup').open=true;
+  $('chat-setup-exec').textContent=chat.setupExec;
+  const options=JSON.stringify([chat.languages,chat.language,chat.keys]);
+  if(options!==chatOptions&&!['chat-language','chat-key-all','chat-key-team','chat-reply-to'].includes(document.activeElement?.id)){
+    chatOptions=options;const langs=Object.entries(chat.languages);const keys=['F5','F6','F7','F8','F9','F10','F11'].map(k=>[k,k]);
+    fillSelect($('chat-language'),langs,chat.language);fillSelect($('chat-key-all'),keys,chat.keys.all);fillSelect($('chat-key-team'),keys,chat.keys.team);
+    const to=$('chat-reply-to').value||'auto';fillSelect($('chat-reply-to'),[['auto','Sprache der letzten Nachricht'],...langs],to);
+  }
+  $('chat-english').checked=chat.assumeEnglish;
+  const autoOption=$('chat-reply-to').querySelector('option[value="auto"]');if(autoOption)autoOption.textContent=`Sprache der letzten Nachricht (${chat.languages[chat.replyLanguage]||chat.replyLanguage})`;
+  $('chat-overlay-status').textContent=chat.overlay?'An':'Aus';$('chat-overlay-status').classList.toggle('on',chat.overlay);
+  $('chat-notice').replaceChildren(...chat.notice.map(t=>el('li',t)));
+  $('chat-overlay-toggle').textContent=chat.overlay?'Overlay ausschalten':chat.accepted?'Overlay einschalten':'Overlay einschalten …';
+  const next=JSON.stringify(messages.map(m=>[m.id,m.status]));if(next===chatSignature)return;chatSignature=next;
+  const list=$('chat-list');list.replaceChildren();
+  if(!messages.length){list.append(el('li',chat.enabled?'Noch keine Chatnachrichten.':'Einschalten, dann erscheinen hier die Chats aus CS2.','recent-empty'));return;}
+  for(const m of messages){
+    const row=el('li','',m.channel==='team'?'chat-team':'');
+    row.append(el('b',`${chatLabel(m)} ${m.name}${m.dead?' ✝':''}${m.lang?` (${m.lang.toUpperCase()})`:''}: `));
+    const main=m.status==='done'?m.translated:m.text;row.append(el('span',main));
+    if(m.status==='done')row.append(el('small',`Original: ${m.text}`));
+    else if(m.status==='pending')row.append(el('small','wird übersetzt …'));
+    else if(m.status==='unsupported')row.append(el('small','Diese Sprache kann TecMon noch nicht übersetzen.'));
+    else if(m.status==='error')row.append(el('small',m.error||'Übersetzung fehlgeschlagen.'));
+    list.append(row);
+  }
+}
+const chatSettings=body=>api('/api/chat/settings',body).then(r=>{if(r.message)$('notice').textContent=r.message;chatOptions='';chatSignature='';return loadChat();}).catch(notice);
+$('chat-toggle')?.addEventListener('click',()=>chatSettings({enabled:!chatState?.enabled}));
+$('chat-language')?.addEventListener('change',e=>chatSettings({language:e.target.value}));
+$('chat-key-all')?.addEventListener('change',e=>chatSettings({keys:{all:e.target.value,team:$('chat-key-team').value}}));
+$('chat-key-team')?.addEventListener('change',e=>chatSettings({keys:{all:$('chat-key-all').value,team:e.target.value}}));
+$('chat-english')?.addEventListener('change',e=>chatSettings({assumeEnglish:e.target.checked}));
+$('chat-copy-option')?.addEventListener('click',()=>navigator.clipboard.writeText('-condebug').then(()=>{$('notice').textContent='„-condebug“ kopiert. In Steam unter Startoptionen einfügen.';}).catch(notice));
+$('chat-overlay-toggle')?.addEventListener('click',async()=>{
+  if(!chatState)return;const button=$('chat-overlay-toggle');
+  if(!chatState.overlay&&!chatState.accepted){
+    const box=$('chat-consent');
+    if(box.hidden){box.hidden=false;button.textContent='Zustimmen und einschalten';$('chat-accept').focus();return;}
+    if(!$('chat-accept').checked){notice({message:'Bitte erst den Hinweis bestätigen.'});$('chat-accept').focus();return;}
+  }
+  button.disabled=true;
+  try{await chatSettings({overlay:!chatState.overlay,accept:chatState.noticeVersion});$('chat-consent').hidden=true;}finally{button.disabled=false;}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('chat-consent')&&!$('chat-consent').hidden){$('chat-consent').hidden=true;$('chat-accept').checked=false;loadChat().catch(()=>{});}});
+$('chat-reply')?.addEventListener('submit',async e=>{
+  e.preventDefault();const button=$('chat-reply-send');button.disabled=true;const out=$('chat-reply-out');
+  try{
+    const r=await api('/api/chat/reply',{text:$('chat-reply-text').value,to:$('chat-reply-to').value||'auto',team:$('chat-reply-team').checked});
+    out.hidden=false;out.textContent=r.reply.text;
+    let copied=false;try{await navigator.clipboard.writeText(r.reply.text);copied=true;}catch{}
+    $('notice').textContent=r.reply.written?`Bereit: in CS2 ${r.reply.key} drücken${copied?' oder mit Strg+V in den Chat einfügen':''}.`:copied?'Übersetzt und in die Zwischenablage kopiert.':'Übersetzt.';
+  }catch(error){notice(error);}finally{button.disabled=false;}
+});
+$('chat-reply-text')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('chat-reply').requestSubmit();}});
+setInterval(()=>{if(!restarting)loadChat().catch(()=>{});},1500);setTimeout(()=>loadChat().catch(()=>{}),900);

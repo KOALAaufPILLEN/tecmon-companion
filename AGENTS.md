@@ -374,6 +374,33 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   das Overlay aus. Beim Entfernen des CS2-Pakets werden Overlay-Einstellung und alle
   Sammlungs-cfgs gelöscht.
 
+## Chat-Übersetzer für CS2 (`chat-translate.mjs`, `chat-models.mjs`)
+
+- Nutzerwunsch vom 22.11.2026: CS2-Chat in die eigene Sprache übersetzen, Antworten in TecMon
+  schreiben und in die Sprache der anderen übersetzen, Übersetzungen als Overlay über den CS2-Chat legen.
+- **Nur `console.log` lesen.** CS2 schreibt sie mit der Startoption `-condebug`
+  (`game/csgo/console.log`). Der Companion liest ab dem Einschalten nur neue Zeilen (`createTail()`),
+  nie den Spielprozess. Kein Hook, kein Speicherzugriff, keine Eingaben, keine simulierten Tasten.
+  Steam-Startoptionen nie selbst ändern (`localconfig.vdf` bleibt unberührt); nur erklären.
+- Standardmäßig aus, Teil des CS2-Pakets, beim Entfernen des Pakets Einstellungen und die eigenen
+  cfgs (`CHAT_FILES`) löschen. Während einer Demo-Aufnahme nichts annehmen (`busy`).
+- **Übersetzung nur lokal:** Bergamot (MPL-2.0, WebAssembly im Node-Worker). Engine nur aus dem
+  npm-Paket mit fester Integrität (`ENGINE`), Modelle nur aus `CHAT_MODELS` mit fester SHA-256 und
+  Größe; die Modellliste aus dem Netz nie benutzen. Chattexte verlassen den PC nie, werden nicht auf
+  die Platte geschrieben und nur im Arbeitsspeicher gehalten (`MAX_MESSAGES`). Kein Cloud-Dienst
+  ohne eigenen Nutzerentscheid; wenn, dann nur mit eigenem Schlüssel des Nutzers und abschaltbar.
+- Sprache wird geraten (`detectLanguage()`), kurze Rufe wie „gg“ bleiben unübersetzt. Fehlende
+  Sprachen als „noch nicht übersetzbar“ zeigen, nie eine erfundene Übersetzung.
+- **Antworten:** nur über eigene cfgs (`tecmon_chat_all.cfg`/`tecmon_chat_team.cfg` mit genau einer
+  Zeile `say`/`say_team`, `tecmon_chat_keys.cfg` mit den Binds aus `CHAT_HOTKEYS`) plus Zwischenablage
+  in der Oberfläche. Das ist die einzige Stelle, an der freier Text in eine cfg kommt: immer durch
+  `cleanSay()` (keine Anführungszeichen, `;`, `\`, `//`, Steuerzeichen, höchstens `SAY_MAX` Zeichen).
+  Der Test in `test/chat-translate.test.mjs` prüft das und darf nicht gelockert werden.
+- **Chat-Overlay** (`ChatOverlay` in `TecMon.cs`): gleiche Regeln wie das Fadenkreuz-Overlay
+  (durchklickbar, nie aktiviert, nur im Vollbild-Fenstermodus mit CS2 vorn), eigener Hinweis
+  `CHAT_OVERLAY_NOTICE` mit Version `CHAT_OVERLAY_NOTICE_VERSION`. Zeilen kommen aus `/api/state`
+  (`chat.lines`, nur frische Zeilen). Gameplay und HUD außer dem Chat nicht verdecken.
+
 ## Oberfläche (Figurmenü, Fenster, Companion-Seite)
 
 - TecMon-Stil (wie `docs/tecmon-style.md` der Webseite, im README unter „TecMon-Stil“):

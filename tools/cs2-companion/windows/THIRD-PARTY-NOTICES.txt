@@ -47,3 +47,10 @@ TecMon-Demo-Rewriter (tecmon-demo-rewriter.exe)
 Eigenes Programm des TecMon Companion (MIT), Quellcode in native/tecmon-demo-rewriter.
 Enthält source2-demo 0.5.11 von Artem Rupasov, MIT OR Apache-2.0, mit TecMon-Änderungen.
 Quellcode: https://github.com/Rupas1k/source2-demo
+
+bergamot-translator 0.4.9 (Chat-Übersetzer, nicht im Installer)
+Wird beim ersten Einschalten des Chat-Übersetzers vom npm-Paket @browsermt/bergamot-translator geladen
+(feste sha512-Prüfsumme) und unverändert genutzt. Mozilla Public License 2.0.
+Quellcode: https://github.com/browsermt/bergamot-translator
+Übersetzungsmodelle: Bergamot-/Firefox-Translations-Projekte, geladen von https://bergamot.s3.amazonaws.com/models/
+mit fester SHA-256 (chat-models.mjs). Lizenzen laut Anbieter.
