@@ -403,7 +403,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   ohne eigenen Nutzerentscheid; wenn, dann nur mit eigenem Schlüssel des Nutzers und abschaltbar.
 - Sprache wird geraten (`detectLanguage()`), kurze Rufe wie „gg“ bleiben unübersetzt. Reine Großbuchstaben-Rufe
   werden vor dem Übersetzen klein geschrieben (`sourceText()`). Nach einem Neustart holt der Companion nur Chatzeilen
-  der letzten `BACKLOG_MS` aus den letzten `BACKLOG_BYTES` der console.log nach (Zeitstempel `lineTime()`), nichts Älteres. Fehlende
+  der letzten `BACKLOG_MS` aus den letzten `BACKLOG_BYTES` der console.log nach (Zeitstempel `lineTime()`), nichts Älteres.
+  Größe der console.log nur über den offenen Handle (`handle.stat()`), nie über `stat(pfad)`: Windows liefert für die von CS2
+  offen gehaltene Datei sonst eine veraltete Größe. Fehlende
   Sprachen als „noch nicht übersetzbar“ zeigen, nie eine erfundene Übersetzung.
 - **Antworten:** nur über eigene cfgs (`tecmon_chat_all.cfg`/`tecmon_chat_team.cfg` mit genau einer
   Zeile `say`/`say_team`, `tecmon_chat_keys.cfg` mit den Binds aus `CHAT_HOTKEYS`) plus Zwischenablage
