@@ -31,7 +31,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 ### Release-Build repariert
 
 - Der Windows-Release-Build schlug seit dem 21.11.2026 im Installationstest fehl, deshalb gab es keine Releases für 0.45.0 und 0.46.0 (letztes veröffentlichtes Release: 0.44.1). Ursache: `unpack-tools.ps1` nutzte `Expand-Archive`; aus PowerShell 7 gestartet lädt Windows PowerShell dann das falsche Archiv-Modul („Cannot find an overload for ExtractToDirectory“). Jetzt entpackt das Skript direkt mit `System.IO.Compression.ZipFile`. Das betraf auch die Erstinstallation von HLAE/FFmpeg auf PCs, auf denen der Companion aus PowerShell 7 heraus gestartet wurde.
-- FFmpeg kommt jetzt aus einem festen Release-Tag (gyan.dev 9.0.2 full_build über den GitHub-Spiegel GyanD/codexffmpeg, feste SHA-256). Der bisherige FFmpeg-Builds-Autobuild war gelöscht (404); Autobuilds verschwinden nach einigen Wochen, feste Release-Tags bleiben.
+- FFmpeg kommt jetzt aus einem festen Release-Tag (gyan.dev 8.1.2 full_build über den GitHub-Spiegel GyanD/codexffmpeg, feste SHA-256; FFmpeg 9 kennt das genutzte `-filter_complex_script` nicht mehr). Der bisherige FFmpeg-Builds-Autobuild war gelöscht (404); Autobuilds verschwinden nach einigen Wochen, feste Release-Tags bleiben.
 
 ## Website: Lineup- und Kill-Karte · 21. November 2026
 
