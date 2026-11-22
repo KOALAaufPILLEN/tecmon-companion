@@ -96,7 +96,8 @@ test("fragt nach Matchende im Hauptmenü und lädt erst, wenn CS2 zu ist", async
   running = false;
   time += RECHECK_MS;
   await auto.tick();
-  for (let i = 0; i < 50 && auto.state().run.status !== "ready"; i++) await new Promise((r) => setTimeout(r, 5));
+  // Der Download läuft asynchron; langsame Windows-Runner brauchen dafür mehr als 250 ms.
+  for (let i = 0; i < 500 && auto.state().run.status !== "ready"; i++) await new Promise((r) => setTimeout(r, 10));
   assert.equal(auto.state().run.status, "ready");
   assert.deepEqual(opened, [offer.id]);
   const ready = auto.ready(offer.id);

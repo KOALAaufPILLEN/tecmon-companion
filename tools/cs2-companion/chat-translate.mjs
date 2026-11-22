@@ -1,5 +1,6 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
+import { StringDecoder } from "node:string_decoder";
 import { open, stat, readFile, writeFile, rename, mkdir, rm, unlink } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { gunzipSync } from "node:zlib";
@@ -152,7 +153,8 @@ export function detectLanguage(raw, { assumeEnglish = true } = {}) {
   const plain = text.replace(/i\u0307/g, "i");
   const cyrillic = (text.match(/[Ѐ-ӿ]/g) || []).length;
   const latin = (text.match(/[a-zà-ž]/g) || []).length;
-  if (cyrillic >= 2 && cyrillic >= latin) {
+  // Kyrillisch gewinnt auch gegen eine angehängte Umschrift („Ты хороший игрок. (Ty khoroshiy igrok)“).
+  if (cyrillic >= 2 && (cyrillic >= latin || (cyrillic >= 6 && cyrillic * 2 >= latin))) {
     if (/[іїєґ]/.test(text)) return "uk";
     if (/[ыэё]/.test(text)) return "ru";
     if (/ъ/.test(text) || /\b(?:аз|съм|какво|защо|много)\b/.test(text)) return "bg";
@@ -219,13 +221,15 @@ export function consoleLogPath(cs2Exe) {
  */
 export function createTail(file, onLine, { backlog = 0 } = {}) {
   let offset = -1, rest = "", skipPartial = false, old = false;
+  // Hält angefangene UTF-8-Zeichen (Kyrillisch, Emojis) bis zum nächsten Lesen zurück.
+  let decoder = new StringDecoder("utf8");
   return {
     async poll() {
       let info;
-      try { info = await stat(file); } catch { offset = 0; rest = ""; return { exists: false }; }
+      try { info = await stat(file); } catch { offset = 0; rest = ""; decoder = new StringDecoder("utf8"); return { exists: false }; }
       // Beim ersten Lesen höchstens `backlog` Bytes vom Ende nachholen (als „alt“ markiert), sonst nur Neues.
       if (offset < 0) { offset = Math.max(0, info.size - backlog); old = offset < info.size; skipPartial = old && offset > 0; }
-      if (info.size < offset) { offset = 0; rest = ""; }
+      if (info.size < offset) { offset = 0; rest = ""; decoder = new StringDecoder("utf8"); }
       if (info.size > offset) {
         const length = Math.min(MAX_READ, info.size - offset);
         const handle = await open(file, "r");
@@ -233,7 +237,7 @@ export function createTail(file, onLine, { backlog = 0 } = {}) {
           const buffer = Buffer.alloc(length);
           const { bytesRead } = await handle.read(buffer, 0, length, offset);
           offset += bytesRead;
-          const text = rest + buffer.subarray(0, bytesRead).toString("utf8");
+          const text = rest + decoder.write(buffer.subarray(0, bytesRead));
           const lines = text.split("\n");
           rest = lines.pop().slice(-2000);
           if (skipPartial) { lines.shift(); skipPartial = false; }
