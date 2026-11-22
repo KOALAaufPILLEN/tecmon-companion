@@ -226,6 +226,8 @@ test("Chat-Übersetzer: aus, an, Nachrichten, Antwort-cfg, Reset", async () => {
   assert.equal(chat.state().bubble, false);
   assert.deepEqual(chat.bubbleLines(), []);
   assert.equal((await chat.setSettings({ bubble: true })).bubble, true);
+  assert.equal(chat.state().window, false);
+  assert.equal((await chat.setSettings({ window: true })).window, true);
   assert.equal(JSON.parse(await readFile(path.join(root, "profil", "chat-translate.json"), "utf8")).bubble, true);
 
   // Antwort in der eigenen Sprache braucht keine Übersetzung und landet als cfg.

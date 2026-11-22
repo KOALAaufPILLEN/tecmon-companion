@@ -290,8 +290,10 @@ export async function createCompanion({
   const chatOverlayState = () => {
     const c = chatTranslator.state();
     if (!games.has("cs2") || !c.enabled || !c.overlay) return { enabled: false };
-    refreshWindowMode(true);
     const header = chatTranslator.overlayHeader();
+    // Chat-Fenster: frei verschiebbar auf jedem Bildschirm, die Figur zeigt es nur, solange CS2 läuft; längerer Verlauf.
+    if (c.window) return { enabled: true, window: true, lines: chatTranslator.overlayLines(5 * 60 * 1000, 8), header: header.text, warn: header.warn, move: chatMoveRequest };
+    refreshWindowMode(true);
     return { enabled: windowMode === "borderless" || windowMode === "unknown", mode: windowMode, lines: chatTranslator.overlayLines(), header: header.text, warn: header.warn, move: chatMoveRequest };
   };
   /** Für die Figur: übersetzte Chatzeilen in der Sprechblase, unabhängig vom Overlay und vom Fenstermodus. */

@@ -414,6 +414,10 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   gibt nur fertig übersetzte, frische Zeilen; `/api/state` liefert sie als `chatBubble`. `ShowChatBubble()` in `TecMon.cs` nutzt eine
   eigene `TipBubble` (`chatTip`), zeigt jede Zeile einmal und nimmt nie den Fokus. Sie hängt nicht am `quiet` der Rundentipps und
   zählt nicht zum `BRIEFING_LIMIT`; Tipp-Logik nicht über diese Blase umgehen.
+- **Chat-Fenster** (Nutzerwunsch 22.11.2026, `window` in `chat-translate.json`, nur mit eingeschaltetem und bestätigtem
+  Chat-Overlay): `ChatOverlay.Free` fängt in seiner Fläche die Maus, lässt sich jederzeit ziehen, wird nie aktiviert und steht nur,
+  solange ein Prozess `cs2` läuft (Prozessliste höchstens alle 2 s, kein Zugriff auf den Prozess). Position wie beim Overlay in `chatPos`.
+  Chatzeilen in Overlay, Fenster und Sprechblase einzeilig als „Name [CT]: Nachricht“.
 - **Chat-Overlay** (`ChatOverlay` in `TecMon.cs`): gleiche Regeln wie das Fadenkreuz-Overlay
   (durchklickbar, nie aktiviert, nur im Vollbild-Fenstermodus mit CS2 vorn), eigener Hinweis
   `CHAT_OVERLAY_NOTICE` mit Version `CHAT_OVERLAY_NOTICE_VERSION`. Zeilen kommen aus `/api/state`

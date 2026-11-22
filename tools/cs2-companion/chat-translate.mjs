@@ -341,7 +341,7 @@ export async function ensureModel(modelDir, key, request = fetch) {
 
 export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request = fetch, now = Date.now, loadEngine, busy = () => false } = {}) {
   const file = path.join(dir, "chat-translate.json");
-  let settings = { enabled: false, language: "de", overlay: false, bubble: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
+  let settings = { enabled: false, language: "de", overlay: false, bubble: false, window: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
   try {
     const saved = JSON.parse(await readFile(file, "utf8"));
     settings = {
@@ -349,6 +349,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       language: LANGUAGES[saved?.language] ? saved.language : "de",
       overlay: saved?.overlay === true,
       bubble: saved?.bubble === true,
+      window: saved?.window === true,
       accepted: Number.isInteger(saved?.accepted) ? saved.accepted : 0,
       keys: { all: CHAT_HOTKEYS.includes(saved?.keys?.all) ? saved.keys.all : "F7", team: CHAT_HOTKEYS.includes(saved?.keys?.team) ? saved.keys.team : "F8" },
       assumeEnglish: saved?.assumeEnglish !== false,
@@ -450,6 +451,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       overlay: settings.overlay && settings.accepted === CHAT_OVERLAY_NOTICE_VERSION,
       accepted: settings.accepted === CHAT_OVERLAY_NOTICE_VERSION,
       bubble: settings.bubble,
+      window: settings.window,
       notice: CHAT_OVERLAY_NOTICE,
       noticeVersion: CHAT_OVERLAY_NOTICE_VERSION,
       condebug: settings.enabled ? condebug() : "off",
@@ -489,6 +491,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       if (LANGUAGES[input.language]) settings.language = input.language;
       if (typeof input.assumeEnglish === "boolean") settings.assumeEnglish = input.assumeEnglish;
       if (typeof input.bubble === "boolean") settings.bubble = input.bubble;
+      if (typeof input.window === "boolean") settings.window = input.window;
       if (typeof input.launchOptions === "string") settings.launchOptions = cleanLaunchOptions(input.launchOptions || CHAT_LAUNCH_OPTIONS);
       if (input.keys) {
         const all = CHAT_HOTKEYS.includes(input.keys.all) ? input.keys.all : settings.keys.all;
@@ -533,7 +536,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
     async reset() {
       stopTimer();
       messages = [];
-      settings = { enabled: false, language: "de", overlay: false, bubble: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
+      settings = { enabled: false, language: "de", overlay: false, bubble: false, window: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
       for (const target of [file, ...(cfgDir ? CHAT_FILES.map((f) => path.join(cfgDir, f)) : [])])
         try { await unlink(target); } catch (error) { if (error.code !== "ENOENT") throw error; }
     },
