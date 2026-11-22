@@ -294,6 +294,12 @@ export async function createCompanion({
     const header = chatTranslator.overlayHeader();
     return { enabled: windowMode === "borderless" || windowMode === "unknown", mode: windowMode, lines: chatTranslator.overlayLines(), header: header.text, warn: header.warn, move: chatMoveRequest };
   };
+  /** Für die Figur: übersetzte Chatzeilen in der Sprechblase, unabhängig vom Overlay und vom Fenstermodus. */
+  const chatBubbleState = () => {
+    const c = chatTranslator.state();
+    if (!games.has("cs2") || !c.enabled || !c.bubble) return { enabled: false };
+    return { enabled: true, lines: chatTranslator.bubbleLines() };
+  };
   const radarPath = (map) => radarFile(radarDir, map);
   const insights = await createInsightsStore(installation?.profileDir || dataDir);
   const pet = await createPet(installation?.profileDir || dataDir, now ? { now } : {});
@@ -968,6 +974,7 @@ export async function createCompanion({
           scoreboard: games.has("wardogs") ? scoreboard.state() : null,
           overlay: overlayState(),
           chat: chatOverlayState(),
+          chatBubble: chatBubbleState(),
           desktop: desktop.get(),
           downloads: [...downloads.values()],
           dataDir,

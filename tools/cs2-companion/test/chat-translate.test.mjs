@@ -222,6 +222,11 @@ test("Chat-Übersetzer: aus, an, Nachrichten, Antwort-cfg, Reset", async () => {
   assert.equal(ivan.status, "error");
   assert.equal(chat.state().replyLanguage, "ru");
   assert.equal(chat.overlayLines().length, 3);
+  // Sprechblase: nur fertig übersetzte Zeilen, Schalter wird gespeichert.
+  assert.equal(chat.state().bubble, false);
+  assert.deepEqual(chat.bubbleLines(), []);
+  assert.equal((await chat.setSettings({ bubble: true })).bubble, true);
+  assert.equal(JSON.parse(await readFile(path.join(root, "profil", "chat-translate.json"), "utf8")).bubble, true);
 
   // Antwort in der eigenen Sprache braucht keine Übersetzung und landet als cfg.
   const same = await chat.reply({ text: 'Hallo "zusammen"; quit', to: "de", team: true });
@@ -268,6 +273,7 @@ test("Chat-Übersetzer übersetzt mit geprüften Modellen (unechte Engine)", asy
     const [ivan] = chat.messages();
     assert.equal(ivan.status, "done", ivan.error);
     assert.equal(ivan.translated, "[ru>de]давай быстрее");
+    assert.deepEqual(chat.bubbleLines().map(({ name, text, channel }) => ({ name, text, channel })), [{ name: "Ivan", text: "[ru>de]давай быстрее", channel: "all" }]);
     const answer = await chat.reply({ text: "Ich komme" });
     assert.equal(answer.to, "ru");
     assert.equal(answer.text, "[de>ru]Ich komme");
