@@ -154,12 +154,12 @@ static class TecMon {
     if(launch) Process.Start(new ProcessStartInfo(Path.Combine(target,"TecMon Companion.exe")){WorkingDirectory=target,UseShellExecute=false});
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.46.5",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.46.6",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.46.5");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.46.6");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -174,7 +174,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.46.5"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.46.6"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -315,7 +315,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.46.5 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.46.6 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -791,15 +791,20 @@ class ChatOverlay : Form {
   public Point? Anchor;
   /* Meldet die neue Position nach dem Verschieben, damit die Figur sie in desktop.json speichert. */
   public Action<Point?> Moved;
+  /* Chat-Fenster (Nutzerwunsch 22.11.2026): fängt in seiner Fläche die Maus (nie den Fokus), lässt sich jederzeit ziehen,
+     steht auf jedem Bildschirm, aber nur solange CS2 läuft. Sonst das durchklickbare Overlay über dem Spiel. */
+  public bool Free;bool cs2Running;DateTime cs2Checked=DateTime.MinValue;
+  bool Cs2Running(){if((DateTime.Now-cs2Checked).TotalSeconds>=2){cs2Checked=DateTime.Now;try{var found=System.Diagnostics.Process.GetProcessesByName("cs2");cs2Running=found.Length>0;foreach(var p in found)p.Dispose();}catch{cs2Running=false;}}return cs2Running;}
   protected override bool ShowWithoutActivation {get{return true;}}
   /* WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT (durchklickbar, außer beim Verschieben) */
   protected override CreateParams CreateParams {get{var p=base.CreateParams;p.ExStyle|=0x08000000|0x80|0x8|0x80000|0x20;return p;}}
   public ChatOverlay(){Text="TecMon Chat";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;TopMost=true;Size=new Size(10,10);check.Tick+=(s,e)=>Update2();}
   public bool Moving {get{return moving;}}
-  public void Apply(bool on,System.Collections.IList next,string head,bool warning){wanted=on;lines=next;header=head??"";warn=warning;if(wanted||moving)check.Start();else{check.Stop();if(Visible)Hide();}Update2();}
+  public void Apply(bool on,System.Collections.IList next,string head,bool warning){Apply(on,next,head,warning,false);}
+  public void Apply(bool on,System.Collections.IList next,string head,bool warning,bool free){if(free!=Free){Free=free;drawn="";if(!moving)ClickThrough(!free);}wanted=on;lines=next;header=head??"";warn=warning;if(wanted||moving)check.Start();else{check.Stop();if(Visible)Hide();}Update2();}
   /* Verschieben: Fenster fängt kurz die Maus (nie den Fokus), zeigt Beispielzeilen und steht auch ohne CS2 vorn. Rechtsklick oder Doppelklick beendet. */
   public void StartMove(){if(moving)return;moving=true;ClickThrough(false);check.Start();drawn="";Update2();}
-  public void StopMove(bool save){if(!moving)return;moving=false;dragging=false;ClickThrough(true);drawn="";if(save&&Moved!=null)Moved(Anchor);if(!wanted){check.Stop();if(Visible)Hide();}else Update2();}
+  public void StopMove(bool save){if(!moving)return;moving=false;dragging=false;ClickThrough(!Free);drawn="";if(save&&Moved!=null)Moved(Anchor);if(!wanted){check.Stop();if(Visible)Hide();}else Update2();}
   public void ResetPosition(){SetAnchor(null);}
   public void SetAnchor(Point? p){Anchor=p;drawn="";Update2();}
   void ClickThrough(bool on){if(!IsHandleCreated)return;int style=GetWindowLong(Handle,-20);SetWindowLong(Handle,-20,on?style|0x20:style&~0x20);}
@@ -815,17 +820,18 @@ class ChatOverlay : Form {
     } else {
       /* Die Kopfzeile steht immer, solange das Overlay an ist: so sieht man, dass TecMon mitliest, auch ohne Nachrichten. */
       if(!wanted||(header.Length==0&&(lines==null||lines.Count==0))){if(Visible)Hide();return;}
-      if(!CrosshairOverlay.Cs2Borderless(out bounds)){if(Visible)Hide();return;}
+      if(Free){if(!Cs2Running()){if(Visible)Hide();return;}bounds=Anchor.HasValue&&OnScreen(Anchor.Value)?Screen.FromPoint(Anchor.Value).Bounds:Screen.PrimaryScreen.Bounds;}
+      else if(!CrosshairOverlay.Cs2Borderless(out bounds)){if(Visible)Hide();return;}
     }
     string key=TecMon.Json.Serialize(lines)+header+warn+bounds+moving+Anchor;
     if(key==drawn&&Visible)return;
     drawn=key;Push(bounds);
     if(!Visible)Show();
-    if(moving)ClickThrough(false);
+    if(moving||Free)ClickThrough(false);
   }
-  protected override void OnMouseDown(MouseEventArgs e){base.OnMouseDown(e);if(!moving)return;if(e.Button==MouseButtons.Right){StopMove(true);return;}if(e.Button==MouseButtons.Left){dragging=true;grab=new Point(Cursor.Position.X-Left,Cursor.Position.Y-Top);}}
-  protected override void OnMouseMove(MouseEventArgs e){base.OnMouseMove(e);if(!moving||!dragging)return;var at=new Point(Cursor.Position.X-grab.X,Cursor.Position.Y-grab.Y);Anchor=new Point(at.X,at.Y+shown.Height);Update2();}
-  protected override void OnMouseUp(MouseEventArgs e){base.OnMouseUp(e);dragging=false;}
+  protected override void OnMouseDown(MouseEventArgs e){base.OnMouseDown(e);if(!moving&&!Free)return;if(!moving&&e.Button!=MouseButtons.Left)return;if(e.Button==MouseButtons.Right){StopMove(true);return;}if(e.Button==MouseButtons.Left){dragging=true;grab=new Point(Cursor.Position.X-Left,Cursor.Position.Y-Top);}}
+  protected override void OnMouseMove(MouseEventArgs e){base.OnMouseMove(e);if((!moving&&!Free)||!dragging)return;var at=new Point(Cursor.Position.X-grab.X,Cursor.Position.Y-grab.Y);Anchor=new Point(at.X,at.Y+shown.Height);Update2();}
+  protected override void OnMouseUp(MouseEventArgs e){base.OnMouseUp(e);bool was=dragging;dragging=false;if(was&&Free&&!moving&&Moved!=null)Moved(Anchor);}
   protected override void OnMouseDoubleClick(MouseEventArgs e){base.OnMouseDoubleClick(e);if(moving)StopMove(true);}
   void Push(Rectangle bounds){
     if(!IsHandleCreated)return;
@@ -835,19 +841,20 @@ class ChatOverlay : Form {
     if(moving){
       source=new List<object>{new Dictionary<string,object>{{"channel","all"},{"name","Beispiel"},{"lang","en"},{"translated","True"},{"text","So sieht eine übersetzte Nachricht aus."}}};
       title="VERSCHIEBEN: mit der Maus ziehen · Rechtsklick oder Doppelklick = fertig";gold=true;
-    }
+    } else if(Free&&title.Length>0)title+=" · ziehen zum Verschieben";
     using(var nameFont=new Font("Segoe UI Semibold",12f*scale,FontStyle.Regular,GraphicsUnit.Pixel))
     using(var textFont=new Font("Segoe UI Semibold",15f*scale,FontStyle.Regular,GraphicsUnit.Pixel))
     using(var measure=new Bitmap(1,1))using(var mg=Graphics.FromImage(measure)){
       var rows=new List<string[]>();var heights=new List<int>();int total=0;
       if(source!=null)foreach(object raw in source){
         var d=raw as Dictionary<string,object>;if(d==null)continue;
-        string channel=Str(d,"channel"),team=Str(d,"team"),lang=Str(d,"lang");
+        string channel=Str(d,"channel"),team=Str(d,"team");
         string tag=channel=="team"?(team=="ct"?"CT":team=="t"?"T":"TEAM"):channel=="spec"?"ZUSCHAUER":"ALLE";
-        string head=tag+" · "+Str(d,"name")+(lang.Length>0?" · "+lang.ToUpperInvariant():"")+(Str(d,"translated")=="True"?" → übersetzt":"");
-        string text=Str(d,"text");
+        /* Eine Zeile je Nachricht (Nutzerwunsch 22.11.2026): „Name [CT]: Nachricht“, Name und Team in Gold. */
+        string head=Str(d,"name")+" ["+tag+"]"+(Str(d,"dead")=="True"?" †":"")+":";
+        string text=head+" "+Str(d,"text");
         var size=mg.MeasureString(text,textFont,width-2*pad);
-        int h=pad+(int)(nameFont.GetHeight()+2)+(int)Math.Ceiling(size.Height)+pad;
+        int h=(int)(pad*0.7f)+(int)Math.Ceiling(size.Height)+(int)(pad*0.7f);
         rows.Add(new[]{head,text,channel});heights.Add(h);total+=h+(int)(4*scale);
       }
       int headH=title.Length>0?(int)(nameFont.GetHeight()+2*pad*0.6f):0;
@@ -861,16 +868,18 @@ class ChatOverlay : Form {
             int h=heights[i];
             var shape=new[]{new Point(cut,y),new Point(width-cut-1,y),new Point(width-1,y+cut),new Point(width-1,y+h-cut-1),new Point(width-cut-1,y+h-1),new Point(cut,y+h-1),new Point(0,y+h-cut-1),new Point(0,y+cut)};
             /* Durchsichtig: nur ein Hauch Hintergrund, die Schrift trägt einen dunklen Schatten und bleibt so lesbar. */
-            using(var fill=new SolidBrush(Color.FromArgb(70,15,12,22)))g.FillPolygon(fill,shape);
+            using(var fill=new SolidBrush(Color.FromArgb(Free?150:70,15,12,22)))g.FillPolygon(fill,shape);
             bool teamChat=rows[i][2]=="team";
             using(var edge=new Pen(teamChat?Color.FromArgb(150,232,197,115):Color.FromArgb(120,167,139,250),Math.Max(1f,scale)))g.DrawPolygon(edge,shape);
-            Shadowed(g,rows[i][0],nameFont,Color.FromArgb(255,232,197,115),new RectangleF(pad,y+pad,width-2*pad,nameFont.GetHeight()+2),scale);
-            Shadowed(g,rows[i][1],textFont,Color.FromArgb(255,243,241,247),new RectangleF(pad,y+pad+nameFont.GetHeight()+2,width-2*pad,h),scale);
+            var line=new RectangleF(pad,y+pad*0.7f,width-2*pad,h);
+            Shadowed(g,rows[i][1],textFont,Color.FromArgb(255,243,241,247),line,scale);
+            /* Gleiche Schrift und Position: der Name samt Team wird golden darübergezeichnet. */
+            using(var ink=new SolidBrush(Color.FromArgb(255,232,197,115)))g.DrawString(rows[i][0],textFont,ink,line);
             y+=h+(int)(4*scale);
           }
           if(headH>0){
             var bar=new[]{new Point(0,y),new Point(width-cut-1,y),new Point(width-1,y+cut),new Point(width-1,y+headH-1),new Point(cut,y+headH-1),new Point(0,y+headH-cut-1)};
-            using(var fill=new SolidBrush(Color.FromArgb(moving?170:60,15,12,22)))g.FillPolygon(fill,bar);
+            using(var fill=new SolidBrush(Color.FromArgb(moving?170:Free?170:60,15,12,22)))g.FillPolygon(fill,bar);
             using(var edge=new Pen(gold?Color.FromArgb(220,232,197,115):Color.FromArgb(120,167,139,250),Math.Max(1f,scale)))g.DrawPolygon(edge,bar);
             Shadowed(g,title,nameFont,gold?Color.FromArgb(255,232,197,115):Color.FromArgb(235,200,190,250),new RectangleF(pad,y+pad*0.6f,width-2*pad,headH),scale);
           }
@@ -1284,6 +1293,7 @@ class DesktopPet : Form {
     autoOn=new ToolStripMenuItem("Nach dem Match Highlight-Video anbieten",null,async(s,e)=>await ToggleAuto());cs2.DropDownItems.Add(autoOn);
     cs2.DropDownItems.Add("Fadenkreuz einstellen",null,(s,e)=>OpenPanel("fadenkreuz",""));
     cs2.DropDownItems.Add("Chat übersetzen",null,(s,e)=>OpenPanel("chat",""));
+    chatBubbleItem=new ToolStripMenuItem("Chat in der Sprechblase");chatBubbleItem.Click+=async(s,e)=>{bool want=!chatBubbleItem.Checked;try{await Request("/api/chat/settings",true,"{\"bubble\":"+(want?"true":"false")+"}");chatBubbleItem.Checked=want;}catch{}};cs2.DropDownItems.Add(chatBubbleItem);
     cs2.DropDownItems.Add("Chat-Overlay verschieben",null,(s,e)=>MoveChatOverlay());
     cs2.DropDownItems.Add("Chat-Overlay nach unten mittig zurücksetzen",null,(s,e)=>ResetChatOverlay());
     cs2.DropDownItems.Add("Callout-Quiz",null,(s,e)=>OpenPanel("quiz","quiz"));
@@ -1337,9 +1347,9 @@ class DesktopPet : Form {
     KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&panel!=null)panel.Hide();else if(e.KeyCode==Keys.Enter||e.KeyCode==Keys.Space)Toggle();};
     /* Etwa 60 Bilder pro Sekunde; Bewegung nach vergangener Zeit statt pro Takt, damit sie gleichmäßig bleibt. */
     animation.Interval=15;animation.Tick+=(s,e)=>Tick();
-    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowWork(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowScoreboard(state);ShowAuto(state);ShowOverlay(state);ShowChat(state);ShowDesktop(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
+    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowWork(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowScoreboard(state);ShowAuto(state);ShowOverlay(state);ShowChat(state);ShowChatBubble(state);ShowDesktop(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
     Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}if(startSettings!=null)ApplyDesktop(startSettings);else if(!preview)LoadFigure();Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
-    FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(overlay!=null)overlay.Dispose();if(chatOverlay!=null)chatOverlay.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(figure!=null)figure.Dispose();if(figureFrame!=null)figureFrame.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
+    FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(overlay!=null)overlay.Dispose();if(chatOverlay!=null)chatOverlay.Dispose();if(chatTip!=null)chatTip.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(figure!=null)figure.Dispose();if(figureFrame!=null)figureFrame.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
   Bitmap model,canvas;Bitmap[] cells;double yaw,yawVel,clockLast,talkUntil,happyUntil,blinkAt=3,blinkUntil,pendingSince,frontSince=-1,moodAt=10,moodUntil,activeAt;int mood=-1,afterTalk=-1,forced=-1;double busyFrame;bool watching;Action pendingTip;
   readonly Stopwatch clock=Stopwatch.StartNew();readonly Random random=new Random();/* Bogen: 72 Drehwinkel in 5°-Schritten, danach die LED-Ausdrücke (Reihenfolge wie FACES in scripts/figure-3d/faces.py). */
@@ -1609,7 +1619,38 @@ class DesktopPet : Form {
     if(!on&&chatOverlay==null&&!moveNow)return;
     EnsureChatOverlay();
     if(moveNow)chatOverlay.StartMove();
-    chatOverlay.Apply(on,c!=null&&c.ContainsKey("lines")?c["lines"] as System.Collections.IList:null,c!=null&&c.ContainsKey("header")?Convert.ToString(c["header"]):"",c!=null&&c.ContainsKey("warn")&&Convert.ToBoolean(c["warn"]));
+    chatOverlay.Apply(on,c!=null&&c.ContainsKey("lines")?c["lines"] as System.Collections.IList:null,c!=null&&c.ContainsKey("header")?Convert.ToString(c["header"]):"",c!=null&&c.ContainsKey("warn")&&Convert.ToBoolean(c["warn"]),c!=null&&c.ContainsKey("window")&&Convert.ToBoolean(c["window"]));
+  }
+  /* Chat in der Sprechblase (Nutzerwunsch 22.11.2026): eigene Blase neben der Figur, unabhängig von den Rundentipps und ihrem quiet,
+     nimmt CS2 nie den Fokus (wie TipBubble). Nur fertig übersetzte Zeilen; jede Zeile nur einmal, mehrere stapeln sich. */
+  TipBubble chatTip;long lastChatBubble=-1;ToolStripMenuItem chatBubbleItem;readonly List<string> chatBubbleLines=new List<string>();
+  void ShowChatBubble(Dictionary<string,object> state){
+    object raw;var c=state.TryGetValue("chatBubble",out raw)?raw as Dictionary<string,object>:null;
+    bool on=c!=null&&c.ContainsKey("enabled")&&Convert.ToBoolean(c["enabled"]);if(chatBubbleItem!=null)chatBubbleItem.Checked=on;
+    if(!on){if(chatTip!=null&&!chatTip.IsDisposed)chatTip.Quiet();return;}
+    if(busy)return;
+    var lines=c.ContainsKey("lines")?c["lines"] as System.Collections.IList:null;if(lines==null)return;
+    /* Eine Zeile je Nachricht (Nutzerwunsch 22.11.2026): „Name [CT]: Nachricht“, höchstens 4 Zeilen in einer Blase. */
+    int added=0,letters=0;
+    foreach(var item in lines){
+      var line=item as Dictionary<string,object>;if(line==null)continue;
+      long id=Convert.ToInt64(line["id"]);if(id<=lastChatBubble)continue;lastChatBubble=id;
+      string name=Convert.ToString(line["name"])??"",text=Convert.ToString(line["text"])??"";if(text=="")continue;
+      string channel=line.ContainsKey("channel")?Convert.ToString(line["channel"]):"",team=line.ContainsKey("team")?Convert.ToString(line["team"]):"";
+      string tag=channel=="team"?(team=="ct"?"CT":team=="t"?"T":"Team"):channel=="spec"?"Zuschauer":"Alle";
+      chatBubbleLines.Add(name+" ["+tag+"]"+(line.ContainsKey("dead")&&Convert.ToBoolean(line["dead"])?" †":"")+": "+text);
+      added++;letters+=text.Length;
+    }
+    if(added==0)return;
+    /* Ist die Blase schon verschwunden, beginnt sie neu nur mit den neuen Zeilen. */
+    if(chatTip==null||chatTip.IsDisposed||!chatTip.Visible)chatBubbleLines.RemoveRange(0,chatBubbleLines.Count-added);
+    while(chatBubbleLines.Count>4)chatBubbleLines.RemoveAt(0);
+    if(chatTip==null||chatTip.IsDisposed)chatTip=new TipBubble();chatTip.Compact=true;
+    var area=Screen.PrimaryScreen.WorkingArea;Rectangle anchor=Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164);
+    /* Steht gerade ein Tipp, kommt der Chat darüber, damit sich beide nicht verdecken. */
+    if(tip!=null&&!tip.IsDisposed&&tip.Visible)anchor=new Rectangle(anchor.Left,tip.Top-anchor.Height/2-90,anchor.Width,anchor.Height);
+    chatTip.Present("TecMon Chat",string.Join("\n",chatBubbleLines.ToArray()),anchor,null,-5,false);
+    double now=clock.Elapsed.TotalSeconds;talkUntil=Math.Max(talkUntil,now+Math.Min(4,1+letters*0.04));
   }
   void ShowOverlay(Dictionary<string,object> state){
     object raw;var o=state.TryGetValue("overlay",out raw)?raw as Dictionary<string,object>:null;
