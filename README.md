@@ -21,6 +21,7 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 
 - **Chat-Übersetzer kann Türkisch und Polnisch:** Die Modelle stammen aus den Firefox-Übersetzungen (Release-Kanal), mit fester Prüfsumme wie alle anderen. Vorab mit der eingebauten Engine geprüft: „3 kişi ile mi oynayacağız“ wird zu „We're gonna play with 3 people“, „Dobra robota, idziemy na B“ zu „Good job, we're going to B“. Die Spracherkennung kennt jetzt türkische und polnische Wörter und Buchstaben (ı, ş, ğ, ł, ą …). Das polnische Modell ist mit rund 37 MB größer als die anderen.
 - **Großbuchstaben:** Rufe wie „AFERİN SANA“ werden vor dem Übersetzen klein geschrieben, sonst ließen die Modelle sie unverändert.
+- **Fix: Chat kam nie an.** CS2 schreibt die console.log mit Windows-Zeilenenden (`\r\n`). Das übrig gebliebene `\r` ließ die Chat-Erkennung jede Zeile verwerfen, deshalb blieb „Noch keine Chatnachrichten“ stehen, obwohl CS2 schrieb. Gefunden mit der echten console.log, jetzt mit Test abgedeckt.
 - **Nach einem Neustart:** Der Companion holt die Chatzeilen der letzten zwei Minuten aus der console.log nach. Bisher war die Liste nach einem Update oder Neustart leer, bis jemand neu schrieb.
 - Am echten CS2-Chat geprüft: Das Zeilenformat (`11/22 19:35:48  [ALL] Name‎ [DEAD]: Text`) wird richtig gelesen. Die Übersetzung im laufenden Spiel ist auf dem PC noch nicht bestätigt.
 

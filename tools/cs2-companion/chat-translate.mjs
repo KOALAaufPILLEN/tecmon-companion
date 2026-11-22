@@ -95,7 +95,8 @@ function cleanText(value, max) {
  * (mit `-condebug` oft mit Zeitstempel davor, nach dem Namen ein unsichtbares Richtungszeichen U+200E).
  */
 export function parseChatLine(raw) {
-  let line = String(raw || "").replace(/\r?\n$/, "");
+  // console.log von CS2 hat Windows-Zeilenenden (\r\n): „.“ passt nicht auf \r, darum alle Zeilenenden abschneiden.
+  let line = String(raw || "").replace(/[\r\n]+$/, "");
   if (line.length > 600) return null;
   line = line.replace(/^\s*(?:L\s+)?\d{2}\/\d{2}(?:\/\d{4})?\s*(?:-\s*)?\d{2}:\d{2}:\d{2}(?:\.\d+)?:?\s+/, "");
   const head = line.match(/^\s*\[([^\]\s]{1,14})\]\s+(.+)$/u);

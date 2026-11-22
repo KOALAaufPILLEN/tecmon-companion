@@ -126,6 +126,19 @@ test("console.log nach dem Start: die letzten Bytes kommen als „alt“, dann n
   assert.deepEqual(seen.at(-1), ["[ALL] b: neu", false]);
 });
 
+test("Echte CS2-Zeilen mit Windows-Zeilenende (\\r\\n) werden erkannt", async () => {
+  assert.deepEqual(parseChatLine("11/22 19:41:23  [ALL] User34\u200e: Kesssss :D\r"), { channel: "all", team: "", dead: false, location: "", name: "User34", text: "Kesssss :D" });
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-tail-"));
+  const file = path.join(dir, "console.log");
+  await writeFile(file, "");
+  const chats = [];
+  const tail = createTail(file, (l) => { const c = parseChatLine(l); if (c) chats.push(c.text); });
+  await tail.poll();
+  await appendFile(file, "11/22 19:41:02  [ALL] User34\u200e: Kudurmayın :D\r\n11/22 19:41:15 [SteamNetSockets] x\r\n11/22 19:41:19  [ALL] JİAÇED\u200e: BİZİM\r\n");
+  await tail.poll();
+  assert.deepEqual(chats, ["Kudurmayın :D", "BİZİM"]);
+});
+
 test("Zeitstempel aus console.log", () => {
   const now = new Date(2026, 10, 22, 19, 36, 0).getTime();
   assert.equal(lineTime("11/22 19:35:48  [ALL] Barut721\u200e: AFERİN SANA", now), new Date(2026, 10, 22, 19, 35, 48).getTime());
