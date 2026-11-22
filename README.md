@@ -28,6 +28,10 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - **Overlay über dem Chat:** Optional als durchklickbares TecMon-Fenster links unten über dem CS2-Chat, nur im Vollbild-Fenstermodus, nach bestätigtem Hinweis (wie das Fadenkreuz-Overlay).
 - Geprüft: Parser, Spracherkennung, cfg-Bereinigung, Prüfsummen und Ablauf per Test; echte Übersetzung Russisch/Englisch → Deutsch und Deutsch → Englisch mit der echten Engine unter Node. **Noch nicht geprüft:** echte CS2-`console.log` (das genaue Zeilenformat stammt aus Beschreibungen, nicht aus einer eigenen Datei), Overlay und `say` mit Umlauten/Kyrillisch auf einem Windows-PC.
 
+### Release-Build repariert
+
+- Der Windows-Release-Build schlug seit dem 21.11.2026 im Installationstest fehl, deshalb gab es keine Releases für 0.45.0 und 0.46.0 (letztes veröffentlichtes Release: 0.44.1). Ursache: `unpack-tools.ps1` nutzte `Expand-Archive`; aus PowerShell 7 gestartet lädt Windows PowerShell dann das falsche Archiv-Modul („Cannot find an overload for ExtractToDirectory“). Jetzt entpackt das Skript direkt mit `System.IO.Compression.ZipFile`. Das betraf auch die Erstinstallation von HLAE/FFmpeg auf PCs, auf denen der Companion aus PowerShell 7 heraus gestartet wurde.
+
 ## Website: Lineup- und Kill-Karte · 21. November 2026
 
 Website [#156](https://github.com/KOALAaufPILLEN/tecmon/pull/156) ist gemergt: Lineup-Karte (weißer Punkt am Abwurf, weißer Strich zur Landestelle, auch Decoys), Zeus-, Messer- und Waffen-Kills auf der Karte und Lineup-Szenen im Demo-Manager. Die Granaten-Kamera kann nach der Landung auf der Smoke bleiben, bis sie verschwindet. Für den Companion ist das ein normaler `path`-Kameraschnitt (`camera-script-v1`, höchstens 8 Punkte): keine neue Version, keine neue Capability. Mit einer echten CS2-Aufnahme ist die neue Kameraeinstellung noch nicht geprüft; ohne `camera-script-v1` nimmt der Companion wie bisher die Egoansicht.
