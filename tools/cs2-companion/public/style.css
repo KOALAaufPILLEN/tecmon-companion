@@ -258,3 +258,17 @@ body.holo .panel-cat>.cat-card::after{display:none}
 .figure-flags input{width:auto;margin:0;flex:none}
 .panel-cat>.cat-card>.section-head:not(:has(button)){display:none}
 #figure-quality-note{font-size:11px}
+/* Chat-Übersetzer (#chat): Antwortfeld, Übersetzung zum Kopieren, Chatliste mit Original darunter. */
+.chat-warn{margin:.4rem 0;padding:6px 10px;border-left:3px solid #e8c573;background:#e8c57312;font-size:13px}
+.chat-launch-field{flex:1 1 320px}
+.chat-launch-field input{width:100%}
+.chat-steps{margin:.4rem 0 .2rem;padding-left:20px;display:grid;gap:6px;font-size:13px}
+.chat-steps button{margin-left:6px;padding:3px 10px;min-height:0}
+.chat-check{flex-direction:row!important;align-items:center;gap:6px!important;white-space:nowrap}
+.chat-reply{margin:.8rem 0 .4rem}
+.chat-reply textarea{margin:6px 0 0}
+.chat-reply-out{display:block;padding:8px 12px;border-left:3px solid #e8c573;background:#e8c57312;font-weight:600;user-select:all}
+.chat-list li{display:block}
+.chat-list li small{display:block;color:#a99fbe;font-size:12px;margin-top:2px}
+.chat-list li.chat-team b{color:#d8cbff}
+body.holo .chat-reply-out{--cut:7px;--edge:#e8c57388;--fill:#e8c57312;border:1px solid var(--edge);clip-path:polygon(var(--cut) 0,calc(100% - var(--cut)) 0,100% var(--cut),100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,var(--cut) 100%,0 calc(100% - var(--cut)),0 var(--cut))}
