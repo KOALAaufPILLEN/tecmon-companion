@@ -154,12 +154,12 @@ static class TecMon {
     if(launch) Process.Start(new ProcessStartInfo(Path.Combine(target,"TecMon Companion.exe")){WorkingDirectory=target,UseShellExecute=false});
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.47.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.48.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.47.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.48.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -174,7 +174,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.47.0"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.48.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -315,7 +315,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.47.0 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.48.0 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -984,14 +984,16 @@ class CrosshairOverlay : Form {
  */
 class AutoPrompt : Form {
   public Action<bool> Answered;
-  readonly string map;readonly Font eyebrow=new Font("Segoe UI",8.5f,FontStyle.Bold),title=new Font("Segoe UI",14f,FontStyle.Bold),body=new Font("Segoe UI",10f),button=new Font("Segoe UI",10.5f,FontStyle.Bold);
+  readonly string kicker,heading,text,yesLabel;readonly Font eyebrow=new Font("Segoe UI",8.5f,FontStyle.Bold),title=new Font("Segoe UI",14f,FontStyle.Bold),body=new Font("Segoe UI",10f),button=new Font("Segoe UI",10.5f,FontStyle.Bold);
   Rectangle yes,no;int hot=-1,pressed=-1;bool done;
   static readonly Color Top=Color.FromArgb(27,22,38),Bottom=Color.FromArgb(11,10,17),Text2=Color.FromArgb(232,230,240),Muted=Color.FromArgb(170,166,190),Violet=Color.FromArgb(167,139,250);
   protected override bool ShowWithoutActivation {get{return true;}}
   /* WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST */
   protected override CreateParams CreateParams {get{var p=base.CreateParams;p.ExStyle|=0x08000000|0x80|0x8;return p;}}
-  public AutoPrompt(string mapName){
-    map=mapName;Text="TecMon Highlights";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;TopMost=true;DoubleBuffered=true;BackColor=Bottom;ClientSize=new Size(440,186);AccessibleName="Neues Highlight-Video erstellen?";
+  public AutoPrompt(string mapName):this(mapName,"TECMON · HIGHLIGHTS","Neues Highlight-Video erstellen?","Dein Match auf "+mapName.Replace("de_","")+" ist vorbei. TecMon lädt die Demo, sobald CS2 zu ist, nimmt deine besten Szenen auf und lädt das Video hoch.","Ja, Video erstellen"){}
+  /* Gleiches Fenster für andere Fragen nach dem Spiel (etwa „Stats hochladen?“). */
+  public AutoPrompt(string mapName,string kickerText,string headingText,string bodyText,string yesText){
+    kicker=kickerText;heading=headingText;text=bodyText;yesLabel=yesText;Text="TecMon";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;TopMost=true;DoubleBuffered=true;BackColor=Bottom;ClientSize=new Size(440,186);AccessibleName=heading;
     yes=new Rectangle(22,128,232,42);no=new Rectangle(266,128,152,42);
     var area=Screen.PrimaryScreen.WorkingArea;Location=new Point(area.Right-Width-24,area.Bottom-Height-24);
     MouseMove+=(s,e)=>{int h=yes.Contains(e.Location)?0:no.Contains(e.Location)?1:-1;Cursor=h<0?Cursors.Default:Cursors.Hand;if(h!=hot){hot=h;Invalidate();}};
@@ -1016,10 +1018,10 @@ class AutoPrompt : Form {
     using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(ClientRectangle,Top,Bottom,90f))g.FillRectangle(fill,ClientRectangle);
     using(var path=Cut(bounds,16))using(var pen=new Pen(TecMon.Gold,1.5f))g.DrawPath(pen,path);
     using(var pen=new Pen(Violet,3f))g.DrawLine(pen,22,20,64,20);
-    TextRenderer.DrawText(g,"TECMON · HIGHLIGHTS",eyebrow,new Point(70,13),TecMon.Gold);
-    TextRenderer.DrawText(g,"Neues Highlight-Video erstellen?",title,new Point(20,36),Text2);
-    TextRenderer.DrawText(g,"Dein Match auf "+map.Replace("de_","")+" ist vorbei. TecMon lädt die Demo, sobald CS2 zu ist, nimmt deine besten Szenen auf und lädt das Video hoch.",body,new Rectangle(22,68,396,52),Muted,TextFormatFlags.WordBreak);
-    Button(g,yes,"Ja, Video erstellen",true,0);Button(g,no,"Nein",false,1);
+    TextRenderer.DrawText(g,kicker,eyebrow,new Point(70,13),TecMon.Gold);
+    TextRenderer.DrawText(g,heading,title,new Point(20,36),Text2);
+    TextRenderer.DrawText(g,text,body,new Rectangle(22,68,396,52),Muted,TextFormatFlags.WordBreak);
+    Button(g,yes,yesLabel,true,0);Button(g,no,"Nein",false,1);
   }
 }
 
@@ -1302,6 +1304,7 @@ class DesktopPet : Form {
     tipsItem=new ToolStripMenuItem("Rundentipps");tipsOn=new ToolStripMenuItem("Eingeschaltet",null,async(s,e)=>await ToggleTips());tipsItem.DropDownItems.Add(tipsOn);tipsItem.DropDownItems.Add(new ToolStripSeparator());cs2.DropDownItems.Add(tipsItem);
     cs2.DropDownItems.Add("Highlights aufnehmen",null,(s,e)=>OpenPanel("games",""));
     autoOn=new ToolStripMenuItem("Nach dem Match Highlight-Video anbieten",null,async(s,e)=>await ToggleAuto());cs2.DropDownItems.Add(autoOn);
+    backlogOn=new ToolStripMenuItem("Beim Schließen von CS2 nach Stats fragen",null,async(s,e)=>await ToggleBacklog());backlogOn.Checked=backlogAsk;cs2.DropDownItems.Add(backlogOn);
     cs2.DropDownItems.Add("Fadenkreuz einstellen",null,(s,e)=>OpenPanel("fadenkreuz",""));
     cs2.DropDownItems.Add("Chat übersetzen",null,(s,e)=>OpenPanel("chat",""));
     chatBubbleItem=new ToolStripMenuItem("Chat in der Sprechblase");chatBubbleItem.Click+=async(s,e)=>{bool want=!chatBubbleItem.Checked;try{await Request("/api/chat/settings",true,"{\"bubble\":"+(want?"true":"false")+"}");chatBubbleItem.Checked=want;}catch{}};cs2.DropDownItems.Add(chatBubbleItem);
@@ -1358,7 +1361,7 @@ class DesktopPet : Form {
     KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&panel!=null)panel.Hide();else if(e.KeyCode==Keys.Enter||e.KeyCode==Keys.Space)Toggle();};
     /* Etwa 60 Bilder pro Sekunde; Bewegung nach vergangener Zeit statt pro Takt, damit sie gleichmäßig bleibt. */
     animation.Interval=15;animation.Tick+=(s,e)=>Tick();
-    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowWork(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowScoreboard(state);ShowAuto(state);ShowOverlay(state);ShowChat(state);ShowChatBubble(state);ShowDesktop(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
+    poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowWork(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowScoreboard(state);ShowAuto(state);ShowBacklog(state);ShowOverlay(state);ShowChat(state);ShowChatBubble(state);ShowDesktop(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
     Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}if(startSettings!=null)ApplyDesktop(startSettings);else if(!preview)LoadFigure();Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
     FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(overlay!=null)overlay.Dispose();if(chatOverlay!=null)chatOverlay.Dispose();if(chatTip!=null)chatTip.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(figure!=null)figure.Dispose();if(figureFrame!=null)figureFrame.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
@@ -1579,6 +1582,7 @@ class DesktopPet : Form {
     q.EndTiles();
     q.Heading("SCHALTER");
     q.Toggle("Highlight-Video nach dem Match",()=>autoEnabled,async()=>await ToggleAuto());
+    q.Toggle("Stats hochladen beim Schließen",()=>backlogAsk,async()=>await ToggleBacklog());
     q.Toggle("CS2-Rundentipps",()=>tipsEnabled,async()=>await ToggleTips());
     q.Toggle("Clip-Puffer",()=>clipsEnabled,async()=>await ToggleClips());
     q.Toggle("Figur fliegt umher",()=>wandering,()=>{if(flyItem!=null)flyItem.Checked=!flyItem.Checked;});
@@ -1720,6 +1724,31 @@ class DesktopPet : Form {
   async Task ToggleAuto(){
     try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/auto/settings",true,autoEnabled?"{\"enabled\":false}":"{\"enabled\":true}"));autoEnabled=!autoEnabled;if(autoOn!=null)autoOn.Checked=autoEnabled;if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Highlights",Convert.ToString(result["message"]),ToolTipIcon.Info);}
     catch(Exception error){MessageBox.Show("Automatisches Highlight-Video konnte nicht umgeschaltet werden.\n\n"+error.Message,"TecMon");}
+  }
+  /* „Stats hochladen?“ beim Schließen von CS2 (recent-matches-v1): der Companion fragt erst, wenn CS2 zu ist. */
+  bool backlogAsk=true,backlogAsking;string backlogOffer="";ToolStripMenuItem backlogOn;AutoPrompt backlogPrompt;
+  void ShowBacklog(Dictionary<string,object> state){
+    object raw;var backlog=state.TryGetValue("backlog",out raw)?raw as Dictionary<string,object>:null;if(backlog==null)return;
+    backlogAsk=backlog.ContainsKey("ask")&&Convert.ToBoolean(backlog["ask"]);if(backlogOn!=null)backlogOn.Checked=backlogAsk;
+    var offer=backlog.ContainsKey("offer")?backlog["offer"] as Dictionary<string,object>:null;
+    if(offer==null||backlogAsking||autoAsking||Convert.ToString(offer["id"])==backlogOffer)return;
+    backlogOffer=Convert.ToString(offer["id"]);string id=backlogOffer;int count=Convert.ToInt32(offer["count"]);
+    BeginInvoke(new Action(()=>AskBacklog(id,count)));
+  }
+  void AskBacklog(string id,int count){
+    if(backlogPrompt!=null&&!backlogPrompt.IsDisposed)backlogPrompt.Close();
+    string what=count==1?"1 Match ist":count+" Matches sind";
+    backlogAsking=true;backlogPrompt=new AutoPrompt("","TECMON · STATS","Stats hochladen?",what+" noch nicht ausgewertet. TecMon öffnet tecmon.online, wertet sie im Browser aus und lädt nur die Zahlen hoch.","Ja, hochladen");
+    backlogPrompt.Answered=async yes=>{
+      try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/backlog/answer",true,"{\"id\":\""+id+"\",\"yes\":"+(yes?"true":"false")+"}"));if(tray!=null)tray.ShowBalloonTip(5000,"TecMon Stats",Convert.ToString(result["message"]),ToolTipIcon.Info);}
+      catch(Exception error){if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Stats",error.Message,ToolTipIcon.Warning);}
+    };
+    backlogPrompt.FormClosed+=(s,e)=>{backlogAsking=false;};
+    backlogPrompt.Show();
+  }
+  async Task ToggleBacklog(){
+    try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/backlog/settings",true,backlogAsk?"{\"ask\":false}":"{\"ask\":true}"));backlogAsk=!backlogAsk;if(backlogOn!=null)backlogOn.Checked=backlogAsk;if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Stats",Convert.ToString(result["message"]),ToolTipIcon.Info);}
+    catch(Exception error){if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Stats",error.Message,ToolTipIcon.Warning);}
   }
   async Task ToggleClips(){
     try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/clips/settings",true,clipsEnabled?"{\"enabled\":false}":"{\"enabled\":true}"));clipsEnabled=!clipsEnabled;if(clipsOn!=null)clipsOn.Checked=clipsEnabled;if(tray!=null)tray.ShowBalloonTip(5000,"TecMon Clips",Convert.ToString(result["message"]),ToolTipIcon.Info);}

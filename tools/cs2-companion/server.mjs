@@ -11,7 +11,8 @@ import { validateJob, recordingConfig, jobCameras } from "./job.mjs";
 import { matchDownloadRequest, shareCode } from "./share-code.mjs";
 import { recordingFailure, crashSince } from "./recording-engine.mjs";
 import { recordInternal, internalProblem, cameraSession, jobSlots, SLOTS_MISSING, ENGINE_CAPABILITY } from "./internal-recorder.mjs";
-import { downloadValveDemo, decodeShareCode, downloadLatestDemo, isProcessRunning } from "./valve-download.mjs";
+import { downloadValveDemo, decodeShareCode, downloadLatestDemo, listRecentMatches, isProcessRunning } from "./valve-download.mjs";
+import { createStatsBacklog, BACKLOG_CAPABILITY } from "./stats-backlog.mjs";
 import { createAutoHighlights, AUTO_CAPABILITY } from "./auto-highlights.mjs";
 import { ANGLE_CAPABILITY, SCRIPT_CAPABILITY, SESSION_CAPABILITY } from "./camera-script.mjs";
 import { updateHandoff } from "./update-handoff.mjs";
@@ -361,8 +362,35 @@ export async function createCompanion({
       if (process.platform === "win32") spawn("explorer.exe", [page], { windowsHide: true, stdio: "ignore" }).unref();
     },
   });
+  /* Noch nicht ausgewertete Matches: beim Schließen von CS2 „Stats hochladen?“ fragen (recent-matches-v1). */
+  const autoBusy = () => {
+    const s = auto.state();
+    return Boolean(s.offer || (s.run && !["done", "error"].includes(s.run.status)));
+  };
+  const statsBacklog = await createStatsBacklog({
+    dir: installation?.profileDir || dataDir,
+    ...(now ? { now } : {}),
+    isRunning: engineSystem.backlog?.isRunning || engineSystem.auto?.isRunning || (process.platform === "win32" ? isProcessRunning : async () => false),
+    busy: () => active,
+    blocked: autoBusy,
+    listMatches: () => {
+      if (!ownDownload()) throw new Error("Die Match-Liste braucht den installierten Windows-Companion.");
+      return (engineSystem.backlog?.listMatches || listRecentMatches)({
+        directory: path.join(dataDir, "Match-Infos"),
+        cacheDir: engineCache,
+        system: engineSystem.download,
+      });
+    },
+    openPage: () => {
+      const device = bridge.state().devices.at(-1);
+      const page = `${device?.origin || "https://tecmon.online"}/games/cs2/replay?companion-stats=1#replay-stats`;
+      if (engineSystem.backlog?.openPage) return engineSystem.backlog.openPage(page);
+      if (process.platform === "win32") spawn("explorer.exe", [page], { windowsHide: true, stdio: "ignore" }).unref();
+    },
+  });
   const autoTimer = setInterval(() => {
     if (games.has("cs2")) auto.tick().catch(() => {});
+    if (games.has("cs2") && installation) statsBacklog.tick().catch(() => {});
   }, engineSystem.auto?.every || 10_000);
   autoTimer.unref?.();
   let gsiError = "";
@@ -708,7 +736,7 @@ export async function createCompanion({
       return json(res, 200, {
         version: VERSION,
         active,
-        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",DEMO_FETCH_CAPABILITY,...(installation && games.has("wardogs") ? [SCOREBOARD_CAPABILITY] : []),...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1",FILTER_V2_CAPABILITY,"kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,SKIN_SETUP_CAPABILITY,...(skinSwap.enabled && agentSwap.available ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY,SKIN_SIDE_CAPABILITY,SKIN_LEGACY_CAPABILITY,SKIN_STICKER_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY,CHICKEN_CAPABILITY,CHICKEN_BREED_CAPABILITY] : [])] : [])],
+        capabilities: ["browser-demo-v1","xray-v1","insights-v1","insights-v2",DEMO_FETCH_CAPABILITY,...(installation && games.has("wardogs") ? [SCOREBOARD_CAPABILITY] : []),...(installation ? [CLIP_CAPABILITY,"video-branding-v1","video-style-v1","video-filter-v1",FILTER_V2_CAPABILITY,"kill-badge-v1","deathcam-label-v1","camera-points-v1",ENGINE_CAPABILITY,SCRIPT_CAPABILITY,SESSION_CAPABILITY,ANGLE_CAPABILITY,AUTO_CAPABILITY,...(games.has("cs2") ? [BACKLOG_CAPABILITY] : []),SKIN_SETUP_CAPABILITY,...(skinSwap.enabled && agentSwap.available ? [SKIN_CAPABILITY,SKIN_KNIFE_CAPABILITY,SKIN_SIDE_CAPABILITY,SKIN_LEGACY_CAPABILITY,SKIN_STICKER_CAPABILITY] : []),...(agentSwap.available ? [AGENT_CAPABILITY,CHICKEN_CAPABILITY,CHICKEN_BREED_CAPABILITY] : [])] : [])],
       });
     // Skin-Tausch von der Webseite ein- und ausschalten (skin-swap-setup-v1); Einschalten nur mit bestätigtem Hinweis.
     if (url.pathname === "/bridge/skins" && (req.method === "GET" || req.method === "POST")) {
@@ -743,6 +771,19 @@ export async function createCompanion({
       const input = await readInput(req, 4096);
       brandClip(String(input.id || ""), String(input.game || ""), String(input.title || ""));
       return json(res, 202, { id: input.id, status: "branding" });
+    }
+    // Letzte eigene Matches über Steam (recent-matches-v1): nur Match-Infos, keine Pfade, keine Demo.
+    if (url.pathname.startsWith("/bridge/matches")) {
+      if (!installation || !games.has("cs2")) return json(res, 409, { error: "Die Match-Liste braucht den installierten Windows-Companion mit CS2-Paket." });
+      if (req.method === "GET" && url.pathname === "/bridge/matches") return json(res, 200, statsBacklog.list());
+      if (req.method === "POST" && url.pathname === "/bridge/matches/refresh") {
+        await readInput(req, 256);
+        return json(res, 200, await statsBacklog.refresh({ force: true }));
+      }
+      if (req.method === "POST" && url.pathname === "/bridge/matches/done") {
+        const input = await readInput(req, 4096);
+        return json(res, 200, await statsBacklog.markDone(input.matchIds));
+      }
     }
     if (req.method === "GET" && url.pathname === "/bridge/auto") {
       const item = auto.ready(String(url.searchParams.get("id") || ""));
@@ -970,6 +1011,7 @@ export async function createCompanion({
           bridge: bridge.state(),
           gsi: gsiState(),
           auto: auto.state(),
+          backlog: games.has("cs2") && installation ? statsBacklog.state() : null,
           skins: skinSwap.state(),
           dota: dotaState(),
           pet: pet.state(),
@@ -1065,6 +1107,7 @@ export async function createCompanion({
         if (id === "cs2") {
           await gsi.setEnabled(false);
           await auto.setEnabled(false);
+          await statsBacklog.reset();
           await syncGsiConfig();
           await insights.clear();
           await crosshair.reset(detected.cs2);
@@ -1236,6 +1279,20 @@ export async function createCompanion({
             ? "Skin-Tausch an. Auf tecmon.online lassen sich jetzt im Demo-Manager Skins je Szene eintragen."
             : "Skin-Tausch aus. Das geladene Programm wurde entfernt.",
         });
+      }
+      if (url.pathname === "/api/backlog/settings") {
+        if (typeof input.ask !== "boolean") throw new Error("Ungültige Einstellung.");
+        const state = await statsBacklog.setAsk(input.ask);
+        return json(res, 200, {
+          backlog: state,
+          message: state.ask
+            ? "Beim Schließen von CS2 fragt TecMon, ob offene Matches ausgewertet und die Stats hochgeladen werden sollen."
+            : "TecMon fragt beim Schließen von CS2 nicht mehr nach Stats. Offene Matches stehen weiter auf tecmon.online.",
+        });
+      }
+      if (url.pathname === "/api/backlog/answer") {
+        const result = await statsBacklog.answer(String(input.id || ""), input.yes === true);
+        return json(res, 200, { ...result, backlog: statsBacklog.state() });
       }
       if (url.pathname === "/api/auto/answer") {
         const result = await auto.answer(String(input.id || ""), input.yes === true, path.join(dataDir, "Auto-Demos"));

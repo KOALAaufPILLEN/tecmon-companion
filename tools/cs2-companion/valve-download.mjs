@@ -14,7 +14,7 @@ import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { Bunzip2 } from "./bunzip2.mjs";
-import { shareCode } from "./share-code.mjs";
+import { shareCode, encodeShareCode } from "./share-code.mjs";
 
 /** Unveränderliches npm-Paket von boiler-writter, Prüfsumme aus der npm-Registry. */
 export const BOILER = {
@@ -79,8 +79,10 @@ function* fields(buf) {
 
 /**
  * CMsgGCCStrike15_v2_MatchList.matches (4) → CDataGCCStrike15_v2_MatchInfo:
- * matchid (1), matchtime (2, Unix-Sekunden), roundstatsall (5, sonst
- * roundstats_legacy 4) → .map (3) = Demo-Link der letzten Runde.
+ * matchid (1), matchtime (2, Unix-Sekunden), watchablematchinfo (3: tv_port 2,
+ * game_map 10), roundstatsall (5, sonst roundstats_legacy 4) → reservationid (1)
+ * und .map (3) = Demo-Link der letzten Runde. Aus Match-ID, Reservierungs-ID und
+ * TV-Port entsteht der Sharecode des Matches.
  */
 export function matchList(buf) {
   const matches = [];
@@ -89,17 +91,37 @@ export function matchList(buf) {
     let link = null;
     let matchId = "";
     let time = 0;
+    let reservation = 0n;
+    let tvPort = 0;
+    let map = "";
     for (const r of fields(m.bytes)) {
       if (r.field === 1 && r.type === 0) matchId = r.value.toString();
       else if (r.field === 2 && r.type === 0) time = Number(r.value);
+      else if (r.field === 3 && r.type === 2)
+        for (const f of fields(r.bytes)) {
+          if (f.field === 2 && f.type === 0) tvPort = Number(f.value & 0xffffn);
+          else if (f.field === 10 && f.type === 2) {
+            const text = Buffer.from(f.bytes).toString("utf8");
+            if (/^[a-z0-9_]{1,40}$/.test(text)) map = text;
+          }
+        }
       else if ((r.field === 5 || r.field === 4) && r.type === 2)
-        for (const f of fields(r.bytes))
-          if (f.field === 3 && f.type === 2) {
+        for (const f of fields(r.bytes)) {
+          if (f.field === 1 && f.type === 0 && f.value > 0n) reservation = f.value;
+          else if (f.field === 3 && f.type === 2) {
             const text = Buffer.from(f.bytes).toString("utf8");
             if (REPLAY_URL.test(text)) link = text;
           }
+        }
     }
-    matches.push({ matchId, time, link });
+    let code = "";
+    if (/^\d{1,24}$/.test(matchId) && reservation > 0n && tvPort > 0)
+      try {
+        code = encodeShareCode({ matchId, outcomeId: reservation, tvPort });
+      } catch {
+        code = "";
+      }
+    matches.push({ matchId, time, link, shareCode: code, map });
   }
   return matches;
 }
@@ -259,27 +281,38 @@ async function fetchDemoFile(link, demo, request) {
 }
 
 /**
- * Neuestes eigenes Match über dein Steam holen, ganz ohne Sharecode:
- * boiler-writter ohne Match-Angaben liefert die letzten Matches des
- * angemeldeten Kontos. Nur Matches ab `after` (ms) zählen.
+ * Letzte eigene Matches über dein Steam: boiler-writter ohne Match-Angaben
+ * liefert die letzten Matches des angemeldeten Kontos. Nur Match-Infos, keine
+ * Demo. Neueste zuerst; ohne Demo-Link bleibt `link` null.
  */
-export async function downloadLatestDemo({ directory, cacheDir, after = 0, log = () => {}, system = {} }) {
+export async function listRecentMatches({ directory, cacheDir, log = () => {}, system = {} }) {
   const isRunning = system.isRunning || tasklist;
   const runBoiler = system.runBoiler || runBoilerProcess;
-  const request = system.request || fetch;
   if (!(await isRunning("steam.exe"))) throw new Error("Steam läuft nicht. Steam starten und anmelden.");
   if (await isRunning("cs2.exe")) throw new Error("Bitte CS2 schließen; Steam kann sonst keine Match-Infos abfragen.");
   await mkdir(directory, { recursive: true });
   const boiler = await ensureBoiler(cacheDir, system.request);
-  const infoFile = path.join(directory, "matches.info");
+  const infoFile = path.join(directory, `matches-${randomUUID()}.info`);
   log("Letzte Matches über dein Steam abfragen …");
-  const exit = await runBoiler(boiler, [infoFile]);
-  if (exit !== 0) throw new Error(BOILER_ERRORS[exit] || `boiler-writter wurde mit Code ${exit} beendet.`);
-  const list = matchList(await readFile(infoFile));
-  await rm(infoFile, { force: true });
-  const latest = list
-    .filter((m) => m.link && /^\d{1,24}$/.test(m.matchId) && m.time * 1000 >= after)
-    .sort((a, b) => b.time - a.time)[0];
+  try {
+    const exit = await runBoiler(boiler, [infoFile]);
+    if (exit !== 0) throw new Error(BOILER_ERRORS[exit] || `boiler-writter wurde mit Code ${exit} beendet.`);
+    return matchList(await readFile(infoFile))
+      .filter((m) => /^\d{1,24}$/.test(m.matchId))
+      .sort((a, b) => b.time - a.time);
+  } finally {
+    await rm(infoFile, { force: true });
+  }
+}
+
+/**
+ * Neuestes eigenes Match über dein Steam holen, ganz ohne Sharecode.
+ * Nur Matches ab `after` (ms) zählen.
+ */
+export async function downloadLatestDemo({ directory, cacheDir, after = 0, log = () => {}, system = {} }) {
+  const request = system.request || fetch;
+  const list = await listRecentMatches({ directory, cacheDir, log, system });
+  const latest = list.filter((m) => m.link && m.time * 1000 >= after)[0];
   if (!latest) throw new Error("Steam kennt noch keine Demo zu deinem letzten Match. In ein paar Minuten erneut versuchen.");
   log("Demo von Valve laden und entpacken …");
   const demo = await fetchDemoFile(latest.link, path.join(directory, `match730_${latest.matchId}.dem`), request);
