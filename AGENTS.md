@@ -395,10 +395,15 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   cfgs (`CHAT_FILES`) löschen. Während einer Demo-Aufnahme nichts annehmen (`busy`).
 - **Übersetzung nur lokal:** Bergamot (MPL-2.0, WebAssembly im Node-Worker). Engine nur aus dem
   npm-Paket mit fester Integrität (`ENGINE`), Modelle nur aus `CHAT_MODELS` mit fester SHA-256 und
-  Größe; die Modellliste aus dem Netz nie benutzen. Chattexte verlassen den PC nie, werden nicht auf
+  Größe; die Modellliste aus dem Netz nie benutzen. Quellen nur `bergamot.s3.amazonaws.com/models/` und für Sprachen,
+  die es dort nicht gibt (seit 0.46.4 Türkisch, Polnisch), die Firefox-Release-Modelle unter
+  `firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/`; neue Modelle vorher mit der
+  Engine testen (Übersetzung eines Beispielsatzes) und Hash/Größe fest eintragen. Chattexte verlassen den PC nie, werden nicht auf
   die Platte geschrieben und nur im Arbeitsspeicher gehalten (`MAX_MESSAGES`). Kein Cloud-Dienst
   ohne eigenen Nutzerentscheid; wenn, dann nur mit eigenem Schlüssel des Nutzers und abschaltbar.
-- Sprache wird geraten (`detectLanguage()`), kurze Rufe wie „gg“ bleiben unübersetzt. Fehlende
+- Sprache wird geraten (`detectLanguage()`), kurze Rufe wie „gg“ bleiben unübersetzt. Reine Großbuchstaben-Rufe
+  werden vor dem Übersetzen klein geschrieben (`sourceText()`). Nach einem Neustart holt der Companion nur Chatzeilen
+  der letzten `BACKLOG_MS` aus den letzten `BACKLOG_BYTES` der console.log nach (Zeitstempel `lineTime()`), nichts Älteres. Fehlende
   Sprachen als „noch nicht übersetzbar“ zeigen, nie eine erfundene Übersetzung.
 - **Antworten:** nur über eigene cfgs (`tecmon_chat_all.cfg`/`tecmon_chat_team.cfg` mit genau einer
   Zeile `say`/`say_team`, `tecmon_chat_keys.cfg` mit den Binds aus `CHAT_HOTKEYS`) plus Zwischenablage

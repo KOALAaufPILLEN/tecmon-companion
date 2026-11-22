@@ -52,7 +52,7 @@ export function launchUrl(options = CHAT_LAUNCH_OPTIONS) {
 export const CHAT_LAUNCH_URL = launchUrl();
 export const LANGUAGES = {
   de: "Deutsch", en: "Englisch", es: "Spanisch", fr: "Französisch", it: "Italienisch", pt: "Portugiesisch",
-  ru: "Russisch", uk: "Ukrainisch", bg: "Bulgarisch", cs: "Tschechisch", et: "Estnisch",
+  ru: "Russisch", uk: "Ukrainisch", bg: "Bulgarisch", cs: "Tschechisch", et: "Estnisch", tr: "Türkisch", pl: "Polnisch",
 };
 export const MAX_MESSAGES = 40;
 export const SAY_MAX = 120;
@@ -95,7 +95,8 @@ function cleanText(value, max) {
  * (mit `-condebug` oft mit Zeitstempel davor, nach dem Namen ein unsichtbares Richtungszeichen U+200E).
  */
 export function parseChatLine(raw) {
-  let line = String(raw || "").replace(/\r?\n$/, "");
+  // console.log von CS2 hat Windows-Zeilenenden (\r\n): „.“ passt nicht auf \r, darum alle Zeilenenden abschneiden.
+  let line = String(raw || "").replace(/[\r\n]+$/, "");
   if (line.length > 600) return null;
   line = line.replace(/^\s*(?:L\s+)?\d{2}\/\d{2}(?:\/\d{4})?\s*(?:-\s*)?\d{2}:\d{2}:\d{2}(?:\.\d+)?:?\s+/, "");
   const head = line.match(/^\s*\[([^\]\s]{1,14})\]\s+(.+)$/u);
@@ -137,13 +138,17 @@ const WORDS = {
   pt: "não nao você voce obrigado vamos que é com uma eu tá ta mano cara isso aqui porra time boa",
   cs: "je to ne ano jsem jak proč proc díky diky dobrý dobry kurva tady jsi máme",
   et: "ja ei on mina sina aitäh aitah tere kas mis miks see oled",
+  tr: "ve bir bu ne mi mı mu mü ben sen biz siz onlar evet hayır hayir tamam teşekkürler tesekkurler sağol sagol abi kardeş kardes hadi gel git yok var çok cok iyi kötü kotu neden niye nasıl nasil ile için icin diye ama gibi şey sey oyna takım takim adam lan aferin sana bana sizi bizi kişi kisi oldu olur değil degil",
+  pl: "nie tak jest się sie że ze ty my wy oni dobra dobrze kurwa idziemy chodź chodz gdzie dlaczego czemu proszę prosze dzięki dzieki może moze już juz tylko bardzo mam masz nic ale albo który ktory grać grac jestem jesteś jestes chłopaki chlopaki szybko",
 };
 const WORD_SETS = Object.fromEntries(Object.entries(WORDS).map(([k, v]) => [k, new Set(v.split(" "))]));
-const LETTERS = { de: /[äöüß]/i, es: /[ñ¿¡]/i, fr: /[çèêëàâîœ]/i, pt: /[ãõ]/i, cs: /[ěščřžůý]/i, et: /[õ]/i, it: /[àèìòù]\b/i };
+const LETTERS = { tr: /[ışğ\u0307]/i, pl: /[łąęśćźżń]/i, de: /[äöüß]/i, es: /[ñ¿¡]/i, fr: /[çèêëàâîœ]/i, pt: /[ãõ]/i, cs: /[ěščřžůý]/i, et: /[õ]/i, it: /[àèìòù]\b/i };
 
 /** Sprache einer Chatnachricht (`de`, `en`, `ru` …) oder "" wenn unsicher. Kurze Rufe wie „gg“ bleiben unbekannt. */
 export function detectLanguage(raw, { assumeEnglish = true } = {}) {
+  // „İ“ wird kleingeschrieben zu „i“ + Punkt (U+0307): die Markierung bleibt für LETTERS, Wörter bekommen ein „i“.
   const text = String(raw || "").toLowerCase();
+  const plain = text.replace(/i\u0307/g, "i");
   const cyrillic = (text.match(/[Ѐ-ӿ]/g) || []).length;
   const latin = (text.match(/[a-zà-ž]/g) || []).length;
   if (cyrillic >= 2 && cyrillic >= latin) {
@@ -153,7 +158,7 @@ export function detectLanguage(raw, { assumeEnglish = true } = {}) {
     return "ru";
   }
   if (latin < 2) return "";
-  const words = text.split(/[^a-zà-ž'’]+/u).filter(Boolean).map((w) => w.replace(/’/g, "'"));
+  const words = plain.split(/[^a-zà-ž'’]+/u).filter(Boolean).map((w) => w.replace(/’/g, "'"));
   const scores = {};
   for (const [lang, set] of Object.entries(WORD_SETS)) scores[lang] = words.filter((w) => set.has(w)).length;
   for (const [lang, re] of Object.entries(LETTERS)) if (re.test(text)) scores[lang] = (scores[lang] || 0) + 1.5;
@@ -162,6 +167,13 @@ export function detectLanguage(raw, { assumeEnglish = true } = {}) {
   // Reiner ASCII-Text mit mehreren Wörtern ist im CS2-Chat meist Englisch.
   if (assumeEnglish && ranked[0][1] === 0 && words.length >= 3 && /^[\x20-\x7e]+$/.test(raw)) return "en";
   return "";
+}
+
+/** Ganz in Großbuchstaben geschriebene Rufe („AFERİN SANA“) übersetzen die Modelle nicht: vorher klein schreiben. */
+export function sourceText(text, lang) {
+  const value = String(text || "");
+  if (!/\p{Lu}/u.test(value) || /\p{Ll}/u.test(value)) return value;
+  try { return value.toLocaleLowerCase(lang); } catch { return value.toLowerCase(); }
 }
 
 /** Welche Modelle (`deen`, `ende` …) eine Richtung braucht: direkt oder über Englisch. */
@@ -204,13 +216,14 @@ export function consoleLogPath(cs2Exe) {
  * Liest neue Zeilen einer wachsenden Datei. Beginnt am aktuellen Ende (keine alten Chats),
  * fängt nach einem Neustart von CS2 (Datei kürzer) von vorn an. Nur lesen, nie schreiben.
  */
-export function createTail(file, onLine) {
-  let offset = -1, rest = "";
+export function createTail(file, onLine, { backlog = 0 } = {}) {
+  let offset = -1, rest = "", skipPartial = false, old = false;
   return {
     async poll() {
       let info;
       try { info = await stat(file); } catch { offset = 0; rest = ""; return { exists: false }; }
-      if (offset < 0) offset = info.size;
+      // Beim ersten Lesen höchstens `backlog` Bytes vom Ende nachholen (als „alt“ markiert), sonst nur Neues.
+      if (offset < 0) { offset = Math.max(0, info.size - backlog); old = offset < info.size; skipPartial = old && offset > 0; }
       if (info.size < offset) { offset = 0; rest = ""; }
       if (info.size > offset) {
         const length = Math.min(MAX_READ, info.size - offset);
@@ -222,7 +235,10 @@ export function createTail(file, onLine) {
           const text = rest + buffer.subarray(0, bytesRead).toString("utf8");
           const lines = text.split("\n");
           rest = lines.pop().slice(-2000);
-          for (const line of lines) onLine(line);
+          if (skipPartial) { lines.shift(); skipPartial = false; }
+          const backlogRead = old;
+          old = false;
+          for (const line of lines) onLine(line, backlogRead);
         } finally {
           await handle.close();
         }
@@ -231,6 +247,18 @@ export function createTail(file, onLine) {
     },
   };
 }
+
+/** Zeitstempel `MM/DD HH:MM:SS` am Zeilenanfang (CS2 mit -condebug) als Zeitpunkt im laufenden Jahr, sonst NaN. */
+export function lineTime(raw, nowMs = Date.now()) {
+  const m = String(raw || "").match(/^\s*(\d{2})\/(\d{2})(?:\/(\d{4}))?\s+(\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return NaN;
+  const year = m[3] ? Number(m[3]) : new Date(nowMs).getFullYear();
+  let t = new Date(year, Number(m[1]) - 1, Number(m[2]), Number(m[4]), Number(m[5]), Number(m[6])).getTime();
+  if (!m[3] && t - nowMs > 86400000) t = new Date(year - 1, Number(m[1]) - 1, Number(m[2]), Number(m[4]), Number(m[5]), Number(m[6])).getTime();
+  return t;
+}
+export const BACKLOG_BYTES = 16 * 1024;
+export const BACKLOG_MS = 120000;
 
 /* ---------- Bergamot laden ---------- */
 
@@ -375,8 +403,10 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
   /* Nacheinander übersetzen, damit eine Flut im Chat die Engine nicht überlastet. */
   const enqueue = (work) => { const next = queue.then(work, work); queue = next.catch(() => {}); return next; };
 
-  function onLine(line) {
+  function onLine(line, backlog = false) {
     if (paused || busy()) return;
+    // Nach einem Neustart nur Chatzeilen der letzten BACKLOG_MS nachholen, nichts Älteres.
+    if (backlog) { const t = lineTime(line, now()); if (!(Math.abs(now() - t) <= BACKLOG_MS)) return; }
     const chat = parseChatLine(line);
     if (!chat) return;
     const lang = detectLanguage(chat.text, { assumeEnglish: settings.assumeEnglish });
@@ -388,14 +418,14 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
     else {
       message.status = "pending";
       enqueue(async () => {
-        try { message.translated = await translate(chat.text, lang, settings.language); message.status = "done"; }
+        try { message.translated = await translate(sourceText(chat.text, lang), lang, settings.language); message.status = "done"; }
         catch (error) { message.status = "error"; message.error = error.message.slice(0, 160); }
       });
     }
     messages = [message, ...messages].slice(0, MAX_MESSAGES);
   }
 
-  const tail = logFile ? createTail(logFile, onLine) : null;
+  const tail = logFile ? createTail(logFile, onLine, { backlog: BACKLOG_BYTES }) : null;
   const tick = async () => { if (tail) log = await tail.poll().catch(() => ({ exists: false })); };
   const start = () => {
     if (timer || !settings.enabled || !tail) return;

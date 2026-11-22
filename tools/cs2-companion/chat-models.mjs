@@ -1,6 +1,8 @@
 /**
  * Feste Liste der Bergamot-Übersetzungsmodelle (Mozilla, MPL-2.0) mit SHA-256 der entpackten Dateien,
- * übernommen aus https://bergamot.s3.amazonaws.com/models/index.json (Stand 22.11.2026).
+ * übernommen aus https://bergamot.s3.amazonaws.com/models/index.json (Stand 22.11.2026). Türkisch und Polnisch
+ * (tren/entr 1.0, plen 2.0, enpl 2.1) stammen aus den Firefox-Übersetzungsmodellen (Remote Settings
+ * „translations-models“, Kanal Release, Stand 22.11.2026) und wurden mit der Engine geprüft.
  * Nur diese Dateien werden geladen; die Liste aus dem Netz wird nie benutzt. Größe in Bytes.
  */
 export const CHAT_MODELS = {
@@ -107,5 +109,25 @@ export const CHAT_MODELS = {
     trgvocab: { url: "https://bergamot.s3.amazonaws.com/models/uken/vocab.trg.spm", size: 803064, sha256: "d933cbf156c925ef42c064cbd6f85f18516f3ccac49bee7025b19a4a5c0ef711" },
     lex: { url: "https://bergamot.s3.amazonaws.com/models/uken/lex.s2t.bin", size: 9978860, sha256: "7c6f56515fd162526c883df15fee3a288d41884adb81d9c2957802d7ac035d78" },
     model: { url: "https://bergamot.s3.amazonaws.com/models/uken/model.intgemm8.bin", size: 25315747, sha256: "c1bac32792c2c3c333f0668ac03c80bb0b432b1de0f6113222d7f5a937ed864e" },
+  },
+  tren: {
+    vocab: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/b99302c1-af69-4781-930f-d8dec82b8ec9.spm", size: 811353, sha256: "ed328e589a3ccd70fd3ce7773fc3c01d8b7b18c687464cacf17fd40a8c0daadd" },
+    lex: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/0c8e7a90-9172-4987-aab2-ed027e0ff3aa.bin", size: 4662492, sha256: "d3374ab5267a73ee1aa1d926a298bd349426835f40856991ee959bc5cd4f9fce" },
+    model: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/553d0a23-6940-49f5-8b2e-155b08897db7.bin", size: 17140836, sha256: "bd18594ac5a7f1d9997e7ea5bd80272082219cf8b1ce604766e4f207eb86abbf" },
+  },
+  entr: {
+    vocab: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/462a6fc1-0f2d-4b61-ae3f-147bd9f9d588.spm", size: 798793, sha256: "a220363d60391f7ce3df8ec9785424dbc00c24d5786d1a4308cf8ca3ed3385c2" },
+    lex: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/ed96fb89-d560-415b-9391-e5dc8edd13fa.bin", size: 3261300, sha256: "3aba0be842bd4c192659c781e6fdce8eb9b2b1fff29a40d22f75da369d59f46f" },
+    model: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/f48948a5-06b1-465b-a0dc-ea1a1a52323d.bin", size: 17141051, sha256: "ea3cd4ee09de190df265c78d84260e277a9a8a3ddff05eb55d72afe7fc0fdbf4" },
+  },
+  plen: {
+    vocab: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/47b0f4cd-7d3c-4cf5-b7b4-0aecfbdc51f6.spm", size: 821612, sha256: "2000f182efa8ce5f69bc3f9e574666b5bc2c0af684eedd32f69d15aa9021ea85" },
+    lex: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/9a072be8-d900-4062-a2ab-c53c8eb8e619.bin", size: 4964208, sha256: "b295dfefa7022a62e105276e8c39fdfd67bffe588f4fd78583edd4e04ee0cb3b" },
+    model: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/dd8a7ab8-b12f-4ad4-8827-0922510df232.bin", size: 31561787, sha256: "06dbab3baa3bbceab746bc6a3bba807878f38536382c03acddf59d3edf3b5d94" },
+  },
+  enpl: {
+    vocab: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/dd8a3019-bd2f-405e-b95d-0cce7a29be2d.spm", size: 821612, sha256: "2000f182efa8ce5f69bc3f9e574666b5bc2c0af684eedd32f69d15aa9021ea85" },
+    lex: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/12451e17-4901-4327-b78d-903e9ff7529d.bin", size: 3540052, sha256: "d7d7b364673f633763c9f8f2e8ee9c7a184e92f4086e8b84abe870a2a8dbe5d5" },
+    model: { url: "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/translations-models/640bd7ef-a977-417f-903c-00b5217cb7de.bin", size: 31561787, sha256: "b0b59716bcc8f46b8dc6ab5c32a2732acaad42a5a6d9ae9b472526a1bb0d71d4" },
   },
 };
