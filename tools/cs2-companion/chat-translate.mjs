@@ -219,17 +219,15 @@ export function createTail(file, onLine, { backlog = 0 } = {}) {
   let offset = -1, rest = "", skipPartial = false, old = false;
   return {
     async poll() {
-      // Größe über den offenen Dateihandle lesen: stat() über den Pfad liefert unter Windows für Dateien, die CS2
-      // gerade offen hält und beschreibt, oft eine veraltete Größe (Verzeichniseintrag), dann kam nie eine neue Zeile an.
-      let handle, info;
-      try { handle = await open(file, "r"); info = await handle.stat(); }
-      catch { await handle?.close().catch(() => {}); offset = 0; rest = ""; return { exists: false }; }
-      try {
-        // Beim ersten Lesen höchstens `backlog` Bytes vom Ende nachholen (als „alt“ markiert), sonst nur Neues.
-        if (offset < 0) { offset = Math.max(0, info.size - backlog); old = offset < info.size; skipPartial = old && offset > 0; }
-        if (info.size < offset) { offset = 0; rest = ""; }
-        if (info.size > offset) {
-          const length = Math.min(MAX_READ, info.size - offset);
+      let info;
+      try { info = await stat(file); } catch { offset = 0; rest = ""; return { exists: false }; }
+      // Beim ersten Lesen höchstens `backlog` Bytes vom Ende nachholen (als „alt“ markiert), sonst nur Neues.
+      if (offset < 0) { offset = Math.max(0, info.size - backlog); old = offset < info.size; skipPartial = old && offset > 0; }
+      if (info.size < offset) { offset = 0; rest = ""; }
+      if (info.size > offset) {
+        const length = Math.min(MAX_READ, info.size - offset);
+        const handle = await open(file, "r");
+        try {
           const buffer = Buffer.alloc(length);
           const { bytesRead } = await handle.read(buffer, 0, length, offset);
           offset += bytesRead;
@@ -240,9 +238,9 @@ export function createTail(file, onLine, { backlog = 0 } = {}) {
           const backlogRead = old;
           old = false;
           for (const line of lines) onLine(line, backlogRead);
+        } finally {
+          await handle.close();
         }
-      } finally {
-        await handle.close();
       }
       return { exists: true, mtime: info.mtimeMs };
     },
