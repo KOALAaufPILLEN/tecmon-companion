@@ -115,6 +115,7 @@ async function refresh() {
   panelHints(state);
   gameTips(state.gsi);
   if(state.auto)showAuto(state.auto);
+  showBacklog(state.backlog);
   if(state.skins)showSkins(state.skins,!!state.managed);
   dotaTips(state.dota);
   $('auto-update-row').hidden=!state.updates?.available; $('auto-update').checked=!!state.updates?.auto; $('auto-update-note').textContent=state.updates?.auto?'Neue Versionen werden nach der Prüfung von Größe und Prüfsumme selbst installiert, nie während eines Downloads oder einer Aufnahme. Danach startet der Companion neu.':'Aus: Neue Versionen erscheinen als Hinweis und werden erst nach deinem Klick installiert.';
@@ -507,6 +508,17 @@ loadClips().catch(()=>{});setInterval(()=>{if(!restarting)loadClips().catch(()=>
 /* Highlight-Video nach dem Match (standardmäßig aus). */
 let autoState=null;
 const AUTO_STATUS={waiting:'Wartet, bis CS2 geschlossen ist. Danach lädt TecMon die Demo.',downloading:'Lade die Demo deines letzten Matches …',ready:'Demo bereit. Die TecMon-Seite erstellt das Video.',done:'Aufnahme gestartet. Fortschritt auf der TecMon-Seite.'};
+let backlogState=null;
+/* „Stats hochladen?“ beim Schließen von CS2 (recent-matches-v1); nur mit installiertem Companion. */
+function showBacklog(backlog){
+  backlogState=backlog||null;
+  $('stats-backlog').hidden=!backlog;
+  if(!backlog)return;
+  $('backlog-heading').textContent=backlog.ask?'Beim Schließen von CS2 nach Stats fragen: an':'Beim Schließen von CS2 nach Stats fragen: aus';
+  $('backlog-toggle').textContent=backlog.ask?'Ausschalten':'Einschalten';
+  const when=backlog.checkedAt?` Zuletzt bei Steam nachgesehen: ${new Date(backlog.checkedAt).toLocaleString('de-DE')}.`:'';
+  $('backlog-status').textContent=backlog.offer?'Antworte auf die Frage der Figur.':`${backlog.open?`${backlog.open} Match${backlog.open===1?'':'es'} noch nicht ausgewertet.`:'Keine offenen Matches bekannt.'}${when}${backlog.error?` ${backlog.error}`:''}`;
+}
 function showAuto(auto){
   autoState=auto;
   $('auto-heading').textContent=auto.enabled?'Highlight-Video nach dem Match ist an':'Highlight-Video nach dem Match ist aus';
@@ -525,6 +537,7 @@ function autoCheck(auto){
   const match=auto.match?` Erkanntes Match: ${auto.match.map}, ${auto.match.finished?'fertig gespielt':'läuft noch'}.`:'';
   return `Letzte Daten von CS2 ${ago}: ${what}.${match}`;
 }
+$('backlog-toggle').addEventListener('click',()=>api('/api/backlog/settings',{ask:!backlogState?.ask}).then(r=>{showBacklog(r.backlog);if(r.message)$('notice').textContent=r.message;}).catch(notice));
 $('auto-toggle').addEventListener('click',()=>api('/api/auto/settings',{enabled:!autoState?.enabled}).then(r=>{showAuto(r.auto);if(r.message)$('notice').textContent=r.message;}).catch(notice));
 /*
  * Fenster der Figur (Linksklick): statt einer langen Liste Bereiche mit Reitern.
@@ -552,7 +565,7 @@ $('skins-toggle').addEventListener('click',async()=>{
 const PANEL_CATEGORIES=[
   ['status','Status & Videos',[['.connection-summary','Verbindung'],['.activity-summary','Aufnahme'],['#videos','Letzte Videos']]],
   ['figur','Figur & Start',[['#figur']]],
-  ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#chat','Chat-Übersetzer'],['#fadenkreuz','Fadenkreuz & Overlay'],['#cfgs','Configs'],['#quiz','Quiz']]],
+  ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#stats-backlog','Stats beim Schließen'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#chat','Chat-Übersetzer'],['#fadenkreuz','Fadenkreuz & Overlay'],['#cfgs','Configs'],['#quiz','Quiz']]],
   ['dota2','Dota 2',[['#dota-tipps','Dota-2-Tipps']]],
   ['wardogs','Wardogs',[['#wardogs']]],
   ['clips','Clips',[['#clips']]],

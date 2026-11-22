@@ -356,6 +356,22 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Hochladen zu YouTube/Discord macht nur die Webseite mit den Einstellungen im
   Browser. Der Companion bekommt dafür keine Zugangsdaten.
 
+## Noch nicht ausgewertete Matches (`stats-backlog.mjs`, seit 0.48.0)
+
+- Nutzerwunsch vom 22.11.2026: Der Companion kennt die letzten eigenen Matches und fragt beim
+  Schließen von CS2 „Stats hochladen?“. Liste nur über boiler-writter ohne Match-Angaben
+  (`listRecentMatches()`), nur ohne laufendes CS2, höchstens alle `REFRESH_MIN_MS` (Knopf der
+  Webseite: höchstens alle 30 s). Keine Demo laden; das macht die Webseite selbst.
+- CS2-Ende nur über `tasklist` erkennen (`POLL_MS`, `CLOSE_DELAY_MS`), keine GSI nötig, kein
+  Zugriff auf den Spielprozess. Nicht fragen während Aufnahme/Download oder solange eine
+  Auto-Highlights-Frage oder deren Download läuft (`blocked`). Frage im eigenen `AutoPrompt`-Fenster,
+  nie Fokus nehmen. `ask` standardmäßig an, abschaltbar, gespeichert in `stats-backlog.json` (Modus 600).
+- Bridge `recent-matches-v1`: `GET /bridge/matches` gibt nur Match-ID, Zeit (ms), Sharecode, Valve-Link,
+  Map und `done` heraus, keine Pfade. `POST /bridge/matches/done` nimmt höchstens 50 Match-IDs (Ziffern).
+  Match-IDs bleiben Text. Der Sharecode entsteht nur aus Match-ID, Reservierungs-ID und TV-Port der
+  Match-Infos (`encodeShareCode()`), sonst bleibt er leer. Hochladen macht nur die Webseite.
+- Gehört zum CS2-Paket: ohne Paket keine Capability, beim Entfernen `statsBacklog.reset()`.
+
 ## Fadenkreuz, Overlay und CFG-Sammlung (`crosshair.mjs`, `cfg-library.mjs`)
 
 - Fadenkreuz-Editor und CFG-Sammlung schreiben nur eigene cfg-Dateien
