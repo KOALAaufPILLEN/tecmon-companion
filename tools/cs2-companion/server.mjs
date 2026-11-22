@@ -285,12 +285,14 @@ export async function createCompanion({
     return { enabled: on && (windowMode === "borderless" || windowMode === "unknown"), wanted: on, mode: windowMode, crosshair: crosshair.get() };
   };
   /** Für die Figur: Chat-Overlay wie das Fadenkreuz nur mit CS2-Paket, bestätigt und nicht im echten Vollbild. */
+  // Knopf „Overlay verschieben“: die Figur startet das Verschieben, sobald der Zähler steigt.
+  let chatMoveRequest = 0;
   const chatOverlayState = () => {
     const c = chatTranslator.state();
     if (!games.has("cs2") || !c.enabled || !c.overlay) return { enabled: false };
     refreshWindowMode(true);
     const header = chatTranslator.overlayHeader();
-    return { enabled: windowMode === "borderless" || windowMode === "unknown", mode: windowMode, lines: chatTranslator.overlayLines(), header: header.text, warn: header.warn };
+    return { enabled: windowMode === "borderless" || windowMode === "unknown", mode: windowMode, lines: chatTranslator.overlayLines(), header: header.text, warn: header.warn, move: chatMoveRequest };
   };
   const radarPath = (map) => radarFile(radarDir, map);
   const insights = await createInsightsStore(installation?.profileDir || dataDir);
@@ -1146,6 +1148,12 @@ export async function createCompanion({
         if (process.platform !== "win32") throw new Error("Nur unter Windows mit Steam möglich.");
         spawn("explorer.exe", [chatTranslator.launchUrl()], { windowsHide: true, stdio: "ignore" }).unref();
         return json(res, 200, { message: `Steam startet CS2 mit ${chatTranslator.state().launchOptions}. Bestätige die Rückfrage von Steam.` });
+      }
+      if (url.pathname === "/api/chat/overlay-move") {
+        const c = chatTranslator.state();
+        if (!c.enabled || !c.overlay) throw new Error("Erst Chat-Übersetzer und Chat-Overlay einschalten.");
+        chatMoveRequest += 1;
+        return json(res, 200, { message: "Das Overlay steht jetzt auf dem Bildschirm: mit der Maus ziehen, auch auf einen zweiten Bildschirm. Rechtsklick oder Doppelklick speichert." });
       }
       if (url.pathname === "/api/chat/reply") {
         const result = await chatTranslator.reply({ text: String(input.text || ""), to: String(input.to || "auto"), team: input.team === true });

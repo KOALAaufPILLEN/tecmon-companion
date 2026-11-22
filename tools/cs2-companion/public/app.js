@@ -666,6 +666,7 @@ async function loadChat(){
   $('chat-overlay-status').textContent=chat.overlay?'An':'Aus';$('chat-overlay-status').classList.toggle('on',chat.overlay);
   $('chat-notice').replaceChildren(...chat.notice.map(t=>el('li',t)));
   $('chat-overlay-toggle').textContent=chat.overlay?'Overlay ausschalten':chat.accepted?'Overlay einschalten':'Overlay einschalten …';
+  $('chat-overlay-move').hidden=!(chat.enabled&&chat.overlay);$('chat-overlay-reset').hidden=!(chat.enabled&&chat.overlay);
   const hint=!chat.enabled?'':!chat.overlay?'Das Overlay ist aus: Übersetzungen erscheinen dann nur hier in der Liste. Schalte es ein, um sie im Spiel über dem Chat zu sehen.':chat.windowMode==='fullscreen'?'CS2 läuft im echten Vollbild: dort kann kein Fenster darüber liegen. Stelle in CS2 unter Video den Anzeigemodus auf „Vollbild-Fenstermodus“.':chat.windowMode==='windowed'?'CS2 läuft im Fenster: das Overlay erscheint nur im Vollbild-Fenstermodus.':'';
   $('chat-overlay-hint').textContent=hint;$('chat-overlay-hint').hidden=!hint;
   const next=JSON.stringify(messages.map(m=>[m.id,m.status]));if(next===chatSignature)return;chatSignature=next;
@@ -701,6 +702,8 @@ $('chat-overlay-toggle')?.addEventListener('click',async()=>{
   button.disabled=true;
   try{await chatSettings({overlay:!chatState.overlay,accept:chatState.noticeVersion});$('chat-consent').hidden=true;}finally{button.disabled=false;}
 });
+$('chat-overlay-move')?.addEventListener('click',()=>api('/api/chat/overlay-move',{}).then(r=>{$('notice').textContent=r.message;}).catch(notice));
+$('chat-overlay-reset')?.addEventListener('click',()=>api('/api/desktop/settings',{chatPos:null}).then(()=>{$('notice').textContent='Chat-Overlay steht wieder ganz unten mittig.';}).catch(notice));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('chat-consent')&&!$('chat-consent').hidden){$('chat-consent').hidden=true;$('chat-accept').checked=false;loadChat().catch(()=>{});}});
 $('chat-reply')?.addEventListener('submit',async e=>{
   e.preventDefault();const button=$('chat-reply-send');button.disabled=true;const out=$('chat-reply-out');

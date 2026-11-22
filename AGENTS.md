@@ -167,6 +167,12 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   `HKCU\…\CurrentVersion\Run` (`TecMon.SetAutostart()`), standardmäßig aus, beim
   Deinstallieren entfernen. Keine Aufgabenplanung, keine Adminrechte.
 
+## Update-EXE
+
+- Der äußere Updater enthält keine Figur-Grafiken (Größengrenze 20 MB älterer Companions, Build-Prüfung in
+  `build-companion-update.ps1`). Nach dem Update startet er deshalb die installierte `TecMon Companion.exe`
+  als eigenen Prozess, nie die App im Updater-Prozess (sonst fehlt die Figur, 0.46.2).
+
 ## Persönlichkeit und TecMon-Werte (`personality.mjs`)
 
 - Modi `nett`, `normal`, `nerdy`, `huan` ändern nur den Ton
@@ -403,6 +409,10 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   (durchklickbar, nie aktiviert, nur im Vollbild-Fenstermodus mit CS2 vorn), eigener Hinweis
   `CHAT_OVERLAY_NOTICE` mit Version `CHAT_OVERLAY_NOTICE_VERSION`. Zeilen kommen aus `/api/state`
   (`chat.lines`, nur frische Zeilen). Gameplay und HUD außer dem Chat nicht verdecken.
+  Nutzerwunsch 22.11.2026: durchsichtig (nur ein Hauch Hintergrund, Schrift mit Schatten), Standard ganz unten
+  mittig am CS2-Bildschirm. Verschieben nur auf ausdrücklichen Wunsch (Figurmenü oder `POST /api/chat/overlay-move`):
+  dann fängt das Fenster kurz die Maus, nie den Fokus, Rechtsklick/Doppelklick beendet. Die Position (`chatPos`,
+  auch zweiter Bildschirm) liegt in `desktop.json`; liegt sie auf keinem angeschlossenen Bildschirm, gilt der Standard.
 
 ## Oberfläche (Figurmenü, Fenster, Companion-Seite)
 
