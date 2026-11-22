@@ -154,12 +154,12 @@ static class TecMon {
     if(launch) Process.Start(new ProcessStartInfo(Path.Combine(target,"TecMon Companion.exe")){WorkingDirectory=target,UseShellExecute=false});
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.46.7",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.46.8",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.46.7");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.46.8");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -174,7 +174,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.46.7"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.46.8"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -315,7 +315,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.46.7 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.46.8 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -801,6 +801,15 @@ class ChatOverlay : Form {
   public ChatOverlay(){Text="TecMon Chat";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;TopMost=true;Size=new Size(10,10);check.Tick+=(s,e)=>Update2();}
   public bool Moving {get{return moving;}}
   public void Apply(bool on,System.Collections.IList next,string head,bool warning){Apply(on,next,head,warning,false);}
+  /* Aussehen aus den Einstellungen (Nutzerwunsch 22.11.2026): Breite in %, Schrift in px bei 1080p, Farbe als feste Hex-Farbe, Hintergrund in %. */
+  int lookWidth=30,lookFont=15,lookBackground=30;Color lookColor=Color.FromArgb(255,243,241,247);
+  public void SetLook(Dictionary<string,object> look){
+    if(look==null)return;
+    int w=Num(look,"width",30,15,70),f=Num(look,"font",15,10,32),b=Num(look,"background",30,0,100);Color c=lookColor;
+    string hex=Str(look,"color");if(hex.Length==6){try{c=Color.FromArgb(255,Convert.ToInt32(hex.Substring(0,2),16),Convert.ToInt32(hex.Substring(2,2),16),Convert.ToInt32(hex.Substring(4,2),16));}catch{}}
+    if(w!=lookWidth||f!=lookFont||b!=lookBackground||c!=lookColor){lookWidth=w;lookFont=f;lookBackground=b;lookColor=c;drawn="";}
+  }
+  static int Num(Dictionary<string,object> d,string k,int fallback,int min,int max){object v;if(d==null||!d.TryGetValue(k,out v)||v==null)return fallback;try{return Math.Min(max,Math.Max(min,Convert.ToInt32(v)));}catch{return fallback;}}
   public void Apply(bool on,System.Collections.IList next,string head,bool warning,bool free){if(free!=Free){Free=free;drawn="";if(!moving)ClickThrough(!free);}wanted=on;lines=next;header=head??"";warn=warning;if(wanted||moving)check.Start();else{check.Stop();if(Visible)Hide();}Update2();}
   /* Verschieben: Fenster fängt kurz die Maus (nie den Fokus), zeigt Beispielzeilen und steht auch ohne CS2 vorn. Rechtsklick oder Doppelklick beendet. */
   public void StartMove(){if(moving)return;moving=true;ClickThrough(false);check.Start();drawn="";Update2();}
@@ -836,14 +845,14 @@ class ChatOverlay : Form {
   void Push(Rectangle bounds){
     if(!IsHandleCreated)return;
     float scale=Math.Max(0.6f,bounds.Height/1080f);
-    int width=(int)(bounds.Width*0.30f),pad=(int)(8*scale),cut=(int)(8*scale);
+    int width=(int)(bounds.Width*lookWidth/100f),pad=(int)(8*scale),cut=(int)(8*scale);
     var source=lines;string title=header;bool gold=warn;
     if(moving){
       source=new List<object>{new Dictionary<string,object>{{"channel","all"},{"name","Beispiel"},{"lang","en"},{"translated","True"},{"text","So sieht eine übersetzte Nachricht aus."}}};
       title="VERSCHIEBEN: mit der Maus ziehen · Rechtsklick oder Doppelklick = fertig";gold=true;
     } else if(Free&&title.Length>0)title+=" · ziehen zum Verschieben";
     using(var nameFont=new Font("Segoe UI Semibold",12f*scale,FontStyle.Regular,GraphicsUnit.Pixel))
-    using(var textFont=new Font("Segoe UI Semibold",15f*scale,FontStyle.Regular,GraphicsUnit.Pixel))
+    using(var textFont=new Font("Segoe UI Semibold",lookFont*scale,FontStyle.Regular,GraphicsUnit.Pixel))
     using(var measure=new Bitmap(1,1))using(var mg=Graphics.FromImage(measure)){
       var rows=new List<string[]>();var heights=new List<int>();int total=0;
       if(source!=null)foreach(object raw in source){
@@ -868,13 +877,15 @@ class ChatOverlay : Form {
             int h=heights[i];
             var shape=new[]{new Point(cut,y),new Point(width-cut-1,y),new Point(width-1,y+cut),new Point(width-1,y+h-cut-1),new Point(width-cut-1,y+h-1),new Point(cut,y+h-1),new Point(0,y+h-cut-1),new Point(0,y+cut)};
             /* Durchsichtig: nur ein Hauch Hintergrund, die Schrift trägt einen dunklen Schatten und bleibt so lesbar. */
-            using(var fill=new SolidBrush(Color.FromArgb(Free?150:70,15,12,22)))g.FillPolygon(fill,shape);
+            using(var fill=new SolidBrush(Color.FromArgb(Math.Min(235,lookBackground*235/100),15,12,22)))g.FillPolygon(fill,shape);
             bool teamChat=rows[i][2]=="team";
             using(var edge=new Pen(teamChat?Color.FromArgb(150,232,197,115):Color.FromArgb(120,167,139,250),Math.Max(1f,scale)))g.DrawPolygon(edge,shape);
             var line=new RectangleF(pad,y+pad*0.7f,width-2*pad,h);
-            Shadowed(g,rows[i][1],textFont,Color.FromArgb(255,243,241,247),line,scale);
+            Shadowed(g,rows[i][1],textFont,lookColor,line,scale);
             /* Gleiche Schrift und Position: der Name samt Team wird golden darübergezeichnet. */
-            using(var ink=new SolidBrush(Color.FromArgb(255,232,197,115)))g.DrawString(rows[i][0],textFont,ink,line);
+            /* Ist die Schrift selbst gold, steht der Name in Weiß, damit er sich abhebt. */
+            bool goldText=lookColor.R==232&&lookColor.G==197&&lookColor.B==115;
+            using(var ink=new SolidBrush(goldText?Color.FromArgb(255,243,241,247):Color.FromArgb(255,232,197,115)))g.DrawString(rows[i][0],textFont,ink,line);
             y+=h+(int)(4*scale);
           }
           if(headH>0){
@@ -1619,6 +1630,7 @@ class DesktopPet : Form {
     if(!on&&chatOverlay==null&&!moveNow)return;
     EnsureChatOverlay();
     if(moveNow)chatOverlay.StartMove();
+    if(c!=null&&c.ContainsKey("look"))chatOverlay.SetLook(c["look"] as Dictionary<string,object>);
     chatOverlay.Apply(on,c!=null&&c.ContainsKey("lines")?c["lines"] as System.Collections.IList:null,c!=null&&c.ContainsKey("header")?Convert.ToString(c["header"]):"",c!=null&&c.ContainsKey("warn")&&Convert.ToBoolean(c["warn"]),c!=null&&c.ContainsKey("window")&&Convert.ToBoolean(c["window"]));
   }
   /* Chat in der Sprechblase (Nutzerwunsch 22.11.2026): eigene Blase neben der Figur, unabhängig von den Rundentipps und ihrem quiet,

@@ -7,7 +7,7 @@ import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import {
   parseChatLine, detectLanguage, modelsFor, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail, lineTime, sourceText,
-  ensureEngine, ensureModel, patchEngineFile, ENGINE_PATCH, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
+  ensureEngine, ensureModel, patchEngineFile, ENGINE_PATCH, cleanLook, CHAT_LOOK_DEFAULT, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
 } from "../chat-translate.mjs";
 import { CHAT_MODELS } from "../chat-models.mjs";
 import { CHAT_LAUNCH_URL, cleanLaunchOptions, launchUrl } from "../chat-translate.mjs";
@@ -228,6 +228,11 @@ test("Chat-Übersetzer: aus, an, Nachrichten, Antwort-cfg, Reset", async () => {
   assert.equal((await chat.setSettings({ bubble: true })).bubble, true);
   assert.equal(chat.state().window, false);
   assert.equal((await chat.setSettings({ window: true })).window, true);
+  // Aussehen: nur geprüfte Zahlen und feste Farben, Zeilen und Anzeigedauer gelten für das Overlay.
+  const look = (await chat.setSettings({ look: { width: 50, lines: 2, font: 99, color: "lila", seconds: 1 } })).look;
+  assert.deepEqual(look, { width: 50, lines: 2, font: 32, color: "lila", background: 30, seconds: 5 });
+  assert.equal(chat.overlayLines().length, 2);
+  assert.equal((await chat.setSettings({ look: { color: "#ff0000" } })).look.color, "lila");
   assert.equal(JSON.parse(await readFile(path.join(root, "profil", "chat-translate.json"), "utf8")).bubble, true);
 
   // Antwort in der eigenen Sprache braucht keine Übersetzung und landet als cfg.
@@ -313,4 +318,11 @@ test("Bergamot-Worker: Windows-Pfad zur .wasm wird genau an einer Stelle reparie
   assert.equal(patchEngineFile("translator.js", original), original);
   assert.throws(() => patchEngineFile(ENGINE_PATCH.file, Buffer.from("anders")), /unerwartet/);
   assert.throws(() => patchEngineFile(ENGINE_PATCH.file, Buffer.concat([original, original])), /unerwartet/);
+});
+
+test("Aussehen des Chat-Fensters wird begrenzt", () => {
+  assert.deepEqual(cleanLook(), CHAT_LOOK_DEFAULT);
+  assert.deepEqual(cleanLook({ width: 5, lines: 40, font: "18", background: -3, seconds: 9999, color: "x" }),
+    { width: 15, lines: 15, font: 18, color: "weiss", background: 0, seconds: 600 });
+  assert.equal(cleanLook({ width: "abc" }).width, 30);
 });
