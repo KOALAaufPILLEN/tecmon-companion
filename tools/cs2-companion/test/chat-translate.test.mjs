@@ -162,6 +162,8 @@ test("Chat-Übersetzer: aus, an, Nachrichten, Antwort-cfg, Reset", async () => {
   assert.ok(existsSync(path.join(cfg, "tecmon_chat_keys.cfg")));
   state = await chat.setSettings({ overlay: true, accept: CHAT_OVERLAY_NOTICE_VERSION });
   assert.equal(state.overlay, true);
+  // Kopfzeile steht auch ohne Nachrichten und sagt, warum noch nichts kommt.
+  assert.deepEqual(chat.overlayHeader(), { text: "TECMON CHAT · kein Chat-Log: CS2 über TecMon mit -condebug starten", warn: true });
 
   chat.feed("[ALL] Hans\u200e: ich bin B");
   chat.feed("[ALL] Ivan\u200e: давай быстрее на б");
