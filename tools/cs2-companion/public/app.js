@@ -656,7 +656,7 @@ async function loadChat(){
   $('chat-setup-exec').textContent=chat.setupExec;
   const options=JSON.stringify([chat.languages,chat.language,chat.keys]);
   if(options!==chatOptions&&!['chat-language','chat-key-all','chat-key-team','chat-reply-to'].includes(document.activeElement?.id)){
-    chatOptions=options;const langs=Object.entries(chat.languages);const keys=['F5','F6','F7','F8','F9','F10','F11'].map(k=>[k,k]);
+    chatOptions=options;const langs=Object.entries(chat.languages).sort((a,b)=>a[1].localeCompare(b[1],'de'));const keys=['F5','F6','F7','F8','F9','F10','F11'].map(k=>[k,k]);
     fillSelect($('chat-language'),langs,chat.language);fillSelect($('chat-key-all'),keys,chat.keys.all);fillSelect($('chat-key-team'),keys,chat.keys.team);
     const to=$('chat-reply-to').value||'auto';fillSelect($('chat-reply-to'),[['auto','Sprache der letzten Nachricht'],...langs],to);
   }

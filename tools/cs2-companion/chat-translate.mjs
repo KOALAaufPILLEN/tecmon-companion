@@ -54,6 +54,14 @@ export const CHAT_LAUNCH_URL = launchUrl();
 export const LANGUAGES = {
   de: "Deutsch", en: "Englisch", es: "Spanisch", fr: "Französisch", it: "Italienisch", pt: "Portugiesisch",
   ru: "Russisch", uk: "Ukrainisch", bg: "Bulgarisch", cs: "Tschechisch", et: "Estnisch", tr: "Türkisch", pl: "Polnisch",
+  // Seit 0.47.0: alle weiteren Sprachen der Firefox-Übersetzungsmodelle.
+  af: "Afrikaans", ar: "Arabisch", az: "Aserbaidschanisch", be: "Belarussisch", bn: "Bengalisch", bs: "Bosnisch",
+  ca: "Katalanisch", da: "Dänisch", el: "Griechisch", eu: "Baskisch", fa: "Persisch", fi: "Finnisch", gl: "Galicisch",
+  gu: "Gujarati", he: "Hebräisch", hi: "Hindi", hr: "Kroatisch", hu: "Ungarisch", id: "Indonesisch", is: "Isländisch",
+  ja: "Japanisch", kn: "Kannada", ko: "Koreanisch", lt: "Litauisch", lv: "Lettisch", ml: "Malayalam", mr: "Marathi",
+  ms: "Malaiisch", nb: "Norwegisch", nl: "Niederländisch", ro: "Rumänisch", sk: "Slowakisch", sl: "Slowenisch",
+  sq: "Albanisch", sr: "Serbisch", sv: "Schwedisch", ta: "Tamil", te: "Telugu", th: "Thailändisch", tl: "Tagalog",
+  ug: "Uigurisch", ur: "Urdu", vi: "Vietnamesisch", zh: "Chinesisch",
 };
 export const MAX_MESSAGES = 40;
 export const SAY_MAX = 120;
@@ -131,6 +139,7 @@ export function parseChatLine(raw) {
 
 /* ---------- Sprache erkennen ---------- */
 
+/** Häufige Chatwörter je Sprache mit lateinischer Schrift. Bosnisch fehlt bewusst: von Kroatisch/Serbisch kaum zu trennen. */
 const WORDS = {
   de: "ich du er wir ihr und nicht ist das der die den dem ein eine ja nein bitte danke gut mal kein keine was wie warum wo geh los schnell hab habe bin bist sind auch noch nur schon jetzt hier da mit für auf von zu aber oder wenn dann sorry geil alter digga junge leute komm kommt",
   en: "the you your is are and not i we me my it to of in on for that this what why where how please thanks thank nice good bad go come lol wtf guys rush push noob bro dont don't can't cant im i'm its it's they he she was have has just no yes yeah ok okay sorry man stop wait team",
@@ -139,32 +148,95 @@ const WORDS = {
   it: "che il non sono perché perche grazie ciao andiamo bene io sei è gli della questo fratello cazzo dai",
   pt: "não nao você voce obrigado vamos que é com uma eu tá ta mano cara isso aqui porra time boa",
   cs: "je to ne ano jsem jak proč proc díky diky dobrý dobry kurva tady jsi máme",
-  et: "ja ei on mina sina aitäh aitah tere kas mis miks see oled",
+  et: "ja ei on mina ma sina sa aitäh aitah tere kas mis miks see oled siin seal hästi halb tule mine kiiresti",
   tr: "ve bir bu ne mi mı mu mü ben sen biz siz onlar evet hayır hayir tamam teşekkürler tesekkurler sağol sagol abi kardeş kardes hadi gel git yok var çok cok iyi kötü kotu neden niye nasıl nasil ile için icin diye ama gibi şey sey oyna takım takim adam lan aferin sana bana sizi bizi kişi kisi oldu olur değil degil",
   pl: "nie tak jest się sie że ze ty my wy oni dobra dobrze kurwa idziemy chodź chodz gdzie dlaczego czemu proszę prosze dzięki dzieki może moze już juz tylko bardzo mam masz nic ale albo który ktory grać grac jestem jesteś jestes chłopaki chlopaki szybko",
+  nl: "ik jij je hij wij jullie niet het een van dat wat waarom waar hoe bedankt dank alsjeblieft goed slecht kom gaan nee jongens snel doe mijn heb ben zijn ook maar wel even kut lekker",
+  af: "ek jy hy ons julle nie die het baie dankie asseblief sleg kom gaan waar hoekom wat lekker maak vir",
+  da: "jeg du han vi ikke det er og hvad hvorfor hvor hvordan tak godt dårlig kom nej meget mig dig hej skal kan bare også",
+  nb: "jeg du han vi ikke det er og hva hvorfor hvor hvordan takk bra dårlig kom nei veldig meg deg hei skal kan bare også ikkje",
+  sv: "jag du han vi inte det är och vad varför var hur tack bra dålig kom nej mycket mig dig hej ska kan bara också",
+  fi: "minä mä sinä sä hän me te ei on ja se mitä miksi missä miten kiitos hyvä huono tule mene kyllä joo nyt vittu perkele mennään tänne älä",
+  is: "ég þú hann við ekki það er og að hvað hverju hvar takk gott slæmt komdu nei já mjög",
+  lt: "aš tu jis mes jūs ne yra ir kas kodėl kur kaip ačiū aciu gerai blogai eik einam taip labai čia cia",
+  lv: "es tu viņš mēs jūs nē ir un kas kāpēc kur kā paldies labi slikti nāc iet jā ļoti šeit seit",
+  hu: "én te ő mi ti nem igen és az egy hogy miért hol hogyan köszi köszönöm jó rossz gyere menj itt ott basszus srácok gyorsan",
+  ro: "eu tu el noi voi nu da și si este ce de unde cum mersi mulțumesc multumesc bine rău rau hai aici frate băieți baieti foarte",
+  sk: "ja ty on my vy nie áno ano je to čo co prečo preco kde ako ďakujem dakujem dobre zle poď sme som si tu",
+  sl: "jaz ti on mi vi ne je in to kaj zakaj kje kako hvala dobro slabo pridi gremo tukaj zelo sem si",
+  hr: "ja ti on mi vi ne da je to što zašto zasto gdje kako hvala dobro loše lose dođi dodi idemo ovdje jako sam si brate",
+  sr: "šta sta ovde gde lepo mnogo ćao cao bre hvala brate idemo zašto zasto",
+  sq: "unë une ti ai ne ju jo po është eshte dhe çfarë pse ku si faleminderit mirë mire keq hajde shpejt shumë shume këtu vëlla vella",
+  ca: "jo tu ell nosaltres vosaltres no sí és i què per on com gràcies bé malament vinga anem aquí molt també",
+  gl: "eu ti el nós vós non si é e que por onde como grazas ben mal imos aquí moito tamén",
+  eu: "ni zu hura gu zuek bai da eta zer zergatik non nola eskerrik mila ondo gaizki goazen hemen oso kaixo",
+  az: "mən sən o biz siz yox bəli hə və bu nə niyə harada necə sağ ol təşəkkür yaxşı pis gəl get burada çox",
+  id: "aku kamu dia kita kami mereka tidak gak nggak ya dan ini itu apa kenapa mana bagaimana terima kasih makasih bagus jelek ayo sini sangat bang woi anjir",
+  ms: "saya awak dia kita kami mereka tidak tak ya dan ini itu apa kenapa mana bagaimana terima kasih bagus teruk jom sini sangat",
+  tl: "ako ikaw siya tayo kami sila hindi oo at ang ng mga sa ano bakit saan paano salamat maganda pangit tara dito sobra pre lods",
+  vi: "tôi toi bạn ban không khong có co là la và va gì gi tại sao đâu dau thế the nào nao cảm cam ơn on tốt tot xấu xau đi di nhanh ơi oi",
 };
 const WORD_SETS = Object.fromEntries(Object.entries(WORDS).map(([k, v]) => [k, new Set(v.split(" "))]));
-const LETTERS = { tr: /[ışğ\u0307]/i, pl: /[łąęśćźżń]/i, de: /[äöüß]/i, es: /[ñ¿¡]/i, fr: /[çèêëàâîœ]/i, pt: /[ãõ]/i, cs: /[ěščřžůý]/i, et: /[õ]/i, it: /[àèìòù]\b/i };
+/** Typische Buchstaben: [Sprachen, Muster, Gewicht]. Geteilte Buchstaben zählen für alle genannten Sprachen. */
+const LETTERS = [
+  [["tr"], /[ışğ̇]/, 1.5], [["pl"], /[łśćźżń]/, 1.5], [["pl", "lt"], /[ąę]/, 0.5], [["de"], /[äöüß]/, 1.5],
+  [["es"], /[ñ¿¡]/, 1.5], [["fr"], /[êœ]|[çèëàâî]/, 1.5], [["pt"], /[ãõ]/, 1.5], [["cs"], /[ěřů]/, 1.5], [["cs", "sk", "sl", "hr", "sr", "lt", "lv"], /[čšž]/, 0.5],
+  [["et"], /õ/, 1.5], [["it"], /[àèìòù]\b/, 1.5], [["az"], /ə/, 3], [["is"], /[þð]/, 3], [["ro"], /[șțşţ]/, 2],
+  [["lt"], /[ėįųū]/, 2], [["lv"], /[āēīģķļņ]/, 2], [["hu"], /[őű]/, 2], [["sk"], /[ľĺŕô]/, 2], [["hr", "sr"], /đ/, 1],
+  [["sq"], /ë/, 1.5], [["da", "nb"], /[æø]/, 1.5], [["da", "nb", "sv"], /å/, 1],
+  [["vi"], /[ơưăạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/, 3],
+];
+
+/** Andere Schriften: [Sprache oder Funktion, Muster]. Die Schrift mit den meisten Zeichen gewinnt. */
+const SCRIPTS = [
+  ["cyrillic", /\p{Script=Cyrillic}/gu], ["greek", /\p{Script=Greek}/gu], ["arabic", /\p{Script=Arabic}/gu],
+  ["he", /\p{Script=Hebrew}/gu], ["th", /\p{Script=Thai}/gu], ["ko", /\p{Script=Hangul}/gu],
+  ["kana", /[\p{Script=Hiragana}\p{Script=Katakana}]/gu], ["han", /\p{Script=Han}/gu],
+  ["devanagari", /\p{Script=Devanagari}/gu], ["bn", /\p{Script=Bengali}/gu], ["gu", /\p{Script=Gujarati}/gu],
+  ["ta", /\p{Script=Tamil}/gu], ["te", /\p{Script=Telugu}/gu], ["kn", /\p{Script=Kannada}/gu], ["ml", /\p{Script=Malayalam}/gu],
+];
+
+function scriptLanguage(script, text, counts) {
+  switch (script) {
+    case "cyrillic":
+      if (/ў/.test(text)) return "be";
+      if (/[їєґ]/.test(text) || (/і/.test(text) && !/[ыэё]/.test(text))) return "uk";
+      if (/[ђћџљњј]/.test(text)) return "sr";
+      if (/[ыэё]/.test(text)) return "ru";
+      if (/ъ/.test(text) || /(?:^|[^\p{L}])(?:аз|съм|какво|защо|много)(?=$|[^\p{L}])/u.test(text)) return "bg";
+      return "ru";
+    case "greek": return "el";
+    case "arabic":
+      if (/[ېۆۈۇۋڭە]/.test(text)) return "ug";
+      if (/[ےںٹڈڑہھ]/.test(text)) return "ur";
+      if (/[پچژگکی]/.test(text) && !/[ةكيى]/.test(text)) return "fa";
+      return "ar";
+    case "kana": return "ja";
+    case "han": return counts.kana ? "ja" : "zh";
+    case "devanagari": return /ळ|(?:^|\s)(?:आहे|नाही|काय|मी|तू|आणि)(?=$|\s)/.test(text) ? "mr" : "hi";
+    default: return script;
+  }
+}
 
 /** Sprache einer Chatnachricht (`de`, `en`, `ru` …) oder "" wenn unsicher. Kurze Rufe wie „gg“ bleiben unbekannt. */
 export function detectLanguage(raw, { assumeEnglish = true } = {}) {
   // „İ“ wird kleingeschrieben zu „i“ + Punkt (U+0307): die Markierung bleibt für LETTERS, Wörter bekommen ein „i“.
   const text = String(raw || "").toLowerCase();
-  const plain = text.replace(/i\u0307/g, "i");
-  const cyrillic = (text.match(/[Ѐ-ӿ]/g) || []).length;
-  const latin = (text.match(/[a-zà-ž]/g) || []).length;
-  // Kyrillisch gewinnt auch gegen eine angehängte Umschrift („Ты хороший игрок. (Ty khoroshiy igrok)“).
-  if (cyrillic >= 2 && (cyrillic >= latin || (cyrillic >= 6 && cyrillic * 2 >= latin))) {
-    if (/[іїєґ]/.test(text)) return "uk";
-    if (/[ыэё]/.test(text)) return "ru";
-    if (/ъ/.test(text) || /\b(?:аз|съм|какво|защо|много)\b/.test(text)) return "bg";
-    return "ru";
-  }
+  const plain = text.replace(/i̇/g, "i");
+  const latin = (text.match(/\p{Script=Latin}/gu) || []).length;
+  const counts = {};
+  for (const [script, re] of SCRIPTS) counts[script] = (text.match(re) || []).length;
+  // Chinesisch und Japanisch: ein Zeichen ist oft schon ein Wort, darum zählen Han/Kana doppelt.
+  const weight = (s) => (s === "han" || s === "kana" || s === "ko" ? counts[s] * 2 : counts[s]);
+  const top = SCRIPTS.map(([s]) => s).sort((a, b) => weight(b) - weight(a))[0];
+  const other = weight(top) + (top === "han" ? counts.kana * 2 : top === "kana" ? counts.han * 2 : 0);
+  // Andere Schrift gewinnt auch gegen eine angehängte Umschrift („Ты хороший игрок. (Ty khoroshiy igrok)“).
+  if (counts[top] >= 2 && (other >= latin || (other >= 6 && other * 2 >= latin))) return scriptLanguage(top, text, counts);
   if (latin < 2) return "";
-  const words = plain.split(/[^a-zà-ž'’]+/u).filter(Boolean).map((w) => w.replace(/’/g, "'"));
+  const words = plain.split(/[^\p{Script=Latin}'’]+/u).filter(Boolean).map((w) => w.replace(/’/g, "'"));
   const scores = {};
   for (const [lang, set] of Object.entries(WORD_SETS)) scores[lang] = words.filter((w) => set.has(w)).length;
-  for (const [lang, re] of Object.entries(LETTERS)) if (re.test(text)) scores[lang] = (scores[lang] || 0) + 1.5;
+  for (const [langs, re, add] of LETTERS) if (re.test(text)) for (const lang of langs) scores[lang] = (scores[lang] || 0) + add;
   const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   if (ranked[0][1] > 0 && ranked[0][1] > ranked[1][1]) return ranked[0][0];
   // Reiner ASCII-Text mit mehreren Wörtern ist im CS2-Chat meist Englisch.
@@ -337,6 +409,9 @@ export async function ensureEngine(cacheDir, request = fetch) {
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 /** Ein Modell (`deen` …) laden; jede Datei muss die feste SHA-256 haben. */
+/** Größte Modelldatei (Japanisch/Koreanisch/Chinesisch ~60 MB) mit Reserve. */
+const MODEL_MAX_BYTES = 80 * 1024 * 1024;
+
 export async function ensureModel(modelDir, key, request = fetch) {
   const entry = CHAT_MODELS[key];
   if (!entry) throw new Error("Für diese Sprache gibt es kein Übersetzungsmodell.");
@@ -349,7 +424,7 @@ export async function ensureModel(modelDir, key, request = fetch) {
     const existing = await readFile(file).catch(() => null);
     if (!existing || existing.length !== info.size || sha256(existing) !== info.sha256) {
       // Der Server liefert gzip-kodiert; fetch entpackt selbst.
-      const bytes = await download(info.url, 40 * 1024 * 1024, request);
+      const bytes = await download(info.url, MODEL_MAX_BYTES, request);
       if (bytes.length !== info.size || sha256(bytes) !== info.sha256) throw new Error("Prüfsumme des Übersetzungsmodells stimmt nicht. Download abgebrochen.");
       await writeAtomic(file, bytes);
     }
