@@ -31,6 +31,11 @@ test("Chatzeilen aus console.log", () => {
   assert.equal(team.location, "B Site");
   assert.equal(team.name, "Ivan");
   assert.equal(team.text, "давай быстрее на б");
+  // Echte Team-Zeile aus CS2 (22.11.2026): Ort hinter „﹫“ (U+FE6B), Windows-Zeilenende.
+  assert.deepEqual(parseChatLine("11/22 19:56:34  [T] HyperMarkus\u200e\uFE6BT Start: smoke mıd atıcam\r"),
+    { channel: "team", team: "t", dead: false, location: "T Start", name: "HyperMarkus", text: "smoke mıd atıcam" });
+  assert.equal(parseChatLine("11/22 19:56:34  [CT] Ivan\u200e [DEAD] \uFE6BB Site: go").location, "B Site");
+  assert.equal(parseChatLine("[T] Ohne Mark \uFE6BMid: rush").name, "Ohne Mark");
   // Name mit Doppelpunkt: das Richtungszeichen trennt eindeutig.
   assert.equal(parseChatLine("[T] a: b\u200e: hallo").name, "a: b");
   assert.equal(parseChatLine("[ALL] Player *DEAD*: nice").dead, true);

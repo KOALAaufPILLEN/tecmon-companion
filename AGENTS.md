@@ -402,7 +402,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   die Platte geschrieben und nur im Arbeitsspeicher gehalten (`MAX_MESSAGES`). Kein Cloud-Dienst
   ohne eigenen Nutzerentscheid; wenn, dann nur mit eigenem Schlüssel des Nutzers und abschaltbar.
 - Sprache wird geraten (`detectLanguage()`), kurze Rufe wie „gg“ bleiben unübersetzt. Reine Großbuchstaben-Rufe
-  werden vor dem Übersetzen klein geschrieben (`sourceText()`). Nach einem Neustart holt der Companion nur Chatzeilen
+  werden vor dem Übersetzen klein geschrieben (`sourceText()`). Den Ort im Team-Chat trennt CS2 mit „﹫“ (U+FE6B) ab, nicht mit „@“; `parseChatLine()` akzeptiert beides und „＠“. Neue Zeilenformate nur mit echten console.log-Zeilen im Test belegen. Nach einem Neustart holt der Companion nur Chatzeilen
   der letzten `BACKLOG_MS` aus den letzten `BACKLOG_BYTES` der console.log nach (Zeitstempel `lineTime()`), nichts Älteres. Fehlende
   Sprachen als „noch nicht übersetzbar“ zeigen, nie eine erfundene Übersetzung.
 - **Antworten:** nur über eigene cfgs (`tecmon_chat_all.cfg`/`tecmon_chat_team.cfg` mit genau einer
