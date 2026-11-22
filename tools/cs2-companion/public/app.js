@@ -685,6 +685,7 @@ $('chat-language')?.addEventListener('change',e=>chatSettings({language:e.target
 $('chat-key-all')?.addEventListener('change',e=>chatSettings({keys:{all:e.target.value,team:$('chat-key-team').value}}));
 $('chat-key-team')?.addEventListener('change',e=>chatSettings({keys:{all:$('chat-key-all').value,team:e.target.value}}));
 $('chat-english')?.addEventListener('change',e=>chatSettings({assumeEnglish:e.target.checked}));
+$('chat-launch')?.addEventListener('click',()=>api('/api/chat/launch',{}).then(r=>{$('notice').textContent=r.message;}).catch(notice));
 $('chat-copy-option')?.addEventListener('click',()=>navigator.clipboard.writeText('-condebug').then(()=>{$('notice').textContent='„-condebug“ kopiert. In Steam: Rechtsklick auf CS2 → Eigenschaften → Startoptionen einfügen (nicht in die CS2-Konsole).';}).catch(notice));
 $('chat-overlay-toggle')?.addEventListener('click',async()=>{
   if(!chatState)return;const button=$('chat-overlay-toggle');

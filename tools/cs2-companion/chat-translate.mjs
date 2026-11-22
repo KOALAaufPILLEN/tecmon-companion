@@ -25,6 +25,8 @@ import { CHAT_MODELS } from "./chat-models.mjs";
 export const CHAT_HOTKEYS = ["F5", "F6", "F7", "F8", "F9", "F10", "F11"];
 export const CHAT_FILES = ["tecmon_chat_all.cfg", "tecmon_chat_team.cfg", "tecmon_chat_keys.cfg"];
 export const CHAT_SETUP_EXEC = "exec tecmon_chat_keys";
+/** CS2 einmalig über Steam mit -condebug starten; Steam fragt selbst nach. Die Steam-Einstellungen bleiben unverändert. */
+export const CHAT_LAUNCH_URL = "steam://run/730//-condebug/";
 export const LANGUAGES = {
   de: "Deutsch", en: "Englisch", es: "Spanisch", fr: "Französisch", it: "Italienisch", pt: "Portugiesisch",
   ru: "Russisch", uk: "Ukrainisch", bg: "Bulgarisch", cs: "Tschechisch", et: "Estnisch",
