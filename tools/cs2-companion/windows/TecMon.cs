@@ -149,15 +149,17 @@ static class TecMon {
     }
     UpdateRegistration(target);
     WriteUpdateResult(target,"installed","");
-    if(launch) {Root=target; Application.Run(new SplashWindow());}
+    /* Die installierte App als eigenen Prozess starten: der Updater selbst enthält keine Figur-Bilder (Größengrenze),
+       ein Start im Updater-Prozess zeigte deshalb keine Figur (0.46.2). */
+    if(launch) Process.Start(new ProcessStartInfo(Path.Combine(target,"TecMon Companion.exe")){WorkingDirectory=target,UseShellExecute=false});
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.46.2",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.46.3",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.46.2");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.46.3");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -172,7 +174,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.46.2"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.46.3"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -313,7 +315,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.46.2 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.46.3 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -781,32 +783,64 @@ sealed class FigureModel : IDisposable {
  * nie aktiviert, kein Eingriff ins Spiel. Die Zeilen kommen aus /api/state (chat.lines).
  */
 class ChatOverlay : Form {
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int GetWindowLong(IntPtr window,int index);
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int SetWindowLong(IntPtr window,int index,int value);
   readonly System.Windows.Forms.Timer check=new System.Windows.Forms.Timer{Interval=250};
-  System.Collections.IList lines;string drawn="",header="";bool wanted,warn;
+  System.Collections.IList lines;string drawn="",header="";bool wanted,warn,moving,dragging;Point grab;Size shown;
+  /* Linke untere Ecke des Overlays in Bildschirmkoordinaten (auch auf einem zweiten Bildschirm); null = Standard unten mittig. */
+  public Point? Anchor;
+  /* Meldet die neue Position nach dem Verschieben, damit die Figur sie in desktop.json speichert. */
+  public Action<Point?> Moved;
   protected override bool ShowWithoutActivation {get{return true;}}
-  /* WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT */
+  /* WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT (durchklickbar, außer beim Verschieben) */
   protected override CreateParams CreateParams {get{var p=base.CreateParams;p.ExStyle|=0x08000000|0x80|0x8|0x80000|0x20;return p;}}
   public ChatOverlay(){Text="TecMon Chat";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;TopMost=true;Size=new Size(10,10);check.Tick+=(s,e)=>Update2();}
-  public void Apply(bool on,System.Collections.IList next,string head,bool warning){wanted=on;lines=next;header=head??"";warn=warning;if(wanted)check.Start();else{check.Stop();if(Visible)Hide();}Update2();}
+  public bool Moving {get{return moving;}}
+  public void Apply(bool on,System.Collections.IList next,string head,bool warning){wanted=on;lines=next;header=head??"";warn=warning;if(wanted||moving)check.Start();else{check.Stop();if(Visible)Hide();}Update2();}
+  /* Verschieben: Fenster fängt kurz die Maus (nie den Fokus), zeigt Beispielzeilen und steht auch ohne CS2 vorn. Rechtsklick oder Doppelklick beendet. */
+  public void StartMove(){if(moving)return;moving=true;ClickThrough(false);check.Start();drawn="";Update2();}
+  public void StopMove(bool save){if(!moving)return;moving=false;dragging=false;ClickThrough(true);drawn="";if(save&&Moved!=null)Moved(Anchor);if(!wanted){check.Stop();if(Visible)Hide();}else Update2();}
+  public void ResetPosition(){SetAnchor(null);}
+  public void SetAnchor(Point? p){Anchor=p;drawn="";Update2();}
+  void ClickThrough(bool on){if(!IsHandleCreated)return;int style=GetWindowLong(Handle,-20);SetWindowLong(Handle,-20,on?style|0x20:style&~0x20);}
   static string Str(Dictionary<string,object> d,string k){object v;return d!=null&&d.TryGetValue(k,out v)&&v!=null?Convert.ToString(v):"";}
+  /* Eine gespeicherte Position gilt nur, solange sie auf einem angeschlossenen Bildschirm liegt. */
+  static bool OnScreen(Point p){foreach(var screen in Screen.AllScreens)if(screen.Bounds.Contains(new Point(p.X+4,p.Y-4)))return true;return false;}
   void Update2(){
-    /* Die Kopfzeile steht immer, solange das Overlay an ist: so sieht man, dass TecMon mitliest, auch ohne Nachrichten. */
-    if(!wanted||(header.Length==0&&(lines==null||lines.Count==0))){if(Visible)Hide();return;}
-    Rectangle bounds;if(!CrosshairOverlay.Cs2Borderless(out bounds)){if(Visible)Hide();return;}
-    string key=TecMon.Json.Serialize(lines)+header+warn+bounds;
+    Rectangle bounds;
+    if(moving){
+      /* Beim Verschieben die Größe vom Bildschirm mit der Position nehmen, sonst vom Hauptbildschirm. */
+      bounds=Anchor.HasValue&&OnScreen(Anchor.Value)?Screen.FromPoint(Anchor.Value).Bounds:Screen.PrimaryScreen.Bounds;
+      Rectangle game;if(CrosshairOverlay.Cs2Borderless(out game))bounds=game;
+    } else {
+      /* Die Kopfzeile steht immer, solange das Overlay an ist: so sieht man, dass TecMon mitliest, auch ohne Nachrichten. */
+      if(!wanted||(header.Length==0&&(lines==null||lines.Count==0))){if(Visible)Hide();return;}
+      if(!CrosshairOverlay.Cs2Borderless(out bounds)){if(Visible)Hide();return;}
+    }
+    string key=TecMon.Json.Serialize(lines)+header+warn+bounds+moving+Anchor;
     if(key==drawn&&Visible)return;
     drawn=key;Push(bounds);
     if(!Visible)Show();
+    if(moving)ClickThrough(false);
   }
+  protected override void OnMouseDown(MouseEventArgs e){base.OnMouseDown(e);if(!moving)return;if(e.Button==MouseButtons.Right){StopMove(true);return;}if(e.Button==MouseButtons.Left){dragging=true;grab=new Point(Cursor.Position.X-Left,Cursor.Position.Y-Top);}}
+  protected override void OnMouseMove(MouseEventArgs e){base.OnMouseMove(e);if(!moving||!dragging)return;var at=new Point(Cursor.Position.X-grab.X,Cursor.Position.Y-grab.Y);Anchor=new Point(at.X,at.Y+shown.Height);Update2();}
+  protected override void OnMouseUp(MouseEventArgs e){base.OnMouseUp(e);dragging=false;}
+  protected override void OnMouseDoubleClick(MouseEventArgs e){base.OnMouseDoubleClick(e);if(moving)StopMove(true);}
   void Push(Rectangle bounds){
     if(!IsHandleCreated)return;
     float scale=Math.Max(0.6f,bounds.Height/1080f);
     int width=(int)(bounds.Width*0.30f),pad=(int)(8*scale),cut=(int)(8*scale);
+    var source=lines;string title=header;bool gold=warn;
+    if(moving){
+      source=new List<object>{new Dictionary<string,object>{{"channel","all"},{"name","Beispiel"},{"lang","en"},{"translated","True"},{"text","So sieht eine übersetzte Nachricht aus."}}};
+      title="VERSCHIEBEN: mit der Maus ziehen · Rechtsklick oder Doppelklick = fertig";gold=true;
+    }
     using(var nameFont=new Font("Segoe UI Semibold",12f*scale,FontStyle.Regular,GraphicsUnit.Pixel))
-    using(var textFont=new Font("Segoe UI",15f*scale,FontStyle.Regular,GraphicsUnit.Pixel))
+    using(var textFont=new Font("Segoe UI Semibold",15f*scale,FontStyle.Regular,GraphicsUnit.Pixel))
     using(var measure=new Bitmap(1,1))using(var mg=Graphics.FromImage(measure)){
       var rows=new List<string[]>();var heights=new List<int>();int total=0;
-      if(lines!=null)foreach(object raw in lines){
+      if(source!=null)foreach(object raw in source){
         var d=raw as Dictionary<string,object>;if(d==null)continue;
         string channel=Str(d,"channel"),team=Str(d,"team"),lang=Str(d,"lang");
         string tag=channel=="team"?(team=="ct"?"CT":team=="t"?"T":"TEAM"):channel=="spec"?"ZUSCHAUER":"ALLE";
@@ -816,7 +850,7 @@ class ChatOverlay : Form {
         int h=pad+(int)(nameFont.GetHeight()+2)+(int)Math.Ceiling(size.Height)+pad;
         rows.Add(new[]{head,text,channel});heights.Add(h);total+=h+(int)(4*scale);
       }
-      int headH=header.Length>0?(int)(nameFont.GetHeight()+2*pad*0.6f):0;
+      int headH=title.Length>0?(int)(nameFont.GetHeight()+2*pad*0.6f):0;
       if(rows.Count==0&&headH==0){if(Visible)Hide();return;}
       int height=Math.Max(1,total+headH);
       using(var bitmap=new Bitmap(width,height,System.Drawing.Imaging.PixelFormat.Format32bppArgb)){
@@ -826,25 +860,33 @@ class ChatOverlay : Form {
           for(int i=0;i<rows.Count;i++){
             int h=heights[i];
             var shape=new[]{new Point(cut,y),new Point(width-cut-1,y),new Point(width-1,y+cut),new Point(width-1,y+h-cut-1),new Point(width-cut-1,y+h-1),new Point(cut,y+h-1),new Point(0,y+h-cut-1),new Point(0,y+cut)};
-            using(var fill=new SolidBrush(Color.FromArgb(215,15,12,22)))g.FillPolygon(fill,shape);
+            /* Durchsichtig: nur ein Hauch Hintergrund, die Schrift trägt einen dunklen Schatten und bleibt so lesbar. */
+            using(var fill=new SolidBrush(Color.FromArgb(70,15,12,22)))g.FillPolygon(fill,shape);
             bool teamChat=rows[i][2]=="team";
-            using(var edge=new Pen(teamChat?Color.FromArgb(200,232,197,115):Color.FromArgb(170,167,139,250),Math.Max(1f,scale)))g.DrawPolygon(edge,shape);
-            using(var gold=new SolidBrush(Color.FromArgb(255,232,197,115)))g.DrawString(rows[i][0],nameFont,gold,pad,y+pad);
-            using(var white=new SolidBrush(Color.FromArgb(255,243,241,247)))g.DrawString(rows[i][1],textFont,white,new RectangleF(pad,y+pad+nameFont.GetHeight()+2,width-2*pad,h));
+            using(var edge=new Pen(teamChat?Color.FromArgb(150,232,197,115):Color.FromArgb(120,167,139,250),Math.Max(1f,scale)))g.DrawPolygon(edge,shape);
+            Shadowed(g,rows[i][0],nameFont,Color.FromArgb(255,232,197,115),new RectangleF(pad,y+pad,width-2*pad,nameFont.GetHeight()+2),scale);
+            Shadowed(g,rows[i][1],textFont,Color.FromArgb(255,243,241,247),new RectangleF(pad,y+pad+nameFont.GetHeight()+2,width-2*pad,h),scale);
             y+=h+(int)(4*scale);
           }
           if(headH>0){
             var bar=new[]{new Point(0,y),new Point(width-cut-1,y),new Point(width-1,y+cut),new Point(width-1,y+headH-1),new Point(cut,y+headH-1),new Point(0,y+headH-cut-1)};
-            using(var fill=new SolidBrush(Color.FromArgb(190,15,12,22)))g.FillPolygon(fill,bar);
-            using(var edge=new Pen(warn?Color.FromArgb(220,232,197,115):Color.FromArgb(170,167,139,250),Math.Max(1f,scale)))g.DrawPolygon(edge,bar);
-            using(var ink=new SolidBrush(warn?Color.FromArgb(255,232,197,115):Color.FromArgb(235,200,190,250)))g.DrawString(header,nameFont,ink,new RectangleF(pad,y+pad*0.6f,width-2*pad,headH));
+            using(var fill=new SolidBrush(Color.FromArgb(moving?170:60,15,12,22)))g.FillPolygon(fill,bar);
+            using(var edge=new Pen(gold?Color.FromArgb(220,232,197,115):Color.FromArgb(120,167,139,250),Math.Max(1f,scale)))g.DrawPolygon(edge,bar);
+            Shadowed(g,title,nameFont,gold?Color.FromArgb(255,232,197,115):Color.FromArgb(235,200,190,250),new RectangleF(pad,y+pad*0.6f,width-2*pad,headH),scale);
           }
         }
-        /* Unterkante etwa auf Hoehe der Chat-Eingabe von CS2 (links unten, bezogen auf 1080p). */
-        var at=new Point(bounds.Left+(int)(bounds.Width*0.012f),bounds.Top+(int)(bounds.Height*0.79f)-height);
-        Location=at;Size=bitmap.Size;Layered.Push(this,bitmap,at);
+        /* Standard: ganz unten mittig am CS2-Bildschirm, zwischen Lebens- und Munitionsanzeige. Sonst die gespeicherte Position. */
+        Point at;
+        if(Anchor.HasValue&&OnScreen(Anchor.Value))at=new Point(Anchor.Value.X,Anchor.Value.Y-height);
+        else at=new Point(bounds.Left+(bounds.Width-width)/2,bounds.Bottom-height-(int)(2*scale));
+        shown=bitmap.Size;Location=at;Size=bitmap.Size;Layered.Push(this,bitmap,at);
       }
     }
+  }
+  static void Shadowed(Graphics g,string text,Font font,Color color,RectangleF area,float scale){
+    float o=Math.Max(1f,1.2f*scale);
+    using(var shadow=new SolidBrush(Color.FromArgb(230,0,0,0))){g.DrawString(text,font,shadow,new RectangleF(area.X+o,area.Y+o,area.Width,area.Height));g.DrawString(text,font,shadow,new RectangleF(area.X-o*0.6f,area.Y-o*0.6f,area.Width,area.Height));}
+    using(var ink=new SolidBrush(color))g.DrawString(text,font,ink,area);
   }
 }
 
@@ -1242,6 +1284,8 @@ class DesktopPet : Form {
     autoOn=new ToolStripMenuItem("Nach dem Match Highlight-Video anbieten",null,async(s,e)=>await ToggleAuto());cs2.DropDownItems.Add(autoOn);
     cs2.DropDownItems.Add("Fadenkreuz einstellen",null,(s,e)=>OpenPanel("fadenkreuz",""));
     cs2.DropDownItems.Add("Chat übersetzen",null,(s,e)=>OpenPanel("chat",""));
+    cs2.DropDownItems.Add("Chat-Overlay verschieben",null,(s,e)=>MoveChatOverlay());
+    cs2.DropDownItems.Add("Chat-Overlay nach unten mittig zurücksetzen",null,(s,e)=>ResetChatOverlay());
     cs2.DropDownItems.Add("Callout-Quiz",null,(s,e)=>OpenPanel("quiz","quiz"));
     cs2.DropDownItems.Add("Waffenpreis-Quiz",null,(s,e)=>OpenPanel("quiz","price"));
     cs2.DropDownItems.Add("Letzte Videos",null,(s,e)=>OpenPanel("videos",""));
@@ -1400,6 +1444,9 @@ class DesktopPet : Form {
     desktopKnown=true;
     wandering=Flag(d,"wander",true);animate=Flag(d,"animate",true);foreground=Flag(d,"foreground",true);autostart=Flag(d,"autostart",false);
     object q;highQuality=!(d.TryGetValue("quality",out q)&&Convert.ToString(q)=="low");
+    object pos;var place=d.TryGetValue("chatPos",out pos)?pos as Dictionary<string,object>:null;
+    chatAnchor=place!=null&&place.ContainsKey("x")&&place.ContainsKey("y")?(Point?)new Point(Convert.ToInt32(place["x"]),Convert.ToInt32(place["y"])):null;
+    if(chatOverlay!=null&&!chatOverlay.Moving)chatOverlay.SetAnchor(chatAnchor);
     TopMost=OnTop();SyncDesktopMenu();ApplyAutostart();if(highQuality)LoadFigure();frameKey="";
   }
   /* Einstellungen aus dem Companion (auch aus dem Fenster geändert) übernehmen. */
@@ -1415,7 +1462,7 @@ class DesktopPet : Form {
   }
   async void SaveDesktop(){
     if(applying||preview)return;
-    string body=TecMon.Json.Serialize(new Dictionary<string,object>{{"quality",highQuality?"high":"low"},{"wander",wandering},{"animate",animate},{"foreground",foreground},{"autostart",autostart}});
+    string body=TecMon.Json.Serialize(new Dictionary<string,object>{{"quality",highQuality?"high":"low"},{"wander",wandering},{"animate",animate},{"foreground",foreground},{"autostart",autostart},{"chatPos",chatAnchor.HasValue?(object)new Dictionary<string,object>{{"x",chatAnchor.Value.X},{"y",chatAnchor.Value.Y}}:null}});
     try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/desktop/settings",true,body));object d;if(result.TryGetValue("desktop",out d))desktopSignature=TecMon.Json.Serialize(d);}
     catch(Exception error){if(tray!=null)tray.ShowBalloonTip(4000,"TecMon","Einstellung nicht gespeichert: "+error.Message,ToolTipIcon.Warning);}
   }
@@ -1545,12 +1592,23 @@ class DesktopPet : Form {
   const int ClipHotkey=0x7C1;bool clipsEnabled,clipHotkey,savingClip;ToolStripMenuItem clipsOn;
   protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);if(!preview)clipHotkey=RegisterHotKey(Handle,ClipHotkey,0x0001|0x0002|0x4000,(uint)Keys.T);}
   protected override void OnHandleDestroyed(EventArgs e){if(clipHotkey)UnregisterHotKey(Handle,ClipHotkey);clipHotkey=false;if(scoreHotkey)UnregisterHotKey(Handle,ScoreHotkey);scoreHotkey=false;base.OnHandleDestroyed(e);}
-  CrosshairOverlay overlay;ChatOverlay chatOverlay;
+  CrosshairOverlay overlay;ChatOverlay chatOverlay;Point? chatAnchor;long lastChatMove=-1;
+  void EnsureChatOverlay(){
+    if(chatOverlay!=null)return;
+    chatOverlay=new ChatOverlay();chatOverlay.CreateControl();var ignored=chatOverlay.Handle;chatOverlay.Anchor=chatAnchor;
+    chatOverlay.Moved=p=>{chatAnchor=p;SaveDesktop();if(tray!=null)tray.ShowBalloonTip(3000,"TecMon","Position des Chat-Overlays gespeichert.",ToolTipIcon.Info);};
+  }
+  void MoveChatOverlay(){EnsureChatOverlay();if(chatOverlay.Moving)chatOverlay.StopMove(true);else chatOverlay.StartMove();}
+  void ResetChatOverlay(){chatAnchor=null;if(chatOverlay!=null)chatOverlay.ResetPosition();SaveDesktop();}
   void ShowChat(Dictionary<string,object> state){
     object raw;var c=state.TryGetValue("chat",out raw)?raw as Dictionary<string,object>:null;
     bool on=c!=null&&c.ContainsKey("enabled")&&Convert.ToBoolean(c["enabled"]);
-    if(!on&&chatOverlay==null)return;
-    if(chatOverlay==null){chatOverlay=new ChatOverlay();chatOverlay.CreateControl();var ignored=chatOverlay.Handle;}
+    long move=c!=null&&c.ContainsKey("move")?Convert.ToInt64(c["move"]):0;
+    /* Knopf „Overlay verschieben“ auf der Companion-Seite: der Zähler steigt, die Figur startet das Verschieben. */
+    bool moveNow=lastChatMove>=0&&move>lastChatMove;lastChatMove=move;
+    if(!on&&chatOverlay==null&&!moveNow)return;
+    EnsureChatOverlay();
+    if(moveNow)chatOverlay.StartMove();
     chatOverlay.Apply(on,c!=null&&c.ContainsKey("lines")?c["lines"] as System.Collections.IList:null,c!=null&&c.ContainsKey("header")?Convert.ToString(c["header"]):"",c!=null&&c.ContainsKey("warn")&&Convert.ToBoolean(c["warn"]));
   }
   void ShowOverlay(Dictionary<string,object> state){

@@ -6,7 +6,7 @@ import path from "node:path";
 import { cleanDesktopSettings, createDesktopSettings, DESKTOP_DEFAULTS } from "../desktop-settings.mjs";
 
 test("Desktop-Einstellungen: Standard ist 3D, Umherfliegen an, Autostart aus", () => {
-  assert.deepEqual(cleanDesktopSettings(null), { quality: "high", wander: true, animate: true, foreground: true, autostart: false });
+  assert.deepEqual(cleanDesktopSettings(null), { quality: "high", wander: true, animate: true, foreground: true, autostart: false, chatPos: null });
 });
 
 test("Desktop-Einstellungen übernehmen nur bekannte Felder mit gültigen Werten", () => {
@@ -29,4 +29,14 @@ test("Kaputte desktop.json fällt auf Standardwerte zurück", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "tecmon-desktop-"));
   await writeFile(path.join(dir, "desktop.json"), "{kaputt");
   assert.deepEqual((await createDesktopSettings(dir)).get(), DESKTOP_DEFAULTS);
+});
+
+test("Chat-Overlay-Position: nur ganze Zahlen, null setzt zurück, andere Werte bleiben", () => {
+  const placed = cleanDesktopSettings({ chatPos: { x: -1700, y: 1060 } });
+  assert.deepEqual(placed.chatPos, { x: -1700, y: 1060 });
+  assert.deepEqual(cleanDesktopSettings({ chatPos: { x: 1.5, y: 2 } }, placed).chatPos, { x: -1700, y: 1060 });
+  assert.deepEqual(cleanDesktopSettings({ chatPos: { x: 1e9, y: 0 } }, placed).chatPos, { x: -1700, y: 1060 });
+  assert.deepEqual(cleanDesktopSettings({ chatPos: "unten" }, placed).chatPos, { x: -1700, y: 1060 });
+  assert.deepEqual(cleanDesktopSettings({ wander: false }, placed).chatPos, { x: -1700, y: 1060 });
+  assert.equal(cleanDesktopSettings({ chatPos: null }, placed).chatPos, null);
 });
