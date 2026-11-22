@@ -12,9 +12,9 @@
     "sha256": "ac1f6740551cba7a72ba8437b84097d6f9a95d922ae05f333417bac6d1b746c2"
   },
   "ffmpeg": {
-    "version": "9.0.2 full_build (gyan.dev, 2026-09-19)",
+    "version": "8.1.2 full_build (gyan.dev, 2026-06-27)",
     "file": "ffmpeg.zip",
-    "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-full_build.zip",
-    "sha256": "759d0a9831c436a0eb331ad36f236c06cb04aaa0005da46571f0e9d3d9206f6b"
+    "url": "https://github.com/GyanD/codexffmpeg/releases/download/8.1.2/ffmpeg-8.1.2-full_build.zip",
+    "sha256": "b8cdefab5f50590a076c27c2b56b0294a0e6154faded28ba1ba05ebc4f801f57"
   }
 }

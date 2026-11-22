@@ -19,10 +19,10 @@ https://www.advancedfx.org/ · GPL und enthaltene Drittanbieter-Lizenzen.
 Quellcode: https://github.com/advancedfx/advancedfx/tree/v2.193.0
 Nur für Demo-Aufnahmen verwenden. Spielupdates können ein HLAE-Update erforderlich machen.
 
-FFmpeg 9.0.2 · gyan.dev Windows x64 full_build (GPL) vom 2026-09-19
+FFmpeg 8.1.2 · gyan.dev Windows x64 full_build (GPL) vom 2026-06-27
 https://ffmpeg.org/ · GPL und enthaltene Drittanbieter-Lizenzen.
 Build und Quellcode-Anleitung: https://www.gyan.dev/ffmpeg/builds/
-Festes Binärpaket: https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2
+Festes Binärpaket: https://github.com/GyanD/codexffmpeg/releases/tag/8.1.2
 FFmpeg-Quellcode: https://git.ffmpeg.org/ffmpeg.git
 
 7-Zip wird nur zum Zusammenstellen des Installers verwendet und ist kein Laufzeitbestandteil. Der Installer selbst und der Companion verwenden Windows/.NET und die mitgelieferte Node.js-Laufzeit.
