@@ -89,7 +89,7 @@ test("Clip-Puffer: nur Bildschirm-Aufnahme, Ton als eigenes Argument, Ringpuffer
 
 test("Clip-Puffer: fällt auf den nächsten Encoder zurück, speichert die letzten Sekunden und löscht den Puffer", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clips-"));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  t.after(() => rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
   const ff = fakeFfmpeg({ failing: ["h264_nvenc"] });
   const clips = await createClips({ dir, ffmpeg: "ffmpeg.exe", spawnProcess: ff.spawn, settleMs: 60, now: () => new Date(2026, 10, 13, 12, 30, 5) });
   await assert.rejects(clips.save(), /aus/);
@@ -123,7 +123,7 @@ test("Clip-Puffer: fällt auf den nächsten Encoder zurück, speichert die letzt
 
 test("Clip-Puffer: alter Zwischenspeicher wird beim Start gelöscht, ohne FFmpeg kein Start", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clips-old-"));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  t.after(() => rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
   await mkdir(path.join(dir, "Clips", "puffer"), { recursive: true });
   await writeFile(path.join(dir, "Clips", "puffer", "seg000.ts"), "alt");
   const clips = await createClips({ dir, ffmpeg: "" });
@@ -138,7 +138,7 @@ test("Clip-Branding: feste Spielnamen, bereinigter Titel, nur geprüfte Assets",
   assert.equal(clipLabels({ game: "valorant", title: "" }).title, "VALORANT · HIGHLIGHT");
   assert.equal(brandedName("clip-20261113-123005.mp4"), "clip-20261113-123005-tecmon.mp4");
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clip-brand-"));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  t.after(() => rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
   await writeFile(path.join(dir, "clip.mp4"), "mp4");
   let ran = false;
   await assert.rejects(
@@ -172,7 +172,7 @@ test("Clips: lokale API ohne Windows-Companion meldet fehlendes FFmpeg, Bridge o
 
 test("Clip-Puffer: startet nach einem Absturz von FFmpeg selbst neu", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clips-"));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  t.after(() => rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
   const ff = fakeFfmpeg({ crashAfter: 30 });
   const clips = await createClips({ dir, ffmpeg: "ffmpeg.exe", spawnProcess: ff.spawn, settleMs: 5, restartMs: 100 });
   t.after(() => clips.stop());
@@ -188,7 +188,7 @@ test("Clip-Puffer: startet nach einem Absturz von FFmpeg selbst neu", async (t) 
 
 test("Clip-Puffer: kaputte Tonquelle → Aufnahme ohne Ton mit Hinweis", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clips-"));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  t.after(() => rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
   const ff = fakeFfmpeg({ noAudio: true });
   const clips = await createClips({ dir, ffmpeg: "ffmpeg.exe", spawnProcess: ff.spawn, settleMs: 5 });
   t.after(() => clips.stop());
@@ -202,7 +202,7 @@ test("Clip-Puffer: kaputte Tonquelle → Aufnahme ohne Ton mit Hinweis", async (
 
 test("Clip-Puffer: startet die Aufnahme beim Einschalten nicht, bleibt der Schalter aus", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-clips-"));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  t.after(() => rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
   const ff = fakeFfmpeg({ failing: ENCODERS });
   const clips = await createClips({ dir, ffmpeg: "ffmpeg.exe", spawnProcess: ff.spawn, settleMs: 5 });
   await assert.rejects(clips.setSettings({ enabled: true }), /Bildschirmaufnahme konnte nicht starten: No NVENC/);
