@@ -666,6 +666,11 @@ async function loadChat(){
   $('chat-overlay-status').textContent=chat.overlay?'An':'Aus';$('chat-overlay-status').classList.toggle('on',chat.overlay);
   $('chat-notice').replaceChildren(...chat.notice.map(t=>el('li',t)));
   $('chat-overlay-toggle').textContent=chat.overlay?'Overlay ausschalten':chat.accepted?'Overlay einschalten':'Overlay einschalten …';
+  if($('chat-look')){const look=chat.look||{};$('chat-look').hidden=!(chat.enabled&&chat.overlay);
+    const sel=$('chat-look-color');const names={weiss:'Weiß',gold:'Gold',lila:'Lila',gruen:'Grün',cyan:'Cyan',rot:'Rot'};
+    if(!sel.options.length)for(const key of Object.keys(chat.colors||names)){const o=document.createElement('option');o.value=key;o.textContent=names[key]||key;sel.append(o);}
+    for(const key of ['width','lines','font','background','seconds']){const el=$('chat-look-'+key);if(el&&document.activeElement!==el&&look[key]!=null)el.value=look[key];}
+    if(document.activeElement!==sel&&look.color)sel.value=look.color;}
   if($('chat-window-wrap')){$('chat-window-wrap').hidden=!(chat.enabled&&chat.overlay);$('chat-window').checked=Boolean(chat.window);}
   $('chat-overlay-move').hidden=!(chat.enabled&&chat.overlay);$('chat-overlay-reset').hidden=!(chat.enabled&&chat.overlay);
   const hint=!chat.enabled?'':!chat.overlay?'Das Overlay ist aus: Übersetzungen erscheinen dann nur hier in der Liste. Schalte es ein, um sie im Spiel über dem Chat zu sehen.':chat.windowMode==='fullscreen'?'CS2 läuft im echten Vollbild: dort kann kein Fenster darüber liegen. Stelle in CS2 unter Video den Anzeigemodus auf „Vollbild-Fenstermodus“.':chat.windowMode==='windowed'?'CS2 läuft im Fenster: das Overlay erscheint nur im Vollbild-Fenstermodus.':'';
@@ -692,6 +697,7 @@ $('chat-key-team')?.addEventListener('change',e=>chatSettings({keys:{all:$('chat
 $('chat-english')?.addEventListener('change',e=>chatSettings({assumeEnglish:e.target.checked}));
 $('chat-bubble')?.addEventListener('change',e=>chatSettings({bubble:e.target.checked}));
 $('chat-window')?.addEventListener('change',e=>chatSettings({window:e.target.checked}));
+for(const key of ['width','lines','font','background','seconds','color'])$('chat-look-'+key)?.addEventListener('change',e=>chatSettings({look:{[key]:key==='color'?e.target.value:Number(e.target.value)}}));
 $('chat-launch-save')?.addEventListener('click',()=>chatSettings({launchOptions:$('chat-launch-options').value}));
 $('chat-launch')?.addEventListener('click',()=>api('/api/chat/settings',{launchOptions:$('chat-launch-options').value}).then(()=>api('/api/chat/launch',{})).then(r=>{$('notice').textContent=r.message;}).catch(notice));
 $('chat-copy-option')?.addEventListener('click',()=>navigator.clipboard.writeText(chatState?.launchOptions||'+cl_input_enable_raw_keyboard true -condebug').then(()=>{$('notice').textContent='Startoptionen kopiert. In Steam: Rechtsklick auf CS2 → Eigenschaften → Startoptionen einfügen (nicht in die CS2-Konsole).';}).catch(notice));

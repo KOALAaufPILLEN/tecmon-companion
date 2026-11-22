@@ -354,11 +354,29 @@ export async function ensureModel(modelDir, key, request = fetch) {
   return { from: key.slice(0, 2), to: key.slice(2, 4), files: entry.config ? { ...files, config: entry.config } : files };
 }
 
+/* ---------- Aussehen von Overlay und Chat-Fenster (Nutzerwunsch 22.11.2026) ---------- */
+
+/** Feste Schriftfarben; aus der Oberfläche kommt nur der Schlüssel, nie ein freier Farbwert. */
+export const CHAT_COLORS = { weiss: "F3F1F7", gold: "E8C573", lila: "C4B5FD", gruen: "86EFAC", cyan: "67E8F9", rot: "FCA5A5" };
+export const CHAT_LOOK_DEFAULT = { width: 30, lines: 6, font: 15, color: "weiss", background: 30, seconds: 30 };
+const LOOK_RANGES = { width: [15, 70], lines: [1, 15], font: [10, 32], background: [0, 100], seconds: [5, 600] };
+
+/** Breite (% des Bildschirms), Zeilen, Schriftgröße (px bei 1080p), Farbe, Hintergrund (%), Anzeigedauer (s). */
+export function cleanLook(input = {}, base = CHAT_LOOK_DEFAULT) {
+  const look = { ...CHAT_LOOK_DEFAULT, ...base };
+  for (const [key, [min, max]] of Object.entries(LOOK_RANGES)) {
+    const value = Number(input?.[key]);
+    if (input?.[key] !== undefined && input?.[key] !== "" && Number.isFinite(value)) look[key] = Math.min(max, Math.max(min, Math.round(value)));
+  }
+  if (CHAT_COLORS[input?.color]) look.color = input.color;
+  return look;
+}
+
 /* ---------- Gesamtfunktion ---------- */
 
 export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request = fetch, now = Date.now, loadEngine, busy = () => false } = {}) {
   const file = path.join(dir, "chat-translate.json");
-  let settings = { enabled: false, language: "de", overlay: false, bubble: false, window: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
+  let settings = { enabled: false, language: "de", overlay: false, bubble: false, window: false, look: { ...CHAT_LOOK_DEFAULT }, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
   try {
     const saved = JSON.parse(await readFile(file, "utf8"));
     settings = {
@@ -367,6 +385,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       overlay: saved?.overlay === true,
       bubble: saved?.bubble === true,
       window: saved?.window === true,
+      look: cleanLook(saved?.look),
       accepted: Number.isInteger(saved?.accepted) ? saved.accepted : 0,
       keys: { all: CHAT_HOTKEYS.includes(saved?.keys?.all) ? saved.keys.all : "F7", team: CHAT_HOTKEYS.includes(saved?.keys?.team) ? saved.keys.team : "F8" },
       assumeEnglish: saved?.assumeEnglish !== false,
@@ -469,6 +488,8 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       accepted: settings.accepted === CHAT_OVERLAY_NOTICE_VERSION,
       bubble: settings.bubble,
       window: settings.window,
+      look: settings.look,
+      colors: CHAT_COLORS,
       notice: CHAT_OVERLAY_NOTICE,
       noticeVersion: CHAT_OVERLAY_NOTICE_VERSION,
       condebug: settings.enabled ? condebug() : "off",
@@ -491,7 +512,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       return { text: `TECMON CHAT · übersetzt automatisch → ${target}`, warn: false };
     },
     /** Für das Overlay der Figur: nur frische Zeilen. */
-    overlayLines(maxAge = 30000, limit = 6) {
+    overlayLines(maxAge = settings.look.seconds * 1000, limit = settings.look.lines) {
       return messages.filter((m) => now() - m.time <= maxAge).slice(0, limit).reverse().map((m) => ({
         id: m.id, channel: m.channel, team: m.team, dead: m.dead, name: m.name, lang: m.lang,
         text: m.status === "done" ? m.translated : m.text, translated: m.status === "done",
@@ -509,6 +530,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       if (typeof input.assumeEnglish === "boolean") settings.assumeEnglish = input.assumeEnglish;
       if (typeof input.bubble === "boolean") settings.bubble = input.bubble;
       if (typeof input.window === "boolean") settings.window = input.window;
+      if (input.look && typeof input.look === "object") settings.look = cleanLook(input.look, settings.look);
       if (typeof input.launchOptions === "string") settings.launchOptions = cleanLaunchOptions(input.launchOptions || CHAT_LAUNCH_OPTIONS);
       if (input.keys) {
         const all = CHAT_HOTKEYS.includes(input.keys.all) ? input.keys.all : settings.keys.all;
@@ -553,7 +575,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
     async reset() {
       stopTimer();
       messages = [];
-      settings = { enabled: false, language: "de", overlay: false, bubble: false, window: false, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
+      settings = { enabled: false, language: "de", overlay: false, bubble: false, window: false, look: { ...CHAT_LOOK_DEFAULT }, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
       for (const target of [file, ...(cfgDir ? CHAT_FILES.map((f) => path.join(cfgDir, f)) : [])])
         try { await unlink(target); } catch (error) { if (error.code !== "ENOENT") throw error; }
     },

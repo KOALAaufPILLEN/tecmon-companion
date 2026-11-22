@@ -418,6 +418,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Chat-Overlay): `ChatOverlay.Free` fängt in seiner Fläche die Maus, lässt sich jederzeit ziehen, wird nie aktiviert und steht nur,
   solange ein Prozess `cs2` läuft (Prozessliste höchstens alle 2 s, kein Zugriff auf den Prozess). Position wie beim Overlay in `chatPos`.
   Chatzeilen in Overlay, Fenster und Sprechblase einzeilig als „Name [CT]: Nachricht“.
+- **Aussehen** (Nutzerwunsch 22.11.2026, `look` in `chat-translate.json`, `cleanLook()`): Breite, Zeilen, Schriftgröße,
+  Hintergrund und Anzeigedauer nur als begrenzte Ganzzahlen (`LOOK_RANGES`), Farbe nur als Schlüssel aus `CHAT_COLORS`; nie freie
+  Farbwerte oder Schriftnamen aus der Oberfläche. Zeilen und Anzeigedauer begrenzen `overlayLines()`.
 - **Chat-Overlay** (`ChatOverlay` in `TecMon.cs`): gleiche Regeln wie das Fadenkreuz-Overlay
   (durchklickbar, nie aktiviert, nur im Vollbild-Fenstermodus mit CS2 vorn), eigener Hinweis
   `CHAT_OVERLAY_NOTICE` mit Version `CHAT_OVERLAY_NOTICE_VERSION`. Zeilen kommen aus `/api/state`
