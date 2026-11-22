@@ -259,6 +259,7 @@ body.holo .panel-cat>.cat-card::after{display:none}
 .panel-cat>.cat-card>.section-head:not(:has(button)){display:none}
 #figure-quality-note{font-size:11px}
 /* Chat-Übersetzer (#chat): Antwortfeld, Übersetzung zum Kopieren, Chatliste mit Original darunter. */
+.chat-warn{margin:.4rem 0;padding:6px 10px;border-left:3px solid #e8c573;background:#e8c57312;font-size:13px}
 .chat-steps{margin:.4rem 0 .2rem;padding-left:20px;display:grid;gap:6px;font-size:13px}
 .chat-steps button{margin-left:6px;padding:3px 10px;min-height:0}
 .chat-check{flex-direction:row!important;align-items:center;gap:6px!important;white-space:nowrap}

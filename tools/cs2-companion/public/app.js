@@ -642,7 +642,7 @@ setInterval(()=>{if(!restarting)loadWardogs().catch(()=>{});},5000);setTimeout((
 
 /* CS2-Chat-Übersetzer (chat-translate.mjs): liest console.log, übersetzt lokal, Antwort per eigener cfg und Zwischenablage. */
 let chatState=null,chatSignature='',chatOptions='';
-const CHAT_STATUS={off:'',missing:'Wartet auf CS2 mit -condebug: console.log wurde nicht gefunden.',stale:'console.log ist älter als 10 Minuten. Läuft CS2 mit -condebug?',active:'Liest mit.','no-cs2':'CS2 wurde auf diesem PC nicht gefunden.'};
+const CHAT_STATUS={off:'',missing:'Wartet auf CS2: console.log fehlt. -condebug gehört in Steam unter Eigenschaften → Startoptionen, nicht in die CS2-Konsole.',stale:'console.log ist älter als 10 Minuten. Läuft CS2 mit -condebug?',active:'Liest mit.','no-cs2':'CS2 wurde auf diesem PC nicht gefunden.'};
 const CHAT_ENGINE={download:' · Modell wird geladen …',loading:' · Übersetzung startet …',error:' · Übersetzung fehlgeschlagen'};
 function chatLabel(m){return m.channel==='team'?(m.team==='ct'?'[CT]':m.team==='t'?'[T]':'[Team]'):m.channel==='spec'?'[Zuschauer]':'[Alle]';}
 function fillSelect(select,entries,value){if(!select)return;select.replaceChildren(...entries.map(([v,t])=>{const o=el('option',t);o.value=v;return o;}));select.value=value;}
@@ -685,7 +685,7 @@ $('chat-language')?.addEventListener('change',e=>chatSettings({language:e.target
 $('chat-key-all')?.addEventListener('change',e=>chatSettings({keys:{all:e.target.value,team:$('chat-key-team').value}}));
 $('chat-key-team')?.addEventListener('change',e=>chatSettings({keys:{all:$('chat-key-all').value,team:e.target.value}}));
 $('chat-english')?.addEventListener('change',e=>chatSettings({assumeEnglish:e.target.checked}));
-$('chat-copy-option')?.addEventListener('click',()=>navigator.clipboard.writeText('-condebug').then(()=>{$('notice').textContent='„-condebug“ kopiert. In Steam unter Startoptionen einfügen.';}).catch(notice));
+$('chat-copy-option')?.addEventListener('click',()=>navigator.clipboard.writeText('-condebug').then(()=>{$('notice').textContent='„-condebug“ kopiert. In Steam: Rechtsklick auf CS2 → Eigenschaften → Startoptionen einfügen (nicht in die CS2-Konsole).';}).catch(notice));
 $('chat-overlay-toggle')?.addEventListener('click',async()=>{
   if(!chatState)return;const button=$('chat-overlay-toggle');
   if(!chatState.overlay&&!chatState.accepted){

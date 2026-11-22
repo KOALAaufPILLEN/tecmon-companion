@@ -1137,7 +1137,7 @@ export async function createCompanion({
         throw new Error("Das CS2-Paket ist nicht installiert. Unter „Games“ installieren.");
       if (url.pathname === "/api/chat/settings") {
         const state = await chatTranslator.setSettings(input);
-        return json(res, 200, { chat: state, message: state.enabled ? "Chat-Übersetzer an. CS2 braucht die Startoption -condebug." : "Chat-Übersetzer aus." });
+        return json(res, 200, { chat: state, message: state.enabled ? "Chat-Übersetzer an. CS2 braucht -condebug in Steam unter Eigenschaften → Startoptionen (nicht in der CS2-Konsole)." : "Chat-Übersetzer aus." });
       }
       if (url.pathname === "/api/chat/reply") {
         const result = await chatTranslator.reply({ text: String(input.text || ""), to: String(input.to || "auto"), team: input.team === true });
