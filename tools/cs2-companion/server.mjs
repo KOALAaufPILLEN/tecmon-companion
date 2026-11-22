@@ -1143,7 +1143,7 @@ export async function createCompanion({
         // Fester Steam-Link, kein Text aus dem Auftrag. Steam zeigt selbst eine Rückfrage zu den Startoptionen.
         if (process.platform !== "win32") throw new Error("Nur unter Windows mit Steam möglich.");
         spawn("explorer.exe", [CHAT_LAUNCH_URL], { windowsHide: true, stdio: "ignore" }).unref();
-        return json(res, 200, { message: "Steam startet CS2 mit -condebug. Bestätige die Rückfrage von Steam." });
+        return json(res, 200, { message: "Steam startet CS2 mit +cl_input_enable_raw_keyboard true -condebug. Bestätige die Rückfrage von Steam." });
       }
       if (url.pathname === "/api/chat/reply") {
         const result = await chatTranslator.reply({ text: String(input.text || ""), to: String(input.to || "auto"), team: input.team === true });

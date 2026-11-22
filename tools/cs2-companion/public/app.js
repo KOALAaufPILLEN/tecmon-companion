@@ -686,7 +686,7 @@ $('chat-key-all')?.addEventListener('change',e=>chatSettings({keys:{all:e.target
 $('chat-key-team')?.addEventListener('change',e=>chatSettings({keys:{all:$('chat-key-all').value,team:e.target.value}}));
 $('chat-english')?.addEventListener('change',e=>chatSettings({assumeEnglish:e.target.checked}));
 $('chat-launch')?.addEventListener('click',()=>api('/api/chat/launch',{}).then(r=>{$('notice').textContent=r.message;}).catch(notice));
-$('chat-copy-option')?.addEventListener('click',()=>navigator.clipboard.writeText('-condebug').then(()=>{$('notice').textContent='„-condebug“ kopiert. In Steam: Rechtsklick auf CS2 → Eigenschaften → Startoptionen einfügen (nicht in die CS2-Konsole).';}).catch(notice));
+$('chat-copy-option')?.addEventListener('click',()=>navigator.clipboard.writeText(chatState?.launchOptions||'+cl_input_enable_raw_keyboard true -condebug').then(()=>{$('notice').textContent='Startoptionen kopiert. In Steam: Rechtsklick auf CS2 → Eigenschaften → Startoptionen einfügen (nicht in die CS2-Konsole).';}).catch(notice));
 $('chat-overlay-toggle')?.addEventListener('click',async()=>{
   if(!chatState)return;const button=$('chat-overlay-toggle');
   if(!chatState.overlay&&!chatState.accepted){

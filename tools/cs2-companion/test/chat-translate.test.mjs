@@ -10,6 +10,11 @@ import {
   ensureEngine, ensureModel, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
 } from "../chat-translate.mjs";
 import { CHAT_MODELS } from "../chat-models.mjs";
+import { CHAT_LAUNCH_URL } from "../chat-translate.mjs";
+
+test("Fester Steam-Startlink mit -condebug", () => {
+  assert.equal(CHAT_LAUNCH_URL, "steam://run/730//%2Bcl_input_enable_raw_keyboard%20true%20-condebug/");
+});
 
 test("Chatzeilen aus console.log", () => {
   assert.deepEqual(parseChatLine("[ALL] KOALA\u200e: gg wp"), { channel: "all", team: "", dead: false, location: "", name: "KOALA", text: "gg wp" });

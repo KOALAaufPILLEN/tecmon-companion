@@ -383,7 +383,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   nie den Spielprozess. Kein Hook, kein Speicherzugriff, keine Eingaben, keine simulierten Tasten.
   CS2 kennt `-condebug`/`-con_logfile` nur als Startoption, nicht als Konsolenbefehl oder cfg-Wert
   (im Spiel geprüft 22.11.2026). Steam-Startoptionen nie selbst ändern (`localconfig.vdf` bleibt
-  unberührt); nur erklären oder CS2 über den festen Link `CHAT_LAUNCH_URL` (`steam://run/730//-condebug/`)
+  unberührt); nur erklären oder CS2 über den festen Link `CHAT_LAUNCH_URL` (`steam://run/730//+cl_input_enable_raw_keyboard true -condebug/` (URL-kodiert, `CHAT_LAUNCH_OPTIONS`))
   einmalig starten, Steam fragt dabei selbst nach.
 - Standardmäßig aus, Teil des CS2-Pakets, beim Entfernen des Pakets Einstellungen und die eigenen
   cfgs (`CHAT_FILES`) löschen. Während einer Demo-Aufnahme nichts annehmen (`busy`).
