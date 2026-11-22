@@ -1,0 +1,11 @@
+name: tmp ffmpeg hash
+on: pull_request
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for v in 8.1.3 8.1.2 8.1.1 8.1 8.0.2 8.0.1 8.0; do
+            u="https://github.com/GyanD/codexffmpeg/releases/download/$v/ffmpeg-$v-full_build.zip"
+            if curl -fsSL -o z.zip "$u"; then echo "OK $u"; sha256sum z.zip; stat -c %s z.zip; unzip -l z.zip | grep 'bin/ffmpeg.exe'; break; else echo "MISS $v"; fi
+          done
