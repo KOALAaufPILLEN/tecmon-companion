@@ -113,12 +113,13 @@ export function parseChatLine(raw) {
   const mark = rest.indexOf("‎");
   if (mark > 0) { name = rest.slice(0, mark); tail = rest.slice(mark + 1); }
   else {
-    const split = rest.match(/^(.+?)((?:\s*(?:\[[^\]]{1,12}\]|\*[^*]{1,12}\*))?(?:\s*@\s*[^:]{1,48})?:\s.*)$/u);
+    const split = rest.match(/^(.+?)((?:\s*(?:\[[^\]]{1,12}\]|\*[^*]{1,12}\*))?(?:\s*[@\uFE6B\uFF20]\s*[^:]{1,48})?:\s.*)$/u);
     if (!split) return null;
     name = split[1];
     tail = split[2];
   }
-  const meta = tail.match(/^((?:\s*(?:\[[^\]]{1,12}\]|\*[^*]{1,12}\*))?)(?:\s*@\s*([^:]{1,48}))?:\s(.*)$/su);
+  // Ort im Team-Chat: CS2 schreibt „﹫“ (U+FE6B) statt „@“, etwa „Name[LRM]﹫T Start: text“ (echte console.log 22.11.2026).
+  const meta = tail.match(/^((?:\s*(?:\[[^\]]{1,12}\]|\*[^*]{1,12}\*))?)(?:\s*[@\uFE6B\uFF20]\s*([^:]{1,48}))?:\s(.*)$/su);
   if (!meta) return null;
   const dead = DEAD.test(meta[1]) || DEAD.test(name);
   name = cleanText(name.replace(DEAD, ""), NAME_MAX);
