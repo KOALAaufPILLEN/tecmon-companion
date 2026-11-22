@@ -1,10 +1,12 @@
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
-export const VERSION = "0.46.1";
+export const VERSION = "0.46.2";
 const repo = "https://api.github.com/repos/KOALAaufPILLEN/tecmon-companion";
 const releasePrefix = "https://github.com/KOALAaufPILLEN/tecmon-companion/releases/download/";
 const version = /^\d+\.\d+\.\d+$/;
+/** Größte Update-EXE. Bis 0.46.1 waren es 20 MB; der Release-Build hält die EXE trotzdem darunter, damit ältere Companions sie laden. */
+export const MAX_UPDATE = 40 * 1024 * 1024;
 const newer = (a, b) => {
   const left=a.split('.').map(Number), right=b.split('.').map(Number);
   for(let i=0;i<3;i++) if(left[i]!==right[i]) return left[i]>right[i];
@@ -28,13 +30,13 @@ export async function checkUpdate(current=VERSION, request=fetch) {
   const filename=`TecMon-Companion-Update-${next}.exe`;
   const binary=release.assets?.find(a=>a.name===filename);
   if(manifest.version!==next || manifest.filename!==filename || !/^[a-f0-9]{64}$/i.test(manifest.sha256) ||
-    !Number.isSafeInteger(manifest.size) || manifest.size<1 || manifest.size>20*1024*1024 ||
+    !Number.isSafeInteger(manifest.size) || manifest.size<1 || manifest.size>MAX_UPDATE ||
     binary?.browser_download_url!==prefix+filename || binary.size!==manifest.size)
     throw new Error('Ungültiges Update-Paket.');
   return {available:true,current,latest:next,sha256:manifest.sha256.toLowerCase(),size:manifest.size,url:binary.browser_download_url};
 }
 export async function downloadUpdate(root, update, request=fetch) {
-  if(!update.available || !update.url.startsWith(releasePrefix) || update.size>20*1024*1024) throw new Error('Update nicht bestätigt.');
+  if(!update.available || !update.url.startsWith(releasePrefix) || update.size>MAX_UPDATE) throw new Error('Update nicht bestätigt.');
   const response=await request(update.url,{signal:AbortSignal.timeout(120000)});
   if(!response.ok || !response.body) throw new Error('Update konnte nicht heruntergeladen werden.');
   let bytes=0; const chunks=[];

@@ -35,7 +35,12 @@ $zip=Join-Path $BuildDirectory 'update.zip'
 [IO.Compression.ZipFile]::CreateFromDirectory($stage,$zip,[IO.Compression.CompressionLevel]::Optimal,$false)
 $filename='TecMon-Companion-Update-'+$Version+'.exe'
 $updater=Join-Path $OutputDirectory $filename
-& $compiler @refs ('/out:'+$updater) ('/resource:'+$zip+',TecMonUpdate') $native
+# Der äußere Updater zeigt nur Fortschritt: ohne Figur-Ressourcen (Bot, 3D-Bogen, 3D-Modell), damit die Update-EXE
+# unter der 20-MB-Grenze älterer Companions (updater.mjs bis 0.46.1) bleibt. Die Figur steckt in der App im Paket.
+$updaterRefs=@($refs|Where-Object {$_ -notmatch ',TecMon(Bot|Bot3D|Model)$'})
+& $compiler @updaterRefs ('/out:'+$updater) ('/resource:'+$zip+',TecMonUpdate') $native
 if($LASTEXITCODE -ne 0){throw 'Updater build failed'}
+$updaterSize=(Get-Item -LiteralPath $updater).Length
+if($updaterSize -gt 20MB){throw "Update-EXE ist $updaterSize Bytes groß; ältere Companions laden höchstens 20 MB."}
 @{version=$Version;filename=$filename;sha256=(Get-FileHash -LiteralPath $updater).Hash.ToLowerInvariant();size=(Get-Item -LiteralPath $updater).Length} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $OutputDirectory 'TecMon-Companion-Update.json') -Encoding utf8
 Write-Output $updater
