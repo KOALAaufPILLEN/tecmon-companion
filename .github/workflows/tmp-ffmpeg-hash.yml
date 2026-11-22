@@ -1,0 +1,11 @@
+name: tmp ffmpeg hash
+on: pull_request
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for f in full_build essentials_build; do
+            u="https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-$f.zip"
+            curl -fsSL -o z.zip "$u" && sha256sum z.zip && stat -c %s z.zip && unzip -l z.zip | sed -n '4,6p;/bin\//p' | head -8 || echo "FAIL $u"
+          done
