@@ -59,6 +59,21 @@ test("Sprache erkennen", () => {
   assert.equal(detectLanguage("3 kısı ıle mi"), "tr");
   assert.equal(detectLanguage("AFERİN SANA"), "tr");
   assert.equal(detectLanguage("Dobra robota, idziemy na B"), "pl");
+  // Seit 0.47.0: alle Sprachen der Firefox-Modelle (Schrift oder typische Wörter/Buchstaben).
+  const samples = {
+    nl: "ik ben niet goed vandaag jongens", af: "ek is baie lekker, dankie", da: "jeg ved ikke hvad vi skal", nb: "jeg vet ikke hva vi skal",
+    sv: "jag vet inte vad vi ska göra", fi: "en tiedä mitä teen, kiitos", is: "ég veit ekki hvað við gerum", lt: "aš nežinau kur eiti, ačiū",
+    lv: "es nezinu kur iet, paldies", hu: "nem tudom hol vagyok srácok", ro: "nu știu unde sunt frate", sk: "neviem kde som, ďakujem",
+    sl: "ne vem kje sem, hvala", hr: "ne znam gdje sam brate", sr: "šta radiš ovde bre", sq: "nuk e di ku jam vëlla",
+    ca: "no sé on sóc, gràcies", gl: "non sei onde estou, grazas", eu: "ez dakit non nago, eskerrik asko", az: "mən bilmirəm harada",
+    id: "aku tidak tahu kenapa", ms: "saya tak tahu kenapa", tl: "hindi ko alam bakit pre", vi: "tôi không biết tại sao",
+    et: "aitäh, ma olen siin", el: "καλό παιχνίδι", ar: "لعبة جيدة يا شباب", fa: "بازی خوبی بود رفیق", ur: "اچھا کھیل ہے بھائی",
+    ug: "ياخشى ئويۇن", he: "משחק טוב חברים", th: "เกมดีมาก", ko: "잘했어 친구들", ja: "いいゲームでした", zh: "打得好兄弟",
+    hi: "अच्छा खेल भाई", mr: "मी आहे इथे", bn: "ভালো খেলা", gu: "સારી રમત", ta: "நல்ல விளையாட்டு", te: "మంచి ఆట", kn: "ಒಳ್ಳೆಯ ಆಟ",
+    ml: "നല്ല കളി", be: "добрая гульня, дзякуй ўсім", bg: "какво правиш, много добре",
+  };
+  for (const [lang, text] of Object.entries(samples)) assert.equal(detectLanguage(text), lang, text);
+  assert.equal(detectLanguage("добра игра, ђе си"), "sr");
   assert.equal(detectLanguage("gg"), "");
   assert.equal(detectLanguage("ez"), "");
   assert.equal(detectLanguage("xyz qwe rty", { assumeEnglish: false }), "");
@@ -69,7 +84,9 @@ test("Modelle direkt oder über Englisch", () => {
   assert.deepEqual(modelsFor("ru", "de"), ["ruen", "ende"]);
   assert.deepEqual(modelsFor("de", "de"), []);
   assert.deepEqual(modelsFor("pl", "de"), ["plen", "ende"]);
-  assert.deepEqual(modelsFor("nl", "de"), []);
+  assert.deepEqual(modelsFor("nl", "de"), ["nlen", "ende"]);
+  assert.deepEqual(modelsFor("ja", "zh"), ["jaen", "enzh"]);
+  assert.deepEqual(modelsFor("xx", "de"), []);
   for (const from of Object.keys(LANGUAGES)) for (const to of Object.keys(LANGUAGES))
     if (from !== to) assert.ok(modelsFor(from, to).length, `${from}→${to}`);
   for (const [key, files] of Object.entries(CHAT_MODELS)) {
@@ -78,7 +95,7 @@ test("Modelle direkt oder über Englisch", () => {
       if (part === "config") continue;
       assert.match(info.url, /^https:\/\/(?:bergamot\.s3\.amazonaws\.com\/models\/[a-z]{4}\/[\w.]+|firefox-settings-attachments\.cdn\.mozilla\.net\/main-workspace\/translations-models\/[0-9a-f-]+\.(?:bin|spm))$/);
       assert.match(info.sha256, /^[0-9a-f]{64}$/);
-      assert.ok(info.size > 0 && info.size < 40 * 1024 * 1024);
+      assert.ok(info.size > 0 && info.size < 80 * 1024 * 1024);
     }
   }
 });
@@ -169,7 +186,7 @@ test("Engine und Modelle nur mit fester Prüfsumme", async () => {
   await assert.rejects(ensureEngine(dir, async () => fakeResponse(Buffer.from("falsch"))), /Prüfsumme/);
   assert.deepEqual((await readdir(dir)).filter((n) => !n.startsWith(".")), []);
   await assert.rejects(ensureModel(dir, "deen", async () => fakeResponse(Buffer.from("falsch"))), /Prüfsumme/);
-  await assert.rejects(ensureModel(dir, "nlen", async () => fakeResponse(Buffer.alloc(1))), /kein Übersetzungsmodell/);
+  await assert.rejects(ensureModel(dir, "xxen", async () => fakeResponse(Buffer.alloc(1))), /kein Übersetzungsmodell/);
 });
 
 /** Unechte Engine: „übersetzt“ als [from>to]Text, damit der Ablauf ohne Download prüfbar ist. */
@@ -250,7 +267,7 @@ test("Chat-Übersetzer: aus, an, Nachrichten, Antwort-cfg, Reset", async () => {
   assert.equal(same.key, "F8");
   assert.match(await readFile(path.join(cfg, "tecmon_chat_team.cfg"), "utf8"), /say_team "Hallo 'zusammen'' quit"/);
   await assert.rejects(chat.reply({ text: "  " }), /Nachricht/);
-  await assert.rejects(chat.reply({ text: "hi", to: "nl" }), /Zielsprache/);
+  await assert.rejects(chat.reply({ text: "hi", to: "xx" }), /Zielsprache/);
 
   // Während einer Aufnahme kommen Demo-Chats: ignorieren.
   chat.pause(true);
@@ -313,7 +330,7 @@ test("Türkisch und Polnisch: Modelle mit fester Prüfsumme, über Englisch nach
     const info = CHAT_MODELS[key][part];
     assert.match(info.url, /^https:\/\/firefox-settings-attachments\.cdn\.mozilla\.net\/main-workspace\/translations-models\/[0-9a-f-]+\.(?:bin|spm)$/);
     assert.match(info.sha256, /^[0-9a-f]{64}$/);
-    assert.ok(info.size > 100000 && info.size < 40 * 1024 * 1024);
+    assert.ok(info.size > 100000 && info.size < 80 * 1024 * 1024);
   }
 });
 
