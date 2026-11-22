@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, writeFile, appendFile, readFile, readdir } from "node:f
 import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import {
-  parseChatLine, detectLanguage, modelsFor, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail,
+  parseChatLine, detectLanguage, modelsFor, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail, lineTime, sourceText,
   ensureEngine, ensureModel, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
 } from "../chat-translate.mjs";
 import { CHAT_MODELS } from "../chat-models.mjs";
@@ -49,6 +49,9 @@ test("Sprache erkennen", () => {
   assert.equal(detectLanguage("hola amigos, vamos a"), "es");
   assert.equal(detectLanguage("you guys are so bad"), "en");
   assert.equal(detectLanguage("rush b no stop"), "en");
+  assert.equal(detectLanguage("3 kısı ıle mi"), "tr");
+  assert.equal(detectLanguage("AFERİN SANA"), "tr");
+  assert.equal(detectLanguage("Dobra robota, idziemy na B"), "pl");
   assert.equal(detectLanguage("gg"), "");
   assert.equal(detectLanguage("ez"), "");
   assert.equal(detectLanguage("xyz qwe rty", { assumeEnglish: false }), "");
@@ -58,14 +61,15 @@ test("Modelle direkt oder über Englisch", () => {
   assert.deepEqual(modelsFor("de", "en"), ["deen"]);
   assert.deepEqual(modelsFor("ru", "de"), ["ruen", "ende"]);
   assert.deepEqual(modelsFor("de", "de"), []);
-  assert.deepEqual(modelsFor("pl", "de"), []);
+  assert.deepEqual(modelsFor("pl", "de"), ["plen", "ende"]);
+  assert.deepEqual(modelsFor("nl", "de"), []);
   for (const from of Object.keys(LANGUAGES)) for (const to of Object.keys(LANGUAGES))
     if (from !== to) assert.ok(modelsFor(from, to).length, `${from}→${to}`);
   for (const [key, files] of Object.entries(CHAT_MODELS)) {
     assert.match(key, /^[a-z]{4}$/);
     for (const [part, info] of Object.entries(files)) {
       if (part === "config") continue;
-      assert.match(info.url, /^https:\/\/bergamot\.s3\.amazonaws\.com\/models\/[a-z]{4}\/[\w.]+$/);
+      assert.match(info.url, /^https:\/\/(?:bergamot\.s3\.amazonaws\.com\/models\/[a-z]{4}\/[\w.]+|firefox-settings-attachments\.cdn\.mozilla\.net\/main-workspace\/translations-models\/[0-9a-f-]+\.(?:bin|spm))$/);
       assert.match(info.sha256, /^[0-9a-f]{64}$/);
       assert.ok(info.size > 0 && info.size < 40 * 1024 * 1024);
     }
@@ -109,6 +113,26 @@ test("console.log mitlesen: nur neue Zeilen, Neustart von vorn", async () => {
   assert.equal(lines.at(-1), "[ALL] c: neu");
 });
 
+test("console.log nach dem Start: die letzten Bytes kommen als „alt“, dann nur Neues", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tecmon-tail-"));
+  const file = path.join(dir, "console.log");
+  await writeFile(file, "x".repeat(100) + "\n11/22 19:35:42  [ALL] a: alt\n");
+  const seen = [];
+  const tail = createTail(file, (l, old) => seen.push([l, old]), { backlog: 40 });
+  await tail.poll();
+  assert.deepEqual(seen, [["11/22 19:35:42  [ALL] a: alt", true]]);
+  await appendFile(file, "[ALL] b: neu\n");
+  await tail.poll();
+  assert.deepEqual(seen.at(-1), ["[ALL] b: neu", false]);
+});
+
+test("Zeitstempel aus console.log", () => {
+  const now = new Date(2026, 10, 22, 19, 36, 0).getTime();
+  assert.equal(lineTime("11/22 19:35:48  [ALL] Barut721\u200e: AFERİN SANA", now), new Date(2026, 10, 22, 19, 35, 48).getTime());
+  assert.equal(lineTime("12/31 23:59:00  x", new Date(2027, 0, 1, 0, 0, 30).getTime()), new Date(2026, 11, 31, 23, 59, 0).getTime());
+  assert.ok(Number.isNaN(lineTime("[ALL] a: b", now)));
+});
+
 function fakeResponse(bytes) {
   return { ok: true, status: 200, body: (async function* () { yield bytes; })() };
 }
@@ -118,7 +142,7 @@ test("Engine und Modelle nur mit fester Prüfsumme", async () => {
   await assert.rejects(ensureEngine(dir, async () => fakeResponse(Buffer.from("falsch"))), /Prüfsumme/);
   assert.deepEqual((await readdir(dir)).filter((n) => !n.startsWith(".")), []);
   await assert.rejects(ensureModel(dir, "deen", async () => fakeResponse(Buffer.from("falsch"))), /Prüfsumme/);
-  await assert.rejects(ensureModel(dir, "plen", async () => fakeResponse(Buffer.alloc(1))), /kein Übersetzungsmodell/);
+  await assert.rejects(ensureModel(dir, "nlen", async () => fakeResponse(Buffer.alloc(1))), /kein Übersetzungsmodell/);
 });
 
 /** Unechte Engine: „übersetzt“ als [from>to]Text, damit der Ablauf ohne Download prüfbar ist. */
@@ -187,7 +211,7 @@ test("Chat-Übersetzer: aus, an, Nachrichten, Antwort-cfg, Reset", async () => {
   assert.equal(same.key, "F8");
   assert.match(await readFile(path.join(cfg, "tecmon_chat_team.cfg"), "utf8"), /say_team "Hallo 'zusammen'' quit"/);
   await assert.rejects(chat.reply({ text: "  " }), /Nachricht/);
-  await assert.rejects(chat.reply({ text: "hi", to: "pl" }), /Zielsprache/);
+  await assert.rejects(chat.reply({ text: "hi", to: "nl" }), /Zielsprache/);
 
   // Während einer Aufnahme kommen Demo-Chats: ignorieren.
   chat.pause(true);
@@ -233,5 +257,22 @@ test("Chat-Übersetzer übersetzt mit geprüften Modellen (unechte Engine)", asy
     chat.close();
   } finally {
     for (const key of Object.keys(original)) CHAT_MODELS[key] = original[key];
+  }
+});
+
+test("Großbuchstaben-Rufe vor dem Übersetzen klein, Türkisch mit richtigem i", () => {
+  assert.equal(sourceText("AFERİN SANA", "tr"), "aferin sana");
+  assert.equal(sourceText("TRUST ME", "en"), "trust me");
+  assert.equal(sourceText("Nice Shot", "en"), "Nice Shot");
+});
+
+test("Türkisch und Polnisch: Modelle mit fester Prüfsumme, über Englisch nach Deutsch", () => {
+  assert.deepEqual(modelsFor("tr", "de"), ["tren", "ende"]);
+  assert.deepEqual(modelsFor("de", "pl"), ["deen", "enpl"]);
+  for (const key of ["tren", "entr", "plen", "enpl"]) for (const part of ["model", "lex", "vocab"]) {
+    const info = CHAT_MODELS[key][part];
+    assert.match(info.url, /^https:\/\/firefox-settings-attachments\.cdn\.mozilla\.net\/main-workspace\/translations-models\/[0-9a-f-]+\.(?:bin|spm)$/);
+    assert.match(info.sha256, /^[0-9a-f]{64}$/);
+    assert.ok(info.size > 100000 && info.size < 40 * 1024 * 1024);
   }
 });
