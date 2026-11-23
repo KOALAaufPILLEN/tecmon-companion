@@ -268,7 +268,13 @@ export function sourceText(text, lang) {
     const hit = slang[lower(w)];
     return hit === undefined ? w : (w[0] !== lower(w[0]) ? upper(hit[0]) + hit.slice(1) : hit);
   });
-  return value.replace(/^(\P{L}*)(\p{Ll})/u, (_, pre, ch) => pre + upper(ch));
+  if (lang === "tr") {
+    // „naber“ allein versteht das Modell nur als Frage; „B ye“ (Callout + Endung) als „B'ye“.
+    value = value.replace(/(ne haber)\s*$/iu, "$1?").replace(/(^|\s)([ABab]|[0-9]+)\s+(ye|ya|e|a|de|da|te|ta|den|dan|ten|tan)(?=$|[^\p{L}])/gu, "$1$2'$3");
+  } else if (lang !== "az") value = value.replace(/ı/g, "i"); // Türkische Tastatur: „aımbot“ → „aimbot“
+  if (lang === "en") value = value.replace(/(^|[^\p{L}'’])i(?=$|[^\p{L}'’]|['’](?:m|ll|ve|d)\b)/gu, "$1I");
+  // Satzanfänge groß: auch nach „.“, „?“, „!“ (sonst bleibt der zweite Satz manchmal unübersetzt).
+  return value.replace(/(^|[.?!]\s+)(\P{L}*?)(\p{Ll})/gu, (_, start, pre, ch) => start + pre + upper(ch));
 }
 
 /** Welche Modelle (`deen`, `ende` …) eine Richtung braucht: direkt oder über Englisch. */

@@ -332,9 +332,14 @@ test("Großbuchstaben-Rufe vor dem Übersetzen klein, Türkisch mit richtigem i"
   assert.equal(sourceText("nasılsın?", "tr"), "Nasılsın?");
   assert.equal(sourceText("naber kanka", "tr"), "Ne haber kanka");
   assert.equal(sourceText("anani sikeyim", "tr"), "Ananı sikeyim");
-  assert.equal(sourceText("Naber", "tr"), "Ne haber");
+  assert.equal(sourceText("Naber", "tr"), "Ne haber?");
   assert.equal(sourceText("¿naber?", "tr"), "¿Ne haber?");
   assert.equal(sourceText("naber", "en"), "Naber");
+  assert.equal(sourceText("naber", "tr"), "Ne haber?");
+  assert.equal(sourceText("hadi gidelim B ye", "tr"), "Hadi gidelim B'ye");
+  assert.equal(sourceText("fuck your aımbot", "en"), "Fuck your aimbot");
+  assert.equal(sourceText("chat ? i wanne test, i'm here", "en"), "Chat ? I wanne test, I'm here");
+  assert.equal(sourceText("ok. ich bin da", "de"), "Ok. Ich bin da");
   assert.equal(sourceText("Nice Shot", "en"), "Nice Shot");
 });
 
