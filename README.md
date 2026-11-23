@@ -1,6 +1,6 @@
 # TecMon Companion
 
-## 0.49.1 vorbereitet · Fadenkreuz-Optionen (23. November 2026)
+## 0.49.1 · Fadenkreuz-Optionen (gemergt mit [#123](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/123), 24. November 2026)
 
 T-Form ist direkt in der Formauswahl verfügbar. Das T-Häkchen schaltet auch einen
 zuvor gewählten Kreis auf T um; Formauswahl und Häkchen bleiben synchron. Bei einer
@@ -12,7 +12,8 @@ keinen Rand mehr. Änderungen wie bisher speichern; Overlay bleibt standardmäß
 Geprüft: 217 Node-Tests erfolgreich, zwei Integrationstests übersprungen; vier neue
 Tests der echten Browser-Handler. Browser: Kreis → T, Speichern und Neuladen;
 echter WinForms-Test: T-Arme, Null-Umriss, Fokus, Durchklicken, Filter und Hotkeys.
-Noch nicht gemergt oder als 0.49.1 veröffentlicht.
+Gemergt; der automatische Windows-Paketbau für 0.49.1 wurde gestartet.
+Ein Merge allein bestätigt noch kein veröffentlichtes Update.
 
 Das lokale Windows-Programm zu [TecMon](https://tecmon.online). Der Companion läuft auf deinem PC, macht aus deinen CS2-Demos fertige Highlight-Videos in echter Spielgrafik und begleitet dich als kleine TecMon-Figur auf dem Desktop: mit Rundentipps, Clip-Puffer, Fadenkreuz, Configs und Minispielen.
 
