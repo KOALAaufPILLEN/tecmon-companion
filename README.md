@@ -1,5 +1,19 @@
 # TecMon Companion
 
+## 0.49.1 vorbereitet · Fadenkreuz-Optionen (23. November 2026)
+
+T-Form ist direkt in der Formauswahl verfügbar. Das T-Häkchen schaltet auch einen
+zuvor gewählten Kreis auf T um; Formauswahl und Häkchen bleiben synchron. Bei einer
+Punktvorlage stellt die Wahl von Kreuz/T eine sichtbare Armlänge wieder her. Nur
+passende Regler sind aktiv: Länge/Abstand beim Kreuz, Radius beim Kreis, Punktgröße
+mit eingeschaltetem Punkt, Umrissdicke mit Umriss. Umrissdicke 0 zeichnet auch nativ
+keinen Rand mehr. Änderungen wie bisher speichern; Overlay bleibt standardmäßig aus.
+
+Geprüft: 217 Node-Tests erfolgreich, zwei Integrationstests übersprungen; vier neue
+Tests der echten Browser-Handler. Browser: Kreis → T, Speichern und Neuladen;
+echter WinForms-Test: T-Arme, Null-Umriss, Fokus, Durchklicken, Filter und Hotkeys.
+Noch nicht gemergt oder als 0.49.1 veröffentlicht.
+
 Das lokale Windows-Programm zu [TecMon](https://tecmon.online). Der Companion läuft auf deinem PC, macht aus deinen CS2-Demos fertige Highlight-Videos in echter Spielgrafik und begleitet dich als kleine TecMon-Figur auf dem Desktop: mit Rundentipps, Clip-Puffer, Fadenkreuz, Configs und Minispielen.
 
 Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die Webseite steuert nur und lädt das fertige Video auf Wunsch hoch.

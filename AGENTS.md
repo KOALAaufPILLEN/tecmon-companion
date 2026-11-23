@@ -427,6 +427,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   sind statisch; keine dynamische Reaktion auf Schüsse, Bewegung oder fremde Spieldaten.
   Hotkey nur per `RegisterHotKey` (Strg+Alt+F9/F10/F11 oder aus), kein Tastatur-Hook;
   Registrierungskonflikt und Pause sichtbar melden. Polling darf eine Hotkey-Pause nicht zurücksetzen.
+- Fadenkreuz-Formauswahl und T-Häkchen synchron halten: T aktiviert das Kreuz auch
+  nach einer Kreis-/Punktvorlage. Regler ohne Wirkung für die gewählte Form/Punkt/
+  Umriss deaktivieren; Vorschau und nativer Renderer müssen dieselbe Wahl darstellen.
 - Hinweisversion bei dieser Ausweitung von 1 auf 2: vorhandene Einstellungen erhalten,
   aber erst nach erneuter Bestätigung wieder einschalten. `CrosshairSelfTest.cs` prüft das
   echte Windows-Fenster getrennt vom normalen Launcher; keine Spiel-Eingaben im Test.
