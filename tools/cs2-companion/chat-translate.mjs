@@ -64,6 +64,9 @@ export const LANGUAGES = {
   ug: "Uigurisch", ur: "Urdu", vi: "Vietnamesisch", zh: "Chinesisch",
 };
 export const MAX_MESSAGES = 40;
+/** Höchstens so viele Modelle gleichzeitig im Übersetzer (je 13–70 MB im WebAssembly-Speicher). */
+export const MAX_LOADED_MODELS = 4;
+export const TRANSLATE_TIMEOUT_MS = 60000;
 export const SAY_MAX = 120;
 const NAME_MAX = 40;
 const TEXT_MAX = 256;
@@ -543,7 +546,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       }
       // Optionen gehen per postMessage an den Worker: dort keine Funktionen hineinlegen.
       const local = new LocalBacking({ downloadTimeout: 0 });
-      local.onerror = (e) => { engine = { status: "error", error: String(e?.message || e).slice(0, 200) }; };
+      local.onerror = (e) => { engine = { status: "error", error: String(e?.message || e).slice(0, 200) }; resetEngine(); };
       translator = new lib.BatchTranslator({}, local);
       engine = { status: "ready", error: "" };
       return translator;
@@ -557,12 +560,31 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
     const missing = keys.filter((k) => !registry.has(k));
     if (missing.length) engine = { ...engine, status: "download" };
     for (const key of missing) registry.set(key, await ensureModel(path.join(cacheDir, "chat-models"), key, request));
+    // Zuletzt benutzte Modelle ans Ende, höchstens MAX_LOADED_MODELS behalten.
+    for (const key of keys) { const value = registry.get(key); registry.delete(key); registry.set(key, value); }
+    for (const key of registry.keys()) { if (registry.size <= Math.max(MAX_LOADED_MODELS, keys.length)) break; if (!keys.includes(key)) registry.delete(key); }
+    // Neue Modelle: Worker neu starten statt im alten Worker nachzuladen. Der alte gibt seinen
+    // Speicher nur beim Beenden frei; Nachladen im selben Worker endete in „Failed to allocate memory“ (22.11.2026).
+    if (missing.length) resetEngine();
     const t = await backing();
-    // Neue Modelle erst nach dem Laden der Registry: Backing neu fragen lassen.
-    if (missing.length && t.backing) { t.backing.registry = Promise.resolve([...registry.values()]); t.backing.models?.clear?.(); }
     engine = { status: "ready", error: "" };
-    const response = await t.translate({ from, to, text, html: false, qualityScores: false });
-    return cleanText(response?.target?.text, TEXT_MAX);
+    let timeout;
+    try {
+      const response = await Promise.race([
+        t.translate({ from, to, text, html: false, qualityScores: false }),
+        new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error("Übersetzung hat zu lange gedauert.")), TRANSLATE_TIMEOUT_MS); }),
+      ]);
+      return cleanText(response?.target?.text, TEXT_MAX);
+    } catch (error) {
+      // Abgestürzter oder hängender Worker: beim nächsten Mal frisch starten.
+      resetEngine();
+      throw error;
+    } finally { clearTimeout(timeout); }
+  }
+  function resetEngine() {
+    const old = translator;
+    translator = null; loading = null;
+    try { old?.delete?.(); } catch { /* Worker schon weg */ }
   }
   /* Nacheinander übersetzen, damit eine Flut im Chat die Engine nicht überlastet. */
   const enqueue = (work) => { const next = queue.then(work, work); queue = next.catch(() => {}); return next; };
@@ -709,7 +731,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       for (const target of [file, ...(cfgDir ? CHAT_FILES.map((f) => path.join(cfgDir, f)) : [])])
         try { await unlink(target); } catch (error) { if (error.code !== "ENOENT") throw error; }
     },
-    close() { stopTimer(); translator?.delete?.(); },
+    close() { stopTimer(); resetEngine(); },
     /** Für Tests: eine Zeile so verarbeiten, als stünde sie in console.log. */
     feed: onLine,
     tick,
