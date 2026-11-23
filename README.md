@@ -12,8 +12,10 @@ keinen Rand mehr. Änderungen wie bisher speichern; Overlay bleibt standardmäß
 Geprüft: 217 Node-Tests erfolgreich, zwei Integrationstests übersprungen; vier neue
 Tests der echten Browser-Handler. Browser: Kreis → T, Speichern und Neuladen;
 echter WinForms-Test: T-Arme, Null-Umriss, Fokus, Durchklicken, Filter und Hotkeys.
-Gemergt; der automatische Windows-Paketbau für 0.49.1 wurde gestartet.
-Ein Merge allein bestätigt noch kein veröffentlichtes Update.
+Gemergt und als [v0.49.1](https://github.com/KOALAaufPILLEN/tecmon-companion/releases/tag/v0.49.1)
+veröffentlicht: Release-Bau erfolgreich, Setup- und Update-EXE am 24.11.2026 vorhanden.
+Bestehende Installationen müssen das Update installieren; die lokale Browser-Testseite
+allein aktualisiert keinen installierten Launcher.
 
 Das lokale Windows-Programm zu [TecMon](https://tecmon.online). Der Companion läuft auf deinem PC, macht aus deinen CS2-Demos fertige Highlight-Videos in echter Spielgrafik und begleitet dich als kleine TecMon-Figur auf dem Desktop: mit Rundentipps, Clip-Puffer, Fadenkreuz, Configs und Minispielen.
 
