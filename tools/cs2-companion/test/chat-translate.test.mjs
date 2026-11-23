@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, writeFile, appendFile, readFile, readdir } from "node:f
 import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import {
-  parseChatLine, detectLanguage, modelsFor, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail, lineTime, sourceText,
+  parseChatLine, detectLanguage, modelsFor, keepEmotes, sameText, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail, lineTime, sourceText,
   ensureEngine, ensureModel, patchEngineFile, ENGINE_PATCH, cleanLook, CHAT_LOOK_DEFAULT, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
 } from "../chat-translate.mjs";
 import { CHAT_MODELS } from "../chat-models.mjs";
@@ -371,4 +371,15 @@ test("Aussehen des Chat-Fensters wird begrenzt", () => {
   assert.deepEqual(cleanLook({ width: 5, lines: 40, font: "18", background: -3, seconds: 9999, color: "x" }),
     { width: 15, lines: 15, font: 18, color: "weiss", background: 0, seconds: 600 });
   assert.equal(cleanLook({ width: "abc" }).width, 30);
+});
+
+test("Smileys bleiben, unveränderte Ausgaben gelten nicht als Übersetzung (Chat 23.11.2026)", () => {
+  assert.equal(keepEmotes("write me please something in your language :D", "Schreibe mir bitte etwas in deiner Sprache:"), "Schreibe mir bitte etwas in deiner Sprache :D");
+  assert.equal(keepEmotes(":D hi xD <3", "Hallo"), ":D Hallo xD <3");
+  assert.equal(keepEmotes("hi 😂😂", "Hallo 😂😂"), "Hallo 😂😂");
+  assert.equal(keepEmotes("ok", "Ok"), "Ok");
+  assert.equal(sameText("gristdi oide wuaschthaud", "Gristdi oide wuaschthaud."), true);
+  assert.equal(sameText("merhaba", "Hi"), false);
+  assert.equal(detectLanguage("ficken dicken"), "de");
+  assert.equal(detectLanguage("gegen"), "de");
 });
