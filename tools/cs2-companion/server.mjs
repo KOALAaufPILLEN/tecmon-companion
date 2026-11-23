@@ -36,7 +36,7 @@ import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { createPet, quizQuestion } from "./personality.mjs";
 import { createCfgLibrary } from "./cfg-library.mjs";
-import { createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, createOverlaySettings, cs2WindowMode, OVERLAY_NOTICE, OVERLAY_NOTICE_VERSION, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
+import { cleanOverlayOptions, DEFAULT_OVERLAY, createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, createOverlaySettings, cs2WindowMode, OVERLAY_NOTICE, OVERLAY_NOTICE_VERSION, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { verifyCs2 } from "./cs2-verify.mjs";
 import { createDemoFetch, DEMO_FETCH_CAPABILITY } from "./demo-fetch.mjs";
@@ -274,20 +274,22 @@ export async function createCompanion({
   const overlay = await createOverlaySettings(installation?.profileDir || dataDir);
   const desktop = await createDesktopSettings(installation?.profileDir || dataDir);
   const cfgs = await createCfgLibrary(installation?.profileDir || dataDir);
-  const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES, overlay: { ...overlay.get(), mode: windowMode, notice: OVERLAY_NOTICE, noticeVersion: OVERLAY_NOTICE_VERSION } });
+  const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), overlayDefaults: DEFAULT_OVERLAY, presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES, overlay: { ...overlay.get(), runtime: overlayRuntimeState(), notice: OVERLAY_NOTICE, noticeVersion: OVERLAY_NOTICE_VERSION } });
   /* CS2-Anzeigemodus aus cs2_video.txt, höchstens alle 10 Sekunden gelesen und nur bei eingeschaltetem Overlay. */
   let windowMode = "unknown", windowModeAt = 0;
+  let overlayRuntime = { connected: false, paused: false, hotkey: null };
+  let overlayRuntimeAt = 0;
+  const overlayRuntimeState = () => ({ ...overlayRuntime, connected: overlayRuntime.connected && Date.now() - overlayRuntimeAt < 15_000 });
   const refreshWindowMode = (force = false) => {
     if ((!force && !overlay.get().enabled) || Date.now() - windowModeAt < 10000) return;
     windowModeAt = Date.now();
     cs2WindowMode().then((mode) => { windowMode = mode; }, () => {});
   };
-  /** Für die Figur: Overlay nur mit CS2-Paket, eingeschaltet, bestätigt und nicht im echten Vollbild. */
+  /** Globales Overlay ohne Spiel-Paket; native Figur bestimmt Fenster/Bildschirm. */
   const overlayState = () => {
     const o = overlay.get();
-    refreshWindowMode();
-    const on = games.has("cs2") && o.enabled && o.accepted;
-    return { enabled: on && (windowMode === "borderless" || windowMode === "unknown"), wanted: on, mode: windowMode, crosshair: crosshair.get() };
+    const on = o.enabled && o.accepted;
+    return { ...o, enabled: on, wanted: on, runtime: overlayRuntimeState(), crosshair: crosshair.get() };
   };
   /** Für die Figur: Chat-Overlay wie das Fadenkreuz nur mit CS2-Paket, bestätigt und nicht im echten Vollbild. */
   // Knopf „Overlay verschieben“: die Figur startet das Verschieben, sobald der Zähler steigt.
@@ -1151,8 +1153,7 @@ export async function createCompanion({
           await statsBacklog.reset();
           await syncGsiConfig();
           await insights.clear();
-          await crosshair.reset(detected.cs2);
-          await overlay.reset();
+          await crosshair.reset(detected.cs2, true);
           await cfgs.reset(detected.cs2);
           await chatTranslator.reset();
         }
@@ -1205,7 +1206,7 @@ export async function createCompanion({
         await dotaGsi.setFeatures(update);
         return json(res, 200, { dota: dotaState() });
       }
-      if (url.pathname.startsWith("/api/gsi/") || url.pathname.startsWith("/api/crosshair/") || url.pathname.startsWith("/api/cfgs/")) {
+      if (url.pathname.startsWith("/api/gsi/") || url.pathname === "/api/crosshair/save" || url.pathname.startsWith("/api/cfgs/")) {
         if (!games.has("cs2")) throw new Error("Das CS2-Paket ist nicht installiert. Unter „Games“ installieren.");
       }
       if (url.pathname === "/api/gsi/enable") {
@@ -1223,6 +1224,17 @@ export async function createCompanion({
       if (url.pathname === "/api/pet/mode") return json(res, 200, { pet: await pet.setMode(String(input.mode || "")) });
       if (url.pathname === "/api/pet/interact") return json(res, 200, { pet: await pet.interact(String(input.action || "")) });
       if (url.pathname === "/api/pet/game") return json(res, 200, { pet: await pet.game(String(input.game || ""), { win: input.win === true, score: input.score }) });
+      if (url.pathname === "/api/crosshair/profile") {
+        const options = cleanOverlayOptions({ ...overlay.get(), ...input.overlay });
+        await crosshair.save(input.crosshair);
+        await overlay.configure(options);
+        return json(res, 200, { ...crosshairState(), message: "Fadenkreuz und Overlay-Einstellungen gespeichert. Keine Spiel-Dateien geändert." });
+      }
+      if (url.pathname === "/api/crosshair/runtime") {
+        overlayRuntime = { connected: true, paused: input.paused === true, hotkey: typeof input.hotkey === "boolean" ? input.hotkey : null };
+        overlayRuntimeAt = Date.now();
+        return json(res, 200, { ok: true });
+      }
       if (url.pathname === "/api/crosshair/save") {
         const result = await crosshair.save(input.crosshair, detected.cs2);
         return json(res, 200, {
@@ -1259,7 +1271,7 @@ export async function createCompanion({
         return json(res, 200, {
           ...crosshairState(),
           message: state.enabled
-            ? "Fadenkreuz-Overlay an. Es erscheint, sobald CS2 im Vollbild-Fenstermodus vorn liegt."
+            ? "Fadenkreuz-Overlay an. Ziel und Aussehen lassen sich unabhängig von CS2 einstellen."
             : "Fadenkreuz-Overlay aus.",
         });
       }

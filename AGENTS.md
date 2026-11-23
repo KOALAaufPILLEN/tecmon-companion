@@ -408,17 +408,28 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   mit Quelle und Stand angeben; Profis ändern sie, also nicht als „aktuell garantiert“
   darstellen. `test/cfg-library.test.mjs` prüft die erlaubten Befehle.
 - Fadenkreuz-Overlay (`CrosshairOverlay` in `TecMon.cs`): eigenes, durchklickbares
-  Fenster (`WS_EX_TRANSPARENT`, nie aktiviert) außerhalb des CS2-Prozesses. Kein Hook,
+  Fenster (`WS_EX_TRANSPARENT`, nie aktiviert) außerhalb der Spielprozesse. Kein Hook,
   keine Injektion, kein Speicherzugriff, keine Eingaben. Standardmäßig aus;
   einschalten nur nach bestätigtem Hinweis (`OVERLAY_NOTICE`, Version
   `OVERLAY_NOTICE_VERSION`: eigenes Risiko, keine Haftung, andere Anti-Cheats können
   Overlays verbieten). Ändert sich der Hinweis inhaltlich, Version erhöhen, dann muss
   neu bestätigt werden.
-- Sichtbar nur im Vollbild-Fenstermodus: Der Server liest den Modus aus CS2s
-  `cs2_video.txt` (`cs2WindowMode()`), die Figur prüft zusätzlich, dass CS2 vorn liegt
-  und sein Fenster rahmenlos bildschirmgroß ist. Im echten Vollbild oder Fenster bleibt
-  das Overlay aus. Beim Entfernen des CS2-Pakets werden Overlay-Einstellung und alle
-  Sammlungs-cfgs gelöscht.
+- Nutzerentscheid 23.11.2026: Fadenkreuz-Overlay ist ein allgemeines Companion-Werkzeug,
+  unabhängig von CS2, GSI und installierten Spiel-Paketen. Beim Entfernen des CS2-Pakets
+  nur eigene CS2-cfgs entfernen, `crosshair.json` und `crosshair-overlay.json` erhalten.
+- Globale Einstellungen nur über `/api/crosshair/profile` speichern (keine Spiel-Dateien).
+  `/api/crosshair/save` bleibt der ausdrücklich gewählte CS2-cfg-Export und braucht das Paket.
+  API-Sitzungstoken, Host-/Origin-Prüfungen und Eingabegrenzen gelten unverändert.
+- Ziel ist das aktive Client-Fenster, der Hauptbildschirm oder ein gewählter Monitor (1–8 in
+  `Screen.AllScreens`-Reihenfolge). Ein fehlender Monitor oder nicht passender Exe-Name blendet
+  aus. Keine Pfade/Befehle im App-Filter. Exklusives Vollbild und Anti-Cheat-Freigaben nie garantieren.
+- Form, Farbe, Länge, Dicke, Abstand, Punkt/T-Form, Umriss, Deckkraft und globale Geometrie
+  sind statisch; keine dynamische Reaktion auf Schüsse, Bewegung oder fremde Spieldaten.
+  Hotkey nur per `RegisterHotKey` (Strg+Alt+F9/F10/F11 oder aus), kein Tastatur-Hook;
+  Registrierungskonflikt und Pause sichtbar melden. Polling darf eine Hotkey-Pause nicht zurücksetzen.
+- Hinweisversion bei dieser Ausweitung von 1 auf 2: vorhandene Einstellungen erhalten,
+  aber erst nach erneuter Bestätigung wieder einschalten. `CrosshairSelfTest.cs` prüft das
+  echte Windows-Fenster getrennt vom normalen Launcher; keine Spiel-Eingaben im Test.
 
 ## Chat-Übersetzer für CS2 (`chat-translate.mjs`, `chat-models.mjs`)
 

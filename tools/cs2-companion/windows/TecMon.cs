@@ -154,12 +154,12 @@ static class TecMon {
     if(launch) Process.Start(new ProcessStartInfo(Path.Combine(target,"TecMon Companion.exe")){WorkingDirectory=target,UseShellExecute=false});
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.48.6",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.49.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.48.6");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.49.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -174,7 +174,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.48.6"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.49.0"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -315,7 +315,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.48.6 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.49.0 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -774,8 +774,8 @@ sealed class FigureModel : IDisposable {
 /*
  * Fadenkreuz-Overlay: eigenes, durchklickbares Fenster (WS_EX_TRANSPARENT) außerhalb
  * von CS2, nie aktiviert, nimmt keinen Fokus. Kein Hook, keine Injektion, keine Eingaben.
- * Sichtbar nur, solange CS2 vorn liegt und im Vollbild-Fenstermodus läuft (Fenster ohne
- * Rahmen, so groß wie der Bildschirm). Gezeichnet per Pixel-Alpha (Layered.Push).
+ * Unabhaengig von Spiel-Paketen: aktives Client-Fenster oder Bildschirm, optional App-Filter.
+ * Gezeichnet per Pixel-Alpha (Layered.Push), keine exklusive Vollbild-Unterstuetzung.
  */
 /*
  * Chat-Overlay: uebersetzte CS2-Chatzeilen als eigenes, durchklickbares Fenster ueber der Stelle des
@@ -916,8 +916,17 @@ class CrosshairOverlay : Form {
   [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int GetWindowLong(IntPtr window,int index);
   [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window,out Rect rect);
   [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct Rect {public int Left,Top,Right,Bottom;}
-  const int Box=160;
-  Dictionary<string,object> settings;string drawn="";
+  const int Box=512;
+  Dictionary<string,object> settings,options;string drawn="",registeredKey="";bool paused,hotkeyRegistered;
+  public Action<bool,bool> Runtime;
+  const int ToggleHotkey=0x7C3;
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr window,int id,uint modifiers,uint key);
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr window,int id);
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool GetClientRect(IntPtr window,out Rect rect);
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr window,ref Point point);
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool IsIconic(IntPtr window);
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetShellWindow();
+  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetDesktopWindow();
   readonly System.Windows.Forms.Timer check=new System.Windows.Forms.Timer{Interval=250};
   public bool Wanted;
   protected override bool ShowWithoutActivation {get{return true;}}
@@ -927,7 +936,39 @@ class CrosshairOverlay : Form {
     Text="TecMon Fadenkreuz";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;TopMost=true;Size=new Size(Box,Box);
     check.Tick+=(s,e)=>Update2();
   }
-  public void Apply(bool wanted,Dictionary<string,object> crosshair){Wanted=wanted;if(crosshair!=null)settings=crosshair;if(Wanted)check.Start();else{check.Stop();if(Visible)Hide();}Update2();}
+  public void Apply(bool wanted,Dictionary<string,object> crosshair,Dictionary<string,object> overlayOptions){
+    if(Wanted!=wanted)paused=false;
+    Wanted=wanted;if(crosshair!=null)settings=crosshair;if(overlayOptions!=null)options=overlayOptions;
+    string key=Wanted?TextOption("hotkey","F9"):"none";
+    if(key!=registeredKey){
+      if(hotkeyRegistered)UnregisterHotKey(Handle,ToggleHotkey);
+      hotkeyRegistered=false;registeredKey=key;
+      Keys code=key=="F9"?Keys.F9:key=="F10"?Keys.F10:key=="F11"?Keys.F11:Keys.None;
+      if(code!=Keys.None)hotkeyRegistered=RegisterHotKey(Handle,ToggleHotkey,0x0001|0x0002|0x4000,(uint)code);
+    }
+    if(Runtime!=null)Runtime(paused,hotkeyRegistered);
+    if(Wanted)check.Start();else{check.Stop();if(Visible)Hide();}Update2();
+  }
+  string TextOption(string key,string fallback){object value;return options!=null&&options.TryGetValue(key,out value)&&value!=null?Convert.ToString(value):fallback;}
+  protected override void WndProc(ref Message message){
+    if(message.Msg==0x0312&&message.WParam.ToInt32()==ToggleHotkey){paused=!paused;if(Runtime!=null)Runtime(paused,hotkeyRegistered);Update2();return;}
+    base.WndProc(ref message);
+  }
+  bool TargetBounds(out Rectangle bounds){
+    bounds=Rectangle.Empty;
+    try{
+      var window=GetForegroundWindow();
+      string app=TextOption("app","");
+      if(app.Length>0){int id;GetWindowThreadProcessId(window,out id);using(var process=Process.GetProcessById(id))if(!process.ProcessName.Equals(app,StringComparison.OrdinalIgnoreCase))return false;}
+      string target=TextOption("target","foreground");
+      if(target=="primary"){bounds=Screen.PrimaryScreen.Bounds;return true;}
+      if(target=="monitor"){int index=(int)Num(options,"monitor",1)-1;if(index<0||index>=Screen.AllScreens.Length)return false;bounds=Screen.AllScreens[index].Bounds;return true;}
+      if(window==IntPtr.Zero||IsIconic(window)||window==GetShellWindow()||window==GetDesktopWindow()||window==Handle)return false;
+      Rect r;if(!GetClientRect(window,out r)||r.Right-r.Left<100||r.Bottom-r.Top<100)return false;
+      var origin=new Point(0,0);if(!ClientToScreen(window,ref origin))return false;
+      bounds=new Rectangle(origin.X,origin.Y,r.Right-r.Left,r.Bottom-r.Top);return true;
+    }catch(Exception){return false;}
+  }
   /* CS2 vorn, ohne Fensterrahmen und so groß wie sein Bildschirm: Vollbild-Fenstermodus. */
   internal static bool Cs2Borderless(out Rectangle bounds){
     bounds=Rectangle.Empty;
@@ -941,13 +982,14 @@ class CrosshairOverlay : Form {
     }catch(Exception){return false;}
   }
   void Update2(){
-    if(!Wanted||settings==null){if(Visible)Hide();return;}
-    Rectangle bounds;if(!Cs2Borderless(out bounds)){if(Visible)Hide();return;}
+    if(!Wanted||paused||settings==null){if(Visible)Hide();return;}
+    Rectangle bounds;if(!TargetBounds(out bounds)){if(Visible)Hide();return;}
     var at=new Point(bounds.Left+bounds.Width/2-Box/2,bounds.Top+bounds.Height/2-Box/2);
-    string key=TecMon.Json.Serialize(settings)+bounds;
+    at.Offset((int)Num(options,"offsetX",0),(int)Num(options,"offsetY",0));
+    string key=TecMon.Json.Serialize(settings)+TecMon.Json.Serialize(options)+bounds;
     if(!Visible){Location=at;Show();drawn="";}
     if(key==drawn&&Location==at)return;
-    Location=at;drawn=key;Push(bounds.Height/1080f);
+    Location=at;drawn=key;Push(Screen.FromRectangle(bounds).Bounds.Height/1080f);
   }
   static double Num(Dictionary<string,object> d,string k,double fallback){object v;if(d!=null&&d.TryGetValue(k,out v)&&v!=null){try{return Convert.ToDouble(v,System.Globalization.CultureInfo.InvariantCulture);}catch(Exception){}}return fallback;}
   static bool Flag(Dictionary<string,object> d,string k){object v;return d!=null&&d.TryGetValue(k,out v)&&v is bool&&(bool)v;}
@@ -963,17 +1005,23 @@ class CrosshairOverlay : Form {
     var c=settings;int[] color={167,139,250};object raw;
     if(c!=null&&c.TryGetValue("color",out raw)){var list=raw as System.Collections.IList;if(list!=null&&list.Count==3)for(int i=0;i<3;i++)color[i]=Math.Max(0,Math.Min(255,Convert.ToInt32(list[i])));}
     int alpha=(int)Math.Max(0,Math.Min(255,Num(c,"alpha",255)));
-    float s=Math.Max(0.5f,scale);
+    float s=Math.Max(0.5f,Math.Min(8f,scale*(float)Num(options,"scale",1)));
     int t=(int)Math.Max(1,Math.Round(Math.Max(1,Math.Round(Math.Max(0.5,Num(c,"thickness",1))*2))*s));
     int len=(int)Math.Round(Math.Round(Num(c,"size",2)*2)*s),gap=(int)Math.Round(Math.Max(0,Math.Round(Num(c,"gap",-2)+4))*s),half=t/2;
     int o=Flag(c,"outline")?(int)Math.Max(1,Math.Round(Math.Max(1,Math.Round(Num(c,"outlineThickness",1)))*s/2)):0;
     var rects=new List<Rectangle>();int m=Box/2;
-    if(len>0){rects.Add(new Rectangle(m+gap,m-half,len,t));rects.Add(new Rectangle(m-gap-len,m-half,len,t));rects.Add(new Rectangle(m-half,m+gap,t,len));if(!Flag(c,"tStyle"))rects.Add(new Rectangle(m-half,m-gap-len,t,len));}
-    if(Flag(c,"dot"))rects.Add(new Rectangle(m-half,m-half,t,t));
+    g.TranslateTransform(m,m);g.RotateTransform((float)Num(options,"rotation",0));g.TranslateTransform(-m,-m);
+    if(TextOption("shape","cross")=="circle"){
+      g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+      float radius=(float)Num(options,"radius",8)*s;
+      if(o>0)using(var border=new Pen(Color.FromArgb(alpha,0,0,0),t+2*o))g.DrawEllipse(border,m-radius,m-radius,2*radius,2*radius);
+      using(var ring=new Pen(Color.FromArgb(alpha,color[0],color[1],color[2]),t))g.DrawEllipse(ring,m-radius,m-radius,2*radius,2*radius);
+    }else if(len>0){rects.Add(new Rectangle(m+gap,m-half,len,t));rects.Add(new Rectangle(m-gap-len,m-half,len,t));rects.Add(new Rectangle(m-half,m+gap,t,len));if(!Flag(c,"tStyle"))rects.Add(new Rectangle(m-half,m-gap-len,t,len));}
+    if(Flag(c,"dot")){int dot=(int)Math.Max(1,Math.Round(Num(options,"dotSize",2)*s));rects.Add(new Rectangle(m-dot/2,m-dot/2,dot,dot));}
     if(o>0)using(var black=new SolidBrush(Color.FromArgb(alpha,0,0,0)))foreach(var r in rects)g.FillRectangle(black,r.X-o,r.Y-o,r.Width+2*o,r.Height+2*o);
     using(var fill=new SolidBrush(Color.FromArgb(alpha,color[0],color[1],color[2])))foreach(var r in rects)g.FillRectangle(fill,r);
   }
-  protected override void Dispose(bool disposing){if(disposing)check.Dispose();base.Dispose(disposing);}
+  protected override void Dispose(bool disposing){if(disposing){if(hotkeyRegistered)UnregisterHotKey(Handle,ToggleHotkey);check.Dispose();}base.Dispose(disposing);}
 }
 
 /*
@@ -1305,6 +1353,7 @@ class DesktopPet : Form {
     personality=new ToolStripMenuItem("Persönlichkeit");
     foreach(var pair in new[]{new[]{"Super nett","nett"},new[]{"Normal","normal"},new[]{"Nerdy","nerdy"},new[]{"HUAN-Modus (18+)","huan"}}){string mode=pair[1];var item=new ToolStripMenuItem(pair[0]){Tag=mode,Checked=mode=="normal"};item.Click+=async(s,e)=>{if(mode=="huan"&&!ConfirmHuan())return;await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");};personality.DropDownItems.Add(item);}
     menu.Items.Add(personality);menu.Items.Add(new ToolStripSeparator());
+    menu.Items.Add("Fadenkreuz-Overlay (alle Spiele)",null,(s,e)=>OpenPanel("fadenkreuz",""));
     menu.Items.Add("Einstellungen öffnen",null,(s,e)=>OpenPanel("figur",""));
     menu.Items.Add("TecMon öffnen",null,(s,e)=>DesktopPanel.OpenExternal("https://tecmon.online"));
     updateItem=new ToolStripMenuItem("Nach Updates suchen",null,async(s,e)=>await CheckUpdate(false));menu.Items.Add(updateItem);
@@ -1583,6 +1632,7 @@ class DesktopPet : Form {
     var q=new QuickMenu();q.Status=statusItem!=null?statusItem.Text:"";
     q.Heading("SCHNELLZUGRIFF");
     q.Tile("Einstellungen","Figur, Start & mehr",()=>OpenPanel("figur",""));
+    q.Tile("Fadenkreuz","Overlay fuer alle Spiele",()=>OpenPanel("fadenkreuz",""));
     q.Tile("Highlights","Aufnehmen auf TecMon",()=>OpenPanel("games",""));
     q.Tile("Clip speichern","Strg+Alt+T",async()=>await SaveClip());
     q.Tile("Letzte Videos","Fertige Aufnahmen",()=>OpenPanel("videos",""));
@@ -1626,7 +1676,7 @@ class DesktopPet : Form {
   const int ClipHotkey=0x7C1;bool clipsEnabled,clipHotkey,savingClip;ToolStripMenuItem clipsOn;
   protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);if(!preview)clipHotkey=RegisterHotKey(Handle,ClipHotkey,0x0001|0x0002|0x4000,(uint)Keys.T);}
   protected override void OnHandleDestroyed(EventArgs e){if(clipHotkey)UnregisterHotKey(Handle,ClipHotkey);clipHotkey=false;if(scoreHotkey)UnregisterHotKey(Handle,ScoreHotkey);scoreHotkey=false;base.OnHandleDestroyed(e);}
-  CrosshairOverlay overlay;ChatOverlay chatOverlay;Point? chatAnchor;long lastChatMove=-1;
+  string lastOverlayRuntime="";double lastOverlayRuntimeAt=-100;CrosshairOverlay overlay;ChatOverlay chatOverlay;Point? chatAnchor;long lastChatMove=-1;
   void EnsureChatOverlay(){
     if(chatOverlay!=null)return;
     chatOverlay=new ChatOverlay();chatOverlay.CreateControl();var ignored=chatOverlay.Handle;chatOverlay.Anchor=chatAnchor;
@@ -1682,7 +1732,8 @@ class DesktopPet : Form {
     bool on=o!=null&&o.ContainsKey("enabled")&&Convert.ToBoolean(o["enabled"]);
     if(!on&&overlay==null)return;
     if(overlay==null){overlay=new CrosshairOverlay();overlay.CreateControl();var ignored=overlay.Handle;}
-    overlay.Apply(on,o!=null&&o.ContainsKey("crosshair")?o["crosshair"] as Dictionary<string,object>:null);
+    overlay.Runtime=async(paused,hotkey)=>{string next=(paused?"1":"0")+(hotkey?"1":"0");if(next==lastOverlayRuntime&&clock.Elapsed.TotalSeconds-lastOverlayRuntimeAt<4)return;try{await Request("/api/crosshair/runtime",true,"{\"paused\":"+(paused?"true":"false")+",\"hotkey\":"+(hotkey?"true":"false")+"}");lastOverlayRuntime=next;lastOverlayRuntimeAt=clock.Elapsed.TotalSeconds;}catch{}};
+    overlay.Apply(on,o!=null&&o.ContainsKey("crosshair")?o["crosshair"] as Dictionary<string,object>:null,o);
   }
   /* Wardogs: Strg+Alt+S nur angemeldet, solange das Scoreboard-Foto eingeschaltet ist; sonst bleibt die Taste frei. */
   const int ScoreHotkey=0x7C2;bool scoreHotkey,capturingScore;

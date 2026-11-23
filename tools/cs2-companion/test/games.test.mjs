@@ -51,7 +51,8 @@ test("Spiel-Pakete: CS2 entfernen löscht eigene Dateien und sperrt CS2-Funktion
   assert.equal(removed.gsi.enabled, false);
   assert.equal(await exists(path.join(cfgDir, "tecmon_crosshair.cfg")), false);
   assert.equal(await exists(path.join(cfgDir, "gamestate_integration_tecmon.cfg")), false);
-  assert.equal(await exists(path.join(data, "crosshair.json")), false);
+  assert.equal(await exists(path.join(data, "crosshair.json")), true, "globales Fadenkreuz bleibt erhalten");
+  assert.equal(JSON.parse(await readFile(path.join(data, "crosshair.json"), "utf8")).size, 3);
   assert.match(await readFile(path.join(data, "games.json"), "utf8"), /"installed":\{\}/);
 
   assert.equal((await post("/api/gsi/enable", { confirm: true })).status >= 400, true);
