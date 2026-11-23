@@ -142,14 +142,14 @@ export function parseChatLine(raw) {
 /** Häufige Chatwörter je Sprache mit lateinischer Schrift. Bosnisch fehlt bewusst: von Kroatisch/Serbisch kaum zu trennen. */
 const WORDS = {
   de: "ich du er wir ihr und nicht ist das der die den dem ein eine ja nein bitte danke gut mal kein keine was wie warum wo geh los schnell hab habe bin bist sind auch noch nur schon jetzt hier da mit für auf von zu aber oder wenn dann sorry geil alter digga junge leute komm kommt",
-  en: "the you your is are and not i we me my it to of in on for that this what why where how please thanks thank nice good bad go come lol wtf guys rush push noob bro dont don't can't cant im i'm its it's they he she was have has just no yes yeah ok okay sorry man stop wait team",
+  en: "the you your is are and not i we me my it to of in on for that this what why where how please thanks thank nice good bad go come lol wtf guys rush push noob bro dont don't can't cant im i'm its it's they he she was have has just no yes yeah ok okay sorry man stop wait team fuck fucking aimbot cheat cheats cheater cheating hack hacker hacking wallhack",
   es: "que el la los las es no por para hola vamos gracias bien pero muy porque como donde estoy esta está yo tu tú eres soy hermano amigo jaja malo bueno equipo",
   fr: "je tu il le les est pas et oui non merci mais c'est vous nous suis une des du sur avec pour mec putain allez bien",
   it: "che il non sono perché perche grazie ciao andiamo bene io sei è gli della questo fratello cazzo dai",
   pt: "não nao você voce obrigado vamos que é com uma eu tá ta mano cara isso aqui porra time boa",
   cs: "je to ne ano jsem jak proč proc díky diky dobrý dobry kurva tady jsi máme",
   et: "ja ei on mina ma sina sa aitäh aitah tere kas mis miks see oled siin seal hästi halb tule mine kiiresti",
-  tr: "ve bir bu ne mi mı mu mü ben sen biz siz onlar evet hayır hayir tamam teşekkürler tesekkurler sağol sagol abi kardeş kardes hadi gel git yok var çok cok iyi kötü kotu neden niye nasıl nasil ile için icin diye ama gibi şey sey oyna takım takim adam lan aferin sana bana sizi bizi kişi kisi oldu olur değil degil",
+  tr: "ve bir bu ne mi mı mu mü ben sen biz siz onlar evet hayır hayir tamam teşekkürler tesekkurler sağol sagol abi kardeş kardes hadi gel git yok var çok cok iyi kötü kotu neden niye nasıl nasil ile için icin diye ama gibi şey sey oyna takım takim adam lan aferin sana bana sizi bizi kişi kisi oldu olur değil degil naber nbr haber selam slm merhaba kanka kanki olm oğlum oglum nasılsın nasilsin iyiyim napıyon napiyon noldu sikeyim siktir sik amk aq anan ananı anani gidelim oyun oyundu kardeşim kardesim bekle yardım yardim",
   pl: "nie tak jest się sie że ze ty my wy oni dobra dobrze kurwa idziemy chodź chodz gdzie dlaczego czemu proszę prosze dzięki dzieki może moze już juz tylko bardzo mam masz nic ale albo który ktory grać grac jestem jesteś jestes chłopaki chlopaki szybko",
   nl: "ik jij je hij wij jullie niet het een van dat wat waarom waar hoe bedankt dank alsjeblieft goed slecht kom gaan nee jongens snel doe mijn heb ben zijn ook maar wel even kut lekker",
   af: "ek jy hy ons julle nie die het baie dankie asseblief sleg kom gaan waar hoekom wat lekker maak vir",
@@ -236,7 +236,11 @@ export function detectLanguage(raw, { assumeEnglish = true } = {}) {
   const words = plain.split(/[^\p{Script=Latin}'’]+/u).filter(Boolean).map((w) => w.replace(/’/g, "'"));
   const scores = {};
   for (const [lang, set] of Object.entries(WORD_SETS)) scores[lang] = words.filter((w) => set.has(w)).length;
-  for (const [langs, re, add] of LETTERS) if (re.test(text)) for (const lang of langs) scores[lang] = (scores[lang] || 0) + add;
+  // Türkische Tastatur: „aımbot“, „cheatıng“ sind englische Wörter mit „ı“. Solche Wörter zählen für Englisch, das „ı“ nicht für Türkisch.
+  const dotless = words.filter((w) => w.includes("ı") && WORD_SETS.en.has(w.replace(/ı/g, "i")));
+  scores.en += dotless.length;
+  const letters = dotless.length ? text.split(/[^\p{Script=Latin}'’\u0307]+/u).filter((w) => !dotless.includes(w)).join(" ") : text;
+  for (const [langs, re, add] of LETTERS) if (re.test(letters)) for (const lang of langs) scores[lang] = (scores[lang] || 0) + add;
   const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   if (ranked[0][1] > 0 && ranked[0][1] > ranked[1][1]) return ranked[0][0];
   // Reiner ASCII-Text mit mehreren Wörtern ist im CS2-Chat meist Englisch.
@@ -244,11 +248,27 @@ export function detectLanguage(raw, { assumeEnglish = true } = {}) {
   return "";
 }
 
-/** Ganz in Großbuchstaben geschriebene Rufe („AFERİN SANA“) übersetzen die Modelle nicht: vorher klein schreiben. */
+/** Häufige Abkürzungen im Chat, die die Modelle nicht kennen: [Sprache, Wort, Ersatz]. */
+const SLANG = {
+  tr: { naber: "ne haber", nbr: "ne haber", slm: "selam", nasilsin: "nasılsın", anani: "ananı", tsk: "teşekkürler", tşk: "teşekkürler", sagol: "sağol" },
+};
+
+/**
+ * Text für das Modell vorbereiten: Rufe in Großbuchstaben („AFERİN SANA“) klein schreiben, bekannte
+ * Abkürzungen ausschreiben und den ersten Buchstaben groß schreiben. Klein beginnende Fragen wie
+ * „nasılsın?“ ergeben sonst doppelte Ausgaben („How are you? How are“, auf dem PC geprüft 23.11.2026).
+ */
 export function sourceText(text, lang) {
-  const value = String(text || "");
-  if (!/\p{Lu}/u.test(value) || /\p{Ll}/u.test(value)) return value;
-  try { return value.toLocaleLowerCase(lang); } catch { return value.toLowerCase(); }
+  let value = String(text || "");
+  const lower = (v) => { try { return v.toLocaleLowerCase(lang); } catch { return v.toLowerCase(); } };
+  const upper = (v) => { try { return v.toLocaleUpperCase(lang); } catch { return v.toUpperCase(); } };
+  if (/\p{Lu}/u.test(value) && !/\p{Ll}/u.test(value)) value = lower(value);
+  const slang = SLANG[lang];
+  if (slang) value = value.replace(/[\p{L}]+/gu, (w) => {
+    const hit = slang[lower(w)];
+    return hit === undefined ? w : (w[0] !== lower(w[0]) ? upper(hit[0]) + hit.slice(1) : hit);
+  });
+  return value.replace(/^(\P{L}*)(\p{Ll})/u, (_, pre, ch) => pre + upper(ch));
 }
 
 /** Welche Modelle (`deen`, `ende` …) eine Richtung braucht: direkt oder über Englisch. */

@@ -57,6 +57,14 @@ test("Sprache erkennen", () => {
   assert.equal(detectLanguage("you guys are so bad"), "en");
   assert.equal(detectLanguage("rush b no stop"), "en");
   assert.equal(detectLanguage("3 kısı ıle mi"), "tr");
+  // Echte Zeilen vom 23.11.2026: Englisch mit türkischer Tastatur und türkischer Chat-Slang.
+  assert.equal(detectLanguage("fuck your aımbot"), "en");
+  assert.equal(detectLanguage("why cheatıng"), "en");
+  assert.equal(detectLanguage("naber"), "tr");
+  assert.equal(detectLanguage("anani sikeyim"), "tr");
+  assert.equal(detectLanguage("Anani sikeyim amk"), "tr");
+  assert.equal(detectLanguage("siktir git"), "tr");
+  assert.equal(detectLanguage("nasılsın?"), "tr");
   assert.equal(detectLanguage("AFERİN SANA"), "tr");
   assert.equal(detectLanguage("Dobra robota, idziemy na B"), "pl");
   // Seit 0.47.0: alle Sprachen der Firefox-Modelle (Schrift oder typische Wörter/Buchstaben).
@@ -305,8 +313,8 @@ test("Chat-Übersetzer übersetzt mit geprüften Modellen (unechte Engine)", asy
     await chat.idle();
     const [ivan] = chat.messages();
     assert.equal(ivan.status, "done", ivan.error);
-    assert.equal(ivan.translated, "[ru>de]давай быстрее");
-    assert.deepEqual(chat.bubbleLines().map(({ name, text, channel }) => ({ name, text, channel })), [{ name: "Ivan", text: "[ru>de]давай быстрее", channel: "all" }]);
+    assert.equal(ivan.translated, "[ru>de]Давай быстрее");
+    assert.deepEqual(chat.bubbleLines().map(({ name, text, channel }) => ({ name, text, channel })), [{ name: "Ivan", text: "[ru>de]Давай быстрее", channel: "all" }]);
     const answer = await chat.reply({ text: "Ich komme" });
     assert.equal(answer.to, "ru");
     assert.equal(answer.text, "[de>ru]Ich komme");
@@ -318,8 +326,15 @@ test("Chat-Übersetzer übersetzt mit geprüften Modellen (unechte Engine)", asy
 });
 
 test("Großbuchstaben-Rufe vor dem Übersetzen klein, Türkisch mit richtigem i", () => {
-  assert.equal(sourceText("AFERİN SANA", "tr"), "aferin sana");
-  assert.equal(sourceText("TRUST ME", "en"), "trust me");
+  assert.equal(sourceText("AFERİN SANA", "tr"), "Aferin sana");
+  assert.equal(sourceText("TRUST ME", "en"), "Trust me");
+  // Klein beginnende Fragen ergaben doppelte Ausgaben, Abkürzungen kennt das Modell nicht (Chat 23.11.2026).
+  assert.equal(sourceText("nasılsın?", "tr"), "Nasılsın?");
+  assert.equal(sourceText("naber kanka", "tr"), "Ne haber kanka");
+  assert.equal(sourceText("anani sikeyim", "tr"), "Ananı sikeyim");
+  assert.equal(sourceText("Naber", "tr"), "Ne haber");
+  assert.equal(sourceText("¿naber?", "tr"), "¿Ne haber?");
+  assert.equal(sourceText("naber", "en"), "Naber");
   assert.equal(sourceText("Nice Shot", "en"), "Nice Shot");
 });
 
