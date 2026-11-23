@@ -17,6 +17,17 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
 
+## Neu in 0.48.5 · 23. November 2026 (offener PR)
+
+In CS2 ist jetzt alles von Anfang an eingeschaltet, nur das Fadenkreuz-Overlay nicht:
+
+- Rundentipps mit allen Funktionen, auch die Bomben-Anzeige (Timer, Defuse-Check). Spielst du FACEIT oder Turniere, schalte die Bomben-Anzeige unter „Rundentipps“ aus; dort verbieten die Regeln solche Hilfen.
+- Highlight-Video nach dem Match, Chat-Übersetzer mit Chat in TecMons Sprechblase und „Stats hochladen?“ beim Schließen von CS2.
+- Bestehende Installationen bekommen diese Standards nach dem Update einmal. Was du danach selbst ausschaltest, bleibt aus. Einzeln abgeschaltete Tipp-Arten bleiben ebenfalls aus. Hast du den Chat schon im Overlay oder Fenster, kommt keine zweite Anzeige in der Sprechblase dazu.
+- Chat-Overlay, Chat-Fenster und Skin-Tausch brauchen weiter deinen bestätigten Hinweis. Der Clip-Puffer gehört nicht zum CS2-Paket und bleibt aus, weil er dauerhaft den Bildschirm aufnimmt.
+- Rundentipps erscheinen jetzt auf dem Bildschirm, auf dem CS2 läuft. Steht die Figur auf einem anderen Monitor, kommt die Sprechblase unten rechts auf dem CS2-Bildschirm.
+- Grenze: Auf einem Windows-PC mit laufendem CS2 noch nicht geprüft.
+
 ## Neu in 0.48.4 · 23. November 2026 (gemergt mit #115)
 
 Chat-Übersetzer, nach den Chatzeilen eines weiteren Matches nachgebessert und auf dem PC mit der Engine geprüft:

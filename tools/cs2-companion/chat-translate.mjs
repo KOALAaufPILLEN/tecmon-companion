@@ -9,7 +9,7 @@ import { tarEntries } from "./valve-download.mjs";
 import { CHAT_MODELS } from "./chat-models.mjs";
 
 /**
- * Chat-Übersetzer für CS2 (Funktion des CS2-Pakets, standardmäßig aus).
+ * Chat-Übersetzer für CS2 (Funktion des CS2-Pakets, seit 0.48.5 standardmäßig an).
  *
  * CS2 schreibt mit der Startoption `-condebug` seine Konsole in `game/csgo/console.log`.
  * Der Companion liest nur diese Datei mit (ab dem Einschalten, nur neue Zeilen), erkennt
@@ -483,6 +483,8 @@ export async function ensureModel(modelDir, key, request = fetch) {
 
 /** Feste Schriftfarben; aus der Oberfläche kommt nur der Schlüssel, nie ein freier Farbwert. */
 export const CHAT_COLORS = { weiss: "F3F1F7", gold: "E8C573", lila: "C4B5FD", gruen: "86EFAC", cyan: "67E8F9", rot: "FCA5A5" };
+/** Stand der Standardwerte, siehe DEFAULTS_VERSION in gsi-config.mjs. */
+export const CHAT_DEFAULTS = 2;
 export const CHAT_LOOK_DEFAULT = { width: 30, lines: 6, font: 15, color: "weiss", background: 30, seconds: 30 };
 const LOOK_RANGES = { width: [15, 70], lines: [1, 15], font: [10, 32], background: [0, 100], seconds: [5, 600] };
 
@@ -499,16 +501,26 @@ export function cleanLook(input = {}, base = CHAT_LOOK_DEFAULT) {
 
 /* ---------- Gesamtfunktion ---------- */
 
-export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request = fetch, now = Date.now, loadEngine, busy = () => false } = {}) {
+export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request = fetch, now = Date.now, loadEngine, busy = () => false, defaultEnabled = false } = {}) {
   const file = path.join(dir, "chat-translate.json");
-  let settings = { enabled: false, language: "de", overlay: false, bubble: false, window: false, look: { ...CHAT_LOOK_DEFAULT }, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
+  /* Seit 23.11.2026 standardmäßig an (Nutzerentscheid: in CS2 alles an außer Fadenkreuz-Overlay): Übersetzer und
+     Sprechblase. Overlay und Chat-Fenster brauchen weiter den bestätigten Hinweis und bleiben bis dahin aus. */
+  const fresh = () => ({ defaults: CHAT_DEFAULTS, enabled: defaultEnabled, language: "de", overlay: false, bubble: defaultEnabled, window: false, look: { ...CHAT_LOOK_DEFAULT }, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS });
+  let settings = fresh();
+  let migrate = false;
   try {
     const saved = JSON.parse(await readFile(file, "utf8"));
+    // Ältere Dateien (früher war alles aus) bekommen die neuen Standards einmal; danach gilt die eigene Wahl.
+    const upgrade = defaultEnabled && saved?.defaults !== CHAT_DEFAULTS;
+    migrate = upgrade;
+    const shown = saved?.overlay === true || saved?.window === true;
     settings = {
-      enabled: saved?.enabled === true,
+      defaults: CHAT_DEFAULTS,
+      enabled: upgrade ? true : saved?.enabled === true,
       language: LANGUAGES[saved?.language] ? saved.language : "de",
       overlay: saved?.overlay === true,
-      bubble: saved?.bubble === true,
+      // Sprechblase nur dazuschalten, wenn der Chat nicht schon im Overlay oder Fenster steht (sonst doppelt).
+      bubble: upgrade && !shown ? true : saved?.bubble === true,
       window: saved?.window === true,
       look: cleanLook(saved?.look),
       accepted: Number.isInteger(saved?.accepted) ? saved.accepted : 0,
@@ -522,6 +534,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
     await mkdir(dir, { recursive: true });
     await writeAtomic(file, JSON.stringify(settings));
   };
+  if (migrate) await persist().catch(() => {});
   const cfgDir = cs2Exe ? path.join(path.dirname(consoleLogPath(cs2Exe)), "cfg") : "";
   const logFile = consoleLogPath(cs2Exe);
 
@@ -705,7 +718,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
     async reset() {
       stopTimer();
       messages = [];
-      settings = { enabled: false, language: "de", overlay: false, bubble: false, window: false, look: { ...CHAT_LOOK_DEFAULT }, accepted: 0, keys: { all: "F7", team: "F8" }, assumeEnglish: true, launchOptions: CHAT_LAUNCH_OPTIONS };
+      settings = { ...fresh(), enabled: false, bubble: false };
       for (const target of [file, ...(cfgDir ? CHAT_FILES.map((f) => path.join(cfgDir, f)) : [])])
         try { await unlink(target); } catch (error) { if (error.code !== "ENOENT") throw error; }
     },

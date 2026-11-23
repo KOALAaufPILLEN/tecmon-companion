@@ -59,24 +59,40 @@ function cleanFeatures(value) {
   return result;
 }
 
-/** Einstellungen (Token, an/aus) bleiben über Neustarts erhalten, damit CS2 nicht neu gestartet werden muss. */
-export async function createGsiSettings(directory) {
+/**
+ * Stand der Standardwerte (Nutzerentscheid 23.11.2026: in CS2 ist alles an, außer dem Fadenkreuz-Overlay).
+ * Ältere Dateien ohne diesen Stand bekommen die neuen Standards einmal; danach zählt nur, was man selbst schaltet.
+ */
+export const DEFAULTS_VERSION = 2;
+
+/**
+ * Einstellungen (Token, an/aus) bleiben über Neustarts erhalten, damit CS2 nicht neu gestartet werden muss.
+ * `defaultEnabled`: CS2-Rundentipps sind standardmäßig an; Dota 2 bleibt aus, bis man es einschaltet.
+ */
+export async function createGsiSettings(directory, { defaultEnabled = false } = {}) {
   await mkdir(directory, { recursive: true });
   const file = path.join(directory, "gsi.json");
-  let settings = { version: 1, enabled: false, token: randomBytes(32).toString("hex"), features: {} };
+  let settings = { version: 1, defaults: DEFAULTS_VERSION, enabled: defaultEnabled, token: randomBytes(32).toString("hex"), features: {} };
+  let migrate = defaultEnabled;
   try {
     const saved = JSON.parse(await readFile(file, "utf8"));
-    if (saved.version === 1 && /^[a-f0-9]{64}$/.test(saved.token))
+    if (saved.version === 1 && /^[a-f0-9]{64}$/.test(saved.token)) {
+      const current = saved.defaults === DEFAULTS_VERSION;
       settings = {
         version: 1,
-        enabled: saved.enabled === true,
+        defaults: DEFAULTS_VERSION,
+        // Früher war „aus“ der Standard: ohne neuen Stand einmal einschalten, danach gilt die eigene Wahl.
+        enabled: current || !defaultEnabled ? saved.enabled === true : true,
         token: saved.token,
         features: cleanFeatures(saved.features),
       };
+      migrate = defaultEnabled && !current;
+    }
   } catch (error) {
     if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
   }
   const save = () => writeAtomic(file, JSON.stringify(settings), 0o600);
+  if (migrate) await save();
   const expected = Buffer.from(settings.token);
   return {
     get enabled() {
@@ -93,7 +109,13 @@ export async function createGsiSettings(directory) {
       settings.enabled = value === true;
       await save();
     },
-    /** Abgeschaltete Funktionen sind false; nicht gespeicherte gelten als an, außer DEFAULT_OFF (z. B. bombLive). */
+    /** Paket neu installiert: Standards wieder herstellen (an, alle Funktionen auf Standard). */
+    async resetDefaults() {
+      settings.enabled = defaultEnabled;
+      settings.features = {};
+      await save();
+    },
+    /** Abgeschaltete Funktionen sind false; nicht gespeicherte gelten als an, außer DEFAULT_OFF. */
     feature(id) {
       const value = settings.features[id];
       return value === undefined ? !DEFAULT_OFF.has(id) : value !== false;

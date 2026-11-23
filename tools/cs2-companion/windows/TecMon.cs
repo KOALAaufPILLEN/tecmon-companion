@@ -154,12 +154,12 @@ static class TecMon {
     if(launch) Process.Start(new ProcessStartInfo(Path.Combine(target,"TecMon Companion.exe")){WorkingDirectory=target,UseShellExecute=false});
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.48.4",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.48.5",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.48.4");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.48.5");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -174,7 +174,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.48.4"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.48.5"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -315,7 +315,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.48.4 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.48.5 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -1263,6 +1263,15 @@ class DesktopPet : Form {
   /* Liegt gerade CS2 vorn? Dann bleibt die Figur dahinter; auf dem Desktop oder in anderen Programmen bleibt sie sichtbar. */
   static bool GameInFront(){try{int id;GetWindowThreadProcessId(GetForegroundWindow(),out id);if(id==0)return false;using(var process=Process.GetProcessById(id))return process.ProcessName.Equals("cs2",StringComparison.OrdinalIgnoreCase);}catch(Exception){return false;}}
   bool OnTop(){return foreground&&!(busy&&GameInFront());}
+  /* Rundentipps neben der Figur, aber immer auf dem Bildschirm, auf dem CS2 vorn liegt: Steht die Figur auf einem
+     anderen Bildschirm (oder ist ausgeblendet), erscheint die Blase unten rechts auf dem CS2-Bildschirm (Fix 0.48.5). */
+  Rectangle TipAnchor(){
+    Screen screen=Screen.PrimaryScreen;
+    if(GameInFront()){try{screen=Screen.FromHandle(GetForegroundWindow());}catch(Exception){}}
+    else if(Visible)return Bounds;
+    if(Visible&&Screen.FromRectangle(Bounds).DeviceName==screen.DeviceName)return Bounds;
+    var area=screen.WorkingArea;return new Rectangle(area.Right-180,area.Bottom-205,144,164);
+  }
   readonly System.Windows.Forms.Timer animation=new System.Windows.Forms.Timer(),poll=new System.Windows.Forms.Timer();
   Bitmap sheet;DesktopPanel panel;NotifyIcon tray;Mutex singleton;EventWaitHandle openSignal;bool owns,dragging,moved,hover,wandering=true,animate=true,foreground=true,polling,busy;Point dragStart,start;double phase,x,y,vx=-0.45,vy=-0.22;int failures;string token="";bool preview,openOnStart;
   protected override CreateParams CreateParams {get{var p=base.CreateParams;p.ExStyle|=0x80000|0x80;return p;}}
@@ -1532,8 +1541,8 @@ class DesktopPet : Form {
       if(free&&pendingTip==null){
         string liveHeading=Convert.ToString(live["heading"])??"TecMon",liveText=Convert.ToString(live["text"])??"",liveId=liveHeading+"|"+liveText;
         if(liveId!=liveKey||!liveShowing||tip==null||tip.IsDisposed||!tip.Visible){
-          liveKey=liveId;liveShowing=true;if(tip==null||tip.IsDisposed)tip=new TipBubble();tip.Compact=true;var liveArea=Screen.PrimaryScreen.WorkingArea;
-          tip.Present(liveHeading,liveText,Visible?Bounds:new Rectangle(liveArea.Right-180,liveArea.Bottom-205,144,164),null,-2,false,true);
+          liveKey=liveId;liveShowing=true;if(tip==null||tip.IsDisposed)tip=new TipBubble();tip.Compact=true;
+          tip.Present(liveHeading,liveText,TipAnchor(),null,-2,false,true);
         }
       }
       return;
@@ -1546,9 +1555,9 @@ class DesktopPet : Form {
     long round=current.ContainsKey("round")?Convert.ToInt64(current["round"]):-1;
     string category=current.ContainsKey("category")?Convert.ToString(current["category"]):"";int after=category=="death"?Sad:category=="praise"?Star:category=="mindset"?Love:Happy;string title=TipTitle(category),text=Convert.ToString(current["text"])??"";var visualData=picture as Dictionary<string,object>;bool stack=FeatureOn(gsi,"stack");
     Action show=()=>{
-      if(tip==null||tip.IsDisposed)tip=new TipBubble();var area=Screen.PrimaryScreen.WorkingArea;
+      if(tip==null||tip.IsDisposed)tip=new TipBubble();
       liveShowing=false;liveKey="";tipShownAt=clock.Elapsed.TotalSeconds;tip.Compact=false;
-      tip.Present(title,text,Visible?Bounds:new Rectangle(area.Right-180,area.Bottom-205,144,164),visualData,round,stack);
+      tip.Present(title,text,TipAnchor(),visualData,round,stack);
       /* Mund bewegt sich ungefähr so lange, wie man zum Lesen braucht (höchstens 6 s), danach kurz ein Lächeln. */
       double now=clock.Elapsed.TotalSeconds;talkUntil=now+Math.Min(6,1.2+text.Length*0.045);happyUntil=talkUntil+1.1;afterTalk=after;
     };
