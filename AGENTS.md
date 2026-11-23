@@ -127,6 +127,13 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Standardmäßig aus; cfg nur nach Einschalten, beim Ausschalten und beim
   Entfernen des Pakets löschen. Während einer Demo-Aufnahme nichts annehmen.
 
+## PowerShell-Aufrufe (Fix 0.48.2)
+
+- PowerShell nie mit einer `.ps1`-Datei (`-File`) starten: Eine gesperrte Execution Policy (auch per
+  Gruppenrichtlinie, auch für Administratoren) bricht sonst Einrichtung oder Funktion ab. Skripte nur über
+  `powershellArgs()` (`powershell.mjs`, `-EncodedCommand`) oder `-Command`; Werte nie in den Skripttext,
+  sondern über Umgebungsvariablen oder das Arbeitsverzeichnis. `test/powershell.test.mjs` prüft das.
+
 ## Browser-Bridge
 
 - Fix-Regel 19.11.2026: Injizierten HTTP-Zugriff `fetchDemo` in `createCompanion()` nicht durch lokale Funktionsdeklarationen überschreiben. Der interne Sharecode-Auftrag heißt `fetchJobDemo`. Den autorisierten `/bridge/demo-fetch`-Erfolgsfall auf Server-Ebene prüfen, einschließlich unveränderter Bytes und ohne Start eines Sharecode-Auftrags; reine Tests von `createDemoFetch()` reichen dafür nicht.
