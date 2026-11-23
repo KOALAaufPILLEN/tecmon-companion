@@ -4,6 +4,7 @@ import { access, readFile, mkdir, readdir, cp, unlink } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { unpackCommand } from "./powershell.mjs";
 
 /** Public installer fetches these unmodified packages from their original publisher. */
 export async function ensureVideoTools(root, run, progress) {
@@ -29,7 +30,9 @@ export async function ensureVideoTools(root, run, progress) {
       const hash = createHash("sha256");
       for await (const chunk of createReadStream(zip)) hash.update(chunk);
       if (hash.digest("hex").toLowerCase() !== item.sha256.toLowerCase()) throw new Error(`${name}: SHA256 stimmt nicht überein. Download wird nicht verwendet.`);
-      await run("powershell.exe", ["-NoProfile", "-NonInteractive", "-File", path.join(root, "unpack-tools.ps1"), "-Archive", zip, "-Destination", unpacked], { timeout: 120000 });
+      // Ohne .ps1-Datei: gesperrte Skriptausführung (Execution Policy) darf die Einrichtung nicht abbrechen.
+      const unpack = unpackCommand(zip, unpacked);
+      await run("powershell.exe", unpack.args, { env: unpack.env, timeout: 120000 });
       const target = path.join(root, "tools", name);
       if (name === "hlae") await cp(unpacked, target, { recursive: true });
       else {

@@ -2,11 +2,10 @@ param(
   [Parameter(Mandatory=$true)][string]$Archive,
   [Parameter(Mandatory=$true)][string]$Destination
 )
+# Wird seit 0.48.2 nicht mehr aufgerufen (gesperrte Skriptausführung brach die Einrichtung ab):
+# Das Entpacken läuft als -EncodedCommand aus powershell.mjs. Die Datei bleibt nur, weil ältere
+# Update-Programme sie in der Dateiliste erwarten.
 $ErrorActionPreference='Stop'
-# Kein Expand-Archive: Wird powershell.exe aus PowerShell 7 gestartet, erbt es dessen
-# PSModulePath und lädt das Archiv-Modul von PowerShell 7, das in Windows PowerShell 5.1
-# mit "Cannot find an overload for ExtractToDirectory" abbricht. .NET direkt ist eindeutig;
-# ab .NET Framework 4.6.2 lehnt ExtractToDirectory Pfade außerhalb des Ziels ab.
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 if(Test-Path -LiteralPath $Destination){Remove-Item -LiteralPath $Destination -Recurse -Force}
 [System.IO.Compression.ZipFile]::ExtractToDirectory($Archive,$Destination)

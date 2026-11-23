@@ -2,6 +2,7 @@ import { readFile, writeFile, rename, mkdir, rm, readdir } from "node:fs/promise
 import { spawn as nodeSpawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { powershellArgs } from "./powershell.mjs";
 
 /**
  * Scoreboard-Foto (Wardogs, Capability `scoreboard-v1`).
@@ -450,11 +451,12 @@ export async function createScoreboard({
       try {
         await mkdir(work, { recursive: true });
         await run(spawnProcess, ffmpeg, burstArgs(), work, (BURST_SECONDS + 15) * 1000);
-        await writeFile(path.join(work, "ocr.ps1"), "\ufeff" + OCR_SCRIPT);
+        // Ohne .ps1-Datei, damit eine gesperrte Skriptausführung die Texterkennung nicht blockiert;
+        // der Ordner ist das Arbeitsverzeichnis des Prozesses.
         const output = await run(
           spawnProcess,
           powershell,
-          ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", path.join(work, "ocr.ps1"), "-Folder", work],
+          powershellArgs(`& {\n${OCR_SCRIPT}\n} -Folder (Get-Location).ProviderPath`),
           work,
           60000,
         );

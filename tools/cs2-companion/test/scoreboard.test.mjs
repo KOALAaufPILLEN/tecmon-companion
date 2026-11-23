@@ -179,7 +179,11 @@ test("Scoreboard: Foto-Serie wird ausgewertet, Fotos gelöscht, nur eigene Werte
   await sb.setSettings({ playerName: "KOALA" });
   const shot = await sb.capture();
   assert.deepEqual(shot.values, { kills: 5, deaths: 2, assists: 3, score: 1250, money: 3400 });
-  assert.equal(tools.calls[1].args[tools.calls[1].args.indexOf("-File") + 1].endsWith("ocr.ps1"), true);
+  const ocrArgs = tools.calls[1].args;
+  assert.equal(ocrArgs.includes("-File"), false, "keine Skriptdatei: gesperrte Execution Policy blockiert sonst");
+  const ocrScript = Buffer.from(ocrArgs[ocrArgs.indexOf("-EncodedCommand") + 1], "base64").toString("utf16le");
+  assert.match(ocrScript, /-Folder \(Get-Location\)\.ProviderPath$/);
+  assert.equal(tools.calls[1].cwd.includes("foto-"), true, "Ordner kommt über das Arbeitsverzeichnis");
   assert.deepEqual((await readdir(dir)).sort(), ["scoreboard-stats.json", "scoreboard.json"], "Fotos und Skript sind weg");
   const saved = await readFile(path.join(dir, "scoreboard-stats.json"), "utf8");
   assert.doesNotMatch(saved, /Gegner/, "keine Daten anderer Spieler");
