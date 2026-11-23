@@ -17,6 +17,16 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
 
+## Neu in 0.48.1 · 23. November 2026 (offener PR)
+
+Chat-Übersetzer, nach echten Chatzeilen aus einem Match nachgebessert und auf dem PC mit der Engine geprüft:
+
+- Englisch von einer türkischen Tastatur („fuck your aımbot“, „why cheatıng“) gilt jetzt als Englisch und wird richtig übersetzt (vorher Türkisch, Ergebnis „a-mbot“).
+- Türkischer Chat-Slang wird erkannt: „naber“, „anani sikeyim“, „amk“, „kanka“ und Ähnliches blieben vorher unübersetzt. Abkürzungen wie „naber“, „slm“, „tşk“ schreibt TecMon vor dem Übersetzen aus („naber“ → „Was ist los?“).
+- Klein geschriebene Fragen wie „nasılsın?“ ergaben doppelte Ausgaben („Wie bist du? Wie ist“). Satzanfänge werden vor dem Übersetzen groß geschrieben; auch ein zweiter Satz nach „?“ wird jetzt übersetzt.
+- Callouts mit Endung („B ye“) werden als „B'ye“ gelesen („Gehen wir zu B“ statt „essen B“).
+- Grenzen: Die Qualität hängt an den Firefox-Modellen. Umgangssprache klingt manchmal steif („Wie bist du?“, „Ficken Sie“).
+
 ## Neu in 0.48.0 · 22. November 2026 (gemergt mit #108)
 
 - **Noch nicht ausgewertete Matches:** Der Companion fragt über dein angemeldetes Steam die letzten Matches deines Kontos ab (boiler-writter ohne Match-Angaben, nur Match-Infos, keine Demo) und merkt sich Match-ID, Zeit, Valve-Link und den daraus gebildeten Sharecode in `stats-backlog.json`. Die Webseite zeigt diese Liste unter „Meine Stats“ → „Noch nicht ausgewertet“, lädt die Demos selbst (Browser-Add-on oder `demo-fetch-v1`), wertet sie im Browser aus und lädt nur die Zahlen hoch. Danach meldet sie die Matches als erledigt.
