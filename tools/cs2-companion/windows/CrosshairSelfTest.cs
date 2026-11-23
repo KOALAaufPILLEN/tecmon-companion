@@ -39,6 +39,22 @@ static class CrosshairSelfTest {
             image.Save(Path.Combine(output,"crosshair-"+shape+".png"));
           }
         }
+        // Pixel checks exercise the actual native glyph, not a copy of the geometry.
+        options["shape"]="cross";options["rotation"]=0;look["dot"]=false;look["outline"]=false;
+        foreach(bool tStyle in new[]{false,true}){
+          look["tStyle"]=tStyle;form.Apply(true,look,options);
+          using(var image=new Bitmap(512,512,System.Drawing.Imaging.PixelFormat.Format32bppArgb)){
+            using(var g=Graphics.FromImage(image))form.Draw(g,1);
+            Check((image.GetPixel(256,249).A>0)==!tStyle,"T-form must remove only the upper arm");
+            Check(image.GetPixel(256,263).A>0,"Lower arm missing");
+            Check(image.GetPixel(249,256).A>0&&image.GetPixel(263,256).A>0,"Horizontal arms missing");
+          }
+        }
+        look["tStyle"]=false;look["outline"]=true;look["outlineThickness"]=0;form.Apply(true,look,options);
+        using(var image=new Bitmap(512,512,System.Drawing.Imaging.PixelFormat.Format32bppArgb)){
+          using(var g=Graphics.FromImage(image))form.Draw(g,1);
+          Check(image.GetPixel(258,263).A==0,"Zero-width outline must not draw a border");
+        }
         options["target"]="monitor";options["monitor"]=99;form.Apply(true,look,options);Check(!form.Visible,"Missing monitor must hide overlay");
         options["target"]="primary";options["app"]="tecmon-test-no-such-process";form.Apply(true,look,options);Check(!form.Visible,"App filter must hide other apps");
         options.Remove("app");options["hotkey"]="F11";bool registered=false,paused=false;
