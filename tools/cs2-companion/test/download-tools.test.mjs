@@ -42,8 +42,9 @@ async function setup(t, installed, zip = Buffer.from("hlae-zip")) {
     return new Response(zip);
   };
   // Ersatz für unpack-tools.ps1: legt die neue HLAE-Version an.
-  const run = async (_exe, args) => {
-    const target = args[args.indexOf("-Destination") + 1];
+  const run = async (_exe, args, options) => {
+    assert.ok(!args.includes("-File"));
+    const target = options.env.TECMON_UNPACK_DESTINATION;
     await mkdir(path.join(target, "x64"), { recursive: true });
     await writeFile(path.join(target, "hlae.exe"), "neu");
     await writeFile(path.join(target, "x64", "AfxHookSource2.dll"), "neu");

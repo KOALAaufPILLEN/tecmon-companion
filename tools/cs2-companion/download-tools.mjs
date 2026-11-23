@@ -4,6 +4,7 @@ import { access, readFile, mkdir, readdir, cp, unlink, rename, rm } from "node:f
 import { createHash, randomUUID } from "node:crypto";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { unpackCommand } from "./powershell.mjs";
 
 const readManifest = async (root) => JSON.parse(await readFile(path.join(root, "dependency-manifest.json"), "utf8"));
 
@@ -31,7 +32,9 @@ async function fetchTool(root, name, item, run, progress, fetchImpl = fetch) {
     const hash = createHash("sha256");
     for await (const chunk of createReadStream(zip)) hash.update(chunk);
     if (hash.digest("hex").toLowerCase() !== item.sha256.toLowerCase()) throw new Error(`${name}: SHA256 stimmt nicht überein. Download wird nicht verwendet.`);
-    await run("powershell.exe", ["-NoProfile", "-NonInteractive", "-File", path.join(root, "unpack-tools.ps1"), "-Archive", zip, "-Destination", unpacked], { timeout: 120000 });
+    // Ohne .ps1-Datei: gesperrte Skriptausführung (Execution Policy) darf die Einrichtung nicht abbrechen.
+    const unpack = unpackCommand(zip, unpacked);
+    await run("powershell.exe", unpack.args, { env: unpack.env, timeout: 120000 });
     await unlink(zip).catch(() => {});
     return { unpacked, cleanup };
   } catch (error) {
