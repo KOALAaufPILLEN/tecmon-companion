@@ -5,12 +5,12 @@ import vm from 'node:vm';
 import {DEFAULT_CROSSHAIR, DEFAULT_OVERLAY, PRESETS, STYLES} from '../crosshair.mjs';
 
 // Execute the real browser event handlers; catch inconsistent shape/checkbox/draft state.
-async function editor() {
+async function editor(tStyle=false) {
   const elements=new Map(), paints=[];
   const context={createLinearGradient:()=>({addColorStop(){}}),fillRect:(...args)=>paints.push(['rect',...args]),save(){},restore(){},translate(){},rotate(){},beginPath(){},arc:()=>paints.push(['circle']),stroke(){}};
   function element(){return {value:'',checked:false,disabled:false,hidden:true,width:200,nextElementSibling:{tagName:'OUTPUT'},classList:{toggle(){}},listeners:{},addEventListener(name,fn){this.listeners[name]=fn;},replaceChildren(...children){this.children=children;},getContext:()=>context};}
   const $=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
-  const info={crosshair:{...DEFAULT_CROSSHAIR,color:[...DEFAULT_CROSSHAIR.color]},overlay:{...DEFAULT_OVERLAY,shape:'circle',notice:[],noticeVersion:2},overlayDefaults:DEFAULT_OVERLAY,presets:PRESETS,styles:STYLES};
+  const info={crosshair:{...DEFAULT_CROSSHAIR,tStyle,color:[...DEFAULT_CROSSHAIR.color]},overlay:{...DEFAULT_OVERLAY,shape:'circle',notice:[],noticeVersion:2},overlayDefaults:DEFAULT_OVERLAY,presets:PRESETS,styles:STYLES};
   const saves=[];
   const api=async(url,input)=>{if(input)saves.push({url,input:structuredClone(input)});return structuredClone(info);};
   const source=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
@@ -48,4 +48,11 @@ test('point and outline controls follow their switches; shape edits change actua
   assert.equal(e.paints.filter(p=>p[0]==='circle').length,0);
   e.paints.length=0;await e.event('overlay-shape','input','circle');
   assert.ok(e.paints.some(p=>p[0]==='circle'));
+});
+
+test('older circle profiles with a hidden T flag load consistently and can switch to T',async()=>{
+  const e=await editor(true);
+  assert.equal(e.$('overlay-shape').value,'circle');assert.equal(e.$('crosshair-tStyle').checked,false);
+  await e.event('crosshair-tStyle','change',true);
+  assert.equal(e.$('overlay-shape').value,'t');assert.equal(e.$('crosshair-tStyle').checked,true);
 });

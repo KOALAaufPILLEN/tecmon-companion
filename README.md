@@ -9,7 +9,7 @@ passende Regler sind aktiv: Länge/Abstand beim Kreuz, Radius beim Kreis, Punktg
 mit eingeschaltetem Punkt, Umrissdicke mit Umriss. Umrissdicke 0 zeichnet auch nativ
 keinen Rand mehr. Änderungen wie bisher speichern; Overlay bleibt standardmäßig aus.
 
-Geprüft: 216 Node-Tests erfolgreich, zwei Integrationstests übersprungen; drei neue
+Geprüft: 217 Node-Tests erfolgreich, zwei Integrationstests übersprungen; vier neue
 Tests der echten Browser-Handler. Browser: Kreis → T, Speichern und Neuladen;
 echter WinForms-Test: T-Arme, Null-Umriss, Fokus, Durchklicken, Filter und Hotkeys.
 Noch nicht gemergt oder als 0.49.1 veröffentlicht.

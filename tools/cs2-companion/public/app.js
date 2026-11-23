@@ -290,7 +290,7 @@ function drawCrosshair(){
   g.fillStyle=hex(c.color);for(const r of rects)g.fillRect(...r);g.restore();
 }
 function showCrosshair(){
-  if(!crosshair)return;const c=crosshair;
+  if(!crosshair)return;if(overlayDraft?.shape==='circle')crosshair.tStyle=false;const c=crosshair;
   for(const k of crossKeys){const input=$('crosshair-'+k);input.value=c[k];input.nextElementSibling.textContent=c[k];}
   $('crosshair-style').value=c.style;$('crosshair-color').value=hex(c.color);for(const k of ['outline','dot','tStyle'])$('crosshair-'+k).checked=c[k];
   $('crosshair-commands').textContent=crossCommands(c).join('\n');crosshairControls();drawCrosshair();
