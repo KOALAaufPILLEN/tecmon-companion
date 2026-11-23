@@ -269,10 +269,13 @@ test("Companion: Rundentipps einschalten, GSI-Token prüfen, ausschalten", async
     fetch(base + route, { method: "POST", headers: { ...headers, ...more }, body: JSON.stringify(body) });
   const state = async () => (await (await fetch(base + "/api/state", { headers })).json()).gsi;
 
-  assert.equal((await state()).enabled, false);
+  // Seit 23.11.2026 standardmäßig an: die cfg liegt schon nach dem Start im CS2-Ordner.
+  const cfg = path.join(game, "csgo", "cfg", "gamestate_integration_tecmon.cfg");
+  assert.equal((await state()).enabled, true);
+  assert.equal((await state()).features.find((f) => f.id === "bombLive").enabled, true);
+  assert.match(await readFile(cfg, "utf8"), /"uri" "http:\/\/127\.0\.0\.1:31977\/gsi"/);
   assert.equal((await post("/api/gsi/enable", {})).status, 400);
   assert.equal((await post("/api/gsi/enable", { confirm: true })).status, 200);
-  const cfg = path.join(game, "csgo", "cfg", "gamestate_integration_tecmon.cfg");
   const gsiToken = (await readFile(cfg, "utf8")).match(/"token" "([a-f0-9]{64})"/)[1];
   assert.notEqual(gsiToken, token, "GSI-Token ist getrennt vom Sitzungstoken");
 
@@ -300,12 +303,15 @@ test("Companion: Rundentipps einschalten, GSI-Token prüfen, ausschalten", async
   assert.equal(toggled.gsi.features.find((f) => f.id === "spray").enabled, true);
   assert.equal(toggled.gsi.features.some((f) => f.id === "evil"), false);
   const bombLive = toggled.gsi.features.find((f) => f.id === "bombLive");
-  assert.equal(bombLive.enabled, false, "Bomben-Anzeige ist ohne eigene Wahl aus");
+  assert.equal(bombLive.enabled, true, "Bomben-Anzeige ist seit 23.11.2026 standardmäßig an");
   assert.match(bombLive.notice, /FACEIT/);
   assert.match(await readFile(path.join(dir, "data", "gsi.json"), "utf8"), /"map":false/);
   assert.equal((await post("/api/gsi/disable", {})).status, 200);
-  assert.equal(await stat(cfg).catch(() => null), null);
   assert.equal((await state()).enabled, false);
+  // Auto-Highlights sind ebenfalls standardmäßig an und lesen dieselbe GSI-Datei: sie bleibt bis beide aus sind.
+  assert.ok(await stat(cfg).catch(() => null));
+  assert.equal((await post("/api/auto/settings", { enabled: false })).status, 200);
+  assert.equal(await stat(cfg).catch(() => null), null);
 });
 
 test("Map-Übersicht mit Radar und Spots zu Beginn der Halbzeit, Spray-Muster beim Waffenkauf", () => {
@@ -364,13 +370,15 @@ test("Früher Tod und starke Runde", () => {
   assert.match(tips.state().tip.text, /^Starke Runde: 3 Kills, davon 2 Headshots/);
 });
 
-test("Bomben-Anzeige ist standardmäßig aus und trägt den FACEIT-Hinweis", () => {
-  const off = createGameTips(clock());
+test("Bomben-Anzeige ist standardmäßig an (Nutzerentscheid 23.11.2026) und trägt den FACEIT-Hinweis", () => {
+  const bomb = FEATURES.find((f) => f.id === "bombLive");
+  assert.notEqual(bomb.defaultOff, true);
+  assert.match(bomb.notice, /FACEIT/);
+  // In CS2 ist keine Funktion mehr standardmäßig aus.
+  assert.deepEqual(FEATURES.filter((f) => f.defaultOff).map((f) => f.id), []);
+  const off = createGameTips({ ...clock(), enabled: (id) => id !== "bombLive" });
   off.ingest(frame({ round: 6, roundPhase: "live", bomb: "planted", state: { health_c4_preview: 0 } }));
   assert.equal(off.state().live, null);
-  const bomb = FEATURES.find((f) => f.id === "bombLive");
-  assert.equal(bomb.defaultOff, true);
-  assert.match(bomb.notice, /FACEIT/);
 });
 
 test("Bomben-Vorschau aus GSI: stehende Live-Anzeige statt neuer Tipps", () => {

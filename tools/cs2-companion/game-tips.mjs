@@ -23,7 +23,7 @@ export const BOMB_NOTICE =
   "Bomben-Timer und Defuse-Check kommen aus Valves offizieller Game State Integration und lösen keinen VAC-Bann aus. " +
   "FACEIT und viele Turniere verbieten solche Hilfen aber. Spielst du FACEIT oder ein Turnier, lass diese Anzeige ausgeschaltet.";
 
-/** Einzeln abschaltbare Funktionen (Optionen im Companion). defaultOff: aus, bis man sie selbst einschaltet. */
+/** Einzeln abschaltbare Funktionen (Optionen im Companion). defaultOff: aus, bis man sie selbst einschaltet (in CS2 derzeit keine). */
 export const FEATURES = [
   { id: "economy", label: "Wirtschaft und Kaufempfehlung", categories: ["economy"] },
   { id: "buy", label: "Kauf-Check (Helm, Rüstung, Kit, Geld übrig)", categories: ["buy"] },
@@ -39,7 +39,7 @@ export const FEATURES = [
     id: "bombLive",
     label: "Live nach dem Plant: Bomben-Timer, Defuse-Check und HP nach der Explosion an deiner Stelle",
     categories: ["bomb-live"],
-    defaultOff: true,
+    /* Seit 23.11.2026 standardmäßig an (Nutzerentscheid: in CS2 alles an außer Fadenkreuz-Overlay); der Hinweis bleibt sichtbar. */
     notice: BOMB_NOTICE,
   },
   { id: "roundLive", label: "Live: Kills, Kopfschüsse und Schaden kurz nach einem Kill, Rundenbilanz am Rundenende", categories: ["round-live"] },
