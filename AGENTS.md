@@ -525,6 +525,11 @@ eingebaut wurde, steht im Update-Protokoll dort.
   Datenbank-Cluster; der Companion startet sie nicht und löscht sie nicht
   ungefragt. `PrepareUpdate()` in `TecMon.cs` beendet einen noch laufenden
   alten Cluster vor dem Update weiter, falls `installation.json` ihn nennt.
+- HLAE (`dependency-manifest.json`, `download-tools.mjs`): Nach CS2-Updates neue
+  advancedfx-Releases prüfen (AfxHookSource2 „Adjusted to CS2 update“) und Version, URL und
+  SHA-256 im Manifest nachziehen. `updateHlae()` bringt bestehende Installationen vor dem
+  CS2-Start mit HLAE auf diese Version (nur älter/unbekannt ersetzen, Rückfall auf die alte
+  bei Fehlern); kein Download aus anderen Quellen als dem Manifest.
 - Fremde Binärdateien nur mit fester Prüfsumme: CS2-Plugin über
   `PLUGIN_SHA256` (`recording-engine.mjs`), boiler-writter über die
   npm-Integrität in `BOILER`. Bei Abweichung abbrechen, nie ungeprüft starten.

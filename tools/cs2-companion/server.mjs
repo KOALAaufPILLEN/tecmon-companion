@@ -41,6 +41,7 @@ import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { verifyCs2 } from "./cs2-verify.mjs";
 import { createDemoFetch, DEMO_FETCH_CAPABILITY } from "./demo-fetch.mjs";
 import { readInstallation, runTool } from "./managed-installation.mjs";
+import { updateHlae } from "./download-tools.mjs";
 import { copyRadars, radarFile } from "./radars.mjs";
 import { createDesktopSettings } from "./desktop-settings.mjs";
 
@@ -494,6 +495,25 @@ export async function createCompanion({
     dir: installation?.profileDir || dataDir,
     ...(engineSystem.agentSwap || {}),
   });
+  /**
+   * HLAE vor jedem CS2-Start mit HLAE auf die Manifest-Version bringen. Alte
+   * AfxHookSource2-Versionen brechen nach CS2-Updates mit „Problem in …ViewModel.cpp“
+   * ab; die Ersteinrichtung lädt HLAE nur einmal. Einmal je Prozess, nach einem
+   * Fehler beim nächsten Mal erneut; ein Fehler hält die Aufnahme nicht auf.
+   */
+  let hlaeChecked = null;
+  const ensureHlae = (log) => {
+    const update = engineSystem.hlaeUpdate || (installation && process.platform === "win32" ? updateHlae : null);
+    if (!update || !installation) return Promise.resolve();
+    hlaeChecked ||= update({ root, hlaeExe: installation.hlaeExe, run: runTool, progress: log }).catch((error) => {
+      hlaeChecked = null;
+      throw error;
+    });
+    return hlaeChecked.then(
+      () => {},
+      (error) => log(`HLAE-Update fehlgeschlagen (${error.message}). Aufnahme läuft mit der installierten HLAE-Version; bei „AfxHookSource2: Problem in …“ Companion neu starten.`),
+    );
+  };
   /** Updates ohne Klick installieren, sobald nichts läuft. Standardmäßig an, unter „Updates & Info“ abschaltbar. */
   const updatesFile = path.join(installation?.profileDir || dataDir, "updates.json");
   let autoInstall = true;
@@ -618,6 +638,9 @@ export async function createCompanion({
       job.engine = "tecmon";
       job.status = "recording";
       job.log += "\nEigene TecMon-Aufnahme.";
+      await ensureHlae((message) => {
+        job.log += `\n${message}`;
+      });
       const startedAt = Date.now();
       try {
         await recordInternal({
@@ -928,6 +951,9 @@ export async function createCompanion({
           }
           job.status = "camera";
           job.engine = "tecmon";
+          await ensureHlae((message) => {
+            job.log += `\n${message}`;
+          });
           job.marks = await cameraSession({
             demo,
             tick: input.tick,

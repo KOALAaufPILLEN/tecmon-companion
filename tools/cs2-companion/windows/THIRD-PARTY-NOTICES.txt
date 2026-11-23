@@ -14,9 +14,9 @@ Node.js 26.13.0 LTS
 https://nodejs.org/ · MIT und mitgelieferte Drittanbieter-Lizenzen, siehe runtime/LICENSE.
 Quellcode: https://github.com/nodejs/node/tree/v26.13.0
 
-HLAE 2.193.0 (advancedfx)
+HLAE 2.193.1 (advancedfx)
 https://www.advancedfx.org/ · GPL und enthaltene Drittanbieter-Lizenzen.
-Quellcode: https://github.com/advancedfx/advancedfx/tree/v2.193.0
+Quellcode: https://github.com/advancedfx/advancedfx/tree/v2.193.1
 Nur für Demo-Aufnahmen verwenden. Spielupdates können ein HLAE-Update erforderlich machen.
 
 FFmpeg 8.1.2 · gyan.dev Windows x64 full_build (GPL) vom 2026-06-27

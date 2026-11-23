@@ -6,10 +6,10 @@
     "sha256": "9c02c9ed120f671b900e6b9471d890e3b2414117a7e53f4ae2e855466fa2b7c9"
   },
   "hlae": {
-    "version": "2.193.0",
+    "version": "2.193.1",
     "file": "hlae.zip",
-    "url": "https://github.com/advancedfx/advancedfx/releases/download/v2.193.0/hlae_2_193_0.zip",
-    "sha256": "ac1f6740551cba7a72ba8437b84097d6f9a95d922ae05f333417bac6d1b746c2"
+    "url": "https://github.com/advancedfx/advancedfx/releases/download/v2.193.1/hlae_2_193_1.zip",
+    "sha256": "1d07333fa34aca23c9f994d77010591e60bf93e176debdf511a854fd6902c99e"
   },
   "ffmpeg": {
     "version": "8.1.2 full_build (gyan.dev, 2026-06-27)",

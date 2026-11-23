@@ -17,6 +17,14 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
 
+## Neu in 0.48.2 · 23. November 2026 (offener PR)
+
+Fehlerbehebung für Aufnahmen und „Kamera im Spiel setzen“:
+
+- **„Error - AfxHookSource2: Problem in …\\ViewModel.cpp:75“ behoben:** Das CS2-Update 1.42.0.0 vom 20.11.2026 passt nicht mehr zu HLAE 2.193.0 (AfxHookSource2 0.42.0). Der Companion liefert jetzt HLAE 2.193.1 (AfxHookSource2 0.42.1, „Adjusted to CS2 update (1.42.0.0)“) mit fester SHA-256 aus.
+- **HLAE wird bei bestehenden Installationen nachgezogen:** Bisher lud der Companion HLAE nur bei der Ersteinrichtung; ein Companion-Update ließ die alte Version liegen. Jetzt prüft er vor dem ersten CS2-Start mit HLAE die installierte Version (`changelog.xml`) gegen `dependency-manifest.json` und ersetzt nur eine ältere oder unbekannte Version, vom Originalanbieter, mit SHA-256-Prüfung; eine neuere bleibt. Schlägt der Download fehl, bleibt die alte HLAE unverändert, das Protokoll nennt den Fehler und die Aufnahme versucht es trotzdem.
+- Grenzen: HLAE läuft weiterhin nur bei der Offline-Demo-Wiedergabe (Aufnahme, Kamera setzen), nie im Live-Match. Nach künftigen CS2-Updates kann AfxHookSource2 wieder brechen, bis advancedfx eine angepasste Version veröffentlicht und sie hier eingetragen ist. Mit echtem CS2 unter Windows noch nicht geprüft.
+
 ## Neu in 0.48.1 · 23. November 2026 (gemergt mit #110)
 
 Chat-Übersetzer, nach echten Chatzeilen aus einem Match nachgebessert und auf dem PC mit der Engine geprüft:
