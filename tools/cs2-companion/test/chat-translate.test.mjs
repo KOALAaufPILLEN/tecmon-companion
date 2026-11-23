@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, writeFile, appendFile, readFile, readdir } from "node:f
 import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import {
-  parseChatLine, detectLanguage, modelsFor, keepEmotes, sameText, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail, lineTime, sourceText,
+  parseChatLine, detectLanguage, modelsFor, keepEmotes, sameText, MAX_LOADED_MODELS, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail, lineTime, sourceText,
   ensureEngine, ensureModel, patchEngineFile, ENGINE_PATCH, cleanLook, CHAT_LOOK_DEFAULT, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
 } from "../chat-translate.mjs";
 import { CHAT_MODELS } from "../chat-models.mjs";
@@ -382,4 +382,50 @@ test("Smileys bleiben, unveränderte Ausgaben gelten nicht als Übersetzung (Cha
   assert.equal(sameText("merhaba", "Hi"), false);
   assert.equal(detectLanguage("ficken dicken"), "de");
   assert.equal(detectLanguage("gegen"), "de");
+});
+
+test("Neue Modelle starten den Worker neu, Abstürze werden aufgefangen (Failed to allocate memory)", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "tecmon-chat3-"));
+  const exe = path.join(root, "game", "bin", "win64", "cs2.exe");
+  await mkdir(path.join(root, "game", "csgo", "cfg"), { recursive: true });
+  const bytes = Buffer.from("modell");
+  const hash = createHash("sha256").update(bytes).digest("hex");
+  const original = structuredClone(CHAT_MODELS);
+  const keys = ["ruen", "ende", "esen", "iten", "plen", "pten"];
+  for (const key of keys) for (const part of Object.keys(CHAT_MODELS[key])) if (part !== "config") Object.assign(CHAT_MODELS[key][part], { size: bytes.length, sha256: hash });
+  try {
+    const engines = [];
+    let crash = false;
+    const loadEngine = async () => ({
+      TranslatorBacking: class { constructor() { this.models = new Map(); } },
+      BatchTranslator: class {
+        constructor(_o, backing) { this.backing = backing; this.deleted = false; this.models = backing.loadModelRegistery(); engines.push(this); }
+        async translate({ from, to, text }) { if (crash) { crash = false; throw new Error("Failed to allocate memory on CPU"); } return { target: { text: `[${from}>${to}]${text}` } }; }
+        delete() { this.deleted = true; }
+      },
+    });
+    const chat = await createChatTranslator({ dir: path.join(root, "p"), cacheDir: path.join(root, "c"), cs2Exe: exe, request: async () => fakeResponse(bytes), loadEngine });
+    await chat.setSettings({ enabled: true });
+    const lines = ["[ALL] A\u200e: давай быстрее", "[ALL] B\u200e: hola amigos, vamos a", "[ALL] C\u200e: ciao andiamo bene", "[ALL] D\u200e: Dobra robota, idziemy na B", "[ALL] E\u200e: não você obrigado vamos"];
+    for (const line of lines) { chat.feed(line); await chat.idle(); }
+    assert.ok(chat.messages().every((m) => m.status === "done"), JSON.stringify(chat.messages()));
+    // Jedes neue Modell: neuer Worker, der alte wird beendet; nie mehr als MAX_LOADED_MODELS geladen.
+    assert.equal(engines.length, lines.length);
+    assert.ok(engines.slice(0, -1).every((e) => e.deleted));
+    const loaded = (await engines.at(-1).models).length;
+    assert.ok(loaded <= MAX_LOADED_MODELS, String(loaded));
+    // Absturz im Worker: Zeile meldet Fehler, die nächste läuft mit frischem Worker.
+    crash = true;
+    chat.feed("[ALL] E\u200e: não você obrigado vamos");
+    await chat.idle();
+    assert.equal(chat.messages()[0].status, "error");
+    chat.feed("[ALL] E\u200e: não você obrigado vamos");
+    await chat.idle();
+    assert.equal(chat.messages()[0].status, "done");
+    assert.equal(engines.length, lines.length + 1);
+    chat.close();
+    assert.ok(engines.at(-1).deleted);
+  } finally {
+    for (const key of Object.keys(original)) CHAT_MODELS[key] = original[key];
+  }
 });
