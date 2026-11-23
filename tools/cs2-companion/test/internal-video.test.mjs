@@ -35,6 +35,13 @@ async function scenario(t, mode) {
   const opened = [];
   let clock = Date.now();
   let recording = null;
+  // HLAE-Update vor dem CS2-Start; im Browser-Fall scheitert es, die Aufnahme läuft trotzdem.
+  const hlaeCalls = [];
+  const hlaeUpdate = async ({ hlaeExe }) => {
+    hlaeCalls.push(hlaeExe);
+    if (mode === "browser") throw new Error("offline");
+    return { updated: false };
+  };
   const system = {
     verifyCs2: async (file) => ({ ok: true, reason: "", path: file }), // Testdatei ist keine echte cs2.exe
     plugin: async () => Buffer.from("dll"),
@@ -69,6 +76,7 @@ async function scenario(t, mode) {
     detectTools: async () => ({ cs2: cs2Exe }),
     engineSystem: {
       recorder: system,
+      hlaeUpdate,
       download: { isRunning: async () => false },
       auto: {
         isRunning: async () => false,
@@ -183,6 +191,7 @@ async function scenario(t, mode) {
     assert.equal(done.status, "done", done.log);
     const file = await fetch(base + `/api/video?job=${imported.id}&file=0`, { headers: { "x-tecmon-token": token } });
     assert.equal(await file.text(), "fertiges video");
+    assert.deepEqual(hlaeCalls, [installation.hlaeExe]);
     return;
   }
   const started = await (await post("/bridge/capture", { job, ...source, confirm: true })).json();
@@ -200,6 +209,11 @@ async function scenario(t, mode) {
   const video = await fetch(base + `/bridge/video?id=${started.id}&file=0`, { headers });
   assert.equal(video.status, 200);
   assert.equal(await video.text(), "fertiges video");
+  assert.deepEqual(hlaeCalls, [installation.hlaeExe]);
+  if (mode === "browser") {
+    const all = await (await fetch(base + "/api/state", { headers: { "x-tecmon-token": token } })).json();
+    assert.match(all.jobs.find((j) => j.id === started.id).log, /HLAE-Update fehlgeschlagen \(offline\)/);
+  }
 }
 
 test("Eigene Engine: fertige MP4 kommt über /bridge/video zur Webseite", (t) => scenario(t, "browser"));
