@@ -3,6 +3,21 @@
 Gilt für alle Änderungen in diesem Repository. Oberflächentexte, Tipps und
 README sind auf Deutsch.
 
+## Standardwerte in CS2 (Nutzerentscheid 23.11.2026)
+
+- In CS2 ist alles standardmäßig an: Rundentipps samt aller `FEATURES` (auch `bombLive`), Highlight-Video
+  nach dem Match, Chat-Übersetzer mit Sprechblase und die Frage „Stats hochladen?“. **Einzige Ausnahme ist
+  das Fadenkreuz-Overlay**, das aus bleibt, bis man es mit Hinweis einschaltet. Was einen bestätigten Hinweis
+  braucht (Chat-Overlay/Chat-Fenster, Skin-Tausch, HUAN-Modus), bleibt bis zur Bestätigung aus; Funktionen
+  außerhalb des CS2-Pakets (Clip-Puffer, Dota 2, Wardogs, Autostart) behalten ihre eigenen Standards.
+- Die Standards gelten nur mit installiertem CS2-Paket (`defaultEnabled` aus `games.has("cs2")`). Ältere
+  Einstellungsdateien ohne Feld `defaults` (aus der Zeit, als „aus“ der Standard war) bekommen die neuen
+  Standards einmal (`DEFAULTS_VERSION`, `AUTO_DEFAULTS`, `CHAT_DEFAULTS` = 2); danach gilt nur, was man selbst
+  schaltet. Selbst abgeschaltete Einzelfunktionen bleiben aus. Ändern sich die Standards erneut, die Version
+  erhöhen. Neue CS2-Funktionen sind standardmäßig an, außer der Nutzer entscheidet anders.
+- Die GSI-Datei legt der Companion beim Start an, sobald Rundentipps oder Auto-Highlights an sind und CS2
+  gefunden wurde. Neu installiertes CS2-Paket stellt die Standards wieder her (`resetDefaults()`).
+
 ## CS2-Rundentipps (Game State Integration)
 
 Die Rundentipps müssen VAC-sicher und für normale Matchmaking-Spiele
@@ -23,17 +38,17 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
 - **Bomben-Timer nur aus offizieller GSI** (Nutzerentscheid vom 18.11.2026, ersetzt das
   frühere Verbot): `phase_countdowns` liefert Kaufzeit, Bombe (`bomb`) und Entschärfen
   (`defuse`); die Live-Anzeige `bombLive` zeigt daraus Restzeit und einen Defuse-Check des
-  eigenen Kits. Keine zusätzlichen GSI-Blöcke, keine Gegnerdaten. `bombLive` ist
-  standardmäßig aus (`defaultOff`, `DEFAULT_OFF`); beim Einschalten zeigen Companion-Seite
-  und Figurmenü `BOMB_NOTICE` (FACEIT/Turniere verbieten Bomben-Timer).
+  eigenen Kits. Keine zusätzlichen GSI-Blöcke, keine Gegnerdaten. `bombLive` ist seit
+  23.11.2026 standardmäßig an (vorher `defaultOff`); `BOMB_NOTICE` (FACEIT/Turniere verbieten
+  Bomben-Timer) steht weiter bei der Funktion und erscheint beim erneuten Einschalten.
 - **Offizielle GSI-Werte des eigenen Spielers nutzen** (Nutzerentscheid vom 18.11.2026):
   Was CS2 in den erlaubten Blöcken über den eigenen Spieler schickt, darf eingebaut
   werden, auch wenn es die Bombe betrifft, etwa `player_state.health_c4_preview`
   (HP nach der Explosion an der eigenen Stelle, seit CS2-Update 17.11.2026). Die Liste
   der erlaubten Blöcke und das Verbot von Gegnerdaten bleiben unverändert.
-- **Standardmäßig aus.** Die cfg-Datei `gamestate_integration_tecmon.cfg`
-  wird nur nach Einschalten angelegt, mit eigenem zufälligem Token, und beim
-  Ausschalten wieder entfernt. Während einer Demo-Aufnahme werden GSI-Daten
+- **Standardmäßig an** (seit 23.11.2026, vorher aus). Die cfg-Datei `gamestate_integration_tecmon.cfg`
+  wird beim Start angelegt, solange Rundentipps oder Auto-Highlights an sind, mit eigenem zufälligem
+  Token, und beim Ausschalten beider wieder entfernt. Während einer Demo-Aufnahme werden GSI-Daten
   ignoriert.
 
 ### Wann der Companion spricht
@@ -70,7 +85,9 @@ unbedenklich bleiben. Diese Grenzen sind verbindlich:
 - Funktionen sind einzeln abschaltbar, auf der Companion-Seite
   (`/api/gsi/features`) und im Figurmenü „Games → CS2 → Rundentipps“ (`TecMon.cs`).
   Gespeichert in `gsi.json`; nicht gespeicherte Funktionen gelten als an, außer sie tragen
-  `defaultOff` in `FEATURES`. Ein `notice` in `FEATURES` wird beim Einschalten gezeigt.
+  `defaultOff` in `FEATURES` (in CS2 derzeit keine). Ein `notice` in `FEATURES` wird beim Einschalten gezeigt.
+- In `TecMon.cs` setzt `TipAnchor()` Tipps und Live-Anzeigen neben die Figur, aber immer auf den Bildschirm,
+  auf dem CS2 vorn liegt; steht die Figur woanders, erscheint die Blase unten rechts auf dem CS2-Bildschirm.
 
 ### Daten von der Webseite (`insights-v1`)
 
@@ -340,7 +357,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 
 ## Highlight-Video nach dem Match (`auto-highlights.mjs`)
 
-- Standardmäßig aus (`auto-highlights.json`). Eingeschaltet braucht es die
+- Standardmäßig an (seit 23.11.2026, `auto-highlights.json`). Eingeschaltet braucht es die
   GSI-Datei; sie bleibt, solange Rundentipps oder Auto-Highlights an sind.
   Gelesen werden nur `map.name`, `map.mode`, `map.phase` und
   `provider.steamid`; während einer Aufnahme nichts annehmen.
@@ -414,7 +431,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   (im Spiel geprüft 22.11.2026). Steam-Startoptionen nie selbst ändern (`localconfig.vdf` bleibt
   unberührt); nur erklären oder CS2 über den festen Link `CHAT_LAUNCH_URL` (`steam://run/730//+cl_input_enable_raw_keyboard true -condebug/` (URL-kodiert, Standard `CHAT_LAUNCH_OPTIONS`; eigene Startoptionen nur durch `cleanLaunchOptions()`: `-name`, `+name`, einfache Werte, `-condebug` immer dabei))
   einmalig starten, Steam fragt dabei selbst nach.
-- Standardmäßig aus, Teil des CS2-Pakets, beim Entfernen des Pakets Einstellungen und die eigenen
+- Standardmäßig an (seit 23.11.2026), Teil des CS2-Pakets, beim Entfernen des Pakets Einstellungen und die eigenen
   cfgs (`CHAT_FILES`) löschen. Während einer Demo-Aufnahme nichts annehmen (`busy`).
 - **Übersetzung nur lokal:** Bergamot (MPL-2.0, WebAssembly im Node-Worker). Engine nur aus dem
   npm-Paket mit fester Integrität (`ENGINE`; danach nur die eine Windows-Pfad-Zeile aus `ENGINE_PATCH`, bei Abweichung abbrechen, Marker `tecmon-patch-N` erhöhen, wenn sich der Patch ändert), Modelle nur aus `CHAT_MODELS` mit fester SHA-256 und
@@ -435,7 +452,7 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   in der Oberfläche. Das ist die einzige Stelle, an der freier Text in eine cfg kommt: immer durch
   `cleanSay()` (keine Anführungszeichen, `;`, `\`, `//`, Steuerzeichen, höchstens `SAY_MAX` Zeichen).
   Der Test in `test/chat-translate.test.mjs` prüft das und darf nicht gelockert werden.
-- **Chat in der Sprechblase** (Nutzerwunsch 22.11.2026, `bubble` in `chat-translate.json`, standardmäßig aus): `bubbleLines()`
+- **Chat in der Sprechblase** (Nutzerwunsch 22.11.2026, `bubble` in `chat-translate.json`, seit 23.11.2026 standardmäßig an, bei Altdateien nur, wenn Overlay und Fenster aus sind): `bubbleLines()`
   gibt nur fertig übersetzte, frische Zeilen; `/api/state` liefert sie als `chatBubble`. `ShowChatBubble()` in `TecMon.cs` nutzt eine
   eigene `TipBubble` (`chatTip`), zeigt jede Zeile einmal und nimmt nie den Fokus. Sie hängt nicht am `quiet` der Rundentipps und
   zählt nicht zum `BRIEFING_LIMIT`; Tipp-Logik nicht über diese Blase umgehen.

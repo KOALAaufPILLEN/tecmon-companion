@@ -211,7 +211,10 @@ export async function createCompanion({
   }
   // CS2 Game State Integration: offizielle, rein lesende Schnittstelle für Rundentipps.
   const games = await createGamePackages(installation?.profileDir || dataDir);
-  const gsi = await createGsiSettings(installation?.profileDir || dataDir);
+  // Nutzerentscheid 23.11.2026: in CS2 ist alles standardmäßig an (Rundentipps, Auto-Highlights, Chat-Übersetzer,
+  // Stats-Frage), einzige Ausnahme das Fadenkreuz-Overlay. Ohne CS2-Paket bleibt alles aus.
+  const cs2Defaults = games.has("cs2");
+  const gsi = await createGsiSettings(installation?.profileDir || dataDir, { defaultEnabled: cs2Defaults });
   // Clip-Puffer: Bildschirmaufnahme der letzten Sekunden, gehört zum Companion (kein Spiel-Paket).
   const clips = await createClips({
     dir: installation ? installation.dataDir : dataDir,
@@ -344,13 +347,14 @@ export async function createCompanion({
       ...dotaTips.state(),
     };
   }
-  /* Highlight-Video nach dem Match: standardmäßig aus, fragt erst nach Matchende und geschlossenem CS2. */
+  /* Highlight-Video nach dem Match: standardmäßig an (seit 23.11.2026), fragt erst nach Matchende und geschlossenem CS2. */
   const demoFetch = createDemoFetch({ fetch: fetchDemo });
   const auto = await createAutoHighlights({
     dir: installation?.profileDir || dataDir,
     ...(now ? { now } : {}),
     isRunning: engineSystem.auto?.isRunning || (process.platform === "win32" ? isProcessRunning : async () => false),
     busy: () => active,
+    defaultEnabled: cs2Defaults,
     fetchLatest: (options) => {
       if (!ownDownload()) throw new Error("Das automatische Video braucht den installierten Windows-Companion.");
       return (engineSystem.auto?.fetchLatest || downloadLatestDemo)({ ...options, cacheDir: engineCache, system: engineSystem.download });
@@ -405,7 +409,8 @@ export async function createCompanion({
       gsiError = error.message;
     }
   }
-  if (gsi.enabled || auto.enabled) await syncGsiConfig();
+  // Fehlt CS2 auf dem PC, gibt es nichts anzulegen; das ist kein Fehler der Rundentipps.
+  if ((gsi.enabled || auto.enabled) && detected.cs2) await syncGsiConfig();
   function gsiState() {
     const cs = tips.state();
     const dota = dotaGsi.enabled ? dotaTips.state() : null;
@@ -484,6 +489,7 @@ export async function createCompanion({
     cacheDir: engineCache,
     cs2Exe: detected.cs2,
     busy: () => active,
+    defaultEnabled: cs2Defaults,
     ...(engineSystem.chat || {}),
   });
   /** Skin-Tausch für Video-Szenen (skin-swap-v1): freiwilliges Addon, standardmäßig aus. */
@@ -1124,7 +1130,16 @@ export async function createCompanion({
         return json(res, 200, { ok: true });
       }
       if (url.pathname === "/api/games/install") {
-        await games.install(String(input.id || ""));
+        const id = String(input.id || "");
+        const fresh = id === "cs2" && !games.has("cs2");
+        await games.install(id);
+        if (fresh) {
+          // Neu installiertes CS2-Paket: wieder alle Standards an (außer Fadenkreuz-Overlay).
+          await gsi.resetDefaults();
+          await auto.setEnabled(true);
+          await chatTranslator.setSettings({ enabled: true, bubble: true });
+          if (detected.cs2) await syncGsiConfig();
+        }
         return json(res, 200, { message: "Paket installiert.", games: games.state() });
       }
       if (url.pathname === "/api/games/remove") {

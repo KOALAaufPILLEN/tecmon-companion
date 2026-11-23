@@ -505,7 +505,7 @@ $('clips-save').addEventListener('click',()=>api('/api/clips/save',{}).then(r=>{
 $('clips-folder').addEventListener('click',()=>api('/api/clips/folder',{}).catch(notice));
 loadClips().catch(()=>{});setInterval(()=>{if(!restarting)loadClips().catch(()=>{});},4000);
 
-/* Highlight-Video nach dem Match (standardmäßig aus). */
+/* Highlight-Video nach dem Match (seit 0.48.5 standardmäßig an). */
 let autoState=null;
 const AUTO_STATUS={waiting:'Wartet, bis CS2 geschlossen ist. Danach lädt TecMon die Demo.',downloading:'Lade die Demo deines letzten Matches …',ready:'Demo bereit. Die TecMon-Seite erstellt das Video.',done:'Aufnahme gestartet. Fortschritt auf der TecMon-Seite.'};
 let backlogState=null;

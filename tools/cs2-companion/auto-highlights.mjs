@@ -1,7 +1,7 @@
 /**
  * Automatisches Highlight-Video nach dem Match (Capability `auto-highlights-v1`).
  *
- * Standardmäßig aus. Eingeschaltet merkt sich der Companion aus den eigenen
+ * Standardmäßig an (seit 0.48.5, mit CS2-Paket). Eingeschaltet merkt sich der Companion aus den eigenen
  * GSI-Daten nur: Map, Modus, eigene SteamID und ob das Match zu Ende gespielt
  * wurde. Kommen danach eine Minute lang keine GSI-Daten mehr und CS2 ist
  * geschlossen, fragt die Figur, ob ein Highlight-Video entstehen soll. Erst
@@ -13,6 +13,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { readFile, writeFile, rename, rm, mkdir, stat } from "node:fs/promises";
 
+/** Stand der Standardwerte, siehe DEFAULTS_VERSION in gsi-config.mjs. */
+export const AUTO_DEFAULTS = 2;
 export const AUTO_CAPABILITY = "auto-highlights-v1";
 /** Nur Modi, zu denen Valve eine Demo bereitstellt. */
 export const DEMO_MODES = new Set(["competitive", "scrimcomp2v2", "premier"]);
@@ -41,14 +43,21 @@ export async function createAutoHighlights({
   fetchLatest,
   openPage = () => {},
   busy = () => false,
+  defaultEnabled = false,
 }) {
   await mkdir(dir, { recursive: true });
   const file = path.join(dir, "auto-highlights.json");
-  let enabled = false;
+  /* Seit 23.11.2026 standardmäßig an (Nutzerentscheid: in CS2 alles an außer Fadenkreuz-Overlay).
+     Dateien ohne neuen Standard-Stand (`defaults`) bekommen ihn einmal, danach gilt die eigene Wahl. */
+  let enabled = defaultEnabled;
+  let migrate = defaultEnabled;
   try {
-    enabled = JSON.parse(await readFile(file, "utf8")).enabled === true;
+    const saved = JSON.parse(await readFile(file, "utf8"));
+    const current = saved?.defaults === AUTO_DEFAULTS;
+    enabled = current || !defaultEnabled ? saved?.enabled === true : true;
+    migrate = defaultEnabled && !current;
   } catch {
-    /* nicht gespeichert = aus */
+    /* nicht gespeichert = Standard */
   }
   /** Zuletzt gesehenes Match aus GSI. */
   let match = null;
@@ -64,9 +73,10 @@ export async function createAutoHighlights({
 
   async function save() {
     const temporary = `${file}.${randomUUID()}.tmp`;
-    await writeFile(temporary, JSON.stringify({ version: 1, enabled }), { mode: 0o600 });
+    await writeFile(temporary, JSON.stringify({ version: 1, defaults: AUTO_DEFAULTS, enabled }), { mode: 0o600 });
     await rename(temporary, file);
   }
+  if (migrate) await save().catch(() => {});
 
   /** Nur eigene Werte aus der offiziellen GSI-Nachricht; sonst nichts. */
   function observe(payload) {
