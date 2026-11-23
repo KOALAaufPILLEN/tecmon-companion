@@ -17,6 +17,15 @@ Alles Schwere passiert lokal: Demo laden, in CS2 aufnehmen, Branding, MP4. Die W
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
 
+## Neu in 0.48.4 · 23. November 2026 (offener PR)
+
+Chat-Übersetzer, nach den Chatzeilen eines weiteren Matches nachgebessert und auf dem PC mit der Engine geprüft:
+
+- Smileys wie „:D“, „xD“, „<3“ oder Emoji am Anfang und Ende bleiben erhalten. Vorher ließ das Modell sie weg („… in deiner Sprache:“ statt „… in deiner Sprache :D“).
+- Gibt das Modell einen Text unverändert zurück, etwa bei Dialekt wie „gristdi oide wuaschthaud“, steht er nicht mehr als „übersetzt“ da. TecMon zeigt dann einfach das Original.
+- Mehr deutsche Chatwörter („gegen“, „ficken“, „servus“ …). Sie gelten jetzt als Deutsch und werden nicht übersetzt.
+- Grenzen: CS2-Rufe wie „1 low“, „molotov“ und lateinisch geschriebenes Russisch („pidarazi“) bleiben bewusst unübersetzt.
+
 ## Neu in 0.48.3 · 23. November 2026 (gemergt mit #113)
 
 Fehlerbehebung für Aufnahmen und „Kamera im Spiel setzen“:

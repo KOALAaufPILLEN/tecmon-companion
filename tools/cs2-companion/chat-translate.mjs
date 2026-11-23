@@ -141,7 +141,7 @@ export function parseChatLine(raw) {
 
 /** Häufige Chatwörter je Sprache mit lateinischer Schrift. Bosnisch fehlt bewusst: von Kroatisch/Serbisch kaum zu trennen. */
 const WORDS = {
-  de: "ich du er wir ihr und nicht ist das der die den dem ein eine ja nein bitte danke gut mal kein keine was wie warum wo geh los schnell hab habe bin bist sind auch noch nur schon jetzt hier da mit für auf von zu aber oder wenn dann sorry geil alter digga junge leute komm kommt",
+  de: "ich du er wir ihr und nicht ist das der die den dem ein eine ja nein bitte danke gut mal kein keine was wie warum wo geh los schnell hab habe bin bist sind auch noch nur schon jetzt hier da mit für auf von zu aber oder wenn dann sorry geil alter digga junge leute komm kommt gegen ficken fick scheiße scheisse hallo moin servus geht spast hurensohn",
   en: "the you your is are and not i we me my it to of in on for that this what why where how please thanks thank nice good bad go come lol wtf guys rush push noob bro dont don't can't cant im i'm its it's they he she was have has just no yes yeah ok okay sorry man stop wait team fuck fucking aimbot cheat cheats cheater cheating hack hacker hacking wallhack",
   es: "que el la los las es no por para hola vamos gracias bien pero muy porque como donde estoy esta está yo tu tú eres soy hermano amigo jaja malo bueno equipo",
   fr: "je tu il le les est pas et oui non merci mais c'est vous nous suis une des du sur avec pour mec putain allez bien",
@@ -275,6 +275,26 @@ export function sourceText(text, lang) {
   if (lang === "en") value = value.replace(/(^|[^\p{L}'’])i(?=$|[^\p{L}'’]|['’](?:m|ll|ve|d)\b)/gu, "$1I");
   // Satzanfänge groß: auch nach „.“, „?“, „!“ (sonst bleibt der zweite Satz manchmal unübersetzt).
   return value.replace(/(^|[.?!]\s+)(\P{L}*?)(\p{Ll})/gu, (_, start, pre, ch) => start + pre + upper(ch));
+}
+
+/** Smileys am Anfang/Ende („:D“, „xD“, „<3“, Emoji) lassen die Modelle oft weg: wieder anhängen. */
+const EMOTE = String.raw`(?::[-']?[()DPpOo3|/\\*]+|;[-']?[)Dp]+|[xX]D+|<3+|\^\^|\p{Extended_Pictographic}[\u{FE0F}\u{200D}\p{Extended_Pictographic}]*)`;
+const EMOTE_END = new RegExp(`(?:\\s*${EMOTE})+\\s*$`, "u");
+const EMOTE_START = new RegExp(`^\\s*(?:${EMOTE}\\s*)+`, "u");
+export function keepEmotes(source, translated) {
+  let out = String(translated || "").trim();
+  if (!out) return out;
+  const end = String(source || "").match(EMOTE_END)?.[0].trim();
+  const start = String(source || "").match(EMOTE_START)?.[0].trim();
+  if (end && !out.endsWith(end)) out = out.replace(/[\s:;]+$/u, "") + " " + end;
+  if (start && start !== end && !out.startsWith(start)) out = start + " " + out;
+  return out;
+}
+
+/** Gleicher Text ohne Groß-/Kleinschreibung, Satzzeichen und Leerraum. */
+export function sameText(a, b) {
+  const norm = (v) => String(v || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+  return norm(a) === norm(b);
 }
 
 /** Welche Modelle (`deen`, `ende` …) eine Richtung braucht: direkt oder über Englisch. */
@@ -562,7 +582,12 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
     else {
       message.status = "pending";
       enqueue(async () => {
-        try { message.translated = await translate(sourceText(chat.text, lang), lang, settings.language); message.status = "done"; }
+        try {
+          const out = keepEmotes(chat.text, await translate(sourceText(chat.text, lang), lang, settings.language));
+          // Gibt das Modell den Text unverändert zurück (Dialekt, Namen), ist das keine Übersetzung.
+          if (sameText(out, chat.text)) message.status = "unknown";
+          else { message.translated = out; message.status = "done"; }
+        }
         catch (error) { message.status = "error"; message.error = error.message.slice(0, 160); }
       });
     }
