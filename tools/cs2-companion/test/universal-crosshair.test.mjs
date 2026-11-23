@@ -1,0 +1,94 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { once } from "node:events";
+import { createCompanion } from "../server.mjs";
+import { cleanOverlayOptions, DEFAULT_OVERLAY, createOverlaySettings, OVERLAY_NOTICE_VERSION, createCrosshairSettings } from "../crosshair.mjs";
+
+test("universal overlay validates geometry, application and hotkeys without accepting executable commands", () => {
+  const clean = cleanOverlayOptions({ target: "injected", monitor: 99, scale: Infinity, offsetX: -9999, rotation: 999, hotkey: "CTRL+A", shape: "html", enabled: true, accepted: 999 });
+  assert.throws(() => cleanOverlayOptions({ app: "evil.exe;quit" }), /Exe-Namen/);
+  assert.equal(clean.target, "foreground");
+  assert.equal(clean.monitor, 8);
+  assert.equal(clean.app, "");
+  assert.equal(clean.scale, 1);
+  assert.equal(clean.offsetX, -2000);
+  assert.equal(clean.rotation, 180);
+  assert.equal(clean.hotkey, "F9");
+  assert.equal(clean.shape, "cross");
+  assert.equal(clean.enabled, undefined);
+  assert.equal(clean.accepted, undefined);
+  assert.equal(cleanOverlayOptions({ app: "Game-Win64-Shipping.exe" }).app, "game-win64-shipping");
+});
+
+test("old CS2-only consent cannot enable the universal overlay; new settings survive restart", async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tecmon-overlay-migration-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(path.join(dir, "crosshair-overlay.json"), JSON.stringify({ enabled: true, accepted: 1 }));
+  let overlay = await createOverlaySettings(dir);
+  assert.equal(overlay.get().enabled, false);
+  await assert.rejects(overlay.set(true, 1), /Hinweis/);
+  await overlay.configure({ shape: "circle", scale: 2.3, offsetY: -11, hotkey: "F10", enabled: true, accepted: OVERLAY_NOTICE_VERSION });
+  assert.equal(overlay.get().enabled, false);
+  assert.equal(overlay.get().accepted, false);
+  await overlay.set(true, OVERLAY_NOTICE_VERSION);
+  overlay = await createOverlaySettings(dir);
+  assert.deepEqual(overlay.get(), { ...DEFAULT_OVERLAY, shape: "circle", scale: 2.3, offsetY: -11, hotkey: "F10", enabled: true, accepted: true });
+});
+
+test("global overlay API works without CS2, retains auth and never writes a game cfg", async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tecmon-overlay-global-"));
+  await writeFile(path.join(dir, "games.json"), JSON.stringify({ installed: {} }));
+  const { server, token } = await createCompanion({ dataDir: dir, detectTools: async () => ({}) });
+  server.listen(0, "127.0.0.1"); await once(server, "listening");
+  t.after(async () => { server.closeAllConnections(); await new Promise(r => server.close(r)); await rm(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const headers = { "x-tecmon-token": token, "content-type": "application/json" };
+  const post = (route, body) => fetch(base + route, { method: "POST", headers, body: JSON.stringify(body) });
+  assert.equal((await fetch(base + "/api/crosshair/profile", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).status, 401);
+  assert.equal((await post("/api/crosshair/overlay", { enabled: true })).status, 400);
+  const saved = await post("/api/crosshair/profile", { crosshair: { size: 4, dot: true }, overlay: { shape: "circle", target: "primary", rotation: 45 } });
+  assert.equal(saved.status, 200);
+  const state = await saved.json();
+  assert.equal(state.available, false);
+  assert.equal(state.crosshair.size, 4);
+  assert.equal(state.overlay.rotation, 45);
+  assert.equal((await post("/api/crosshair/profile", { crosshair: { size: 8 }, overlay: { app: "bad;command" } })).status, 400);
+  assert.equal((await createCrosshairSettings(dir)).get().size, 4, "invalid app filter must not partially save or broaden scope");
+  assert.equal((await post("/api/crosshair/overlay", { enabled: true, accept: OVERLAY_NOTICE_VERSION })).status, 200);
+  const full = await (await fetch(base + "/api/state", { headers })).json();
+  assert.equal(full.overlay.enabled, true);
+  assert.equal(full.overlay.target, "primary");
+  assert.equal(full.overlay.shape, "circle");
+  assert.equal(full.overlay.runtime.connected, false);
+  await post("/api/crosshair/runtime", { paused: true, hotkey: false });
+  const runtime = await (await fetch(base + "/api/crosshair", { headers })).json();
+  assert.deepEqual(runtime.overlay.runtime, { connected: true, paused: true, hotkey: false });
+  assert.equal((await post("/api/crosshair/save", { crosshair: { size: 5 } })).status, 400, "CS2 export still requires its package");
+  assert.equal((await createCrosshairSettings(dir)).get().size, 4);
+  assert.equal(JSON.parse(await readFile(path.join(dir, "crosshair-overlay.json"), "utf8")).shape, "circle");
+});
+
+test("removing CS2 preserves the universal overlay, appearance and unrelated cfgs", async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tecmon-overlay-remove-"));
+  const cs2 = path.join(dir, "game", "bin", "win64", "cs2.exe");
+  const cfg = path.join(dir, "game", "csgo", "cfg");
+  await mkdir(path.dirname(cs2), { recursive: true }); await mkdir(cfg, { recursive: true });
+  await writeFile(cs2, "fixture"); await writeFile(path.join(cfg, "autoexec.cfg"), "untouched");
+  const crosshair = await createCrosshairSettings(dir); await crosshair.save({ size: 3 }, cs2);
+  const overlay = await createOverlaySettings(dir); await overlay.set(true, OVERLAY_NOTICE_VERSION);
+  const { server, token } = await createCompanion({ dataDir: dir, verifyGame: async file => ({ ok: true, path: file }), detectTools: async () => ({ cs2 }) });
+  server.listen(0, "127.0.0.1"); await once(server, "listening");
+  t.after(async () => { server.closeAllConnections(); await new Promise(r => server.close(r)); await rm(dir, { recursive: true, force: true }); });
+  const profile = await fetch(`http://127.0.0.1:${server.address().port}/api/crosshair/profile`, { method: "POST", headers: { "x-tecmon-token": token, "content-type": "application/json" }, body: JSON.stringify({ crosshair: { size: 5 } }) });
+  assert.equal(profile.status, 200);
+  assert.match(await readFile(path.join(cfg, "tecmon_crosshair.cfg"), "utf8"), /cl_crosshairsize 3\n/, "global save must not rewrite even an existing CS2 cfg");
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/games/remove`, { method: "POST", headers: { "x-tecmon-token": token, "content-type": "application/json" }, body: JSON.stringify({ id: "cs2", confirm: true }) });
+  assert.equal(response.status, 200);
+  assert.equal((await createOverlaySettings(dir)).get().enabled, true);
+  assert.equal((await createCrosshairSettings(dir)).get().size, 5);
+  assert.equal(await readFile(path.join(cfg, "autoexec.cfg"), "utf8"), "untouched");
+  await assert.rejects(readFile(path.join(cfg, "tecmon_crosshair.cfg")), { code: "ENOENT" });
+});

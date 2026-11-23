@@ -68,3 +68,19 @@ Automatische Updates nutzen dieselben Prüfungen wie der Knopf (Manifest, Größ
 - Liest nur `game/csgo/console.log`, die CS2 mit der Startoption `-condebug` selbst schreibt. Kein Zugriff auf den Spielprozess, keine Eingaben; Antworten gehen nur über eigene cfg-Dateien, die der Spieler per Taste ausführt, oder über die Zwischenablage.
 - Freier Text aus der Oberfläche landet nur in `tecmon_chat_all.cfg`/`tecmon_chat_team.cfg`, bereinigt durch `cleanSay()` (eine `say`-Zeile, keine Anführungszeichen, Strichpunkte oder Steuerzeichen). Ein Befehl kann so nicht angehängt werden.
 - Bergamot-Engine (npm, feste sha512) und Modelle (feste SHA-256 und Größe) werden vor der Nutzung geprüft. Chattexte bleiben im Arbeitsspeicher und verlassen den PC nicht.
+
+## Universelles Fadenkreuz-Overlay (vorbereitet ab 0.49)
+
+Ein statisches, eigenes Windows-Fenster (`WS_EX_TRANSPARENT`, `WS_EX_NOACTIVATE`,
+Layered Alpha); keine Integration in Spielprozesse. Ziel-Fenstergrenzen und optional
+Exe-Name werden über Windows-Fenster-/Prozessmetadaten gelesen, keine Spielspeicherwerte.
+Der globale Hotkey nutzt `RegisterHotKey`, nie einen Keyboard-Hook oder simulierte Eingaben.
+`/api/crosshair/runtime` meldet nur lokale Hotkey-Registrierung/Pause mit Sitzungstoken;
+verbundene Webseiten bekommen keine neue Bridge-Capability. Nach 15 Sekunden ohne
+Heartbeat gilt die native Figur als nicht verbunden. Das ist keine Anti-Cheat-Freigabe.
+
+Globales Speichern schreibt nur die beiden eigenen JSON-Einstellungsdateien; CS2-cfg-Export
+bleibt ausdrücklich getrennt und paketgebunden. Anwendung-/Geometrie-/Hotkey-Eingaben
+werden geprüft. Version-1-Zustimmung darf das auf andere Programme erweiterte Overlay nicht
+aktivieren: Hinweisversion 2 muss neu bestätigt werden. Das Entfernen von CS2 entfernt nur
+seine eigenen cfgs, nicht mehr die globalen Fadenkreuz-Einstellungen.

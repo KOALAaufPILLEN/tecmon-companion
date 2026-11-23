@@ -4,7 +4,7 @@ import { mkdtemp, readFile, readdir, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { BIND_KEYS, CFG_CATALOG, CFG_GROUPS, cfgCommands, cfgText, createCfgLibrary, cleanKey } from "../cfg-library.mjs";
-import { createOverlaySettings, cs2WindowMode, OVERLAY_NOTICE_VERSION, windowModeFromVideo } from "../crosshair.mjs";
+import { DEFAULT_OVERLAY, createOverlaySettings, cs2WindowMode, OVERLAY_NOTICE_VERSION, windowModeFromVideo } from "../crosshair.mjs";
 
 /** Erlaubte CS2-Befehle der Sammlung: nur Einstellungen, Binds und Trainings-Befehle. */
 const ALLOWED = /^(bind "[a-z0-9_]+" "[a-z0-9_ ;.+-]+"|(cl|snd|viewmodel|voice|fps|mp|sv|bot|ammo)_[a-z0-9_]+( [-0-9.]+)?|sv_cheats 1|bot_kick|mp_warmup_end)$/;
@@ -61,14 +61,14 @@ test("cfg schreiben, entfernen und beim Paket-Entfernen aufräumen", async () =>
 test("Overlay: nur nach bestätigtem Hinweis, standardmäßig aus", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "tecmon-overlay-"));
   const overlay = await createOverlaySettings(dir);
-  assert.deepEqual(overlay.get(), { enabled: false, accepted: false });
+  assert.deepEqual(overlay.get(), { ...DEFAULT_OVERLAY, enabled: false, accepted: false });
   await assert.rejects(overlay.set(true, undefined), /Hinweis/);
-  assert.deepEqual(await overlay.set(true, OVERLAY_NOTICE_VERSION), { enabled: true, accepted: true });
-  assert.deepEqual((await createOverlaySettings(dir)).get(), { enabled: true, accepted: true });
+  assert.deepEqual(await overlay.set(true, OVERLAY_NOTICE_VERSION), { ...DEFAULT_OVERLAY, enabled: true, accepted: true });
+  assert.deepEqual((await createOverlaySettings(dir)).get(), { ...DEFAULT_OVERLAY, enabled: true, accepted: true });
   await overlay.set(false);
-  assert.deepEqual(await overlay.set(true), { enabled: true, accepted: true });
+  assert.deepEqual(await overlay.set(true), { ...DEFAULT_OVERLAY, enabled: true, accepted: true });
   await overlay.reset();
-  assert.deepEqual((await createOverlaySettings(dir)).get(), { enabled: false, accepted: false });
+  assert.deepEqual((await createOverlaySettings(dir)).get(), { ...DEFAULT_OVERLAY, enabled: false, accepted: false });
 });
 
 test("Anzeigemodus aus cs2_video.txt", async () => {

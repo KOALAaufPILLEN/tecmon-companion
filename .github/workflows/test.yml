@@ -43,6 +43,14 @@ jobs:
           if($LASTEXITCODE -ne 0) { throw 'Compilation failed' }
           $test=Start-Process -FilePath $output -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
           if($test.ExitCode -ne 0) { throw 'Native self-test failed' }
+          # Universelles Overlay ohne CS2: echte WinForms, Fokus, Alpha, Filter und Hotkeys.
+          $crosshairTest=Join-Path $env:RUNNER_TEMP 'CrosshairSelfTest.exe'
+          & $compiler /nologo /target:exe /main:CrosshairSelfTest /platform:x64 /optimize+ /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /r:Microsoft.CSharp.dll "/out:$crosshairTest" $native (Resolve-Path -LiteralPath 'tools/cs2-companion/windows/CrosshairSelfTest.cs').Path
+          if($LASTEXITCODE -ne 0) { throw 'Crosshair test compilation failed' }
+          $crosshairOutput=Join-Path $env:RUNNER_TEMP 'crosshair-test'
+          $crosshair=Start-Process -FilePath $crosshairTest -ArgumentList $crosshairOutput -WindowStyle Hidden -Wait -PassThru
+          if($crosshair.ExitCode -ne 0) { throw 'Native crosshair test failed' }
+          Get-Content -LiteralPath (Join-Path $crosshairOutput 'crosshair-native-test.txt')
           # Echtzeit-3D-Figur: Modell laden, einige Bilder zeichnen und die Zeit je Bild ausgeben.
           $preview=Join-Path $env:RUNNER_TEMP 'figure-preview'
           New-Item -ItemType Directory -Path $preview -Force | Out-Null

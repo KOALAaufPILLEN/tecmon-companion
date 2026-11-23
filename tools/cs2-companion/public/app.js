@@ -113,6 +113,7 @@ async function refresh() {
   }
   if(state.desktop)showFigure(state.desktop);
   panelHints(state);
+  if(crosshairInfo&&state.overlay)showOverlay({...crosshairInfo.overlay,...state.overlay});
   gameTips(state.gsi);
   if(state.auto)showAuto(state.auto);
   showBacklog(state.backlog);
@@ -258,17 +259,20 @@ fetch('/api/health',{cache:'no-store'}).then(r=>r.json()).then(h=>{$('version-la
 let timer = setInterval(() => refresh().catch(notice), 2000);
 refresh().then(()=>{if(latestState?.managed)checkUpdate(true);}).catch(notice);
 loadVideos().catch(()=>{});setInterval(()=>{if(!restarting)loadVideos().catch(()=>{});},10000);
-/* Fadenkreuz-Editor: nur CS2-eigene Einstellungen, Vorschau grob wie CS2 bei 1080 Zeilen (doppelt vergrößert). */
-let crosshair=null,crosshairInfo=null;
+/* Allgemeiner Fadenkreuz-Editor mit optionalem CS2-cfg-Export; statische Vorschau. */
+let crosshair=null,crosshairInfo=null,overlayDraft=null;
+const overlayNumeric=['radius','dotSize','scale','rotation','monitor','offsetX','offsetY'];
+function showOverlayEditor(){if(!overlayDraft)return;for(const key of [...overlayNumeric,'shape','target','app','hotkey']){const input=$('overlay-'+key);input.value=overlayDraft[key];if(input.nextElementSibling?.tagName==='OUTPUT')input.nextElementSibling.textContent=overlayDraft[key];}$('overlay-monitor').disabled=overlayDraft.target!=='monitor';drawCrosshair();}
 const crossKeys=['size','gap','thickness','outlineThickness','alpha'];
 const hex=c=>'#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');
 function crossCommands(c){const b=v=>v?1:0;return [`cl_crosshairstyle ${c.style}`,`cl_crosshairsize ${c.size}`,`cl_crosshairgap ${c.gap}`,`cl_crosshairthickness ${c.thickness}`,`cl_crosshair_drawoutline ${b(c.outline)}`,`cl_crosshair_outlinethickness ${c.outlineThickness}`,'cl_crosshaircolor 5',`cl_crosshaircolor_r ${c.color[0]}`,`cl_crosshaircolor_g ${c.color[1]}`,`cl_crosshaircolor_b ${c.color[2]}`,`cl_crosshairusealpha ${b(c.alpha<255)}`,`cl_crosshairalpha ${c.alpha}`,`cl_crosshairdot ${b(c.dot)}`,`cl_crosshair_t ${b(c.tStyle)}`,'cl_crosshairgap_useweaponvalue 0'];}
 function drawCrosshair(){
-  const canvas=$('crosshair-preview');if(!canvas||!crosshair)return;const g=canvas.getContext('2d'),c=crosshair,s=2,w=canvas.width;
+  const canvas=$('crosshair-preview');if(!canvas||!crosshair)return;const g=canvas.getContext('2d'),c=crosshair,o2=overlayDraft||{},w=canvas.width,s=Math.min(2*(o2.scale||1),(w-16)/(2*((o2.shape==='circle'?(o2.radius||8):Math.round(c.size*2)+Math.max(0,Math.round(c.gap+4)))+Math.max(3,(o2.dotSize||2),c.thickness*2)+c.outlineThickness)));
   const sky=g.createLinearGradient(0,0,0,w);sky.addColorStop(0,'#c9b48a');sky.addColorStop(.55,'#9c8763');sky.addColorStop(.56,'#6d5b44');sky.addColorStop(1,'#4b3e2f');g.fillStyle=sky;g.fillRect(0,0,w,w);
   const t=Math.max(1,Math.round(Math.max(.5,c.thickness)*2))*s,len=Math.round(c.size*2)*s,gap=Math.max(0,Math.round(c.gap+4))*s,half=Math.floor(t/2),o=c.outline?Math.max(1,Math.round(c.outlineThickness))*s/2:0;
-  const rects=[];if(len>0){rects.push([gap,-half,len,t],[-gap-len,-half,len,t],[-half,gap,t,len]);if(!c.tStyle)rects.push([-half,-gap-len,t,len]);}if(c.dot)rects.push([-half,-half,t,t]);
-  g.save();g.translate(w/2,w/2);g.globalAlpha=c.alpha/255;
+  const rects=[];if(o2.shape!=='circle'&&len>0){rects.push([gap,-half,len,t],[-gap-len,-half,len,t],[-half,gap,t,len]);if(!c.tStyle)rects.push([-half,-gap-len,t,len]);}if(c.dot){const dot=Math.max(1,Math.round((o2.dotSize||2)*s));rects.push([-Math.floor(dot/2),-Math.floor(dot/2),dot,dot]);}
+  g.save();g.translate(w/2,w/2);g.rotate((o2.rotation||0)*Math.PI/180);g.globalAlpha=c.alpha/255;
+  if(o2.shape==='circle'){const radius=(o2.radius||8)*s;g.beginPath();g.arc(0,0,radius,0,2*Math.PI);if(o){g.strokeStyle='#000';g.lineWidth=t+2*o;g.stroke();}g.strokeStyle=hex(c.color);g.lineWidth=t;g.stroke();}
   if(o){g.fillStyle='#000';for(const r of rects)g.fillRect(r[0]-o,r[1]-o,r[2]+2*o,r[3]+2*o);}
   g.fillStyle=hex(c.color);for(const r of rects)g.fillRect(...r);g.restore();
 }
@@ -282,21 +286,22 @@ async function loadCrosshair(){
   if(!$('crosshair-preview'))return;
   try{crosshairInfo=await api('/api/crosshair');crosshair=crosshairInfo.crosshair;$('crosshair-exec').textContent=crosshairInfo.exec;
     $('crosshair-style').replaceChildren(...crosshairInfo.styles.map(s=>{const o=el('option',s.label);o.value=s.id;return o;}));
-    $('crosshair-presets').replaceChildren(...crosshairInfo.presets.map(p=>{const b=el('button',p.label,'subtle');b.type='button';b.addEventListener('click',()=>{crosshair={...p.crosshair,color:[...p.crosshair.color]};showCrosshair();});return b;}));
-    if(!crosshairInfo.available)$('crosshair-save').textContent='Speichern';showCrosshair();showOverlay(crosshairInfo.overlay);}catch(error){notice(error);}
+    $('crosshair-presets').replaceChildren(...crosshairInfo.presets.map(p=>{const b=el('button',p.label,'subtle');b.type='button';b.addEventListener('click',()=>{crosshair={...p.crosshair,color:[...p.crosshair.color]};if(overlayDraft)overlayDraft.shape='cross';showCrosshair();showOverlayEditor();});return b;}));
+    overlayDraft={...crosshairInfo.overlay};showCrosshair();showOverlayEditor();showOverlay(crosshairInfo.overlay);}catch(error){notice(error);}
 }
 for(const k of crossKeys)$('crosshair-'+k)?.addEventListener('input',e=>{crosshair[k]=Number(e.target.value);showCrosshair();});
 for(const k of ['outline','dot','tStyle'])$('crosshair-'+k)?.addEventListener('change',e=>{crosshair[k]=e.target.checked;showCrosshair();});
 $('crosshair-style')?.addEventListener('change',e=>{crosshair.style=Number(e.target.value);showCrosshair();});
 $('crosshair-color')?.addEventListener('input',e=>{const v=e.target.value;crosshair.color=[1,3,5].map(i=>parseInt(v.slice(i,i+2),16));showCrosshair();});
-$('crosshair-import')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/decode',{code:$('crosshair-code').value});crosshair=result.crosshair;showCrosshair();notice({message:'Fadenkreuz-Code übernommen. Zum Anwenden „In CS2 speichern“.'});}catch(error){notice(error);}});
+$('crosshair-import')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/decode',{code:$('crosshair-code').value});crosshair=result.crosshair;if(overlayDraft)overlayDraft.shape='cross';showCrosshair();showOverlayEditor();notice({message:'Fadenkreuz-Code übernommen. Zum Anwenden Overlay-Einstellungen speichern.'});}catch(error){notice(error);}});
 $('crosshair-copy')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(crossCommands(crosshair).join('; '));notice({message:'Befehle kopiert. In der CS2-Konsole einfügen.'});}catch(error){notice(error);}});
-$('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/save',{crosshair});crosshair=result.crosshair;showCrosshair();notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
+$('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/profile',{crosshair,overlay:overlayDraft});crosshair=result.crosshair;overlayDraft={...result.overlay};showCrosshair();showOverlayEditor();showOverlay(result.overlay);notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
 loadCrosshair();
 /* Fadenkreuz-Overlay: erst nach gelesenem und bestätigtem Hinweis. */
 function showOverlay(o){
   if(!o||!$('overlay-toggle'))return;crosshairInfo.overlay=o;
-  const status=$('overlay-status');status.textContent=!o.enabled?'Aus':o.mode==='fullscreen'?'An · CS2 läuft im Vollbild, bitte Vollbild-Fenstermodus wählen':o.mode==='windowed'?'An · CS2 läuft im Fenster, bitte Vollbild-Fenstermodus wählen':'An';status.classList.toggle('on',o.enabled);
+  const status=$('overlay-status');status.textContent=!o.enabled?'Aus':o.runtime?.paused?'An · per Taste ausgeblendet':'An';
+  $('overlay-runtime').textContent=o.enabled&&!o.runtime?.connected?'Warte auf die native Windows-Figur. Im Browser allein erscheint kein Bildschirm-Overlay.':o.enabled&&o.hotkey!=='none'&&o.runtime?.hotkey===false?'Tastenkombination nicht verfügbar. Andere Taste wählen und speichern.':o.enabled?'Overlay aktiv. Mit der gewählten Taste vorübergehend ausblenden.':'';status.classList.toggle('on',o.enabled);
   $('overlay-notice').replaceChildren(...o.notice.map(t=>el('li',t)));
   $('overlay-toggle').textContent=o.enabled?'Overlay ausschalten':o.accepted?'Overlay einschalten':'Overlay einschalten …';
   if(o.enabled||o.accepted)$('overlay-consent').hidden=true;
@@ -309,9 +314,13 @@ $('overlay-toggle')?.addEventListener('click',async()=>{
     if(!$('overlay-accept').checked){notice({message:'Bitte erst den Hinweis bestätigen.'});$('overlay-accept').focus();return;}
   }
   button.disabled=true;
-  try{const result=await api('/api/crosshair/overlay',{enabled:!o.enabled,accept:o.noticeVersion});showOverlay(result.overlay);notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}
+  try{if(!o.enabled){await api('/api/crosshair/profile',{crosshair,overlay:overlayDraft});}const result=await api('/api/crosshair/overlay',{enabled:!o.enabled,accept:o.noticeVersion});showOverlay(result.overlay);notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('overlay-consent')&&!$('overlay-consent').hidden&&!(crosshairInfo&&crosshairInfo.overlay.accepted)){$('overlay-consent').hidden=true;$('overlay-accept').checked=false;showOverlay(crosshairInfo.overlay);}});
+
+for(const key of [...overlayNumeric,'shape','target','app','hotkey'])$('overlay-'+key)?.addEventListener('input',e=>{if(!overlayDraft)return;if(overlayNumeric.includes(key)&&e.target.value==='')return;overlayDraft[key]=overlayNumeric.includes(key)?Number(e.target.value):e.target.value;if(e.target.nextElementSibling?.tagName==='OUTPUT')e.target.nextElementSibling.textContent=e.target.value;$('overlay-monitor').disabled=overlayDraft.target!=='monitor';drawCrosshair();});
+$('crosshair-reset')?.addEventListener('click',()=>{crosshair={...crosshairInfo.presets[0].crosshair,color:[...crosshairInfo.presets[0].crosshair.color]};overlayDraft={...crosshairInfo.overlayDefaults};showCrosshair();showOverlayEditor();notice({message:'Standard geladen. Zum Übernehmen speichern.'});});
+$('crosshair-cfg-save')?.addEventListener('click',()=>api('/api/crosshair/save',{crosshair}).then(notice).catch(notice));
 
 /* CFG-Sammlung: feste Einträge vom Companion, Tasten nur aus der Liste. */
 const cfgOpen=new Set(['pro']);
@@ -565,7 +574,8 @@ $('skins-toggle').addEventListener('click',async()=>{
 const PANEL_CATEGORIES=[
   ['status','Status & Videos',[['.connection-summary','Verbindung'],['.activity-summary','Aufnahme'],['#videos','Letzte Videos']]],
   ['figur','Figur & Start',[['#figur']]],
-  ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#stats-backlog','Stats beim Schließen'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#chat','Chat-Übersetzer'],['#fadenkreuz','Fadenkreuz & Overlay'],['#cfgs','Configs'],['#quiz','Quiz']]],
+  ['werkzeuge','Werkzeuge',[['#fadenkreuz','Fadenkreuz-Overlay (alle Spiele)']]],
+  ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#stats-backlog','Stats beim Schließen'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#chat','Chat-Übersetzer'],['#cfgs','Configs'],['#quiz','Quiz']]],
   ['dota2','Dota 2',[['#dota-tipps','Dota-2-Tipps']]],
   ['wardogs','Wardogs',[['#wardogs']]],
   ['clips','Clips',[['#clips']]],
