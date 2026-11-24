@@ -64,7 +64,7 @@ Kein CS2-Paket, keine CS2-Installation und keine GSI nötig. Das Overlay bleibt 
 - [Lizenzen und Herkunft](#lizenzen-und-herkunft)
 - [Versionsverlauf](#versionsverlauf)
 
-## Neu in 0.48.6 · 23. November 2026 (offener PR)
+## Neu in 0.48.6 · 23. November 2026 (gemergt mit #118, Merge `752e30c4`)
 
 Chat-Übersetzer stürzt nicht mehr mit „Failed to allocate memory“ ab:
 
