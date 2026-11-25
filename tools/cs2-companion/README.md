@@ -1,4 +1,26 @@
+
+Integration mit Einrichtung 0.50.0: Die Auswahl „Nur Stats und Tipps“ bleibt erhalten.
+Fehlende Video-Werkzeuge werden nicht automatisch nachinstalliert. Erst nach der
+gewählten Nachinstallation werden sie in Hersteller-Updates einbezogen. Während
+der Nachinstallation starten weder Aufnahmen noch parallele Werkzeug-Updates.
+Version 0.50.2 enthält beide Funktionen; Veröffentlichung und Installation separat prüfen.
+
 # TecMon Companion · Anleitung
+
+## Automatische Werkzeug-Updates ab 0.49.3
+
+Unter **Erweitert → Updates & Info → Externe Komponenten** stehen installierte
+und neueste Version, letzter Prüflauf und offene Fehler. HLAE und FFmpeg werden
+beim Start, alle sechs Stunden und vor Aufnahme/Kamera geprüft. Stabile
+Hersteller-Releases mit SHA-256, maximal 30 Mbit/s, FFmpeg-Encoder-Test vor dem
+Austausch. Die Installation wartet auf laufende Spiele, Clip-Puffer und Aufträge.
+Keine Prozesse werden beendet; bei Fehlern bleiben die bisherigen Tools erhalten.
+Die Automatik ist dort abschaltbar, manuelles Prüfen/Aktualisieren bleibt möglich.
+
+Weitere Komponenten werden über das Companion-Update oder ihre eigene Verwaltung
+aktualisiert. Die Übersicht zeigt den jeweiligen Weg. Das Browser-Add-on wird
+durch den Browser aktualisiert; das Companion-Update ersetzt keine installierte
+Add-on-Kopie. Keine neue Bridge-Capability.
 
 Diese Anleitung beschreibt Einrichtung, Browser-Verbindung, Aufnahme und Video-Branding. Seit 0.40 laufen Download und Aufnahme nur noch über die eigene TecMon-Engine: ohne CS Demo Manager, ohne PostgreSQL und ohne Passwort im Setup. Ältere Abschnitte weiter unten beschreiben teils den früheren CS-Demo-Manager-Weg und bleiben als Versionsverlauf stehen.
 

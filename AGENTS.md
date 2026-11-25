@@ -594,6 +594,17 @@ eingebaut wurde, steht im Update-Protokoll dort.
   SHA-256 im Manifest nachziehen. `updateHlae()` bringt bestehende Installationen vor dem
   CS2-Start mit HLAE auf diese Version (nur älter/unbekannt ersetzen, Rückfall auf die alte
   bei Fehlern); kein Download aus anderen Quellen als dem Manifest.
+- Seit 0.50.2 (Nutzerentscheid 25.11.2026) prüft `external-updates.mjs` HLAE und FFmpeg
+  zusätzlich direkt in stabilen Hersteller-Releases (`advancedfx/advancedfx`, `GyanD/codexffmpeg`).
+  Nur exakter Asset-Name/URL, begrenzte Größe und SHA-256 aus GitHubs Asset-Digest;
+  keine Nightlies, keine fremden Repositories und kein Betrieb ohne Prüfsumme. Das
+  mitgelieferte Manifest bleibt geprüfte Mindestversion und Rückfall bei API-Problemen.
+  Vor jedem Austausch auf laufendes CS2/HLAE/FFmpeg, Clip-Puffer, Downloads und Verarbeitung
+  prüfen; Prozessabfragefehler verschieben das Update. Keine Prozesse dafür beenden.
+  Vollständigen Paketordner prüfen und atomar tauschen, bei Fehlern wiederherstellen;
+  Sicherung eines unterbrochenen Wechsels beim nächsten inaktiven Lauf zurückholen.
+  Updates bleiben unter „Updates & Info“ sichtbar/abschaltbar, Fehler werden wiederholt.
+  Eng gekoppelte Runtime-/Plugin-/Modellversionen weiter über Companion-Releases verwalten.
 - Fremde Binärdateien nur mit fester Prüfsumme: CS2-Plugin über
   `PLUGIN_SHA256` (`recording-engine.mjs`), boiler-writter über die
   npm-Integrität in `BOILER`. Bei Abweichung abbrechen, nie ungeprüft starten.
@@ -613,3 +624,5 @@ eingebaut wurde, steht im Update-Protokoll dort.
   `console.log`, ohne sie zu löschen. Capabilities: `camera-script-v1`
   (Schnitte `path`/`follow`), `camera-session-v1` (`POST /bridge/camera`), `camera-angle-v1` (optionaler
   Startwinkel `angle` bei `follow`, ohne Angabe 0).
+
+- Hersteller-Updater respektiert die Stats-only-Einrichtung: `manageMissing: false` im Server; fehlende Videotools nur nach bewusster Nachinstallation. Die Nachinstallation reserviert `active`/`externalBusy`, damit Aufnahmen und Tool-Updates nicht parallel starten.

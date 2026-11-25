@@ -41,7 +41,8 @@ import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { verifyCs2 } from "./cs2-verify.mjs";
 import { createDemoFetch, DEMO_FETCH_CAPABILITY } from "./demo-fetch.mjs";
 import { readInstallation, runTool } from "./managed-installation.mjs";
-import { updateHlae, ensureVideoTools } from "./download-tools.mjs";
+import { updateHlae, ensureVideoTools, installedHlaeVersion } from "./download-tools.mjs";
+import { createExternalUpdates, installExternalTool, recoverExternalTools, ffmpegVersion } from "./external-updates.mjs";
 import { copyRadars, radarFile } from "./radars.mjs";
 import { createDesktopSettings } from "./desktop-settings.mjs";
 
@@ -138,6 +139,7 @@ export async function createCompanion({
   engineSystem = {},
   /** Automatische Updates: Wartezeit bis zur ersten Prüfung und Abstand danach (ms); 0 = aus (Tests). */
   autoUpdate = { first: 0, every: 0 },
+  externalUpdate = { first: 0, every: 0 },
   findUpdate = checkUpdate,
   fetchUpdate = downloadUpdate,
   launchUpdate = (file) => spawn(file, ...updaterCommand(root, process.pid)),
@@ -153,6 +155,7 @@ export async function createCompanion({
   const downloads = new Map();
   const browserFiles=browserDemos(path.join(dataDir,"Browser-Demos"));
   let active = false;
+  let externalBusy = false;
   /** Neueste fertige Videos aller Aufträge im Datenordner, auch aus früheren Sitzungen. */
   async function recentVideos(limit = 3) {
     const list = [];
@@ -230,6 +233,7 @@ export async function createCompanion({
   });
   let clipBranding = false;
   function brandClip(id, game, title) {
+    if (externalBusy) throw new Error("Externe Komponenten werden aktualisiert. Kurz warten.");
     if (!installation) throw new Error("Das Clip-Branding braucht den installierten Windows-Companion.");
     if (clipBranding) throw new Error("Ein Clip wird gerade bearbeitet. Kurz warten.");
     const source = clips.clipPath(id);
@@ -509,19 +513,66 @@ export async function createCompanion({
    * ab; die Ersteinrichtung lädt HLAE nur einmal. Einmal je Prozess, nach einem
    * Fehler beim nächsten Mal erneut; ein Fehler hält die Aufnahme nicht auf.
    */
+  // Fehler der Prozessabfrage dürfen nie als „Spiel ist geschlossen“ gelten.
+  async function externalBlocked() {
+    if (videoTools.busy) return "Video-Werkzeuge werden gerade installiert.";
+    if (clips.state().recording || clipBranding || scoreboard.state().busy || demoFetch.running)
+      return "Clip-Puffer, Verarbeitung oder Download läuft. Nach Abschluss erneut prüfen.";
+    for (const name of ["cs2.exe", "hlae.exe", "ffmpeg.exe", "ffprobe.exe"]) {
+      const output = await runTool("tasklist.exe", ["/fi", `imagename eq ${name}`, "/fo", "csv", "/nh"], { timeout: 15_000 });
+      if (output.toLowerCase().includes(`"${name}"`)) return `${name} läuft. Update wartet auf das Programmende.`;
+    }
+    return "";
+  }
+  const external = engineSystem.externalUpdates || (installation?.hlaeExe && installation?.ffmpegExe && process.platform === "win32" && !engineSystem.recorder
+    ? await createExternalUpdates({
+      directory: installation.profileDir,
+      manageMissing: false,
+      blocked: externalBlocked,
+      prepare: () => recoverExternalTools(root),
+      installed: async (name) => name === "hlae"
+        ? (existsSync(installation.hlaeExe) && existsSync(path.join(path.dirname(installation.hlaeExe), "x64", "AfxHookSource2.dll")) ? installedHlaeVersion(path.dirname(installation.hlaeExe)) : "")
+        : ffmpegVersion(await runTool(installation.ffmpegExe, ["-version"], { timeout: 15_000 }).catch(() => "")),
+      install: (name, item, progress) => {
+        const expected = path.join(root, "tools", name, name === "hlae" ? "hlae.exe" : path.join("bin", "ffmpeg.exe"));
+        const configured = name === "hlae" ? installation.hlaeExe : installation.ffmpegExe;
+        if (path.resolve(configured).toLowerCase() !== path.resolve(expected).toLowerCase()) throw new Error("Eigener Tool-Pfad: bitte die verwaltete Installation verwenden.");
+        return installExternalTool({ root, name, item, run: runTool, progress, canInstall: async () => !await externalBlocked() });
+      },
+    }) : null);
+  let externalRequested = false;
+  async function externalUpdateTick(options = {}) {
+    if (!external) return null;
+    externalRequested ||= options.force === true;
+    if (active || externalBusy) return external.defer("Aufnahme oder Download läuft. Prüfung folgt nach Abschluss.");
+    // Vor dem ersten await reservieren: parallele Jobs können keine Tools laden.
+    active = externalBusy = true;
+    try { const result = await external.run({ ...options, force: externalRequested }); if (!result.message.startsWith("Zurückgestellt:")) externalRequested = false; return result; }
+    finally { active = externalBusy = false; }
+  }
   let hlaeChecked = null;
-  const ensureHlae = (log) => {
-    const update = engineSystem.hlaeUpdate || (installation && process.platform === "win32" ? updateHlae : null);
-    // Ohne installierte Video-Aufnahme (Setup „Nur Stats und Tipps“) nichts aktualisieren.
-    if (!update || !installation || !existsSync(installation.hlaeExe)) return Promise.resolve();
-    hlaeChecked ||= update({ root, hlaeExe: installation.hlaeExe, run: runTool, progress: log }).catch((error) => {
-      hlaeChecked = null;
-      throw error;
-    });
-    return hlaeChecked.then(
-      () => {},
-      (error) => log(`HLAE-Update fehlgeschlagen (${error.message}). Aufnahme läuft mit der installierten HLAE-Version; bei „AfxHookSource2: Problem in …“ Companion neu starten.`),
-    );
+  const ensureHlae = async (log) => {
+    // Preserve the optional stats-only installation from setup.
+    if (!installation || !existsSync(installation.hlaeExe)) return;
+    if (external) {
+      if (!external.state().auto) return;
+      externalBusy = true;
+    }
+    try {
+      if (external) {
+        await external.run({ progress: log, force: true });
+        // GitHub-API nicht erreichbar? Die im Companion geprüfte Mindestversion bleibt nutzbar.
+        const reason = await externalBlocked();
+        if (reason) { log(`Tool-Update wartet: ${reason}`); return; }
+      }
+      const update = engineSystem.hlaeUpdate || (installation && process.platform === "win32" ? updateHlae : null);
+      if (!update || !installation) return;
+      hlaeChecked ||= update({ root, hlaeExe: installation.hlaeExe, run: runTool, progress: log }).catch((error) => {
+        hlaeChecked = null;
+        throw error;
+      });
+      await hlaeChecked.catch((error) => log(`HLAE-Update fehlgeschlagen (${error.message}). Installierte Version bleibt erhalten; unter „Updates & Info“ erneut prüfen.`));
+    } finally { if (external) externalBusy = false; }
   };
   /**
    * Video-Aufnahme nachinstallieren (Setup „Nur Stats und Tipps“, Nutzerwunsch 25.11.2026): HLAE und
@@ -540,7 +591,8 @@ export async function createCompanion({
     const install = engineSystem.videoTools || (process.platform === "win32" ? ensureVideoTools : null);
     if (!install) throw new Error("Die Video-Aufnahme gibt es nur unter Windows.");
     if (videoTools.busy) return;
-    if (active) throw new Error("Gerade läuft eine Aufnahme oder ein Download. Danach erneut versuchen.");
+    if (active || externalBusy) throw new Error("Gerade läuft eine Aufnahme, ein Download oder ein Tool-Update. Danach erneut versuchen.");
+    active = externalBusy = true;
     Object.assign(videoTools, { busy: true, error: "", message: "Download wird vorbereitet …" });
     (async () => {
       try {
@@ -553,6 +605,7 @@ export async function createCompanion({
       } finally {
         await readVideoTools().catch(() => {});
         videoTools.busy = false;
+        active = externalBusy = false;
       }
     })();
   }
@@ -855,7 +908,10 @@ export async function createCompanion({
       return item ? json(res, 200, item) : json(res, 404, { error: "Kein automatisches Video vorbereitet." });
     }
     // Demo von Valve für die Webseite holen (demo-fetch-v1): spart der Webseite den Server-Umweg.
-    if (req.method === "GET" && url.pathname === "/bridge/demo-fetch") return demoFetch.send(res, url.searchParams.get("url"));
+    if (req.method === "GET" && url.pathname === "/bridge/demo-fetch") {
+      if (externalBusy) return json(res, 409, { error: "Externe Komponenten werden aktualisiert. Kurz warten." });
+      return demoFetch.send(res, url.searchParams.get("url"));
+    }
     if (req.method === "GET" && url.pathname === "/bridge/auto/demo") {
       const demo = auto.demoPath(String(url.searchParams.get("id") || ""));
       const info = demo ? await stat(demo).catch(() => null) : null;
@@ -1073,7 +1129,7 @@ export async function createCompanion({
           detected,
           cs2Check,
           managed: !!installation,
-          updates: { auto: autoInstall, available: !!installation },
+          updates: { auto: autoInstall, available: !!installation, external: external?.state() || null },
           active,
           work: workState(jobs),
           bridge: bridge.state(),
@@ -1110,7 +1166,7 @@ export async function createCompanion({
       if (req.method === "GET" && url.pathname === "/api/clips")
         return json(res, 200, { clips: await clips.list(), buffer: clips.state(), folder: clips.dir });
       if (req.method === "GET" && url.pathname === "/api/clips/devices")
-        return json(res, 200, { devices: await clips.devices() });
+        return externalBusy ? json(res, 409, { error: "Externe Komponenten werden aktualisiert." }) : json(res, 200, { devices: await clips.devices() });
       if (req.method === "GET" && url.pathname === "/api/videos")
         return json(res, 200, { videos: await recentVideos(), folder: dataDir });
       if (req.method === "GET" && url.pathname === "/api/video")
@@ -1140,6 +1196,7 @@ export async function createCompanion({
         return json(res, 200, { ok: true });
       }
       if (url.pathname === "/api/clips/settings") {
+        if (externalBusy) throw new Error("Externe Komponenten werden aktualisiert. Kurz warten.");
         const result = await clips.setSettings(input);
         return json(res, 200, { buffer: result, message: result.enabled ? `Clip-Puffer läuft. ${result.hotkey} speichert die letzten ${result.seconds} Sekunden.` : "Clip-Puffer aus. Der Zwischenspeicher wurde gelöscht." });
       }
@@ -1212,6 +1269,7 @@ export async function createCompanion({
         return json(res, 200, { scoreboard: state, message: state.enabled ? `Scoreboard-Foto an. ${state.hotkey} drücken und ${state.seconds} Sekunden Tab halten.` : "Scoreboard-Foto aus." });
       }
       if (url.pathname === "/api/wardogs/capture") {
+        if (externalBusy) throw new Error("Externe Komponenten werden aktualisiert. Kurz warten.");
         const snapshot = await scoreboard.capture();
         return json(res, 200, { snapshot, message: `Gespeichert: ${scoreboardSummary(snapshot.values)}` });
       }
@@ -1407,6 +1465,16 @@ export async function createCompanion({
         await bridge.revoke(input.id);
         return json(res, 200, { ok: true });
       }
+      if (url.pathname === "/api/update/external/check") {
+        if (!external) throw new Error("Externe Updates benötigen den installierten Windows-Companion.");
+        // Nicht die komplette Paketinstallation in der HTTP-Anfrage abwarten.
+        void externalUpdateTick({ force: true }).catch(console.error);
+        return json(res, 202, { external: external.state() });
+      }
+      if (url.pathname === "/api/update/external/auto") {
+        if (!external) throw new Error("Externe Updates benötigen den installierten Windows-Companion.");
+        return json(res, 200, { external: await external.setAuto(input.auto) });
+      }
       if (url.pathname === "/api/update/check") return json(res, 200, await checkUpdate());
       if (url.pathname === "/api/update/install") {
         if (!installation) throw new Error("Updates benötigen eine installierte Windows-Version.");
@@ -1414,6 +1482,8 @@ export async function createCompanion({
           throw new Error("Zuerst Aufnahme/Download beenden und Update bestätigen.");
         active = true;
         try {
+          if (external && (clipBranding || clips.state().recording || scoreboard.state().busy || demoFetch.running || await externalBlocked()))
+            throw new Error("Update wartet: Zuerst Spiel, Clip-Puffer oder laufende Verarbeitung beenden.");
           const update = await findUpdate(VERSION);
           if (!update.available) {
             active = false;
@@ -1575,13 +1645,24 @@ export async function createCompanion({
    * dann beim nächsten Durchgang erneut.
    */
   let updateTimer = null;
+  let pendingAppUpdate = null;
+  let externalTimer = null;
+  async function externalTimerTick() {
+    externalTimer = null;
+    try { await externalUpdateTick(); } catch (error) { console.error("Externe Updates:", error.message); }
+    if (externalUpdate.every > 0 && server.listening) {
+      externalTimer = setTimeout(externalTimerTick, externalUpdate.every);
+      externalTimer.unref?.();
+    }
+  }
   async function autoUpdateTick() {
     updateTimer = null;
     let restarting = false;
     try {
       if (installation && autoInstall && !active) {
-        const update = await findUpdate(VERSION);
-        if (update.available && !active) {
+        const update = pendingAppUpdate || await findUpdate(VERSION);
+        pendingAppUpdate = update.available ? update : null;
+        if (update.available && !active && !clips.state().recording && !clipBranding && !scoreboard.state().busy && !demoFetch.running && (!external || !await externalBlocked()) && !active) {
           active = true;
           try {
             console.log(`Automatisches Update auf ${update.latest} …`);
@@ -1599,7 +1680,9 @@ export async function createCompanion({
       console.error("Automatisches Update:", error instanceof Error ? error.message : error);
     }
     if (!restarting && autoUpdate.every > 0) {
-      updateTimer = setTimeout(autoUpdateTick, autoUpdate.every);
+      // Offene Updates nach laufenden Aufträgen zeitnah erneut versuchen, ohne
+      // die GitHub-Metadaten jede Minute erneut anzufragen.
+      updateTimer = setTimeout(autoUpdateTick, autoInstall && (active || pendingAppUpdate) ? Math.min(60_000, autoUpdate.every) : autoUpdate.every);
       updateTimer.unref?.();
     }
   }
@@ -1608,13 +1691,18 @@ export async function createCompanion({
     updateTimer.unref?.();
   }
   if (installation) clips.resume();
+  if (external && externalUpdate.first > 0) {
+    externalTimer = setTimeout(externalTimerTick, externalUpdate.first);
+    externalTimer.unref?.();
+  }
   server.on("close", () => {
     clearInterval(autoTimer);
     clips.stop().catch(() => {});
     chatTranslator.close();
     if (updateTimer) clearTimeout(updateTimer);
+    if (externalTimer) clearTimeout(externalTimer);
   });
-  return { server, token, autoUpdateTick };
+  return { server, token, autoUpdateTick, externalUpdateTick };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -1624,6 +1712,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     onUpdateExit: () => process.exit(0),
     // Zwei Minuten nach dem Start, danach alle sechs Stunden.
     autoUpdate: { first: 2 * 60_000, every: 6 * 60 * 60_000 },
+    externalUpdate: { first: 30_000, every: 60_000 },
   });
   server.listen(31977, "127.0.0.1", () => {
     const url = "http://127.0.0.1:31977";

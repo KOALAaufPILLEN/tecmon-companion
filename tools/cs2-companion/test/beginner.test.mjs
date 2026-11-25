@@ -60,6 +60,7 @@ test("Video-Aufnahme nachinstallieren: Status in /api/state, Installation im Hin
   assert.equal((await post("/api/video-tools/install")).status, 200);
   current = await state();
   assert.equal(current.videoTools.busy, true);
+  assert.equal(current.active, true, "Video installation reserves processing while tool files change");
   assert.match(current.videoTools.message, /SHA256/);
   await post("/api/video-tools/install"); // läuft schon: kein zweiter Download
   release();
@@ -67,6 +68,7 @@ test("Video-Aufnahme nachinstallieren: Status in /api/state, Installation im Hin
   current = await state();
   assert.deepEqual(current.videoTools.installed, { hlae: true, ffmpeg: true });
   assert.equal(current.videoTools.error, "");
+  assert.equal(current.active, false, "The reservation is released after installation");
   assert.deepEqual(calls, ["install"]);
 
   // Ansicht und Tutorial speichert der Companion in desktop.json.

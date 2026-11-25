@@ -1,5 +1,42 @@
 # TecMon Companion
 
+## Neu in 0.50.2 · Automatische Updates externer Werkzeuge
+
+Integration mit Einrichtung 0.50.0: Die Auswahl „Nur Stats und Tipps“ bleibt erhalten.
+Fehlende Video-Werkzeuge werden nicht automatisch nachinstalliert. Erst nach der
+gewählten Nachinstallation werden sie in Hersteller-Updates einbezogen. Während
+der Nachinstallation starten weder Aufnahmen noch parallele Werkzeug-Updates.
+Version 0.50.2 enthält beide Funktionen; Veröffentlichung und Installation separat prüfen.
+
+Unter **Updates & Info → Externe Komponenten** sind Versionen, offene Updates,
+Fehler und der letzte Prüflauf sichtbar. HLAE und FFmpeg werden 30 Sekunden nach
+dem Start, alle sechs Stunden und vor einer Aufnahme/Kamera-Sitzung beim Hersteller
+geprüft. Standardmäßig an, abschaltbar; ein Knopf prüft und aktualisiert sofort.
+Fehlgeschlagene oder zurückgestellte Updates werden nach fünf Minuten erneut geprüft.
+Downloads sind auf 30 Mbit/s begrenzt.
+
+Nur stabile Original-Releases aus den beiden festgelegten Repositories, mit exaktem
+Dateinamen, Größenlimit und GitHub-Asset-SHA-256. FFmpeg wird vor dem Austausch mit
+Video-/Audio-Encodern getestet. Solange CS2/HLAE/FFmpeg, der Clip-Puffer oder eine
+Verarbeitung laufen, wird nur geprüft. Die Installation wartet. Alte Tools bleiben
+bei Fehlern erhalten; unterbrochene Ordnerwechsel werden beim nächsten inaktiven Lauf
+wiederhergestellt. Der Companion beendet dafür kein Spiel.
+
+Node.js, Aufnahme-Plugin, Rewriter, Übersetzer und dessen kompatible Sprachmodelle
+bleiben an das automatische Companion-Release gebunden. Fehlende Modelle/Downloader
+werden weiterhin bei Bedarf mit festen Prüfsummen geladen. Visual C++ wird durch
+Windows beziehungsweise das Setup verwaltet, Steam/CS2 und das Browser-Add-on durch
+ihre eigenen Updatewege. Die Übersicht nennt diese Grenzen ausdrücklich. Keine
+neue Bridge-Capability.
+
+Geprüft: 228 Node-Tests bestanden, zwei Integrationstests übersprungen. Echte
+Herstellerabfrage sowie isolierter Download, SHA-256, Installation und Encoder-Test
+von FFmpeg 9.1 auf F: erfolgreich. Browser-Übersicht, Schalter mit Neuladen und manuelle Hintergrundprüfung geprüft.
+Keine vollständige CS2-Aufnahme mit diesem Updater geprüft. Der Release-Publisher wiederholt vorübergehende Fehler begrenzt;
+der erste Veröffentlichungsversuch von 0.49.2 scheiterte nach erfolgreichem Build
+beim GitHub-Release-Anlegen mit HTTP 500. Merge und Veröffentlichung getrennt prüfen.
+
+
 ## Neu in 0.50.1 · „Jetzt auswerten“ für offene Matches
 
 Die Companion-Seite und das Figurmenü (Games → CS2) nannten offene Matches, boten aber keinen Weg
@@ -492,6 +529,8 @@ Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` 
 | zusätzlich mit eigener Engine | `camera-script-v1`, `camera-session-v1`, `camera-angle-v1`, `auto-highlights-v1`, `skin-swap-setup-v1` |
 | zusätzlich mit mitgeliefertem Rewriter (`tecmon-demo-rewriter.exe`) | `agent-swap-v1`, `chicken-v1`, `chicken-breed-v1` |
 | zusätzlich mit eingeschaltetem Skin-Tausch und mitgeliefertem Rewriter | `skin-swap-v1`, `skin-swap-v2`, `skin-side-v1`, `skin-legacy-v1`, `skin-stickers-v1` |
+
+0.49.3 ändert die Capability-Tabelle nicht: externe Tool-Updates bleiben lokal, ohne neue Website-Schnittstelle.
 
 ### Tests
 

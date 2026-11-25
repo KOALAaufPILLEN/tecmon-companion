@@ -171,9 +171,21 @@ jobs:
           # Nicht in den Pruefsummen-Dateien, damit Updater und Manifest unveraendert bleiben.
           cp "dist/TecMon-Companion-Setup-$version.exe" dist/TecMon-Companion-Setup.exe
           cp "dist/TecMon-Companion-Update-$version.exe" dist/TecMon-Companion-Update.exe
-          if ! gh release view "$RELEASE_TAG" --json tagName >/dev/null 2>&1; then
-            # Erst als Entwurf anlegen: Der Companion sieht das Update erst, wenn alle Dateien hochgeladen sind.
+          # GitHub kann beim Veröffentlichen vorübergehend HTTP 500 liefern.
+          # Geprüfte Artefakte nicht neu bauen; dieselbe idempotente Aktion begrenzt wiederholen.
+          publish_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              if "$@"; then return 0; fi
+              if [[ "$attempt" == 3 ]]; then return 1; fi
+              sleep "$((attempt * 5))"
+            done
+          }
+          ensure_release() {
+            if gh release view "$RELEASE_TAG" --json tagName >/dev/null 2>&1; then return 0; fi
+            # Nach einem HTTP-500-Fehler kann der Entwurf schon angelegt sein.
             gh release create "$RELEASE_TAG" --draft --target "$RELEASE_REF" --title "TecMon Companion $version" --generate-notes
-          fi
-          gh release upload "$RELEASE_TAG" dist/* --clobber
-          gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest
+          }
+          publish_retry ensure_release
+          publish_retry gh release upload "$RELEASE_TAG" dist/* --clobber
+          publish_retry gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest

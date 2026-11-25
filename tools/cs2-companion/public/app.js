@@ -123,6 +123,7 @@ async function refresh() {
   showBacklog(state.backlog);
   if(state.skins)showSkins(state.skins,!!state.managed);
   dotaTips(state.dota);
+  renderExternalUpdates(state.updates?.external);
   $('auto-update-row').hidden=!state.updates?.available; $('auto-update').checked=!!state.updates?.auto; $('auto-update-note').textContent=state.updates?.auto?'Neue Versionen werden nach der Prüfung von Größe und Prüfsumme selbst installiert, nie während eines Downloads oder einer Aufnahme. Danach startet der Companion neu.':'Aus: Neue Versionen erscheinen als Hinweis und werden erst nach deinem Klick installiert.';
   $('cs2-status').textContent = state.detected.cs2 ? 'CS2 erkannt' : state.cs2Check && !state.cs2Check.ok ? `CS2 abgelehnt: ${state.cs2Check.reason}` : 'CS2 nicht gefunden';
   $('engine-status').textContent = state.managed ? 'TecMon-Engine bereit' : 'Nur im installierten Windows-Companion';
@@ -894,3 +895,17 @@ $('chat-reply')?.addEventListener('submit',async e=>{
 });
 $('chat-reply-text')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('chat-reply').requestSubmit();}});
 setInterval(()=>{if(!restarting)loadChat().catch(()=>{});},1500);setTimeout(()=>loadChat().catch(()=>{}),900);
+
+function renderExternalUpdates(state) {
+  $('external-updates').hidden=!state;
+  if(!state)return;
+  $('external-auto').checked=state.auto;
+  $('external-status').textContent=state.auto||state.running?state.message:'Automatische Hersteller-Updates sind ausgeschaltet. Manuelle Prüfung bleibt möglich.';
+  $('external-check').disabled=state.running;
+  $('external-checked').textContent=state.checkedAt?`Zuletzt geprüft: ${new Date(state.checkedAt).toLocaleString('de-DE')}`:'Noch kein vollständiger Prüflauf.';
+  const labels={current:'Aktuell',updated:'Aktualisiert',pending:'Wartet',updating:'Wird aktualisiert',error:'Fehler – neuer Versuch folgt','not-installed':'Nicht installiert'};
+  $('external-tools').replaceChildren(...state.tools.map(tool=>{const row=document.createElement('p');row.textContent=`${tool.label}: ${tool.installed||'nicht erkannt'}${tool.latest?` → ${tool.latest}`:''} · ${labels[tool.status]||tool.status}${tool.message?` · ${tool.message}`:''}`;return row;}));
+  $('external-managed').replaceChildren(...state.managed.map(tool=>{const row=document.createElement('p');row.textContent=`${tool.label}: ${tool.channel}`;return row;}));
+}
+$('external-auto').addEventListener('change',async()=>{const box=$('external-auto');box.disabled=true;try{await api('/api/update/external/auto',{auto:box.checked});await refresh();}catch(error){notice(error);box.checked=!box.checked;}finally{box.disabled=false;}});
+$('external-check').addEventListener('click',async()=>{try{await api('/api/update/external/check',{});await refresh();}catch(error){notice(error);}});
