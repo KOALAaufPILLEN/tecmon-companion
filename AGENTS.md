@@ -417,6 +417,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Map und `done` heraus, keine Pfade. `POST /bridge/matches/done` nimmt höchstens 50 Match-IDs (Ziffern).
   Match-IDs bleiben Text. Der Sharecode entsteht nur aus Match-ID, Reservierungs-ID und TV-Port der
   Match-Infos (`encodeShareCode()`), sonst bleibt er leer. Hochladen macht nur die Webseite.
+- „Jetzt auswerten“ (seit 0.50.1, `openNow()`, `POST /api/backlog/open`, Knopf auf der Companion-Seite und im
+  Figurmenü) öffnet nur dieselbe Seite wie „Ja“; der Companion lädt und wertet selbst keine Demos aus. Offene Matches
+  nie anzeigen, ohne einen Weg zum Auswerten anzubieten.
 - Gehört zum CS2-Paket: ohne Paket keine Capability, beim Entfernen `statsBacklog.reset()`.
 
 ## Fadenkreuz, Overlay und CFG-Sammlung (`crosshair.mjs`, `cfg-library.mjs`)
@@ -591,7 +594,7 @@ eingebaut wurde, steht im Update-Protokoll dort.
   SHA-256 im Manifest nachziehen. `updateHlae()` bringt bestehende Installationen vor dem
   CS2-Start mit HLAE auf diese Version (nur älter/unbekannt ersetzen, Rückfall auf die alte
   bei Fehlern); kein Download aus anderen Quellen als dem Manifest.
-- Seit 0.50.1 (Nutzerentscheid 25.11.2026) prüft `external-updates.mjs` HLAE und FFmpeg
+- Seit 0.50.2 (Nutzerentscheid 25.11.2026) prüft `external-updates.mjs` HLAE und FFmpeg
   zusätzlich direkt in stabilen Hersteller-Releases (`advancedfx/advancedfx`, `GyanD/codexffmpeg`).
   Nur exakter Asset-Name/URL, begrenzte Größe und SHA-256 aus GitHubs Asset-Digest;
   keine Nightlies, keine fremden Repositories und kein Betrieb ohne Prüfsumme. Das

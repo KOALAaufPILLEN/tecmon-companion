@@ -243,3 +243,13 @@ test("Bridge: Match-Liste, erledigt melden und Frage beim Schließen von CS2", a
   assert.equal((await local("/api/backlog/settings", { ask: false })).status, 200);
   assert.equal((await (await local("/api/state")).json()).backlog.ask, false);
 });
+
+test("Jetzt auswerten öffnet die Seite nur mit offenen Matches", async () => {
+  const s = await setup();
+  await assert.rejects(s.backlog.openNow(), /Keine offenen Matches/);
+  s.setRunning(false);
+  await s.backlog.refresh({ force: true });
+  const result = await s.backlog.openNow();
+  assert.equal(s.opened.length, 1);
+  assert.match(result.message, /tecmon\.online/);
+});

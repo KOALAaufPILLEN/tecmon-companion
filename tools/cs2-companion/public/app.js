@@ -544,6 +544,7 @@ function showBacklog(backlog){
   $('backlog-heading').textContent=backlog.ask?'Beim Schließen von CS2 nach Stats fragen: an':'Beim Schließen von CS2 nach Stats fragen: aus';
   $('backlog-toggle').textContent=backlog.ask?'Ausschalten':'Einschalten';
   const when=backlog.checkedAt?` Zuletzt bei Steam nachgesehen: ${new Date(backlog.checkedAt).toLocaleString('de-DE')}.`:'';
+  $('backlog-open').hidden=!backlog.open||Boolean(backlog.offer);$('backlog-open').textContent=`Jetzt auswerten (${Math.min(backlog.open,10)})`;
   $('backlog-status').textContent=backlog.offer?'Antworte auf die Frage der Figur.':`${backlog.open?`${backlog.open} Match${backlog.open===1?'':'es'} noch nicht ausgewertet.`:'Keine offenen Matches bekannt.'}${when}${backlog.error?` ${backlog.error}`:''}`;
 }
 function showAuto(auto){
@@ -564,6 +565,7 @@ function autoCheck(auto){
   const match=auto.match?` Erkanntes Match: ${auto.match.map}, ${auto.match.finished?'fertig gespielt':'läuft noch'}.`:'';
   return `Letzte Daten von CS2 ${ago}: ${what}.${match}`;
 }
+$('backlog-open').addEventListener('click',()=>api('/api/backlog/open',{}).then(r=>{showBacklog(r.backlog);if(r.message)$('notice').textContent=r.message;}).catch(notice));
 $('backlog-toggle').addEventListener('click',()=>api('/api/backlog/settings',{ask:!backlogState?.ask}).then(r=>{showBacklog(r.backlog);if(r.message)$('notice').textContent=r.message;}).catch(notice));
 $('auto-toggle').addEventListener('click',()=>api('/api/auto/settings',{enabled:!autoState?.enabled}).then(r=>{showAuto(r.auto);if(r.message)$('notice').textContent=r.message;}).catch(notice));
 /*
