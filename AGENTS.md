@@ -417,6 +417,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Map und `done` heraus, keine Pfade. `POST /bridge/matches/done` nimmt höchstens 50 Match-IDs (Ziffern).
   Match-IDs bleiben Text. Der Sharecode entsteht nur aus Match-ID, Reservierungs-ID und TV-Port der
   Match-Infos (`encodeShareCode()`), sonst bleibt er leer. Hochladen macht nur die Webseite.
+- „Jetzt auswerten“ (seit 0.50.1, `openNow()`, `POST /api/backlog/open`, Knopf auf der Companion-Seite und im
+  Figurmenü) öffnet nur dieselbe Seite wie „Ja“; der Companion lädt und wertet selbst keine Demos aus. Offene Matches
+  nie anzeigen, ohne einen Weg zum Auswerten anzubieten.
 - Gehört zum CS2-Paket: ohne Paket keine Capability, beim Entfernen `statsBacklog.reset()`.
 
 ## Fadenkreuz, Overlay und CFG-Sammlung (`crosshair.mjs`, `cfg-library.mjs`)
