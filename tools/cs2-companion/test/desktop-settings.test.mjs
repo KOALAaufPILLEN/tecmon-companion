@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { cleanDesktopSettings, createDesktopSettings, DESKTOP_DEFAULTS } from "../desktop-settings.mjs";
+import { cleanDesktopSettings, createDesktopSettings, DESKTOP_DEFAULTS, TUTORIAL_VERSION } from "../desktop-settings.mjs";
 
 test("Desktop-Einstellungen: Standard ist 3D, Umherfliegen an, Autostart aus", () => {
-  assert.deepEqual(cleanDesktopSettings(null), { quality: "high", wander: true, animate: true, foreground: true, autostart: false, chatPos: null });
+  assert.deepEqual(cleanDesktopSettings(null), { quality: "high", wander: true, animate: true, foreground: true, autostart: false, chatPos: null, ui: "advanced", tutorial: TUTORIAL_VERSION });
 });
 
 test("Desktop-Einstellungen übernehmen nur bekannte Felder mit gültigen Werten", () => {
@@ -39,4 +39,22 @@ test("Chat-Overlay-Position: nur ganze Zahlen, null setzt zurück, andere Werte 
   assert.deepEqual(cleanDesktopSettings({ chatPos: "unten" }, placed).chatPos, { x: -1700, y: 1060 });
   assert.deepEqual(cleanDesktopSettings({ wander: false }, placed).chatPos, { x: -1700, y: 1060 });
   assert.equal(cleanDesktopSettings({ chatPos: null }, placed).chatPos, null);
+});
+
+test("Ansicht und Tutorial: ältere Einstellungen bleiben „Erweitert“ ohne Tutorial, Setup setzt beides", () => {
+  // Ältere desktop.json ohne Felder: alles sichtbar wie bisher, kein Tutorial ungefragt.
+  const old = cleanDesktopSettings({ quality: "low", wander: false });
+  assert.equal(old.ui, "advanced");
+  assert.equal(old.tutorial, TUTORIAL_VERSION);
+  const fresh = cleanDesktopSettings({ ui: "simple", tutorial: 0 }, old);
+  assert.equal(fresh.ui, "simple");
+  assert.equal(fresh.tutorial, 0);
+  assert.equal(fresh.quality, "low");
+  // Unbekannte Werte ändern nichts.
+  assert.equal(cleanDesktopSettings({ ui: "profi", tutorial: 99 }, fresh).ui, "simple");
+  assert.equal(cleanDesktopSettings({ tutorial: -1 }, fresh).tutorial, 0);
+  assert.equal(cleanDesktopSettings({ tutorial: "1" }, fresh).tutorial, 0);
+  assert.equal(cleanDesktopSettings({ tutorial: TUTORIAL_VERSION }, fresh).tutorial, TUTORIAL_VERSION);
+  // Die Figur schickt nur ihre eigenen Schalter: Ansicht bleibt erhalten.
+  assert.equal(cleanDesktopSettings({ wander: true, quality: "high" }, fresh).ui, "simple");
 });

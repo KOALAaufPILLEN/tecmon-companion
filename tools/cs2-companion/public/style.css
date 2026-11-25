@@ -272,3 +272,34 @@ body.holo .panel-cat>.cat-card::after{display:none}
 .chat-list li small{display:block;color:#a99fbe;font-size:12px;margin-top:2px}
 .chat-list li.chat-team b{color:#d8cbff}
 body.holo .chat-reply-out{--cut:7px;--edge:#e8c57388;--fill:#e8c57312;border:1px solid var(--edge);clip-path:polygon(var(--cut) 0,calc(100% - var(--cut)) 0,100% var(--cut),100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,var(--cut) 100%,0 calc(100% - var(--cut)),0 var(--cut))}
+/* 0.50.0: Ansicht „Einfach“/„Erweitert“, Einstellungen-Karte und Rundgang für Einsteiger (Nutzerwunsch 25.11.2026). */
+.ui-simple [data-expert]{display:none!important}
+.simple-only{display:none}.ui-simple .simple-only{display:block}
+.explain{color:#e4dcff;font-size:13px;margin:6px 0 10px;border-left:3px solid var(--violet);padding:2px 0 2px 10px}
+.settings-card h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--violet);margin:16px 0 8px}
+.settings-card .actions{margin-top:10px}.setting-block+.setting-block{border-top:1px solid var(--line);margin-top:16px}
+.mode-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.mode-pick button{display:grid;gap:2px;align-content:start;text-align:left;white-space:normal;padding:12px 14px;min-height:44px;color:#f1eef7;transition:transform var(--tm-dur-press) ease,border-color var(--tm-dur-press) ease}
+.mode-pick button:active{transform:scale(.96)}
+.mode-pick b{font-size:14px}.mode-pick small{font-size:11px;color:var(--muted);font-weight:400;line-height:1.4}
+.mode-pick button[aria-checked="true"] b{color:var(--gold)}
+body.holo .mode-pick button[aria-checked="true"]{--edge:var(--gold);--fill:linear-gradient(135deg,#e8c57324,#a78bfa1c)}
+.mode-pick.compact button{padding:8px 12px}
+.figure-flags{display:flex;flex-wrap:wrap;gap:0 18px;margin-top:8px}
+.figure-flags label{display:flex;align-items:center;gap:8px;font-size:13px;color:#f1eef7;min-height:40px;cursor:pointer}
+.figure-flags input{width:auto;margin:0;accent-color:#a78bfa}
+.tour{position:fixed;inset:0;z-index:1000}
+.tour.tour-center{background:#06060bcc}
+.tour-hole{position:fixed;box-shadow:0 0 0 200vmax #06060bcc;outline:2px solid var(--gold);outline-offset:0;pointer-events:none;transition:left var(--tm-dur-overlay) var(--tm-ease-enter),top var(--tm-dur-overlay) var(--tm-ease-enter),width var(--tm-dur-overlay) var(--tm-ease-enter),height var(--tm-dur-overlay) var(--tm-ease-enter)}
+.tour-card{position:fixed;width:min(440px,calc(100vw - 24px));display:flex;gap:14px;align-items:flex-start;padding:18px 18px 14px;border:1px solid #a78bfa;background:linear-gradient(160deg,#1d1729,#0f0c16);clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);animation:tour-in var(--tm-dur-popover) var(--tm-ease-enter)}
+.tour-card::after{content:"";position:absolute;inset:-1px;pointer-events:none;background:linear-gradient(135deg,transparent calc(50% - 1px),var(--gold) calc(50% - 1px) calc(50% + 1.6px),transparent calc(50% + 1.6px)) top left/16px 16px no-repeat,linear-gradient(315deg,transparent calc(50% - 1px),var(--gold) calc(50% - 1px) calc(50% + 1.6px),transparent calc(50% + 1.6px)) bottom right/16px 16px no-repeat}
+.tour-card>img{flex:none;filter:drop-shadow(0 0 10px #a78bfa66)}
+.tour-body{min-width:0;flex:1}.tour-body h2{margin:2px 0 6px;font-size:18px}.tour-body p{color:#e4dcff;font-size:13px;margin:0 0 12px}
+.tour-mouse{display:grid;gap:6px;margin:0 0 12px}
+.tour-mouse span{font-size:12px;padding:6px 10px;border-left:3px solid var(--gold);background:#a78bfa14}
+.tour-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.tour-actions button{min-height:40px;transition:transform var(--tm-dur-press) ease}.tour-actions button:active{transform:scale(.96)}
+.tour-actions button:first-child{margin-right:auto}
+body.holo .tour-actions button:not(.subtle){--edge:#f5d36b;--fill:linear-gradient(135deg,#e8c573,#c9a04a);color:#15121a;font-weight:700}
+@keyframes tour-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.tour-hole,.tour-card{transition:none;animation:none}}
