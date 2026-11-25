@@ -767,7 +767,7 @@ function renderExternalUpdates(state) {
   $('external-updates').hidden=!state;
   if(!state)return;
   $('external-auto').checked=state.auto;
-  $('external-status').textContent=state.message;
+  $('external-status').textContent=state.auto||state.running?state.message:'Automatische Hersteller-Updates sind ausgeschaltet. Manuelle Prüfung bleibt möglich.';
   $('external-check').disabled=state.running;
   $('external-checked').textContent=state.checkedAt?`Zuletzt geprüft: ${new Date(state.checkedAt).toLocaleString('de-DE')}`:'Noch kein vollständiger Prüflauf.';
   const labels={current:'Aktuell',updated:'Aktualisiert',pending:'Wartet',updating:'Wird aktualisiert',error:'Fehler – neuer Versuch folgt'};

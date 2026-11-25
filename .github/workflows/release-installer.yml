@@ -181,9 +181,11 @@ jobs:
               sleep "$((attempt * 5))"
             done
           }
-          if ! gh release view "$RELEASE_TAG" --json tagName >/dev/null 2>&1; then
-            # Erst als Entwurf anlegen: Der Companion sieht das Update erst, wenn alle Dateien hochgeladen sind.
-            publish_retry gh release create "$RELEASE_TAG" --draft --target "$RELEASE_REF" --title "TecMon Companion $version" --generate-notes
-          fi
+          ensure_release() {
+            if gh release view "$RELEASE_TAG" --json tagName >/dev/null 2>&1; then return 0; fi
+            # Nach einem HTTP-500-Fehler kann der Entwurf schon angelegt sein.
+            gh release create "$RELEASE_TAG" --draft --target "$RELEASE_REF" --title "TecMon Companion $version" --generate-notes
+          }
+          publish_retry ensure_release
           publish_retry gh release upload "$RELEASE_TAG" dist/* --clobber
           publish_retry gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest
