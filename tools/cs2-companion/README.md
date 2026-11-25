@@ -1,3 +1,10 @@
+
+Integration mit Einrichtung 0.50.0: Die Auswahl „Nur Stats und Tipps“ bleibt erhalten.
+Fehlende Video-Werkzeuge werden nicht automatisch nachinstalliert. Erst nach der
+gewählten Nachinstallation werden sie in Hersteller-Updates einbezogen. Während
+der Nachinstallation starten weder Aufnahmen noch parallele Werkzeug-Updates.
+Version 0.50.1 enthält beide Funktionen; Veröffentlichung und Installation separat prüfen.
+
 # TecMon Companion · Anleitung
 
 ## Automatische Werkzeug-Updates ab 0.49.3

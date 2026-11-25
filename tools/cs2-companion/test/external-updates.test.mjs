@@ -60,6 +60,12 @@ async function manager(t,over={}){
 test("Gemeinsamer Lauf, sechs Stunden Cache und dauerhafte Einstellung/Ergebnisse",async(t)=>{
  const s=await manager(t);const a=s.api.run();assert.equal(a,s.api.run());let state=await a;assert.equal(state.running,false);assert.equal(state.tools[0].status,"updated");await s.api.run();assert.equal(s.calls.length,2);s.advance(6*60*60_000);await s.api.run();assert.equal(s.calls.length,4);await s.api.setAuto(false);const restarted=await createExternalUpdates(s.options);assert.equal(restarted.state().auto,false);assert.equal(restarted.state().tools.length,2);await restarted.run();assert.equal(s.calls.length,4);await restarted.run({force:true});assert.equal(s.calls.length,6);
 });
+test("Stats-only setup never installs missing tools; explicitly installed tools enter update checks later",async(t)=>{
+ const versions={hlae:"",ffmpeg:""};let downloads=0,checks=0;
+ const s=await manager(t,{manageMissing:false,installed:async n=>versions[n],discover:async n=>{checks++;return releaseTool(n,release(n,n==="hlae"?"2.193.2":"9.1"));},install:async(n,item)=>{downloads++;versions[n]=item.version;}});
+ let state=await s.api.run({force:true});assert.equal(downloads,0);assert.equal(checks,0);assert.ok(state.tools.every(t=>t.status==="not-installed"));assert.match(state.message,/Keine Video-Werkzeuge/);
+ versions.ffmpeg="8.1.2";state=await s.api.run({force:true});assert.equal(downloads,1);assert.equal(checks,1);assert.equal(state.tools.find(t=>t.id==="hlae").status,"not-installed");assert.equal(versions.ffmpeg,"9.1");
+});
 test("Laufende Programme verschieben den Lauf; Herstellerfehler werden erneut versucht",async(t)=>{
  let busy=true;let fail=true;const s=await manager(t,{blocked:async()=>busy?"CS2 läuft":"",discover:async n=>{if(fail)throw Error("HTTP 503");return releaseTool(n,release(n,n==="hlae"?"2.193.2":"9.1"));}});
  let state=await s.api.run();assert.equal(state.tools[0].status,"error");assert.equal(state.running,false);busy=false;s.advance(5*60_000);state=await s.api.run();assert.equal(state.tools[0].status,"error");assert.match(state.tools[0].message,/503/);fail=false;s.advance(5*60_000);state=await s.api.run();assert.equal(state.tools[0].status,"updated");

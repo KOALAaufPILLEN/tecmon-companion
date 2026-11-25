@@ -387,7 +387,7 @@ export async function internalProblem(installation, cs2Exe, job) {
   if (!cs2Exe || !existsSync(cs2Exe)) return "CS2 wurde nicht gefunden.";
   for (const exe of [installation.hlaeExe, installation.ffmpegExe])
     if (!(await stat(exe).then((s) => s.isFile(), () => false)))
-      return "HLAE oder FFmpeg fehlt. Companion-Einrichtung reparieren.";
+      return "Die Video-Aufnahme ist auf diesem PC noch nicht installiert. Im Companion unter Einstellungen → „Video-Aufnahme nachinstallieren“.";
   return "";
 }
 

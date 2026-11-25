@@ -124,7 +124,7 @@ export async function installExternalTool({ root, name, item, run, request = fet
 }
 
 /** Ein Durchlauf zur Zeit, dauerhafter Status, Fehler erneut versuchen statt „aktuell“. */
-export async function createExternalUpdates({ directory, installed, discover = discoverTool, install, blocked = async () => "", prepare = async () => {}, now = Date.now }) {
+export async function createExternalUpdates({ directory, installed, discover = discoverTool, install, blocked = async () => "", prepare = async () => {}, manageMissing = true, now = Date.now }) {
   await mkdir(directory, { recursive: true });
   const file = path.join(directory, "external-updates.json");
   let saved = {};
@@ -164,6 +164,11 @@ export async function createExternalUpdates({ directory, installed, discover = d
             tools.push(row);
             try {
               row.installed = await installed(name);
+              if (!manageMissing && !row.installed) {
+                row.status = "not-installed";
+                row.message = "Nicht installiert. Video-Aufnahme bei Bedarf über die Einrichtung ergänzen.";
+                continue;
+              }
               const item = await discover(name);
               row.latest = item.version;
               if (row.installed && compareVersions(row.installed, item.version) >= 0) row.status = "current";
@@ -185,7 +190,9 @@ export async function createExternalUpdates({ directory, installed, discover = d
           state.checkedAt = now();
           const pending = tools.some((t) => ["error", "pending"].includes(t.status));
           state.nextCheck = now() + (pending ? RETRY_AFTER : CHECK_EVERY);
-          state.message = pending ? "Prüfung abgeschlossen; offene Komponenten werden erneut versucht." : "Hersteller-Komponenten sind aktuell.";
+          state.message = pending ? "Prüfung abgeschlossen; offene Komponenten werden erneut versucht."
+            : tools.every(t => t.status === "not-installed") ? "Keine Video-Werkzeuge installiert. Bei Bedarf über die Einrichtung ergänzen."
+            : "Installierte Hersteller-Komponenten sind aktuell.";
         } catch (error) {
           state.message = `Prüfung fehlgeschlagen: ${error.message}`;
           state.nextCheck = now() + RETRY_AFTER;
