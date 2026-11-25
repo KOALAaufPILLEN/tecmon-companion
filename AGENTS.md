@@ -18,6 +18,29 @@ README sind auf Deutsch.
 - Die GSI-Datei legt der Companion beim Start an, sobald Rundentipps oder Auto-Highlights an sind und CS2
   gefunden wurde. Neu installiertes CS2-Paket stellt die Standards wieder her (`resetDefaults()`).
 
+## Einsteiger: Setup-Fragen, Ansicht „Einfach“/„Erweitert“ und Rundgang (Nutzerwunsch 25.11.2026)
+
+- Der Installer (`SetupWindow` in `TecMon.cs`) fragt in einfachen Schritten statt einer Seite voller Pfade: Spiele →
+  (nur mit CS2) „Videos und Stats (mit Demo-Manager)“ oder „Nur Stats und Tipps“ → Ansicht → Zusammenfassung und
+  Lizenzen. Speicherorte erst nach „Speicherorte ändern …“. Eine Frage je Seite, Auswahlkarten (`ChoiceCard`) im
+  TecMon-Stil. Neue Setup-Fragen nur mit einfacher Sprache und sinnvoller Vorauswahl.
+- Antworten gehen als `games`, `videoTools`, `ui` an `install-backend.mjs`. Fehlende Felder = altes Verhalten
+  (`setupToolNames()`: alles laden). `videoTools: false` lädt kein HLAE; FFmpeg nur mit Wardogs. Spiel-Pakete setzt
+  `applySetupChoices()` nur, wenn `games.json` noch fehlt; das Entfernen mit Aufräumen bleibt im Companion.
+- Video-Aufnahme lässt sich nachinstallieren (`POST /api/video-tools/install`, `videoTools` in `/api/state`), nur über
+  `ensureVideoTools()` aus dem Manifest mit SHA256. Fehlende Tools nie stillschweigend: `internalProblem()` verweist
+  auf die Einstellungen. Bestehende Capabilities bleiben unverändert.
+- Ansicht `ui` (`"simple"`/`"advanced"`) und Rundgang `tutorial` liegen in `desktop.json` (`desktop-settings.mjs`).
+  Ältere Dateien ohne Feld: „Erweitert“ und kein Rundgang. Neue Karten für Fortgeschrittene in `EXPERT_ONLY`
+  (`public/app.js`) eintragen, Einsteiger-Erklärungen in `SIMPLE_HINTS`; Fehlermeldungen in „Einfach“ nie ausblenden.
+  Im Schnellmenü (`BuildQuick()`) zeigt „Einfach“ weniger Kacheln und Schalter, „Alle Optionen …“ bleibt immer.
+- Rundgang (`TOUR` in `public/app.js`): startet nach dem Setup (`tutorial` < `TUTORIAL_VERSION`; die Figur öffnet dafür
+  das Fenster), sonst über „Rundgang starten“ oder `Jump("tutorial")`. Er zeigt nur und schaltet nichts. Dunkles,
+  durchsichtiges Overlay, goldener Rahmen um die Karte, Sprechblase mit der vorhandenen TecMon-Figur; Esc beendet.
+  Ändern sich die Schritte inhaltlich, `TUTORIAL_VERSION` und `TOUR_VERSION` gemeinsam erhöhen.
+- Vorschau der Setup-Seiten ohne Installation: `"TecMon Companion.exe" --setup-preview <Ordner>` (unter Linux mit
+  Mono und `xvfb-run` möglich).
+
 ## CS2-Rundentipps (Game State Integration)
 
 Die Rundentipps müssen VAC-sicher und für normale Matchmaking-Spiele

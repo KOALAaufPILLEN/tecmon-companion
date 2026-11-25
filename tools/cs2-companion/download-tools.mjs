@@ -43,10 +43,23 @@ async function fetchTool(root, name, item, run, progress, fetchImpl = fetch) {
   }
 }
 
-/** Public installer fetches these unmodified packages from their original publisher. */
-export async function ensureVideoTools(root, run, progress) {
+export const VIDEO_TOOLS = Object.freeze({ hlae: path.join("hlae", "hlae.exe"), ffmpeg: path.join("ffmpeg", "bin", "ffmpeg.exe") });
+
+/** Welche Videotools liegen schon im Programmordner? */
+export async function videoToolsState(root) {
+  const state = {};
+  for (const [name, expected] of Object.entries(VIDEO_TOOLS))
+    state[name] = await access(path.join(root, "tools", expected)).then(() => true, () => false);
+  return state;
+}
+
+/**
+ * Public installer fetches these unmodified packages from their original publisher.
+ * `names`: nur diese Tools (Setup „Nur Stats und Tipps“ mit Wardogs braucht nur FFmpeg).
+ */
+export async function ensureVideoTools(root, run, progress, names = Object.keys(VIDEO_TOOLS)) {
   const manifest = await readManifest(root);
-  for (const [name, expected] of [["hlae", path.join("hlae", "hlae.exe")], ["ffmpeg", path.join("ffmpeg", "bin", "ffmpeg.exe")]]) {
+  for (const [name, expected] of Object.entries(VIDEO_TOOLS).filter(([name]) => names.includes(name))) {
     try { await access(path.join(root, "tools", expected)); continue; } catch { /* First install. */ }
     const { unpacked, cleanup } = await fetchTool(root, name, manifest[name], run, progress);
     try {

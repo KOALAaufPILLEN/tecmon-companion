@@ -55,8 +55,9 @@ function gameTips(gsi){
   if(!gsi)return;
   $('tips-heading').textContent=!gsi.enabled?'Rundentipps sind aus':gsi.connected?`Live: ${gsi.map||'Hauptmenü'}${gsi.side?` · ${gsi.side}`:''}`:'Eingeschaltet · wartet auf CS2';
   const toggle=$('tips-toggle');toggle.textContent=gsi.enabled?'Ausschalten':'Einschalten';toggle.className=gsi.enabled?'subtle':'';toggle.disabled=!gsi.enabled&&!gsi.available;
-  if(gsi.error)$('tips-note').textContent=`Konfiguration konnte nicht geschrieben werden: ${gsi.error}`;
-  else if(!gsi.available&&!gsi.enabled)$('tips-note').textContent='CS2 wurde auf diesem PC nicht gefunden.';
+  /* Fehler bleiben auch in der Ansicht „Einfach“ sichtbar (sonst ist die lange Erklärung dort ausgeblendet). */
+  const problem=gsi.error?`Konfiguration konnte nicht geschrieben werden: ${gsi.error}`:!gsi.available&&!gsi.enabled?'CS2 wurde auf diesem PC nicht gefunden.':'';
+  if(problem){$('tips-note').textContent=problem;$('tips-note').removeAttribute('data-expert');}
   const featureNext=JSON.stringify(gsi.features||[]);
   if(featureNext!==featuresSignature){
     featuresSignature=featureNext;
@@ -79,8 +80,10 @@ function showFigure(desktop){
   figureState=desktop;
   for(const b of document.querySelectorAll('#figure-quality [data-quality]'))b.setAttribute('aria-checked',String(b.dataset.quality===desktop.quality));
   for(const box of document.querySelectorAll('.figure-flags [data-flag]'))if(!box.disabled)box.checked=!!desktop[box.dataset.flag];
+  applyUi(desktop.ui);
   const hint=document.querySelector('[data-fold="cat-figur"] .cat-hint');
-  if(hint)hint.textContent=`${desktop.quality==='low'?'Bilder':'3D'} · ${desktop.wander?'fliegt':'bleibt stehen'}${desktop.autostart?' · Autostart':''}`;
+  if(hint)hint.textContent=`Ansicht ${desktop.ui==='simple'?'Einfach':'Erweitert'} · Figur ${desktop.quality==='low'?'Bilder':'3D'}${desktop.autostart?' · Autostart':''}`;
+  if(Number.isInteger(desktop.tutorial)&&desktop.tutorial<TOUR_VERSION&&!tourOffered){tourOffered=true;startTutorial();}
 }
 async function figureSettings(change,control){
   if(control)control.disabled=true;
@@ -112,6 +115,7 @@ async function refresh() {
     if(state.bridge?.devices?.length) container.append(connections);
   }
   if(state.desktop)showFigure(state.desktop);
+  showVideoTools(state.videoTools);
   panelHints(state);
   if(crosshairInfo&&state.overlay)showOverlay({...crosshairInfo.overlay,...state.overlay});
   gameTips(state.gsi);
@@ -586,9 +590,9 @@ $('skins-toggle').addEventListener('click',async()=>{
    Reihenfolge nach Häufigkeit; rechts im Kopf steht ein kurzer Stand, damit man nicht aufklappen muss. */
 const PANEL_CATEGORIES=[
   ['status','Status & Videos',[['.connection-summary','Verbindung'],['.activity-summary','Aufnahme'],['#videos','Letzte Videos']]],
-  ['figur','Figur & Start',[['#figur']]],
-  ['werkzeuge','Werkzeuge',[['#fadenkreuz','Fadenkreuz-Overlay (alle Spiele)']]],
   ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#stats-backlog','Stats beim Schließen'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#chat','Chat-Übersetzer'],['#cfgs','Configs'],['#quiz','Quiz']]],
+  ['figur','Einstellungen',[['#figur']]],
+  ['werkzeuge','Werkzeuge',[['#fadenkreuz','Fadenkreuz-Overlay (alle Spiele)']]],
   ['dota2','Dota 2',[['#dota-tipps','Dota-2-Tipps']]],
   ['wardogs','Wardogs',[['#wardogs']]],
   ['clips','Clips',[['#clips']]],
@@ -638,6 +642,133 @@ function panelHints(state){
   if(fromHash)for(let d=fromHash.closest('details');d;d=d.parentElement?.closest('details'))d.open=true;
 })();
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('skins-consent').hidden){$('skins-consent').hidden=true;$('skins-accept').checked=false;}});
+/* Ansicht „Einfach“/„Erweitert“ (Nutzerwunsch 25.11.2026, desktop.json `ui`). „Einfach“ zeigt nur das Nötigste mit
+   kurzen Erklärungen; alles mit data-expert erscheint erst in „Erweitert“. Neue Karten für Fortgeschrittene hier eintragen. */
+const EXPERT_ONLY=['#advanced-toggle','#advanced-panel','#skin-tausch','#cfgs','#clips','#fadenkreuz','#quiz','#tips-options','#dota-tipps .tips-options','#wardogs .tips-options','#auto-note','#tips-note','#chat>p:first-of-type','.figure-quality-row','.bridge-devices'];
+const SIMPLE_HINTS=[
+  ['.activity-summary','Hier siehst du, was TecMon gerade macht, zum Beispiel eine Demo laden oder ein Video aufnehmen.'],
+  ['#auto-highlights','Nach deinem Match fragt TecMon, ob ein Video mit deinen besten Szenen entstehen soll. Du klickst nur „Ja“.'],
+  ['#stats-backlog','Wenn du CS2 schließt, fragt TecMon, ob deine neuen Matches auf TecMon.online ausgewertet werden sollen.'],
+  ['#rundentipps','In der Kaufzeit gibt dir TecMon kurze Tipps, zum Beispiel was du dir leisten kannst. TecMon liest nur deine eigenen Werte aus der offiziellen CS2-Schnittstelle (VAC-sicher).'],
+  ['#chat','Übersetzt den Chat im Spiel in deine Sprache. Läuft offline auf deinem PC. Einmal einrichten: Anleitung unten aufklappen.'],
+  ['#dota-tipps','Kurze Tipps in Pausen und nach deinem Tod in Dota 2.'],
+  ['#videos','Hier landen deine fertigen Videos.'],
+];
+function markExpert(){
+  for(const selector of EXPERT_ONLY)for(const node of document.querySelectorAll(selector)){node.dataset.expert='';if(node.matches('.card'))node.closest('.card-fold')?.setAttribute('data-expert','');}
+  /* Kategorien im Fenster, in denen nur Karten für Fortgeschrittene stecken, verschwinden in „Einfach“ ganz. */
+  for(const cat of document.querySelectorAll('.panel-cat')){
+    const cards=[...cat.querySelectorAll(':scope>.card,:scope>.card-fold>.card')];
+    if(cards.length&&cards.every(card=>card.hasAttribute('data-expert')))cat.dataset.expert='';
+  }
+  for(const [selector,text] of SIMPLE_HINTS){
+    const card=document.querySelector(selector);if(!card||card.querySelector(':scope>.explain'))continue;
+    const hint=el('p',text,'explain simple-only');
+    const head=card.querySelector(':scope>.section-head')||card.querySelector(':scope>div:not(.status-orb)>h2')?.parentElement?.querySelector('h2');
+    if(head)head.after(hint);else card.prepend(hint);
+  }
+}
+markExpert();
+function applyUi(mode){
+  const simple=mode==='simple';
+  document.body.classList.toggle('ui-simple',simple);
+  for(const b of document.querySelectorAll('#ui-mode [data-ui]'))b.setAttribute('aria-checked',String(b.dataset.ui===(simple?'simple':'advanced')));
+  if(simple&&!$('advanced-panel').hidden)advanced(false);
+  try{localStorage.setItem('tecmon-ui',simple?'simple':'advanced');}catch{}
+}
+try{if(localStorage.getItem('tecmon-ui')==='simple')applyUi('simple');}catch{}
+for(const b of document.querySelectorAll('#ui-mode [data-ui]'))b.addEventListener('click',()=>{applyUi(b.dataset.ui);figureSettings({ui:b.dataset.ui});});
+
+/* Video-Aufnahme nachinstallieren (Setup „Nur Stats und Tipps“). */
+function showVideoTools(tools){
+  const box=$('video-tools');
+  if(!tools){box.hidden=true;return;}
+  const missing=!tools.installed?.hlae||!tools.installed?.ffmpeg;
+  box.hidden=!missing&&!tools.busy&&!tools.message;
+  $('video-tools-install').hidden=!missing;$('video-tools-install').disabled=!!tools.busy;
+  $('video-tools-install').textContent=tools.busy?'Wird installiert …':tools.error?'Erneut versuchen':'Video-Aufnahme nachinstallieren';
+  $('video-tools-note').textContent=missing?'Für Highlight-Videos braucht TecMon zwei kostenlose Programme (HLAE und FFmpeg). Sie kommen direkt vom Hersteller und werden vor dem Start geprüft. Stats, Tipps und Chat-Übersetzer gehen auch ohne.':'HLAE und FFmpeg sind installiert. TecMon kann Highlight-Videos aufnehmen.';
+  $('video-tools-status').textContent=tools.error?`Hat nicht geklappt: ${tools.error}`:tools.message||'';
+}
+$('video-tools-install').addEventListener('click',async()=>{$('video-tools-install').disabled=true;try{await api('/api/video-tools/install',{});await refresh();}catch(error){notice(error);$('video-tools-install').disabled=false;}});
+
+/* Rundgang für Einsteiger: beim ersten Start nach dem Setup (desktop.json `tutorial` < TOUR_VERSION), sonst über
+   „Rundgang starten“ in den Einstellungen oder das Figurmenü (#tutorial). Zeigt nur, ändert nichts. */
+const TOUR_VERSION=1; // muss zu TUTORIAL_VERSION in desktop-settings.mjs passen
+let tourOffered=false,tour=null;
+const TOUR=[
+  {title:'Hi, ich bin TecMon!',text:'Ich zeige dir in einer Minute, wo du was findest. Du kannst jederzeit beenden und den Rundgang später unter „Einstellungen“ wieder starten.'},
+  {title:'Ich wohne auf deinem Desktop',text:'Die kleine Figur am Bildschirmrand bin ich. Klick mich an, dann geht dieses Fenster auf oder zu.',mouse:true},
+  {sel:'.connection-summary',title:'Mit TecMon.online verbinden',text:'Auf tecmon.online einmal „Companion verbinden“ klicken und den Code hier bestätigen. Danach startest du Downloads und Videos bequem auf der Webseite.'},
+  {sel:'.activity-summary',title:'Was gerade passiert',text:'Hier siehst du, ob TecMon gerade eine Demo lädt oder ein Video aufnimmt.'},
+  {sel:'#auto-highlights',title:'Highlights nach dem Match',text:'Nach jedem Match fragt TecMon, ob ein Video mit deinen besten Szenen entstehen soll. Ein Klick auf „Ja“ reicht.'},
+  {sel:'#rundentipps',title:'Tipps in der Kaufzeit',text:'Kurze Tipps, während du einkaufst. TecMon liest nur deine eigenen Werte aus der offiziellen CS2-Schnittstelle, VAC-sicher.'},
+  {sel:'#chat',title:'Chat-Übersetzer',text:'Übersetzt den Chat im Spiel in deine Sprache, offline auf deinem PC. Die kurze Einrichtung steht in dieser Karte.'},
+  {sel:'#videos',title:'Deine Videos',text:'Fertige Videos findest du hier. „Ordner öffnen“ zeigt sie auf deinem PC.'},
+  {sel:'#figur',title:'Einstellungen',text:'Hier wählst du „Einfach“ oder „Erweitert“. In „Erweitert“ stellst du jede Option einzeln ein. Den Rundgang startest du hier jederzeit neu.'},
+  {title:'Fertig!',text:'Öffne jetzt TecMon.online, wähle dein Match und deine Szenen. Den Rest erledige ich auf diesem PC.',finish:true},
+];
+function tourVisible(step){
+  if(!step.sel)return true;
+  const target=document.querySelector(step.sel);
+  if(!target||target.closest('[hidden]'))return false;
+  if(document.body.classList.contains('ui-simple')&&target.closest('[data-expert]'))return false;
+  return getComputedStyle(target).display!=='none';
+}
+function startTutorial(){
+  if(tour)return;
+  const steps=TOUR.filter(tourVisible);
+  const root=el('div','','tour');root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-labelledby','tour-title');
+  const hole=el('div','','tour-hole');const card=el('div','','tour-card');
+  const avatar=el('img');avatar.src='/desktop-avatar.png';avatar.alt='';avatar.width=56;avatar.height=56;
+  const body=el('div','','tour-body');const count=el('span','','eyebrow gold');const title=el('h2');title.id='tour-title';const text=el('p');
+  const mouse=el('div','','tour-mouse');mouse.append(el('span','Linksklick: Fenster auf und zu'),el('span','Rechtsklick: Schnellmenü mit den wichtigsten Schaltern'));
+  const actions=el('div','','tour-actions');const skip=el('button','Beenden','subtle');const back=el('button','Zurück','subtle');const next=el('button','Weiter');
+  for(const b of [skip,back,next])b.type='button';
+  actions.append(skip,back,next);body.append(count,title,text,mouse,actions);card.append(avatar,body);root.append(hole,card);document.body.append(root);
+  let index=0;const before=document.activeElement;
+  const place=()=>{
+    const step=steps[index],target=step.sel&&document.querySelector(step.sel);
+    hole.hidden=!target;root.classList.toggle('tour-center',!target);
+    const vw=innerWidth,vh=innerHeight;card.style.top=card.style.left='';
+    if(!target){card.style.left=`${Math.max(12,(vw-card.offsetWidth)/2)}px`;card.style.top=`${Math.max(12,(vh-card.offsetHeight)/2)}px`;return;}
+    const r=target.getBoundingClientRect(),pad=6;
+    const top=Math.max(4,r.top-pad),bottom=Math.min(vh-4,r.bottom+pad);
+    Object.assign(hole.style,{left:`${Math.max(4,r.left-pad)}px`,top:`${top}px`,width:`${Math.min(vw-8,r.width+2*pad)}px`,height:`${Math.max(24,bottom-top)}px`});
+    const h=card.offsetHeight,w=card.offsetWidth;
+    const y=vh-bottom>=h+16?bottom+10:top>=h+16?top-h-10:vh-h-12;
+    card.style.top=`${Math.max(12,y)}px`;card.style.left=`${Math.min(Math.max(12,r.left),Math.max(12,vw-w-12))}px`;
+  };
+  const show=()=>{
+    const step=steps[index];
+    count.textContent=`RUNDGANG · ${index+1}/${steps.length}`;title.textContent=step.title;text.textContent=step.text;
+    mouse.hidden=!step.mouse;back.hidden=index===0;skip.hidden=!!step.finish;
+    next.textContent=step.finish?(document.body.classList.contains('desktop-panel')?'Los geht’s':'TecMon.online öffnen'):index===0?'Rundgang starten':'Weiter';
+    const target=step.sel&&document.querySelector(step.sel);
+    /* scrollIntoView klappt im Fenster die passende Kategorie auf (siehe desktopSections). */
+    if(target)target.scrollIntoView({block:'center'});
+    requestAnimationFrame(()=>requestAnimationFrame(place));next.focus({preventScroll:true});
+  };
+  const close=()=>{
+    if(!tour)return;removeEventListener('resize',place);document.removeEventListener('keydown',keys,true);root.remove();tour=null;
+    if(latestState?.desktop?.tutorial!==TOUR_VERSION)figureSettings({tutorial:TOUR_VERSION});
+    if(before&&before.focus)before.focus({preventScroll:true});
+  };
+  const keys=e=>{
+    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}
+    else if(e.key==='ArrowRight'&&index<steps.length-1){index++;show();}
+    else if(e.key==='ArrowLeft'&&index>0){index--;show();}
+    else if(e.key==='Tab'){const list=[...actions.querySelectorAll('button:not([hidden])')];const at=list.indexOf(document.activeElement);e.preventDefault();list[(at+(e.shiftKey?-1:1)+list.length)%list.length].focus();}
+  };
+  next.addEventListener('click',()=>{if(steps[index].finish){if(!document.body.classList.contains('desktop-panel'))window.open('https://tecmon.online/games/cs2/replay','_blank','noreferrer');close();return;}index++;show();});
+  back.addEventListener('click',()=>{if(index>0){index--;show();}});
+  skip.addEventListener('click',close);
+  addEventListener('resize',place);document.addEventListener('keydown',keys,true);
+  tour={close};show();
+}
+window.startTutorial=startTutorial;
+$('tutorial-start').addEventListener('click',startTutorial);
+if(location.hash==='#tutorial'){tourOffered=true;setTimeout(startTutorial,300);}
 
 /* Wardogs: Scoreboard-Foto (scoreboard.mjs). Werte nur der eigenen Zeile, Differenz zum vorigen Foto. */
 const WARDOGS_LABELS={kills:'Kills',deaths:'Tode',assists:'Assists',revives:'Wiederbelebungen',score:'Punkte',money:'Geld',cash:'Kontostand'};

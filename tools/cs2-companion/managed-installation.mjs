@@ -5,6 +5,38 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { ensureVideoTools } from "./download-tools.mjs";
 import { verifyCs2 } from "./cs2-verify.mjs";
+import { createGamePackages, GAME_CATALOG } from "./games.mjs";
+import { createDesktopSettings, UI_MODES } from "./desktop-settings.mjs";
+
+/**
+ * Antworten aus den Setup-Fragen (Nutzerwunsch 25.11.2026). Ohne Angabe gilt das alte Verhalten:
+ * Videotools laden, Spiel-Pakete und Ansicht unverändert. „Nur Stats und Tipps“ (`videoTools: false`)
+ * lädt kein HLAE; FFmpeg nur, wenn Wardogs gewählt ist (Scoreboard-Foto braucht es).
+ */
+export function setupToolNames(options = {}) {
+  if (options.videoTools !== false) return ["hlae", "ffmpeg"];
+  return Array.isArray(options.games) && options.games.includes("wardogs") ? ["ffmpeg"] : [];
+}
+
+/**
+ * Spiel-Pakete und Ansicht aus dem Setup in den Profilordner schreiben. Spiel-Pakete nur bei der
+ * ersten Einrichtung (games.json fehlt): Später entfernt man Pakete im Companion, der dabei auch
+ * ihre Dateien aufräumt. Eine gewählte Ansicht startet das Einsteiger-Tutorial (tutorial = 0).
+ */
+export async function applySetupChoices(profileDir, options = {}) {
+  if (Array.isArray(options.games)) {
+    const fresh = await access(path.join(profileDir, "games.json")).then(() => false, () => true);
+    if (fresh) {
+      const games = await createGamePackages(profileDir);
+      for (const game of GAME_CATALOG) {
+        if (game.status !== "available") continue;
+        if (options.games.includes(game.id)) await games.install(game.id);
+        else await games.remove(game.id);
+      }
+    }
+  }
+  if (UI_MODES.includes(options.ui)) await (await createDesktopSettings(profileDir)).set({ ui: options.ui, tutorial: 0 });
+}
 
 export async function readInstallation(root) {
   try {
@@ -107,7 +139,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     );
   const config = previous || {
     format: "tecmon-installation-v1",
-    version: "0.49.2",
+    version: "0.50.0",
     installationId: randomUUID(),
     dataDir: options.dataDir,
     profileDir: path.join(privateDir, "csdm-user"),
@@ -117,8 +149,11 @@ export async function setupManagedInstallation(root, options, progress = () => {
     cs2Exe: options.cs2Exe || "",
   };
   if (!config.installationId) config.installationId = randomUUID();
-  await ensureVideoTools(root, runTool, progress);
-  for (const exe of [config.hlaeExe, config.ffmpegExe]) await access(exe);
+  const tools = setupToolNames(options);
+  if (tools.length) await ensureVideoTools(root, runTool, progress, tools);
+  else progress("Video-Aufnahme wird nicht installiert (nur Stats und Tipps). Später in den Einstellungen nachinstallierbar.");
+  if (tools.includes("hlae")) await access(config.hlaeExe);
+  if (tools.includes("ffmpeg")) await access(config.ffmpegExe);
   try {
     const entries = await readdir(privateDir);
     if (entries.length && !entries.includes("tecmon-data.marker"))
@@ -137,8 +172,11 @@ export async function setupManagedInstallation(root, options, progress = () => {
     await mkdir(dir, { recursive: true });
   if (options.cs2Exe) config.cs2Exe = options.cs2Exe;
   if (typeof options.demoDir === "string" && path.isAbsolute(options.demoDir)) config.demoDir = options.demoDir;
-  progress("Videotools testen …");
-  await runTool(config.ffmpegExe, ["-version"]);
+  if (tools.includes("ffmpeg")) {
+    progress("Videotools testen …");
+    await runTool(config.ffmpegExe, ["-version"]);
+  }
+  await applySetupChoices(config.profileDir, options);
   await writeFile(configFile, JSON.stringify(config, null, 2));
   await unlink(pendingFile).catch(() => {});
   progress("Einrichtung abgeschlossen.");
