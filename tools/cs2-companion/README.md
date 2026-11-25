@@ -1,3 +1,6 @@
+# TecMon Companion · Anleitung
+
+**Stand 0.50.2:** Hersteller-Updater ist mit Companion #129 gemergt. Installer-Veröffentlichung und tatsächliche Installation separat prüfen. Keine neue Bridge-Capability.
 
 Integration mit Einrichtung 0.50.0: Die Auswahl „Nur Stats und Tipps“ bleibt erhalten.
 Fehlende Video-Werkzeuge werden nicht automatisch nachinstalliert. Erst nach der
@@ -5,9 +8,9 @@ gewählten Nachinstallation werden sie in Hersteller-Updates einbezogen. Währen
 der Nachinstallation starten weder Aufnahmen noch parallele Werkzeug-Updates.
 Version 0.50.2 enthält beide Funktionen; Veröffentlichung und Installation separat prüfen.
 
-# TecMon Companion · Anleitung
 
-## Automatische Werkzeug-Updates ab 0.49.3
+
+## Automatische Werkzeug-Updates ab 0.50.2
 
 Unter **Erweitert → Updates & Info → Externe Komponenten** stehen installierte
 und neueste Version, letzter Prüflauf und offene Fehler. HLAE und FFmpeg werden
