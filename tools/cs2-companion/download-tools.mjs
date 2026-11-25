@@ -12,7 +12,7 @@ const readManifest = async (root) => JSON.parse(await readFile(path.join(root, "
  * Ein Paket aus dem Manifest vom Originalanbieter laden, SHA256 prüfen und in
  * einen frischen Ordner entpacken. Gibt den Ordner zurück; `cleanup()` räumt auf.
  */
-async function fetchTool(root, name, item, run, progress, fetchImpl = fetch) {
+export async function fetchTool(root, name, item, run, progress, fetchImpl = fetch) {
   if (!item || !item.url.startsWith("https://github.com/") || !/^[a-f0-9]{64}$/i.test(item.sha256)) throw new Error("Ungültiges Tool-Manifest.");
   progress(`${name.toUpperCase()} vom Originalanbieter herunterladen und SHA256 prüfen …`);
   const temporary = path.join(root, "tool-downloads", randomUUID());
@@ -24,11 +24,16 @@ async function fetchTool(root, name, item, run, progress, fetchImpl = fetch) {
     const response = await fetchImpl(item.url, { signal: AbortSignal.timeout(15 * 60 * 1000) });
     if (!response.ok || !response.body) throw new Error(`${name}: Download fehlgeschlagen (${response.status}).`);
     let bytes = 0;
+    const started = Date.now();
     const limit = new Transform({ transform(chunk, _encoding, callback) {
       bytes += chunk.length;
-      callback(bytes > 300 * 1024 * 1024 ? new Error("Tool-Download zu groß.") : null, chunk);
+      if (bytes > 300 * 1024 * 1024) return callback(new Error("Tool-Download zu groß."));
+      const delay = item.rateBytes > 0 ? Math.max(0, bytes / item.rateBytes * 1000 - (Date.now() - started)) : 0;
+      if (delay > 0) setTimeout(() => callback(null, chunk), delay);
+      else callback(null, chunk);
     }});
     await pipeline(Readable.fromWeb(response.body), limit, createWriteStream(zip, { flags: "wx" }));
+    if (item.size !== undefined && bytes !== item.size) throw new Error(`${name}: Unvollständiger Tool-Download.`);
     const hash = createHash("sha256");
     for await (const chunk of createReadStream(zip)) hash.update(chunk);
     if (hash.digest("hex").toLowerCase() !== item.sha256.toLowerCase()) throw new Error(`${name}: SHA256 stimmt nicht überein. Download wird nicht verwendet.`);
