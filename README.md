@@ -1,5 +1,15 @@
 # TecMon Companion
 
+**Merge-Stand, 25. November 2026:** [#129](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/129)
+ist gemergt (Code `2323691`, Merge `718783a`): Companion 0.50.2 mit automatischen
+Hersteller-Updates für vorhandene HLAE-/FFmpeg-Werkzeuge. Die Einrichtung aus 0.50.0
+und „Jetzt auswerten“ aus 0.50.1 bleiben erhalten. 236 Node-Tests bestanden, zwei
+übersprungen, Windows- und Linux-CI grün. Der Installer-Release-Build läuft separat;
+Veröffentlichung und Installation sind damit noch nicht bestätigt. Keine neue Bridge-Capability.
+Website [#199](https://github.com/KOALAaufPILLEN/tecmon/pull/199) (aktuelle Major-Prognose)
+und [#201](https://github.com/KOALAaufPILLEN/tecmon/pull/201) (sichtbarer Importstart) sind gemergt.
+Arcade #31 bleibt ausdrücklich ausgeschlossen. Vollständige CS2-Aufnahme mit dem neuen Updater noch nicht geprüft.
+
 ## Neu in 0.50.2 · Automatische Updates externer Werkzeuge
 
 Integration mit Einrichtung 0.50.0: Die Auswahl „Nur Stats und Tipps“ bleibt erhalten.
