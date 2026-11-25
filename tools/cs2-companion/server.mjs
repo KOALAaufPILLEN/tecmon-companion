@@ -41,7 +41,7 @@ import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { verifyCs2 } from "./cs2-verify.mjs";
 import { createDemoFetch, DEMO_FETCH_CAPABILITY } from "./demo-fetch.mjs";
 import { readInstallation, runTool } from "./managed-installation.mjs";
-import { updateHlae } from "./download-tools.mjs";
+import { updateHlae, ensureVideoTools } from "./download-tools.mjs";
 import { copyRadars, radarFile } from "./radars.mjs";
 import { createDesktopSettings } from "./desktop-settings.mjs";
 
@@ -512,7 +512,8 @@ export async function createCompanion({
   let hlaeChecked = null;
   const ensureHlae = (log) => {
     const update = engineSystem.hlaeUpdate || (installation && process.platform === "win32" ? updateHlae : null);
-    if (!update || !installation) return Promise.resolve();
+    // Ohne installierte Video-Aufnahme (Setup „Nur Stats und Tipps“) nichts aktualisieren.
+    if (!update || !installation || !existsSync(installation.hlaeExe)) return Promise.resolve();
     hlaeChecked ||= update({ root, hlaeExe: installation.hlaeExe, run: runTool, progress: log }).catch((error) => {
       hlaeChecked = null;
       throw error;
@@ -522,6 +523,39 @@ export async function createCompanion({
       (error) => log(`HLAE-Update fehlgeschlagen (${error.message}). Aufnahme läuft mit der installierten HLAE-Version; bei „AfxHookSource2: Problem in …“ Companion neu starten.`),
     );
   };
+  /**
+   * Video-Aufnahme nachinstallieren (Setup „Nur Stats und Tipps“, Nutzerwunsch 25.11.2026): HLAE und
+   * FFmpeg nur aus dem Manifest vom Originalanbieter, SHA256 geprüft, wie bei der Einrichtung.
+   * Fehlende Tools stehen in /api/state (`videoTools`); Aufnahmen melden sie über internalProblem().
+   */
+  const videoTools = { installed: { hlae: false, ffmpeg: false }, busy: false, message: "", error: "" };
+  const readVideoTools = async () => {
+    if (!installation) return;
+    for (const [name, exe] of [["hlae", installation.hlaeExe], ["ffmpeg", installation.ffmpegExe]])
+      videoTools.installed[name] = await stat(exe).then((s) => s.isFile(), () => false);
+  };
+  await readVideoTools();
+  function installVideoTools() {
+    if (!installation) throw new Error("Die Video-Aufnahme gibt es nur im installierten Windows-Companion.");
+    const install = engineSystem.videoTools || (process.platform === "win32" ? ensureVideoTools : null);
+    if (!install) throw new Error("Die Video-Aufnahme gibt es nur unter Windows.");
+    if (videoTools.busy) return;
+    if (active) throw new Error("Gerade läuft eine Aufnahme oder ein Download. Danach erneut versuchen.");
+    Object.assign(videoTools, { busy: true, error: "", message: "Download wird vorbereitet …" });
+    (async () => {
+      try {
+        await install(root, runTool, (message) => { videoTools.message = String(message).slice(0, 200); });
+        await readVideoTools();
+        videoTools.message = "Video-Aufnahme ist installiert.";
+      } catch (error) {
+        videoTools.error = error?.message || "Installation fehlgeschlagen.";
+        videoTools.message = "";
+      } finally {
+        await readVideoTools().catch(() => {});
+        videoTools.busy = false;
+      }
+    })();
+  }
   /** Updates ohne Klick installieren, sobald nichts läuft. Standardmäßig an, unter „Updates & Info“ abschaltbar. */
   const updatesFile = path.join(installation?.profileDir || dataDir, "updates.json");
   let autoInstall = true;
@@ -1056,6 +1090,7 @@ export async function createCompanion({
           chat: chatOverlayState(),
           chatBubble: chatBubbleState(),
           desktop: desktop.get(),
+          videoTools: installation ? { ...videoTools, installed: { ...videoTools.installed } } : null,
           downloads: [...downloads.values()],
           dataDir,
           jobs: [...jobs.values()].map(({ output: _output, ...j }) => j),
@@ -1130,6 +1165,10 @@ export async function createCompanion({
         if (input.id) openPath(clips.clipPath(String(input.id)), true);
         else openPath(await realpath(clips.dir), false);
         return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/video-tools/install") {
+        installVideoTools();
+        return json(res, 200, { message: "Video-Aufnahme wird installiert …" });
       }
       if (url.pathname === "/api/games/install") {
         const id = String(input.id || "");

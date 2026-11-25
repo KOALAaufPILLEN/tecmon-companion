@@ -154,12 +154,12 @@ static class TecMon {
     if(launch) Process.Start(new ProcessStartInfo(Path.Combine(target,"TecMon Companion.exe")){WorkingDirectory=target,UseShellExecute=false});
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.49.3",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.50.1",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.49.3");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.50.1");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -174,7 +174,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.49.3"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.50.1"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -298,6 +298,7 @@ static class TecMon {
       if(args.Length>1 && args[0]=="--quick-preview") {using(var pet=new DesktopPet(true))using(var menu=pet.BuildQuick(Point.Empty)){menu.Status="● Mit TecMon verbunden";menu.Fit();using(var shot=new Bitmap(menu.Width,menu.Height)){menu.DrawToBitmap(shot,new Rectangle(0,0,menu.Width,menu.Height));shot.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);}}return 0;}
       if(args.Length>1 && args[0]=="--desktop-preview") {using(var pet=new DesktopPet(true))using(var frame=pet.Frame())frame.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);return 0;}
       if(args.Length>0 && args[0]=="--desktop-self-test") {var result=DesktopPet.Fit(new Point(5000,-5000),new Rectangle(-1920,0,1920,1080),new Size(144,164));if(result.X!=-144||result.Y!=0)throw new Exception("Desktop bounds failed");return 0;}
+      if(args.Length > 1 && args[0] == "--setup-preview") {using(var form=new SetupWindow())form.Preview(args[1]);return 0;}
       if(args.Length > 1 && args[0] == "--splash-preview") {using(var form=new SplashWindow(true)) using(var bitmap=new Bitmap(form.ClientSize.Width,form.ClientSize.Height)) {using(var graphics=Graphics.FromImage(bitmap))graphics.Clear(form.BackColor);foreach(Control control in form.Controls)control.DrawToBitmap(bitmap,control.Bounds);bitmap.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);}return 0;}
       if(args.Length > 0 && args[0] == "--apply-update-test") { ApplyUpdate(args[1],"",false); return 0; }
       if(args.Length > 0 && args[0] == "--self-test") {
@@ -315,7 +316,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.49.3 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.50.1 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -351,32 +352,165 @@ class SplashWindow : Form {
   }
 }
 
+/* Auswahlkarte im TecMon-Stil für den Setup-Assistenten: abgeschnittene Ecken, lila Rahmen, Gold für die aktive Wahl und den Fokus. */
+class ChoiceCard : Control {
+  public string Title="",Detail="",Badge="";public bool Radio;bool on,hot;
+  public event EventHandler CheckedChanged;
+  static readonly Color Muted=Color.FromArgb(178,170,198),Fill=Color.FromArgb(23,18,31);
+  readonly Font titleFont=new Font("Segoe UI",11.5f,FontStyle.Bold),detailFont=new Font("Segoe UI",9.5f),badgeFont=new Font("Segoe UI",7.5f,FontStyle.Bold);
+  public ChoiceCard(){
+    SetStyle(ControlStyles.AllPaintingInWmPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.UserPaint|ControlStyles.ResizeRedraw|ControlStyles.Selectable,true);
+    TabStop=true;Cursor=Cursors.Hand;BackColor=TecMon.Background;ForeColor=Color.White;AccessibleRole=AccessibleRole.CheckButton;
+  }
+  public bool Checked{get{return on;}set{if(on==value)return;on=value;AccessibleDescription=(on?"Ausgewählt. ":"")+Detail;Invalidate();if(CheckedChanged!=null)CheckedChanged(this,EventArgs.Empty);}}
+  public void Pick(){
+    if(Radio){if(on)return;if(Parent!=null)foreach(Control c in Parent.Controls){var other=c as ChoiceCard;if(other!=null&&other!=this&&other.Radio)other.Checked=false;}Checked=true;}
+    else Checked=!on;
+  }
+  protected override void OnClick(EventArgs e){base.OnClick(e);Focus();Pick();}
+  protected override void OnKeyDown(KeyEventArgs e){base.OnKeyDown(e);if(e.KeyCode==Keys.Space||e.KeyCode==Keys.Enter){Pick();e.Handled=true;}}
+  protected override void OnMouseEnter(EventArgs e){base.OnMouseEnter(e);hot=true;Invalidate();}
+  protected override void OnMouseLeave(EventArgs e){base.OnMouseLeave(e);hot=false;Invalidate();}
+  protected override void OnGotFocus(EventArgs e){base.OnGotFocus(e);Invalidate();}
+  protected override void OnLostFocus(EventArgs e){base.OnLostFocus(e);Invalidate();}
+  protected override void OnTextChanged(EventArgs e){base.OnTextChanged(e);Invalidate();}
+  internal static System.Drawing.Drawing2D.GraphicsPath Cut(RectangleF r,float c){var p=new System.Drawing.Drawing2D.GraphicsPath();p.AddPolygon(new[]{new PointF(r.Left+c,r.Top),new PointF(r.Right,r.Top),new PointF(r.Right,r.Bottom-c),new PointF(r.Right-c,r.Bottom),new PointF(r.Left,r.Bottom),new PointF(r.Left,r.Top+c)});return p;}
+  protected override void OnPaint(PaintEventArgs e){
+    var g=e.Graphics;g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;g.Clear(BackColor);
+    var box=new RectangleF(1,1,Width-3,Height-3);
+    using(var path=Cut(box,12)){
+      using(var fill=new SolidBrush(on?Color.FromArgb(44,34,62):hot?Color.FromArgb(32,26,44):Fill))g.FillPath(fill,path);
+      using(var pen=new Pen(on||Focused?TecMon.Gold:Color.FromArgb(hot?200:110,TecMon.Violet),on?2f:1.2f))g.DrawPath(pen,path);
+    }
+    /* Auswahlzeichen: Raute für eine Wahl aus mehreren, Kästchen für Mehrfachauswahl. */
+    float mx=18,my=20;
+    if(Radio){var diamond=new[]{new PointF(mx+8,my),new PointF(mx+16,my+8),new PointF(mx+8,my+16),new PointF(mx,my+8)};
+      using(var pen=new Pen(on?TecMon.Gold:TecMon.Violet,1.6f))g.DrawPolygon(pen,diamond);
+      if(on){var inner=new[]{new PointF(mx+8,my+4),new PointF(mx+12,my+8),new PointF(mx+8,my+12),new PointF(mx+4,my+8)};using(var fill=new SolidBrush(TecMon.Gold))g.FillPolygon(fill,inner);}}
+    else{using(var pen=new Pen(on?TecMon.Gold:TecMon.Violet,1.6f))g.DrawRectangle(pen,mx,my,16,16);
+      if(on)using(var pen=new Pen(TecMon.Gold,2.4f))g.DrawLines(pen,new[]{new PointF(mx+3.5f,my+8.5f),new PointF(mx+7,my+12),new PointF(mx+13,my+4.5f)});}
+    int left=48,right=Width-18;
+    if(Badge!=""){var size=TextRenderer.MeasureText(Badge,badgeFont);var badge=new Rectangle(right-size.Width-8,14,size.Width+8,20);
+      using(var fill=new SolidBrush(Color.FromArgb(40,TecMon.Gold)))g.FillRectangle(fill,badge);
+      TextRenderer.DrawText(g,Badge,badgeFont,badge,TecMon.Gold,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.NoPrefix);right=badge.Left-8;}
+    TextRenderer.DrawText(g,Title,titleFont,new Rectangle(left,14,right-left,26),on?TecMon.Gold:Color.White,TextFormatFlags.EndEllipsis|TextFormatFlags.NoPrefix|TextFormatFlags.VerticalCenter);
+    TextRenderer.DrawText(g,Detail,detailFont,new Rectangle(left,42,Width-left-18,Height-50),Muted,TextFormatFlags.WordBreak|TextFormatFlags.NoPrefix);
+  }
+  protected override void Dispose(bool disposing){if(disposing){titleFont.Dispose();detailFont.Dispose();badgeFont.Dispose();}base.Dispose(disposing);}
+}
+
+/*
+ * Setup-Assistent (Nutzerwunsch 25.11.2026): wenige einfache Fragen statt einer Seite voller Pfade.
+ * 1. Spiele, 2. mit Video-Aufnahme (Demo-Manager) oder nur Stats und Tipps (nur mit CS2), 3. Ansicht Einfach/Erweitert,
+ * 4. Speicherort und Lizenzen (Ordner erst nach „Ordner ändern“), 5. Einrichtung. Die Antworten gehen als
+ * `games`, `videoTools` und `ui` an install-backend.mjs (managed-installation.mjs).
+ */
 class SetupWindow : Form {
   TextBox app = new TextBox(), data = new TextBox(), demo = new TextBox(), game = new TextBox(), log = new TextBox();
-  CheckBox accept = new CheckBox(); Button install = new Button(); ProgressBar progress = new ProgressBar(); bool busy=false, complete=false;
+  CheckBox accept = new CheckBox(); Button install = new Button(), back = new Button(); ProgressBar progress = new ProgressBar(); bool busy=false, complete=false;
+  readonly List<Panel> pages=new List<Panel>();int page;
+  readonly Label step=new Label(),heading=new Label(),lead=new Label(),summary=new Label(),cs2Hint=new Label();
+  readonly ChoiceCard cs2=new ChoiceCard(),dota=new ChoiceCard(),wardogs=new ChoiceCard(),full=new ChoiceCard(),slim=new ChoiceCard(),simple=new ChoiceCard(),expert=new ChoiceCard();
+  readonly Panel folders=new Panel();LinkLabel changeFolders;
+  static readonly Color Muted=Color.FromArgb(178,170,198);
+  const int PageGames=0,PagePurpose=1,PageView=2,PageFinish=3,PageInstall=4;
   public SetupWindow() {
     Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
     Text="TecMon Companion · Installation"; Size=new Size(850,640); MinimumSize=new Size(850,640); StartPosition=FormStartPosition.CenterScreen; BackColor=TecMon.Background; ForeColor=Color.White; Font=new Font("Segoe UI",10); AutoScaleMode=AutoScaleMode.Dpi;
-    var title=new Label { Text="TECMON  /  COMPANION SETUP", Left=32, Top=24, Width=740, Height=42, ForeColor=TecMon.Gold, Font=new Font("Segoe UI",23,FontStyle.Bold) }; Controls.Add(title);
-    Controls.Add(new Label { Text="Ein Installer. Dein lokales CS2-Aufnahme-Studio.", Left=34,Top=75,Width=740,Height=25,ForeColor=TecMon.Violet });
-    Controls.Add(new Label { Text="Companion mit eigener TecMon-Engine. HLAE / FFmpeg per geprüftem Download.\nSteam und CS2 müssen auf deinem PC installiert sein. Die Einrichtung benötigt ca. 1 GB freien Speicher.", Left=34,Top=111,Width=750,Height=48 });
+    Controls.Add(new Label { Text="TECMON  /  COMPANION SETUP", Left=32, Top=20, Width=560, Height=38, ForeColor=TecMon.Gold, Font=new Font("Segoe UI",20,FontStyle.Bold) });
+    step.SetBounds(600,30,176,24);step.TextAlign=ContentAlignment.MiddleRight;step.ForeColor=TecMon.Violet;step.Font=new Font("Segoe UI",9,FontStyle.Bold);Controls.Add(step);
+    heading.SetBounds(34,70,740,34);heading.Font=new Font("Segoe UI",15,FontStyle.Bold);Controls.Add(heading);
+    lead.SetBounds(34,106,740,44);lead.ForeColor=Muted;Controls.Add(lead);
     app.Text=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs","TecMon Companion");
     data.Text=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TecMon","Data");
     game.Text=TecMon.DetectGame();
-    Row("Programmordner",app,178,false); Row("Daten und Videos",data,222,false); Row("Demo-Ordner (optional)",demo,266,false); Row("CS2 · cs2.exe",game,310,true);
-    accept.SetBounds(34,370,740,30); accept.Text="Lizenzhinweise der enthaltenen Tools gelesen und akzeptiert"; Controls.Add(accept);
-    var licenses=new LinkLabel { Text="Lizenzen und Paketversionen ansehen",Left=34,Top=402,Width=400,Height=24,LinkColor=TecMon.Gold }; licenses.LinkClicked+=(s,e)=>ShowLicenses(); Controls.Add(licenses);
-    log.SetBounds(34,436,740,66); log.Multiline=true; log.ReadOnly=true; log.ScrollBars=ScrollBars.Vertical; log.BackColor=Color.FromArgb(21,22,35); log.ForeColor=Color.White; log.Text="Bereit zur Einrichtung. Wähle die Ordner."; Controls.Add(log);
-    progress.SetBounds(34,515,740,12); Controls.Add(progress); install.SetBounds(500,541,274,36); install.Text="Installieren & einrichten"; install.BackColor=TecMon.Gold; install.ForeColor=Color.Black; install.FlatStyle=FlatStyle.Flat; install.Click+=async(s,e)=>await Install(); Controls.Add(install);
+    /* Seite 1: Spiele */
+    var games=Page();
+    Card(games,cs2,"Counter-Strike 2","Highlight-Videos aus deinen Matches, Tipps in der Kaufzeit, Chat-Übersetzer und deine Stats auf TecMon.online.","",false,0,96);cs2.Checked=true;
+    Card(games,dota,"Dota 2","Kurze Tipps in Pausen und nach deinem Tod.","",false,106,80);
+    Card(games,wardogs,"Wardogs","Scoreboard-Foto per Tastendruck: deine Kills, Tode und dein Geld werden auf deinem PC ausgelesen.","",false,196,80);
+    cs2.CheckedChanged+=(s,e)=>UpdateTexts();
+    /* Seite 2: Video-Aufnahme ja oder nein */
+    var purpose=Page();
+    Card(purpose,full,"Videos und Stats (mit Demo-Manager)","TecMon lädt deine Demos, nimmt Highlight-Videos direkt in CS2 auf und wertet deine Matches aus. Dafür kommen zwei kostenlose Programme dazu (HLAE und FFmpeg), direkt vom Hersteller und vor dem Start geprüft.","EMPFOHLEN",true,0,128);full.Checked=true;
+    Card(purpose,slim,"Nur Stats und Tipps (reine Auswertung)","Schlanker und schneller installiert: Rundentipps, Stats-Upload und Chat-Übersetzer, aber keine Video-Aufnahme. Die kannst du später in den Einstellungen mit einem Klick nachinstallieren.","",true,138,110);
+    /* Seite 3: Ansicht */
+    var view=Page();
+    Card(view,simple,"Einfach","Nur das Wichtigste, mit kurzen Erklärungen. Beim ersten Start zeigt dir TecMon in einem kurzen Rundgang, wo du was findest.","EMPFOHLEN",true,0,110);simple.Checked=true;
+    Card(view,expert,"Erweitert","Alle Optionen einzeln: jede Tipp-Art, Overlays, Configs, Clip-Puffer und mehr. Für alle, die genau wissen, was sie wollen.","",true,120,100);
+    /* Seite 4: Zusammenfassung, Speicherort, Lizenzen */
+    var finish=Page();
+    summary.SetBounds(0,0,740,76);summary.ForeColor=Color.White;finish.Controls.Add(summary);
+    cs2Hint.SetBounds(0,80,740,38);cs2Hint.ForeColor=TecMon.Gold;finish.Controls.Add(cs2Hint);
+    changeFolders=new LinkLabel { Text="Speicherorte ändern …",Left=0,Top=136,Width=300,Height=24,LinkColor=TecMon.Violet,ActiveLinkColor=TecMon.Gold };
+    changeFolders.LinkClicked+=(s,e)=>{folders.Visible=!folders.Visible;changeFolders.Text=folders.Visible?"Speicherorte ausblenden":"Speicherorte ändern …";PlaceConsent();};finish.Controls.Add(changeFolders);
+    folders.SetBounds(0,164,746,160);folders.Visible=false;finish.Controls.Add(folders);
+    Row(folders,"Programmordner",app,0,false); Row(folders,"Daten und Videos",data,40,false); Row(folders,"Demo-Ordner (optional)",demo,80,false); Row(folders,"CS2 · cs2.exe",game,120,true);
+    game.TextChanged+=(s,e)=>UpdateTexts();
+    accept.Text="Ich habe die Lizenzhinweise der enthaltenen Programme gelesen und akzeptiere sie";accept.ForeColor=Color.White;finish.Controls.Add(accept);
+    var licenses=new LinkLabel { Text="Lizenzen und Paketversionen ansehen",Width=400,Height=24,LinkColor=TecMon.Gold,Name="licenses" }; licenses.LinkClicked+=(s,e)=>ShowLicenses(); finish.Controls.Add(licenses);
+    PlaceConsent();
+    /* Seite 5: Einrichtung */
+    var running=Page();
+    log.SetBounds(0,0,740,300); log.Multiline=true; log.ReadOnly=true; log.ScrollBars=ScrollBars.Vertical; log.BackColor=Color.FromArgb(21,22,35); log.ForeColor=Color.White; log.BorderStyle=BorderStyle.FixedSingle; log.Text="Einrichtung startet …"; running.Controls.Add(log);
+    progress.SetBounds(0,316,740,10); running.Controls.Add(progress);
+    back.SetBounds(34,541,140,40);back.Text="Zurück";back.FlatStyle=FlatStyle.Flat;back.FlatAppearance.BorderColor=TecMon.Violet;back.BackColor=TecMon.Background;back.ForeColor=Color.White;back.Click+=(s,e)=>Go(-1);Controls.Add(back);
+    install.SetBounds(560,541,214,40); install.BackColor=TecMon.Gold; install.ForeColor=Color.Black; install.FlatStyle=FlatStyle.Flat; install.FlatAppearance.BorderColor=TecMon.Gold; install.Font=new Font("Segoe UI",10,FontStyle.Bold); install.Click+=async(s,e)=>await Next(); Controls.Add(install);
+    AcceptButton=install;
     FormClosing+=(s,e)=> { if(busy) e.Cancel=true; };
+    ShowPage(PageGames);
   }
-  void AddLabel(string text,int x,int y,int width) { Controls.Add(new Label { Text=text,Left=x,Top=y,Width=width,Height=24 }); }
-  void Row(string label, TextBox box, int y, bool exe) {
-    AddLabel(label,34,y+4,190); box.SetBounds(231,y,453,29); box.BackColor=Color.FromArgb(23,24,37); box.ForeColor=Color.White; Controls.Add(box);
-    var browse=new Button { Text="Wählen …",Left=696,Top=y-1,Width=78,Height=31 }; browse.Click+=(s,e)=> {
+  Panel Page(){var panel=new Panel{Left=34,Top=160,Width=746,Height=370,Visible=false,BackColor=TecMon.Background};pages.Add(panel);Controls.Add(panel);return panel;}
+  void Card(Panel page,ChoiceCard card,string title,string detail,string badge,bool radio,int top,int height){card.Title=title;card.Detail=detail;card.Badge=badge;card.Radio=radio;card.AccessibleName=title;card.AccessibleDescription=detail;card.SetBounds(0,top,740,height);page.Controls.Add(card);}
+  /* Seite 4 von oben nach unten: Zusammenfassung, CS2-Hinweis (nur wenn nötig), Speicherorte (aufklappbar), Lizenzen. */
+  void PlaceConsent(){
+    if(changeFolders==null)return;
+    int y=summary.Bottom+4;cs2Hint.Visible=cs2Hint.Text!="";if(cs2Hint.Visible){cs2Hint.Top=y;y=cs2Hint.Bottom+4;}
+    changeFolders.Top=y;y+=28;folders.Top=y;y=folders.Visible?folders.Bottom+8:y+4;
+    accept.SetBounds(0,y,740,28);foreach(Control c in pages[PageFinish].Controls)if(c.Name=="licenses")c.SetBounds(20,y+28,400,24);
+  }
+  bool Cs2(){return cs2.Checked;}
+  void UpdateTexts(){
+    var chosen=new List<string>();if(cs2.Checked)chosen.Add("CS2");if(dota.Checked)chosen.Add("Dota 2");if(wardogs.Checked)chosen.Add("Wardogs");
+    string video=!Cs2()?"ohne Video-Aufnahme":full.Checked?"mit Video-Aufnahme (Demo-Manager)":"nur Stats und Tipps, Video-Aufnahme später nachinstallierbar";
+    summary.Text="Spiele: "+(chosen.Count>0?String.Join(", ",chosen.ToArray()):"keine")+"\nPaket: "+video+"\nAnsicht: "+(simple.Checked?"Einfach, mit kurzem Rundgang beim ersten Start":"Erweitert")+"\nSteam muss installiert sein."+(Cs2()&&full.Checked?" Die Einrichtung braucht ca. 1 GB freien Speicher.":"");
+    cs2Hint.Text=Cs2()&&String.IsNullOrWhiteSpace(game.Text)?"CS2 wurde nicht automatisch gefunden. Unter „Speicherorte ändern“ kannst du die cs2.exe selbst wählen oder das später im Companion erledigen.":"";
+    PlaceConsent();
+  }
+  void ShowPage(int index){
+    page=index;for(int i=0;i<pages.Count;i++)pages[i].Visible=i==index;UpdateTexts();
+    int total=Cs2()?4:3,number=index==PageGames?1:index==PagePurpose?2:index==PageView?(Cs2()?3:2):total;
+    step.Text=index==PageInstall?"EINRICHTUNG":"SCHRITT "+number+" VON "+total;
+    switch(index){
+      case PageGames:heading.Text="Welche Spiele spielst du?";lead.Text="Wähle alles, wofür TecMon dir helfen soll. Du kannst später jederzeit Spiele hinzufügen oder entfernen.";break;
+      case PagePurpose:heading.Text="Was soll TecMon für dich machen?";lead.Text="Möchtest du Highlight-Videos aus deinen CS2-Matches oder reichen dir Stats und Tipps?";break;
+      case PageView:heading.Text="Wie viel möchtest du sehen?";lead.Text="Du kannst das jederzeit unter Einstellungen umstellen.";break;
+      case PageFinish:heading.Text="Fast fertig";lead.Text="So richtet TecMon sich ein. Speicherorte musst du nur ändern, wenn du etwas Bestimmtes möchtest.";break;
+      default:heading.Text=complete?"Fertig!":"TecMon wird eingerichtet …";lead.Text=complete?"Alles bereit. Beim ersten Start zeigt dir TecMon kurz, wo du was findest.":"Das dauert je nach Internet ein paar Minuten. Du kannst dieses Fenster offen lassen.";break;
+    }
+    back.Visible=index!=PageGames&&!(index==PageInstall&&(busy||complete));
+    install.Text=index==PageFinish?"Installieren":index==PageInstall?(complete?"TecMon starten":"Erneut versuchen"):"Weiter";
+    install.Enabled=!(index==PageInstall&&busy);
+    var focus=index==PageGames?(Control)cs2:index==PagePurpose?(Control)(full.Checked?full:slim):index==PageView?(Control)(simple.Checked?simple:expert):install;
+    if(focus.CanFocus)focus.Focus();
+  }
+  void Go(int direction){
+    if(busy)return;int next=page==PageInstall&&direction<0?PageFinish:page+direction;
+    if(next==PagePurpose&&!Cs2())next+=direction;
+    if(next<PageGames)next=PageGames;ShowPage(next);
+  }
+  async Task Next(){
+    if(page==PageGames&&!cs2.Checked&&!dota.Checked&&!wardogs.Checked){MessageBox.Show(this,"Bitte wähle mindestens ein Spiel.","TecMon Setup",MessageBoxButtons.OK,MessageBoxIcon.Information);return;}
+    if(page<PageFinish){Go(1);return;}
+    await Install();
+  }
+  void Row(Panel parent,string label, TextBox box, int y, bool exe) {
+    parent.Controls.Add(new Label { Text=label,Left=0,Top=y+5,Width=190,Height=24,ForeColor=Muted });
+    box.SetBounds(196,y,452,29); box.BackColor=Color.FromArgb(23,24,37); box.ForeColor=Color.White; box.BorderStyle=BorderStyle.FixedSingle; parent.Controls.Add(box);
+    var browse=new Button { Text="Wählen …",Left=658,Top=y-1,Width=82,Height=31,FlatStyle=FlatStyle.Flat,BackColor=TecMon.Background,ForeColor=Color.White }; browse.FlatAppearance.BorderColor=TecMon.Violet; browse.Click+=(s,e)=> {
       if(exe) using(var d=new OpenFileDialog { Filter="CS2 (cs2.exe)|cs2.exe",Title="CS2 auf beliebigem Laufwerk wählen" }) { if(d.ShowDialog()==DialogResult.OK) box.Text=d.FileName; }
       else using(var d=new FolderBrowserDialog { Description=label+" · beliebiges Laufwerk",ShowNewFolderButton=true }) { if(d.ShowDialog()==DialogResult.OK) box.Text=d.SelectedPath; }
-    }; Controls.Add(browse);
+    }; parent.Controls.Add(browse);
   }
   void ShowLicenses() {
     using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("TecMonNotices")) using(var reader=new StreamReader(stream)) {
@@ -384,21 +518,36 @@ class SetupWindow : Form {
       window.Controls.Add(new TextBox { Text=reader.ReadToEnd(),Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Dock=DockStyle.Fill }); window.ShowDialog(this);
     }
   }
+  /* Vorschau der Seiten als Bilder (--setup-preview), ohne zu installieren. */
+  public void Preview(string folder){
+    Opacity=0;Show();Application.DoEvents();
+    for(int i=0;i<pages.Count;i++){
+      if(i==PageFinish)folders.Visible=true;
+      ShowPage(i);PlaceConsent();
+      using(var shot=new Bitmap(ClientSize.Width,ClientSize.Height)){using(var g=Graphics.FromImage(shot))g.Clear(BackColor);Paint(this,shot,Point.Empty);shot.Save(Path.Combine(folder,"setup-"+i+".png"),System.Drawing.Imaging.ImageFormat.Png);}
+    }
+  }
+  static void Paint(Control parent,Bitmap shot,Point offset){
+    for(int k=parent.Controls.Count-1;k>=0;k--){var c=parent.Controls[k];if(!c.Visible||c.Width<1||c.Height<1)continue;var at=new Point(offset.X+c.Left,offset.Y+c.Top);
+      using(var part=new Bitmap(c.Width,c.Height)){c.DrawToBitmap(part,new Rectangle(0,0,c.Width,c.Height));using(var g=Graphics.FromImage(shot))g.DrawImage(part,at);}
+      if(c.Controls.Count>0)Paint(c,shot,at);}
+  }
   async Task Install() {
     if(complete) { TecMon.Root=app.Text; Hide();using(var splash=new SplashWindow())splash.ShowDialog();Close();return; }
-    if(!accept.Checked) { MessageBox.Show("Bitte zuerst die Lizenzhinweise lesen und bestätigen."); return; }
+    if(!accept.Checked) { MessageBox.Show(this,"Bitte zuerst die Lizenzhinweise lesen und bestätigen.","TecMon Setup",MessageBoxButtons.OK,MessageBoxIcon.Information); if(page!=PageFinish)ShowPage(PageFinish); return; }
     string target, dataDir;
     try { target=Path.GetFullPath(app.Text).TrimEnd('\\'); dataDir=Path.GetFullPath(data.Text).TrimEnd('\\');
       if(dataDir.Equals(target,StringComparison.OrdinalIgnoreCase) || dataDir.StartsWith(target+"\\",StringComparison.OrdinalIgnoreCase)) throw new Exception("Der Datenordner muss außerhalb des Programmordners liegen.");
-    } catch(Exception e) { MessageBox.Show(e.Message); return; }
-    var options=TecMon.Json.Serialize(new { dataDir=dataDir,demoDir=demo.Text,cs2Exe=game.Text,acceptLicenses=true });
-    busy=true; foreach(Control c in Controls) { if(c is TextBox) ((TextBox)c).ReadOnly=true; else if(c is Button || c is CheckBox) c.Enabled=false; } progress.Style=ProgressBarStyle.Marquee;
+    } catch(Exception e) { MessageBox.Show(this,e.Message,"TecMon Setup"); if(page!=PageFinish)ShowPage(PageFinish); folders.Visible=true; PlaceConsent(); return; }
+    var chosen=new List<string>();if(cs2.Checked)chosen.Add("cs2");if(dota.Checked)chosen.Add("dota2");if(wardogs.Checked)chosen.Add("wardogs");
+    var options=TecMon.Json.Serialize(new { dataDir=dataDir,demoDir=demo.Text,cs2Exe=cs2.Checked?game.Text:"",acceptLicenses=true,games=chosen.ToArray(),videoTools=cs2.Checked&&full.Checked,ui=simple.Checked?"simple":"advanced" });
+    busy=true; log.Text="Einrichtung startet …"; ShowPage(PageInstall); progress.Style=ProgressBarStyle.Marquee;
     bool success=false;
     try {
       await Task.Run(()=> {
         Action<string> report=message=>BeginInvoke((Action)(()=>log.AppendText(Environment.NewLine+message)));
         report("Vorhandene TecMon-Installation prüfen …"); TecMon.PrepareUpdate(target);
-        report("Programmdateien und alle Tools entpacken …"); TecMon.Extract(target);
+        report("Programmdateien entpacken …"); TecMon.Extract(target);
         report("Windows-Laufzeit prüfen …"); TecMon.EnsureRuntime(target);
         var info=TecMon.Info(Path.Combine(target,"runtime","node.exe"),Path.Combine(target,"install-backend.mjs")); info.WorkingDirectory=target;
         info.RedirectStandardInput=true; info.RedirectStandardOutput=true; info.RedirectStandardError=true; info.StandardOutputEncoding=Encoding.UTF8;
@@ -415,8 +564,8 @@ class SetupWindow : Form {
         TecMon.Register(target);
       });
       success=true; log.AppendText(Environment.NewLine+"Fertig. Desktop- und Startmenü-Verknüpfungen wurden angelegt."); complete=true;
-    } catch(Exception error) { MessageBox.Show(error.Message,"TecMon Einrichtung",MessageBoxButtons.OK,MessageBoxIcon.Error); log.AppendText(Environment.NewLine+"Einrichtung noch nicht abgeschlossen. Nach der Korrektur erneut starten."); }
-    finally { busy=false; foreach(Control c in Controls) { c.Enabled=true; if(c is TextBox && c!=log) ((TextBox)c).ReadOnly=false; } progress.Style=ProgressBarStyle.Blocks; progress.Value=success?100:0; install.Text=complete?"TecMon Companion starten":"Erneut einrichten"; }
+    } catch(Exception error) { MessageBox.Show(this,error.Message,"TecMon Einrichtung",MessageBoxButtons.OK,MessageBoxIcon.Error); log.AppendText(Environment.NewLine+"Einrichtung noch nicht abgeschlossen. Mit „Zurück“ kannst du die Auswahl ändern und es erneut versuchen."); }
+    finally { busy=false; progress.Style=ProgressBarStyle.Blocks; progress.Value=success?100:0; ShowPage(PageInstall); }
   }
 }
 
@@ -491,7 +640,7 @@ class DesktopPanel : Form {
   string startHash="";
   public void Jump(string id,string game){
     if(!System.Text.RegularExpressions.Regex.IsMatch(id,"^[a-z0-9-]+$")||!System.Text.RegularExpressions.Regex.IsMatch(game??"","^[a-z]*$"))return;
-    string script="document.getElementById('"+id+"')?.scrollIntoView({behavior:'smooth'});"+(string.IsNullOrEmpty(game)?"":"document.querySelector('[data-game="+game+"]')?.click();");
+    string script=id=="tutorial"?"window.startTutorial&&window.startTutorial();":"document.getElementById('"+id+"')?.scrollIntoView({behavior:'smooth'});"+(string.IsNullOrEmpty(game)?"":"document.querySelector('[data-game="+game+"]')?.click();");
     if(web==null){startHash="#"+id;return;}
     try{dynamic view=web;if(view.CoreWebView2!=null)view.CoreWebView2.ExecuteScriptAsync(script);}catch(Exception){}
   }
@@ -1355,6 +1504,7 @@ class DesktopPet : Form {
     menu.Items.Add(personality);menu.Items.Add(new ToolStripSeparator());
     menu.Items.Add("Fadenkreuz-Overlay (alle Spiele)",null,(s,e)=>OpenPanel("fadenkreuz",""));
     menu.Items.Add("Einstellungen öffnen",null,(s,e)=>OpenPanel("figur",""));
+    menu.Items.Add("Rundgang starten",null,(s,e)=>OpenPanel("tutorial",""));
     menu.Items.Add("TecMon öffnen",null,(s,e)=>DesktopPanel.OpenExternal("https://tecmon.online"));
     updateItem=new ToolStripMenuItem("Nach Updates suchen",null,async(s,e)=>await CheckUpdate(false));menu.Items.Add(updateItem);
     /* Games: spielbezogene Integrationen, zuerst CS2. Weitere Spiele sind geplant. */
@@ -1420,7 +1570,10 @@ class DesktopPet : Form {
     /* Etwa 60 Bilder pro Sekunde; Bewegung nach vergangener Zeit statt pro Takt, damit sie gleichmäßig bleibt. */
     animation.Interval=15;animation.Tick+=(s,e)=>Tick();
     poll.Interval=1500;poll.Tick+=async(s,e)=>{if(openSignal!=null&&openSignal.WaitOne(0)){Show();Toggle();}if(polling)return;polling=true;try{var state=await State();failures=0;busy=Convert.ToBoolean(state["active"]);bool onTop=OnTop();if(TopMost!=onTop)TopMost=onTop;if(busy!=wasBusy){/* Waehrend Aufnahme/Download sichtbar bleiben; hinter CS2 nur, solange CS2 vorn liegt. */if(busy&&panel!=null)panel.Hide();if(tray!=null)tray.Text=busy?"TecMon Companion · Aufnahme läuft …":"TecMon Companion · Klick für Einstellungen";Render();}wasBusy=busy;ShowStatus(state);ShowWork(state);ShowTip(state);ShowPet(state);ShowGames(state);ShowClips(state);ShowScoreboard(state);ShowAuto(state);ShowBacklog(state);ShowOverlay(state);ShowChat(state);ShowChatBubble(state);ShowDesktop(state);IdleChat();if(!updateChecked&&!busy){updateChecked=true;var ignored=CheckUpdate(true);}}catch(Exception error){if(statusItem!=null)statusItem.Text="○ Lokaler Dienst antwortet nicht";/* Nur beenden, wenn der lokale Dienst wirklich weg ist; ein langsamer Dienst waehrend der CS2-Aufnahme zaehlt nicht. */var web=error as System.Net.WebException;bool gone=web!=null&&web.Status==System.Net.WebExceptionStatus.ConnectFailure;if(gone?++failures>=3:++failures>=200)Close();}finally{polling=false;}};
-    Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}if(startSettings!=null)ApplyDesktop(startSettings);else if(!preview)LoadFigure();Render();animation.Start();if(!preview)poll.Start();if(openOnStart)Toggle();};
+    Shown+=(s,e)=>{if(!preview&&!owns){openSignal.Set();BeginInvoke(new Action(Close));return;}if(startSettings!=null)ApplyDesktop(startSettings);else if(!preview)LoadFigure();Render();animation.Start();if(!preview)poll.Start();
+      /* Erster Start nach dem Setup (desktop.json tutorial = 0): Fenster öffnen, dort startet der Rundgang. */
+      object seen;bool firstTour=!preview&&startSettings!=null&&startSettings.TryGetValue("tutorial",out seen)&&seen is int&&(int)seen==0;
+      if(openOnStart||firstTour)Toggle();};
     FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(overlay!=null)overlay.Dispose();if(chatOverlay!=null)chatOverlay.Dispose();if(chatTip!=null)chatTip.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(figure!=null)figure.Dispose();if(figureFrame!=null)figureFrame.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
   Bitmap model,canvas;Bitmap[] cells;double yaw,yawVel,clockLast,talkUntil,happyUntil,blinkAt=3,blinkUntil,pendingSince,frontSince=-1,moodAt=10,moodUntil,activeAt;int mood=-1,afterTalk=-1,forced=-1;double busyFrame;bool watching;Action pendingTip;
@@ -1504,7 +1657,7 @@ class DesktopPet : Form {
   public bool HasModel{get{return model!=null;}}
   /* Ausdrücke ab Bild 72 in der Reihenfolge von render.cjs/faces.py (ohne idle). */
   static readonly string[] FaceList={"blink","happy","talkA","talkB","focus","busy","wink","surprised","dizzy","laugh","love","kiss","angry","sleepy","tongue","sad","cool","star","confused","busy2","busy3","busy4","lookL","lookR"};
-  FigureModel figure;Bitmap figureFrame;string frameKey="";bool highQuality=true,figureLoading,figureFailed,applying,autostart,desktopKnown;Dictionary<string,object> startSettings;ToolStripMenuItem motionItem,highItem,lowItem,autostartItem;string desktopSignature="";
+  FigureModel figure;Bitmap figureFrame;string frameKey="";bool simpleUi,highQuality=true,figureLoading,figureFailed,applying,autostart,desktopKnown;Dictionary<string,object> startSettings;ToolStripMenuItem motionItem,highItem,lowItem,autostartItem;string desktopSignature="";
   /* Modell aus der Ressource im Hintergrund laden; fehlt es oder ist es kaputt, bleibt die Bild-Figur. */
   void LoadFigure(){
     if(!highQuality||figure!=null||figureLoading||figureFailed||cells==null)return;figureLoading=true;
@@ -1526,6 +1679,7 @@ class DesktopPet : Form {
     desktopKnown=true;
     wandering=Flag(d,"wander",true);animate=Flag(d,"animate",true);foreground=Flag(d,"foreground",true);autostart=Flag(d,"autostart",false);
     object q;highQuality=!(d.TryGetValue("quality",out q)&&Convert.ToString(q)=="low");
+    object ui;simpleUi=d.TryGetValue("ui",out ui)&&Convert.ToString(ui)=="simple";
     object pos;var place=d.TryGetValue("chatPos",out pos)?pos as Dictionary<string,object>:null;
     chatAnchor=place!=null&&place.ContainsKey("x")&&place.ContainsKey("y")?(Point?)new Point(Convert.ToInt32(place["x"]),Convert.ToInt32(place["y"])):null;
     if(chatOverlay!=null&&!chatOverlay.Moving)chatOverlay.SetAnchor(chatAnchor);
@@ -1628,28 +1782,41 @@ class DesktopPet : Form {
     if(quick!=null&&!quick.IsDisposed)quick.Close();
     quick=BuildQuick(at);quick.Open(at);
   }
+  /* Schnellmenü (Rechtsklick). In der Ansicht „Einfach“ nur das Nötigste; „Alle Optionen …“ bleibt immer da. */
   public QuickMenu BuildQuick(Point at){
     var q=new QuickMenu();q.Status=statusItem!=null?statusItem.Text:"";
     q.Heading("SCHNELLZUGRIFF");
-    q.Tile("Einstellungen","Figur, Start & mehr",()=>OpenPanel("figur",""));
-    q.Tile("Fadenkreuz","Overlay fuer alle Spiele",()=>OpenPanel("fadenkreuz",""));
-    q.Tile("Highlights","Aufnehmen auf TecMon",()=>OpenPanel("games",""));
-    q.Tile("Clip speichern","Strg+Alt+T",async()=>await SaveClip());
-    q.Tile("Letzte Videos","Fertige Aufnahmen",()=>OpenPanel("videos",""));
-    q.Tile("Mit TecMon spielen","Minispiele & Werte",()=>OpenPanel("tecmon",""));
-    q.Tile("TecMon.online","Im Browser öffnen",()=>DesktopPanel.OpenExternal("https://tecmon.online"));
+    q.Tile("Einstellungen","Ansicht, Figur & mehr",()=>OpenPanel("figur",""));
+    if(simpleUi){
+      q.Tile("Highlights","Aufnehmen auf TecMon",()=>OpenPanel("games",""));
+      q.Tile("Letzte Videos","Fertige Aufnahmen",()=>OpenPanel("videos",""));
+      q.Tile("TecMon.online","Im Browser öffnen",()=>DesktopPanel.OpenExternal("https://tecmon.online"));
+      q.Tile("Mit TecMon spielen","Minispiele & Werte",()=>OpenPanel("tecmon",""));
+      q.Tile("Rundgang","Zeigt dir alles",()=>OpenPanel("tutorial",""));
+    } else {
+      q.Tile("Fadenkreuz","Overlay fuer alle Spiele",()=>OpenPanel("fadenkreuz",""));
+      q.Tile("Highlights","Aufnehmen auf TecMon",()=>OpenPanel("games",""));
+      q.Tile("Clip speichern","Strg+Alt+T",async()=>await SaveClip());
+      q.Tile("Letzte Videos","Fertige Aufnahmen",()=>OpenPanel("videos",""));
+      q.Tile("Mit TecMon spielen","Minispiele & Werte",()=>OpenPanel("tecmon",""));
+      q.Tile("TecMon.online","Im Browser öffnen",()=>DesktopPanel.OpenExternal("https://tecmon.online"));
+    }
     q.EndTiles();
     q.Heading("SCHALTER");
     q.Toggle("Highlight-Video nach dem Match",()=>autoEnabled,async()=>await ToggleAuto());
     q.Toggle("Stats hochladen beim Schließen",()=>backlogAsk,async()=>await ToggleBacklog());
     q.Toggle("CS2-Rundentipps",()=>tipsEnabled,async()=>await ToggleTips());
-    q.Toggle("Clip-Puffer",()=>clipsEnabled,async()=>await ToggleClips());
-    q.Toggle("Figur fliegt umher",()=>wandering,()=>{if(flyItem!=null)flyItem.Checked=!flyItem.Checked;});
-    q.Toggle("Figur im Vordergrund",()=>foreground,()=>{if(topItem!=null)topItem.Checked=!topItem.Checked;});
-    q.Toggle("3D-Modell (High process)",()=>highQuality,()=>SetQuality(!highQuality));
+    if(!simpleUi){
+      q.Toggle("Clip-Puffer",()=>clipsEnabled,async()=>await ToggleClips());
+      q.Toggle("Figur fliegt umher",()=>wandering,()=>{if(flyItem!=null)flyItem.Checked=!flyItem.Checked;});
+      q.Toggle("Figur im Vordergrund",()=>foreground,()=>{if(topItem!=null)topItem.Checked=!topItem.Checked;});
+      q.Toggle("3D-Modell (High process)",()=>highQuality,()=>SetQuality(!highQuality));
+    }
     q.Toggle("Mit Windows starten",()=>autostart,()=>{if(autostartItem!=null)autostartItem.Checked=!autostartItem.Checked;});
     q.Heading("PERSÖNLICHKEIT");
     q.Chips(new[]{"Nett","Normal","Nerdy","HUAN"},new[]{"nett","normal","nerdy","huan"},()=>petMode,async mode=>{if(mode=="huan"&&!ConfirmHuan())return;petMode=mode;await PetRequest("/api/pet/mode","{\"mode\":\""+mode+"\"}");});
+    q.Heading("ANSICHT");
+    q.Chips(new[]{"Einfach","Erweitert"},new[]{"simple","advanced"},()=>simpleUi?"simple":"advanced",async mode=>{simpleUi=mode=="simple";await PetRequest("/api/desktop/settings","{\"ui\":\""+mode+"\"}");});
     if(offeredUpdate!="")q.Footer("Update "+offeredUpdate+" installieren",async()=>await CheckUpdate(false),false);
     q.Footer("Alle Optionen …",()=>fullMenu.Show(at),false);
     q.Footer("Companion beenden",async()=>await Quit(),true);
