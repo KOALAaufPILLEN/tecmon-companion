@@ -154,12 +154,12 @@ static class TecMon {
     if(launch) Process.Start(new ProcessStartInfo(Path.Combine(target,"TecMon Companion.exe")){WorkingDirectory=target,UseShellExecute=false});
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.49.2",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.49.3",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.49.2");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.49.3");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -174,7 +174,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.49.2"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.49.3"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -315,7 +315,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.49.2 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.49.3 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -1362,7 +1362,7 @@ class DesktopPet : Form {
     tipsItem=new ToolStripMenuItem("Rundentipps");tipsOn=new ToolStripMenuItem("Eingeschaltet",null,async(s,e)=>await ToggleTips());tipsItem.DropDownItems.Add(tipsOn);tipsItem.DropDownItems.Add(new ToolStripSeparator());cs2.DropDownItems.Add(tipsItem);
     cs2.DropDownItems.Add("Highlights aufnehmen",null,(s,e)=>OpenPanel("games",""));
     autoOn=new ToolStripMenuItem("Nach dem Match Highlight-Video anbieten",null,async(s,e)=>await ToggleAuto());cs2.DropDownItems.Add(autoOn);
-    backlogOn=new ToolStripMenuItem("Beim Schließen von CS2 nach Stats fragen",null,async(s,e)=>await ToggleBacklog());backlogOn.Checked=backlogAsk;cs2.DropDownItems.Add(backlogOn);
+    backlogOn=new ToolStripMenuItem("Beim Schließen von CS2 nach Stats fragen",null,async(s,e)=>await ToggleBacklog());backlogOn.Checked=backlogAsk;cs2.DropDownItems.Add(backlogOn);cs2.DropDownItems.Add(new ToolStripMenuItem("Offene Matches jetzt auswerten",null,async(s,e)=>await OpenBacklog()));
     cs2.DropDownItems.Add("Fadenkreuz einstellen",null,(s,e)=>OpenPanel("fadenkreuz",""));
     cs2.DropDownItems.Add("Chat übersetzen",null,(s,e)=>OpenPanel("chat",""));
     chatBubbleItem=new ToolStripMenuItem("Chat in der Sprechblase");chatBubbleItem.Click+=async(s,e)=>{bool want=!chatBubbleItem.Checked;try{await Request("/api/chat/settings",true,"{\"bubble\":"+(want?"true":"false")+"}");chatBubbleItem.Checked=want;}catch{}};cs2.DropDownItems.Add(chatBubbleItem);
@@ -1805,6 +1805,10 @@ class DesktopPet : Form {
     };
     backlogPrompt.FormClosed+=(s,e)=>{backlogAsking=false;};
     backlogPrompt.Show();
+  }
+  async Task OpenBacklog(){
+    try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/backlog/open",true,"{}"));if(tray!=null)tray.ShowBalloonTip(5000,"TecMon Stats",Convert.ToString(result["message"]),ToolTipIcon.Info);}
+    catch(Exception error){if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Stats",error.Message,ToolTipIcon.Warning);}
   }
   async Task ToggleBacklog(){
     try{var result=TecMon.Json.Deserialize<Dictionary<string,object>>(await Request("/api/backlog/settings",true,backlogAsk?"{\"ask\":false}":"{\"ask\":true}"));backlogAsk=!backlogAsk;if(backlogOn!=null)backlogOn.Checked=backlogAsk;if(tray!=null)tray.ShowBalloonTip(6000,"TecMon Stats",Convert.ToString(result["message"]),ToolTipIcon.Info);}

@@ -162,6 +162,19 @@ export async function createStatsBacklog({
     return { message: `TecMon wertet ${count === 1 ? "dein Match" : `${count} Matches`} im Browser aus und lädt die Stats hoch.` };
   }
 
+  /**
+   * Knopf „Jetzt auswerten“ in der Companion-Oberfläche (Nutzermeldung 25.11.2026: Der
+   * Companion nannte offene Matches, bot aber keinen Weg dorthin). Öffnet dieselbe Seite wie
+   * „Ja“ auf die Frage; ausgewertet wird weiter nur im Browser.
+   */
+  async function openNow() {
+    const count = open().length;
+    if (!count) throw new Error("Keine offenen Matches bekannt.");
+    offer = null;
+    openPage();
+    return { message: `TecMon öffnet tecmon.online und wertet ${count === 1 ? "dein Match" : `bis zu 10 von ${count} Matches`} im Browser aus.` };
+  }
+
   async function markDone(ids) {
     if (!Array.isArray(ids) || ids.length > 50) throw new Error("Ungültige Match-Liste.");
     let changed = false;
@@ -224,5 +237,5 @@ export async function createStatsBacklog({
     };
   }
 
-  return { tick, refresh, answer, markDone, setAsk, reset, list, state, get ask() { return ask; } };
+  return { tick, refresh, answer, openNow, markDone, setAsk, reset, list, state, get ask() { return ask; } };
 }

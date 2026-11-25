@@ -1343,6 +1343,10 @@ export async function createCompanion({
             : "TecMon fragt beim Schließen von CS2 nicht mehr nach Stats. Offene Matches stehen weiter auf tecmon.online.",
         });
       }
+      if (url.pathname === "/api/backlog/open") {
+        const result = await statsBacklog.openNow();
+        return json(res, 200, { ...result, backlog: statsBacklog.state() });
+      }
       if (url.pathname === "/api/backlog/answer") {
         const result = await statsBacklog.answer(String(input.id || ""), input.yes === true);
         return json(res, 200, { ...result, backlog: statsBacklog.state() });
