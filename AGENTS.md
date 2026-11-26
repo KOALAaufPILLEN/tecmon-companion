@@ -233,6 +233,8 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Der große neue Menüaufbau ist vorerst ein interaktiver Entwurf. Funktionsinventar
   und Beschreibung unter [Figur und Menü](docs/companion-motion-and-menu.md) pflegen;
   Entwurf, veröffentlichte Version und installierte Version klar unterscheiden.
+- Spieleinstellungen nach Spiel bündeln (CS2, Dota 2, Wardogs), einschließlich
+  der jeweiligen Paketverwaltung. Gemeinsame Funktionen zentral erreichbar halten.
 
 ## Update-EXE
 

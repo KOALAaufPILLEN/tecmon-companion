@@ -18,6 +18,8 @@ als Update veröffentlicht oder auf dem Nutzer-PC installiert. Prognose-Webseite
   bisherigen Funktionen weiterhin über vollständiges Menü/Fenster erreichbar.
 - Interaktiver Menüentwurf mit zwei Anordnungen, sieben Bereichen und abgeglichenem
   Funktionsinventar. Der große Menüumbau ist ein Entwurf, keine installierte Oberfläche.
+  „Spiele & Tipps“ ist nach CS2, Dota 2 und Wardogs sortiert, mit Paketverwaltung
+  beim jeweiligen Spiel. Kompaktes Menü neben der Figur, großes Cockpit als Erweiterung.
 
 Details, Grenzen und Tests: [Figur und Menü](docs/companion-motion-and-menu.md).
 

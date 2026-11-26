@@ -72,6 +72,19 @@ Clips & Galerie; System. Figur/Sprechblase bekommen eine eigene Vorschaufläche.
 Unterpunkte werden bewusst geöffnet, immer nur einer. Die Alternative verwendet
 Themenreiter statt einer Seitennavigation.
 
+„Spiele & Tipps“ beginnt mit der Spielauswahl: Counter-Strike 2 (Rundentipps,
+alle Tipparten, Quiz), Dota 2 (Tipps und Tipparten), Wardogs (Scoreboard-Foto).
+Installation/Entfernen steht jeweils beim ausgewählten Spiel. Die Auswahl bleibt
+im Entwurf erhalten. Spielübergreifende Funktionen bleiben in ihren Hauptbereichen.
+
+Aufruf und Platzierung: Linksklick auf die Figur bzw. das Tray-Symbol öffnet die
+Einstellungen, Rechtsklick auf die Figur den Schnellzugriff; Esc schließt das
+Einstellungsfenster. Das native Fenster öffnet bereits neben der Figur und wird
+auf den Monitor begrenzt. Für den neuen Aufbau ist die kompakte Ansicht dort
+vorgesehen, das große Cockpit als ausdrücklich geöffnete Erweiterung. Während
+das Menü offen ist, pausiert der Flug. Sprechblasen berücksichtigen das Fenster
+als Hindernis; bei kleinem Monitor ist vollständige Trennung nicht garantiert.
+
 107 statische Bedienelemente aus der bestehenden Seite wurden erfasst, ergänzt
 um dynamische Kataloge/Windows-Aktionen. Das Inventar enthält 27 Funktionsgruppen
 und 182 Optionen/Katalogeinträge (keine Behauptung von 182 eigenständigen Features).
