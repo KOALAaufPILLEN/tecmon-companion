@@ -222,6 +222,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Automatischer Flug bleibt am Monitorrand, nicht durch die Spielmitte. Explizit
   verschobene Figur darf zum nächsten Rand andocken. Stillstand bleibt am Platz.
   Tricks/Verwandlung respektieren Animation aus, Schlaf, Aufnahme und aktive Runde.
+- Blickrichtung/Neigung nie aus gerundeten Pixel-Deltas bestimmen; langsamer Flug
+  muss stabil bleiben. Mausfang bei Capture-Verlust oder losgelassener Taste lösen;
+  nach manuellem Verschieben darf Hover das Andocken nicht sofort blockieren.
 - 3D und sparsame Ansichten behalten denselben metallischen Charakter. Sparmodus
   während erkannter Spielsitzungen überschreibt niemals die gespeicherte Qualität.
   Spielprozess nur über Namen/PID/Lebensdauer erkennen, kein Speicherzugriff/Hook.
