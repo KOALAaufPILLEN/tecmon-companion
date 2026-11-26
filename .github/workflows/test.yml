@@ -43,6 +43,11 @@ jobs:
           if($LASTEXITCODE -ne 0) { throw 'Compilation failed' }
           $test=Start-Process -FilePath $output -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
           if($test.ExitCode -ne 0) { throw 'Native self-test failed' }
+          $motionTest=Join-Path $env:RUNNER_TEMP 'DesktopMotionSelfTest.exe'
+          & $compiler /nologo /target:exe /main:DesktopMotionSelfTest /platform:x64 /optimize+ /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /r:Microsoft.CSharp.dll ("/resource:"+(Resolve-Path -LiteralPath 'tools/cs2-companion/windows/desktop-bot-model.zip').Path+",TecMonModel") ("/resource:"+(Resolve-Path -LiteralPath 'tools/cs2-companion/public/desktop-bot-3d.png').Path+",TecMonBot3D") "/out:$motionTest" $native (Resolve-Path -LiteralPath 'tools/cs2-companion/windows/DesktopMotionSelfTest.cs').Path
+          if($LASTEXITCODE -ne 0) { throw 'Motion test compilation failed' }
+          $motion=Start-Process -FilePath $motionTest -WindowStyle Hidden -Wait -PassThru
+          if($motion.ExitCode -ne 0) { throw 'Randflug/Sprechblasen-Test fehlgeschlagen' }
           # Universelles Overlay ohne CS2: echte WinForms, Fokus, Alpha, Filter und Hotkeys.
           $crosshairTest=Join-Path $env:RUNNER_TEMP 'CrosshairSelfTest.exe'
           & $compiler /nologo /target:exe /main:CrosshairSelfTest /platform:x64 /optimize+ /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /r:Microsoft.CSharp.dll "/out:$crosshairTest" $native (Resolve-Path -LiteralPath 'tools/cs2-companion/windows/CrosshairSelfTest.cs').Path

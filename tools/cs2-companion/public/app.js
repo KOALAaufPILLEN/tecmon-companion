@@ -78,6 +78,7 @@ $('tips-toggle').addEventListener('click',async()=>{const button=$('tips-toggle'
 let figureState;
 function showFigure(desktop){
   figureState=desktop;
+  if($('figure-motion'))$('figure-motion').value=desktop.motion||(desktop.wander===false?'still':'chill');
   for(const b of document.querySelectorAll('#figure-quality [data-quality]'))b.setAttribute('aria-checked',String(b.dataset.quality===desktop.quality));
   for(const box of document.querySelectorAll('.figure-flags [data-flag]'))if(!box.disabled)box.checked=!!desktop[box.dataset.flag];
   applyUi(desktop.ui);
@@ -90,6 +91,7 @@ async function figureSettings(change,control){
   try{const r=await api('/api/desktop/settings',change);if(control)control.disabled=false;showFigure(r.desktop);}
   catch(error){notice(error);if(control)control.disabled=false;if(figureState)showFigure(figureState);}
 }
+$('figure-motion')?.addEventListener('change',e=>figureSettings({motion:e.target.value},e.target));
 for(const b of document.querySelectorAll('#figure-quality [data-quality]'))b.addEventListener('click',()=>figureSettings({quality:b.dataset.quality}));
 for(const box of document.querySelectorAll('.figure-flags [data-flag]'))box.addEventListener('change',()=>figureSettings({[box.dataset.flag]:box.checked},box));
 async function refresh() {
@@ -615,7 +617,7 @@ function panelHints(state){
 }
 (function desktopSections(){
   if(!document.body.classList.contains('desktop-panel'))return;
-  let open='status';try{open=localStorage.getItem('tecmon-panel-open')??'status';}catch{}
+  let open=''; // Bei jedem Öffnen ruhig starten; gezielte Sprünge öffnen ihren Bereich.
   const remembered=(()=>{try{return JSON.parse(localStorage.getItem('tecmon-panel-folds')||'{}')||{};}catch{return {};}})();
   const remember=(key,value)=>{remembered[key]=value;try{localStorage.setItem('tecmon-panel-folds',JSON.stringify(remembered));}catch{}};
   const anchor=document.querySelector('.minimal-hero');const list=document.createElement('div');list.className='panel-categories';anchor?.after(list);
@@ -629,7 +631,7 @@ function panelHints(state){
       /* Mehrere Karten: je Karte ein eigener Unterpunkt; eine einzelne Karte steht direkt darin. */
       if(present.length===1||!name){card.classList.add('cat-card');cat.append(card);continue;}
       const inner=document.createElement('details');inner.className='card-fold';inner.dataset.fold='card-'+(card.id||key);
-      inner.open=inner.dataset.fold in remembered?remembered[inner.dataset.fold]:key==='status'&&card===present[0][0];
+      inner.open=false;
       inner.append(el('summary',name));inner.append(card);inner.addEventListener('toggle',()=>remember(inner.dataset.fold,inner.open));cat.append(inner);
     }
     cat.addEventListener('toggle',()=>{
@@ -647,7 +649,7 @@ function panelHints(state){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('skins-consent').hidden){$('skins-consent').hidden=true;$('skins-accept').checked=false;}});
 /* Ansicht „Einfach“/„Erweitert“ (Nutzerwunsch 25.11.2026, desktop.json `ui`). „Einfach“ zeigt nur das Nötigste mit
    kurzen Erklärungen; alles mit data-expert erscheint erst in „Erweitert“. Neue Karten für Fortgeschrittene hier eintragen. */
-const EXPERT_ONLY=['#advanced-toggle','#advanced-panel','#skin-tausch','#cfgs','#clips','#fadenkreuz','#quiz','#tips-options','#dota-tipps .tips-options','#wardogs .tips-options','#auto-note','#tips-note','#chat>p:first-of-type','.figure-quality-row','.bridge-devices'];
+const EXPERT_ONLY=['#advanced-toggle','#advanced-panel','#skin-tausch','#cfgs','#clips','#fadenkreuz','#quiz','#tips-options','#dota-tipps .tips-options','#wardogs .tips-options','#auto-note','#tips-note','#chat>p:first-of-type','.bridge-devices'];
 const SIMPLE_HINTS=[
   ['.activity-summary','Hier siehst du, was TecMon gerade macht, zum Beispiel eine Demo laden oder ein Video aufnehmen.'],
   ['#auto-highlights','Nach deinem Match fragt TecMon, ob ein Video mit deinen besten Szenen entstehen soll. Du klickst nur „Ja“.'],

@@ -16,8 +16,9 @@ export const DESKTOP_QUALITIES = ["high", "low"];
 export const UI_MODES = ["simple", "advanced"];
 /** Stand des Einsteiger-Tutorials. Kleiner als TUTORIAL_VERSION = beim nächsten Öffnen zeigen. */
 export const TUTORIAL_VERSION = 1;
-export const DESKTOP_DEFAULTS = Object.freeze({ quality: "high", wander: true, animate: true, foreground: true, autostart: false, chatPos: null, ui: "advanced", tutorial: TUTORIAL_VERSION });
-const FLAGS = ["wander", "animate", "foreground", "autostart"];
+export const MOTION_MODES = ["still", "chill", "hyper"];
+export const DESKTOP_DEFAULTS = Object.freeze({ quality: "high", motion: "chill", gameEconomy: true, wander: true, animate: true, foreground: true, autostart: false, chatPos: null, ui: "advanced", tutorial: TUTORIAL_VERSION });
+const FLAGS = ["animate", "foreground", "autostart", "gameEconomy"];
 
 const LIMIT = 100000;
 function chatPosition(value) {
@@ -30,6 +31,11 @@ export function cleanDesktopSettings(input, previous = DESKTOP_DEFAULTS) {
   const next = { ...DESKTOP_DEFAULTS, ...previous };
   if (!input || typeof input !== "object" || Array.isArray(input)) return next;
   if (DESKTOP_QUALITIES.includes(input.quality)) next.quality = input.quality;
+  // Alte Clients behalten ihren Schalter; neue Clients wählen einen Bewegungsmodus.
+  // Explizite Modi haben Vorrang. wander bleibt nur als kompatibles abgeleitetes Feld.
+  if (MOTION_MODES.includes(input.motion)) next.motion = input.motion;
+  else if (typeof input.wander === "boolean") next.motion = input.wander ? "chill" : "still";
+  next.wander = next.motion !== "still";
   for (const key of FLAGS) if (typeof input[key] === "boolean") next[key] = input[key];
   if (UI_MODES.includes(input.ui)) next.ui = input.ui;
   if (Number.isInteger(input.tutorial) && input.tutorial >= 0 && input.tutorial <= TUTORIAL_VERSION) next.tutorial = input.tutorial;

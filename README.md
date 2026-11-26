@@ -1,5 +1,31 @@
 # TecMon Companion
 
+**Arbeitsstand, 26. November 2026:** 0.51.0 ist für Review vorbereitet; noch nicht
+als Update veröffentlicht oder auf dem Nutzer-PC installiert. Prognose-Webseite
+[#211](https://github.com/KOALAaufPILLEN/tecmon/pull/211) ist gemergt und produktiv.
+
+## Neu in 0.51.0 · Metallfigur, Bewegungsmodi und sichtbare Sprechblasen
+
+- Stillstand, Chillig und Hyperaktiv ersetzen „Umherfliegen“. Randflug hält die
+  Spielmitte frei, automatische Drehungen/Schwenks/Nicken nur in ruhigen Situationen.
+- Metallmaterial mit klareren Reflexen im vorhandenen 3D-Renderer und in allen
+  96 vorgerenderten sparsamen Ansichten; LEDs und Originalfigur bleiben erhalten.
+- Beim erkannten Spielstart optional vorübergehend sparsam (20 Animationstakte/s),
+  kurze Verwandlung mit Drehung/Funken und zweiteiligem Spruch im sicheren Moment.
+  Gewählte Darstellung bleibt gespeichert und kehrt nach Spielende zurück.
+- Sprechblasen weichen Einstellungen/Schnellmenü aus; Kategorien und Unterkarten
+  starten zugeklappt. Häufige Figurenaktionen direkt im kürzeren Schnellmenü; alle
+  bisherigen Funktionen weiterhin über vollständiges Menü/Fenster erreichbar.
+- Interaktiver Menüentwurf mit zwei Anordnungen, sieben Bereichen und abgeglichenem
+  Funktionsinventar. Der große Menüumbau ist ein Entwurf, keine installierte Oberfläche.
+  „Spiele & Tipps“ ist nach CS2, Dota 2 und Wardogs sortiert, mit Paketverwaltung
+  beim jeweiligen Spiel. Kompaktes Menü neben der Figur, großes Cockpit als Erweiterung.
+  Ausgewählte Menüpunkte übernehmen die dunklen/lila TecMon-Menüknöpfe mit Goldkontur;
+  geöffnete Unterpunkte bekommen einen passenden lila/goldenen Kopf.
+
+Details, Grenzen und Tests: [Figur und Menü](docs/companion-motion-and-menu.md).
+
+
 **Merge-Stand, 25. November 2026:** [#129](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/129)
 ist gemergt (Code `2323691`, Merge `718783a`): Companion 0.50.2 mit automatischen
 Hersteller-Updates für vorhandene HLAE-/FFmpeg-Werkzeuge. Die Einrichtung aus 0.50.0
