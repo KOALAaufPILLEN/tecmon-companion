@@ -1,6 +1,6 @@
 # TecMon Companion
 
-## Vorbereitet in 0.52.0 · Das echte Companion-Cockpit
+## Gemergt in 0.52.0 · Das echte Companion-Cockpit
 
 Der bisherige Entwurf ist jetzt im Linksklick-Fenster umgesetzt: TecMon;
 Spiele & Tipps; Aufnahmen; Demos & Stats; Overlays & Chat; Clips & Galerie; System.
@@ -9,13 +9,16 @@ bleiben erreichbar. Dunkle/lila Auswahl mit Goldkontur aus dem Figurenmenü.
 Vorhandene Karten, Eingaben und Bestätigungen bleiben unverändert verbunden;
 Unterpunkte starten geschlossen, direkte Sprünge öffnen den passenden Bereich.
 ↔ im Fensterkopf wechselt zwischen kompakter Ansicht und großem Cockpit, begrenzt
-auf den Monitor. Noch nicht als 0.52.0 veröffentlicht oder lokal installiert.
+auf den Monitor. [#134](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/134)
+ist gemergt (`1f5fbd0`); Windows-/Linux-Checks und 241 Node-Tests erfolgreich.
+Der automatische Release läuft separat; fertige Veröffentlichung und lokale
+Installation sind hier noch nicht bestätigt.
 
 **Bewegungskorrektur 0.51.1:** [#133](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/133)
 ist gemergt (`941913c`), Windows-/Linux-Checks erfolgreich; Release und lokale
 Installation separat prüfen.
 
-## Vorbereitet in 0.51.1 · Ruhiger Flug und zuverlässiges Loslassen
+## Gemergt in 0.51.1 · Ruhiger Flug und zuverlässiges Loslassen
 
 - Blickrichtung folgt der tatsächlichen Flugrichtung, auch bei langsamem Flug;
   keine wechselnde Richtung durch gerundete 0-/1-Pixel-Schritte.
@@ -23,7 +26,7 @@ Installation separat prüfen.
   Drehung nähert sich ohne Federüberschwingen dem Ziel.
 - Mausfang endet auch bei verlorenem Capture oder außerhalb losgelassener Taste.
   Nach dem Verschieben 1,25 Sekunden freie Andockphase trotz Maus über der Figur.
-- Noch nicht veröffentlicht/installiert; Änderungen und native Regressionstests im PR.
+- Änderungen und native Regressionstests in #133 gemergt; lokale Installation nicht nachgewiesen.
 
 **Merge-Stand, 26. November 2026:** Companion 0.51.0 ist mit
 [#132](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/132) gemergt
