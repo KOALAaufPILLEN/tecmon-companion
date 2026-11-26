@@ -1,5 +1,26 @@
 # Figur und Menü, 26. November 2026
 
+## Implementierter Menüstand 0.52.0
+
+Der Aufbau ist jetzt in `tools/cs2-companion/public/menu.js` mit den echten
+Companion-Karten verbunden, nicht nur in der unten beschriebenen Vorschau.
+Das Linksklick-Fenster bietet sieben Bereiche und die Spielauswahl einschließlich
+Paketverwaltung; weitere/geplante Pakete bleiben erreichbar. Bestehende DOM-Knoten
+werden verschoben, damit IDs, Eingabewerte, Bestätigungen und Listener erhalten
+bleiben. Direkte Sprünge und Hashlinks öffnen Seite, Spiel und Unterkarte.
+
+↔ im nativen Fensterkopf wechselt von 520×640 zu höchstens 980×760 und zurück;
+beide Größen bleiben innerhalb des aktuellen Monitor-Arbeitsbereichs. Unter
+680 px Breite wird die Seitennavigation zur umgebrochenen oberen Navigation.
+Kein Fokuswechsel während eines Spiels ohne Nutzeraktion. Die Sprechblase bleibt
+eine getrennte, nicht aktivierende Fläche mit bestehender Kollisionsvermeidung.
+
+Prüfung: echte lokale Companion-Seite mit isoliertem Testprofil, sieben Bereiche,
+Spielauswahl und Original-Demo-Eingaben im Browser geprüft. Drei DOM-Regressionen
+sichern vollständige Kontrollelemente/Listener, Spiel-Paketfilter und Sprünge mit
+erhaltenen Entwürfen. Nativer C#-5-Test prüft den Größenwechsel und Monitorgrenzen.
+Keine Installation auf dem Nutzerprofil und kein echter Download zum Menütest.
+
 Vorbereitet für 0.51.0. Quellcode/PR, noch kein Nachweis eines veröffentlichten oder
 installierten Updates. Der große Menüumbau ist ein interaktiver Entwurf; die
 bestehende Oberfläche behält alle Funktionen und bekommt die unten genannten Korrekturen.

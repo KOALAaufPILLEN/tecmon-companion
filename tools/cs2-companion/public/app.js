@@ -12,6 +12,7 @@ let downloadSignature = '';
 let restarting = false;
 let latestState;
 function advanced(show) {
+  if(show&&window.companionMenu){window.companionMenu.openAdvanced('updates');return;}
   $('advanced-panel').hidden=!show;
   $('advanced-toggle').setAttribute('aria-expanded',String(show));
   $('advanced-toggle').textContent=show?'Erweitert schließen':'Erweitert';
@@ -21,7 +22,7 @@ function tab(name) {
   for(const panel of document.querySelectorAll('.tab-panel')) panel.hidden=panel.dataset.panel!==name;
 }
 for(const button of document.querySelectorAll('.tab')) button.addEventListener('click',()=>tab(button.dataset.tab));
-function showAdvanced(name){advanced(true);tab(name);$('advanced-panel').scrollIntoView({behavior:'smooth'});}
+function showAdvanced(name){if(window.companionMenu){window.companionMenu.openAdvanced(name);return;}advanced(true);tab(name);$('advanced-panel').scrollIntoView({behavior:'smooth'});}
 $('advanced-toggle').addEventListener('click',()=>advanced($('advanced-panel').hidden));
 function overview(state) {
   const devices=state.bridge?.devices || [];
@@ -415,7 +416,7 @@ function showGames(list){
   const wardogs=list.find(g=>g.id==='wardogs');document.querySelectorAll('.wardogs-only').forEach(n=>{n.hidden=!(wardogs&&wardogs.installed);});
   const signature=JSON.stringify(list.map(g=>[g.id,g.installed,g.status]));if(signature===gamesSignature)return;gamesSignature=signature;
   $('game-library').replaceChildren(...list.map(g=>{
-    const row=el('li','','game-row'+(g.installed?' installed':''));const info=el('div','');info.append(el('b',g.label));
+    const row=el('li','','game-row'+(g.installed?' installed':''));row.dataset.package=g.id;const info=el('div','');info.append(el('b',g.label));
     const note=g.status==='planned'?(g.web?`Geplant · Schon jetzt: ${g.web}`:'Geplant'):g.installed?`Installiert · ${g.features.join(', ')}`:`Nicht installiert · ${g.features.join(', ')}`;info.append(el('small',note));
     const button=el('button','');button.type='button';
     if(g.status==='planned'){button.textContent='Herunterladen';button.disabled=true;button.className='subtle';button.title='Kommt in einem späteren Update.';}
@@ -424,6 +425,7 @@ function showGames(list){
       try{const r=await api('/api/games/remove',{id:g.id,confirm:true});notice(r.message);showGames(r.games);}catch(error){notice(error);}});}
     else{button.textContent='⬇ Installieren';button.addEventListener('click',async()=>{try{const r=await api('/api/games/install',{id:g.id});notice(r.message);showGames(r.games);}catch(error){notice(error);}});}
     row.append(info,button);return row;}));
+  window.companionMenu?.filterGames();
 }
 let gameArea=$('game-area');const area=()=>gameArea;
 function gameDone(game,win,score){return petCall('/api/pet/game',{game,win,score});}
@@ -591,61 +593,12 @@ $('skins-toggle').addEventListener('click',async()=>{
   try{const r=await api('/api/skins/settings',{enabled:on,accept:on?skinState?.noticeVersion:undefined});$('skins-consent').hidden=true;showSkins(r.skins,true);if(r.message)$('notice').textContent=r.message;}
   catch(error){notice(error);}finally{button.disabled=false;}
 });
-/* Linksklick-Fenster der Figur: alles in zugeklappten Kategorien, immer nur eine offen.
-   Reihenfolge nach Häufigkeit; rechts im Kopf steht ein kurzer Stand, damit man nicht aufklappen muss. */
-const PANEL_CATEGORIES=[
-  ['status','Status & Videos',[['.connection-summary','Verbindung'],['.activity-summary','Aufnahme'],['#videos','Letzte Videos']]],
-  ['cs2','CS2',[['#auto-highlights','Highlights nach dem Match'],['#stats-backlog','Stats beim Schließen'],['#skin-tausch','Skin-Tausch für Videos'],['#rundentipps','Rundentipps'],['#chat','Chat-Übersetzer'],['#cfgs','Configs'],['#quiz','Quiz']]],
-  ['figur','Einstellungen',[['#figur']]],
-  ['werkzeuge','Werkzeuge',[['#fadenkreuz','Fadenkreuz-Overlay (alle Spiele)']]],
-  ['dota2','Dota 2',[['#dota-tipps','Dota-2-Tipps']]],
-  ['wardogs','Wardogs',[['#wardogs']]],
-  ['clips','Clips',[['#clips']]],
-  ['tecmon','TecMon',[['#tecmon','Werte & Persönlichkeit'],['#spiele','Minispiele']]],
-  ['pakete','Spiel-Pakete',[['#games']]],
-];
-function panelHints(state){
-  if(!document.body.classList.contains('desktop-panel'))return;
-  const set=(key,text)=>{const hint=document.querySelector(`[data-fold="cat-${key}"] .cat-hint`);if(hint)hint.textContent=text;};
-  const devices=state.bridge?.devices?.length||0,pending=state.bridge?.pending?.length||0;
-  set('status',`${pending?'Verbindung bestätigen':devices?'Verbunden':'Nicht verbunden'}${state.active?' · Aufnahme läuft':''}`);
-  set('cs2',`Tipps ${state.gsi?.enabled?'an':'aus'} · Highlights ${state.auto?.enabled?'an':'aus'}${state.chat?.enabled?' · Chat-Overlay an':''}`);
-  set('dota2',`Tipps ${state.dota?.enabled?'an':'aus'}`);
-  set('clips',state.clips?.enabled?'Puffer an':'Puffer aus');
-  set('wardogs',state.scoreboard?`Scoreboard-Foto ${state.scoreboard.enabled?'an':'aus'}`:'nicht installiert');
-  if(state.pet)set('tecmon',`Level ${state.pet.level}`);
-}
+/* Linksklick-Fenster: sieben Bereiche, Karten bleiben mit ihren Listenern erhalten. */
+function panelHints(state){window.companionMenu?.status(state);}
 (function desktopSections(){
-  if(!document.body.classList.contains('desktop-panel'))return;
-  let open=''; // Bei jedem Öffnen ruhig starten; gezielte Sprünge öffnen ihren Bereich.
-  const remembered=(()=>{try{return JSON.parse(localStorage.getItem('tecmon-panel-folds')||'{}')||{};}catch{return {};}})();
-  const remember=(key,value)=>{remembered[key]=value;try{localStorage.setItem('tecmon-panel-folds',JSON.stringify(remembered));}catch{}};
-  const anchor=document.querySelector('.minimal-hero');const list=document.createElement('div');list.className='panel-categories';anchor?.after(list);
-  const categories=[];
-  for(const [key,label,cards] of PANEL_CATEGORIES){
-    const present=cards.map(([sel,name])=>[document.querySelector(sel),name]).filter(([card])=>card);
-    if(!present.length)continue;
-    const cat=document.createElement('details');cat.className='game-fold panel-cat';cat.dataset.fold='cat-'+key;cat.open=key===open;
-    const summary=document.createElement('summary');summary.append(el('span',label,'cat-label'),el('span','','cat-hint'));cat.append(summary);
-    for(const [card,name] of present){
-      /* Mehrere Karten: je Karte ein eigener Unterpunkt; eine einzelne Karte steht direkt darin. */
-      if(present.length===1||!name){card.classList.add('cat-card');cat.append(card);continue;}
-      const inner=document.createElement('details');inner.className='card-fold';inner.dataset.fold='card-'+(card.id||key);
-      inner.open=false;
-      inner.append(el('summary',name));inner.append(card);inner.addEventListener('toggle',()=>remember(inner.dataset.fold,inner.open));cat.append(inner);
-    }
-    cat.addEventListener('toggle',()=>{
-      if(cat.open)for(const other of categories)if(other!==cat)other.open=false;
-      if(cat.open||categories.every(c=>!c.open))try{localStorage.setItem('tecmon-panel-open',cat.open?key:'');}catch{}
-    });
-    list.append(cat);categories.push(cat);
-  }
-  /* Sprünge aus dem Figurmenü (scrollIntoView) klappen die passende Kategorie und Karte auf. */
-  const scroll=Element.prototype.scrollIntoView;
-  Element.prototype.scrollIntoView=function(options){for(let d=this.closest?.('details');d;d=d.parentElement?.closest('details'))d.open=true;return scroll.call(this,options);};
-  const fromHash=location.hash&&document.querySelector(location.hash);
-  if(fromHash)for(let d=fromHash.closest('details');d;d=d.parentElement?.closest('details'))d.open=true;
+  if(document.body.classList.contains('desktop-panel'))window.TecMonCockpit(document);
 })();
+
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('skins-consent').hidden){$('skins-consent').hidden=true;$('skins-accept').checked=false;}});
 /* Ansicht „Einfach“/„Erweitert“ (Nutzerwunsch 25.11.2026, desktop.json `ui`). „Einfach“ zeigt nur das Nötigste mit
    kurzen Erklärungen; alles mit data-expert erscheint erst in „Erweitert“. Neue Karten für Fortgeschrittene hier eintragen. */

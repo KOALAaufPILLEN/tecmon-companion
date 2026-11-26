@@ -139,7 +139,7 @@ export async function setupManagedInstallation(root, options, progress = () => {
     );
   const config = previous || {
     format: "tecmon-installation-v1",
-    version: "0.51.1",
+    version: "0.52.0",
     installationId: randomUUID(),
     dataDir: options.dataDir,
     profileDir: path.join(privateDir, "csdm-user"),

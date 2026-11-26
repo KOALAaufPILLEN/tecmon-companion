@@ -233,9 +233,13 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   den Fokus nicht nehmen. Bei zu wenig Platz Überschneidung minimieren.
   Kategorien/Unterkarten standardmäßig geschlossen, gezielte Sprünge öffnen sie.
   Bestehende Funktionen müssen über vollständiges Menü/Fenster erreichbar bleiben.
-- Der große neue Menüaufbau ist vorerst ein interaktiver Entwurf. Funktionsinventar
+- Der große Menüaufbau ist ab 0.52.0 in `public/menu.js` implementiert. Funktionsinventar
   und Beschreibung unter [Figur und Menü](docs/companion-motion-and-menu.md) pflegen;
   Entwurf, veröffentlichte Version und installierte Version klar unterscheiden.
+- Das Cockpit verschiebt vorhandene Karten statt sie zu kopieren; IDs, Werte,
+  Bestätigungen und Listener erhalten. Direkte Hash-/Figurmenüsprünge müssen die
+  Zielseite und das passende Spiel öffnen. Neue Karten einem der sieben Bereiche
+  zuordnen, Spiel-Pakete bei der Spielauswahl halten. Kompakt/groß per ↔ im Fenster.
 - Spieleinstellungen nach Spiel bündeln (CS2, Dota 2, Wardogs), einschließlich
   der jeweiligen Paketverwaltung. Gemeinsame Funktionen zentral erreichbar halten.
 
@@ -567,9 +571,9 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   nur Status, Schritt und feste Texte, keine Pfade oder Protokollzeilen. `ShowWork()` in
   `TecMon.cs` zeigt ihn als stehende Sprechblase (`Present(..., sticky)`), „Fertig“ nur für
   einen selbst gesehenen Auftrag.
-- Das Linksklick-Fenster (`?desktop=1`) zeigt die Karten in zugeklappten Kategorien
-  (`PANEL_CATEGORIES` und `desktopSections()` in `public/app.js`), immer nur eine offen,
-  mit kurzem Stand im Kopf (`panelHints()`). Neue Karten dort einer Kategorie zuordnen.
+- Das Linksklick-Fenster (`?desktop=1`) zeigt sieben Bereiche im Cockpit
+  (`public/menu.js`, `desktopSections()` in `public/app.js`), immer nur eine Seite
+  und deren bewusst geöffnete Unterkarten. Neue Karten dort einem Bereich zuordnen.
 
 ## Nach Spiel-Updates (CS2, Dota 2, Deadlock)
 

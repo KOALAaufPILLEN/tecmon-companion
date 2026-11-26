@@ -1,5 +1,20 @@
 # TecMon Companion
 
+## Vorbereitet in 0.52.0 · Das echte Companion-Cockpit
+
+Der bisherige Entwurf ist jetzt im Linksklick-Fenster umgesetzt: TecMon;
+Spiele & Tipps; Aufnahmen; Demos & Stats; Overlays & Chat; Clips & Galerie; System.
+Spieleinstellungen und Paketverwaltung nach CS2, Dota 2, Wardogs; weitere Pakete
+bleiben erreichbar. Dunkle/lila Auswahl mit Goldkontur aus dem Figurenmenü.
+Vorhandene Karten, Eingaben und Bestätigungen bleiben unverändert verbunden;
+Unterpunkte starten geschlossen, direkte Sprünge öffnen den passenden Bereich.
+↔ im Fensterkopf wechselt zwischen kompakter Ansicht und großem Cockpit, begrenzt
+auf den Monitor. Noch nicht als 0.52.0 veröffentlicht oder lokal installiert.
+
+**Bewegungskorrektur 0.51.1:** [#133](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/133)
+ist gemergt (`941913c`), Windows-/Linux-Checks erfolgreich; Release und lokale
+Installation separat prüfen.
+
 ## Vorbereitet in 0.51.1 · Ruhiger Flug und zuverlässiges Loslassen
 
 - Blickrichtung folgt der tatsächlichen Flugrichtung, auch bei langsamem Flug;
