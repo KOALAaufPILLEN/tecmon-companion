@@ -71,10 +71,12 @@ Sieben Bereiche: TecMon; Spiele & Tipps; Aufnahmen; Demos & Stats; Overlays & Ch
 Clips & Galerie; System. Figur/Sprechblase bekommen eine eigene Vorschaufläche.
 Unterpunkte werden bewusst geöffnet, immer nur einer. Die Alternative verwendet
 Themenreiter statt einer Seitennavigation.
-Aktive Navigation übernimmt das goldene Parallelogramm aus dem bestehenden
-Companion-Menü (`public/style.css`, `.panel-tabs`); ausgewählte Spiel-/Modusknöpfe
-erhalten dessen Goldverlauf mit 7-px-Eckschnitten. Offene Unterpunkte haben einen
-lila/goldenen Kopf. Inaktive Menüpunkte bleiben ruhig und die Auswahl bleibt lesbar.
+Aktive Navigation und Spiel-/Modusknöpfe übernehmen die Darstellung aus
+`TecMonMenu.OnRenderMenuItemBackground` im nativen Figurenmenü: dunkler Verlauf
+von RGB(27,22,38) nach RGB(11,10,17), lila Auswahl RGB(167,139,250) mit Alpha 60/255,
+goldene Kontur RGB(232,197,115) mit Alpha 200/255, helle Schrift und linke Goldmarke.
+Nur oben links und unten rechts sind 6 px abgeschnitten. Keine goldgefüllten Reiter.
+Offene Unterpunkte haben einen lila/goldenen Kopf; inaktive Menüpunkte bleiben ruhig.
 
 „Spiele & Tipps“ beginnt mit der Spielauswahl: Counter-Strike 2 (Rundentipps,
 alle Tipparten, Quiz), Dota 2 (Tipps und Tipparten), Wardogs (Scoreboard-Foto).

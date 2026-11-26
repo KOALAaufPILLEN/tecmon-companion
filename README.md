@@ -20,7 +20,7 @@ als Update veröffentlicht oder auf dem Nutzer-PC installiert. Prognose-Webseite
   Funktionsinventar. Der große Menüumbau ist ein Entwurf, keine installierte Oberfläche.
   „Spiele & Tipps“ ist nach CS2, Dota 2 und Wardogs sortiert, mit Paketverwaltung
   beim jeweiligen Spiel. Kompaktes Menü neben der Figur, großes Cockpit als Erweiterung.
-  Ausgewählte Menüpunkte übernehmen die goldenen, abgekannten TecMon-Reiter;
+  Ausgewählte Menüpunkte übernehmen die dunklen/lila TecMon-Menüknöpfe mit Goldkontur;
   geöffnete Unterpunkte bekommen einen passenden lila/goldenen Kopf.
 
 Details, Grenzen und Tests: [Figur und Menü](docs/companion-motion-and-menu.md).
