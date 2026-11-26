@@ -37,6 +37,12 @@ class DesktopMotionSelfTest {
     Require(work.Contains(bubble),"Sprechblase wird abgeschnitten");
     Require(!bubble.IntersectsWith(settings)&&!bubble.IntersectsWith(quick),"Menü verdeckt die Sprechblase");
     Require(DesktopMotion.Along(42,new Rectangle(0,0,0,0))==Point.Empty,"Kleiner Monitor");
+    using(var panel=new DesktopPanel()){
+      panel.ToggleCockpit();var area=Screen.FromRectangle(panel.Bounds).WorkingArea;
+      Require(area.Contains(panel.Bounds),"Großes Cockpit verlässt den Monitor");
+      Require(panel.ClientSize.Width==Math.Min(980,area.Width),"Cockpit-Größe fehlt");
+      panel.ToggleCockpit();Require(panel.ClientSize.Width==Math.Min(520,area.Width),"Kompaktes Menü kehrt nicht zurück");
+    }
     using(var pet=new DesktopPet(true)){
       Require(pet.HasModel&&pet.LoadFigureNow(),"Metall-Ressourcen fehlen");
       Set(pet,"happyUntil",0.0);Set(pet,"hover",false);Set(pet,"watching",false);

@@ -1,6 +1,6 @@
 {
   "name": "tecmon-companion",
-  "version": "0.51.1",
+  "version": "0.52.0",
   "private": true,
   "description": "Local Windows companion for TecMon: CS2 demo highlight recording and VAC-safe round tips via official Game State Integration",
   "license": "MIT",
@@ -13,6 +13,7 @@
     "test": "node --test tools/cs2-companion/test/*.test.mjs"
   },
   "devDependencies": {
+    "linkedom": "^0.18.15",
     "sharp": "0.35.5",
     "typescript": "5.9.2"
   }

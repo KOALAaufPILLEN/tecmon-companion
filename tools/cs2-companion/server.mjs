@@ -1110,6 +1110,7 @@ export async function createCompanion({
       const assets = {
         "/": ["index.html", "text/html; charset=utf-8"],
         "/app.js": ["app.js", "text/javascript; charset=utf-8"],
+        "/menu.js": ["menu.js", "text/javascript; charset=utf-8"],
         "/style.css": ["style.css", "text/css; charset=utf-8"],
         "/logo.webp": ["logo.webp", "image/webp"],
         "/favicon.ico": ["favicon.ico", "image/x-icon"],
