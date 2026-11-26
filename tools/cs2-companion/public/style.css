@@ -303,3 +303,7 @@ body.holo .mode-pick button[aria-checked="true"]{--edge:var(--gold);--fill:linea
 body.holo .tour-actions button:not(.subtle){--edge:#f5d36b;--fill:linear-gradient(135deg,#e8c573,#c9a04a);color:#15121a;font-weight:700}
 @keyframes tour-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.tour-hole,.tour-card{transition:none;animation:none}}
+
+/* Bewegungsmodus ersetzt den einzelnen Flugschalter. */
+.figure-flags .figure-motion{display:grid;grid-template-columns:1fr;flex:1 1 100%;gap:6px;align-items:stretch}
+.figure-flags .figure-motion select{width:100%;min-width:0}

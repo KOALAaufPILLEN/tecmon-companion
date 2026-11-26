@@ -6,7 +6,7 @@ import path from "node:path";
 import { cleanDesktopSettings, createDesktopSettings, DESKTOP_DEFAULTS, TUTORIAL_VERSION } from "../desktop-settings.mjs";
 
 test("Desktop-Einstellungen: Standard ist 3D, Umherfliegen an, Autostart aus", () => {
-  assert.deepEqual(cleanDesktopSettings(null), { quality: "high", wander: true, animate: true, foreground: true, autostart: false, chatPos: null, ui: "advanced", tutorial: TUTORIAL_VERSION });
+  assert.deepEqual(cleanDesktopSettings(null), { quality: "high", motion: "chill", gameEconomy: true, wander: true, animate: true, foreground: true, autostart: false, chatPos: null, ui: "advanced", tutorial: TUTORIAL_VERSION });
 });
 
 test("Desktop-Einstellungen übernehmen nur bekannte Felder mit gültigen Werten", () => {
@@ -57,4 +57,20 @@ test("Ansicht und Tutorial: ältere Einstellungen bleiben „Erweitert“ ohne T
   assert.equal(cleanDesktopSettings({ tutorial: TUTORIAL_VERSION }, fresh).tutorial, TUTORIAL_VERSION);
   // Die Figur schickt nur ihre eigenen Schalter: Ansicht bleibt erhalten.
   assert.equal(cleanDesktopSettings({ wander: true, quality: "high" }, fresh).ui, "simple");
+});
+
+test("Bewegungsmodi migrieren den alten Flugschalter und bleiben mit Sparmodus erhalten", async () => {
+  assert.equal(cleanDesktopSettings({ wander: false }).motion, "still");
+  assert.equal(cleanDesktopSettings({ wander: true }).motion, "chill");
+  const hyper = cleanDesktopSettings({ motion: "hyper", wander: false });
+  assert.equal(hyper.motion, "hyper");
+  assert.equal(hyper.wander, true);
+  assert.equal(cleanDesktopSettings({ motion: "unknown" }, hyper).motion, "hyper");
+  const dir = await mkdtemp(path.join(tmpdir(), "tecmon-motion-"));
+  const settings = await createDesktopSettings(dir);
+  await settings.set({ motion: "hyper", gameEconomy: false });
+  const again = await createDesktopSettings(dir);
+  assert.equal(again.get().motion, "hyper");
+  assert.equal(again.get().gameEconomy, false);
+  assert.equal(again.get().quality, "high", "Sparmodus überschreibt die bevorzugte Darstellung nicht");
 });

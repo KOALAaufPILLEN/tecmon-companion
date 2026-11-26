@@ -214,6 +214,26 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   `HKCU\…\CurrentVersion\Run` (`TecMon.SetAutostart()`), standardmäßig aus, beim
   Deinstallieren entfernen. Keine Aufgabenplanung, keine Adminrechte.
 
+### Bewegungsmodi, Sparmodus und Menü (Nutzerentscheid 26.11.2026)
+
+- `desktop.motion` = `still` / `chill` / `hyper` ersetzt den Flugschalter. Alte
+  `wander`-Werte migrieren; den abgeleiteten Kompatibilitätswert erhalten. Modus,
+  Animation und Persönlichkeit sind unterschiedliche Einstellungen.
+- Automatischer Flug bleibt am Monitorrand, nicht durch die Spielmitte. Explizit
+  verschobene Figur darf zum nächsten Rand andocken. Stillstand bleibt am Platz.
+  Tricks/Verwandlung respektieren Animation aus, Schlaf, Aufnahme und aktive Runde.
+- 3D und sparsame Ansichten behalten denselben metallischen Charakter. Sparmodus
+  während erkannter Spielsitzungen überschreibt niemals die gespeicherte Qualität.
+  Spielprozess nur über Namen/PID/Lebensdauer erkennen, kein Speicherzugriff/Hook.
+  Ohne verlässliche Spielphase keine Verwandlungssprüche im Vordergrundspiel.
+- Sprechblasen müssen Menü/Fenster bei der Platzwahl berücksichtigen und dürfen
+  den Fokus nicht nehmen. Bei zu wenig Platz Überschneidung minimieren.
+  Kategorien/Unterkarten standardmäßig geschlossen, gezielte Sprünge öffnen sie.
+  Bestehende Funktionen müssen über vollständiges Menü/Fenster erreichbar bleiben.
+- Der große neue Menüaufbau ist vorerst ein interaktiver Entwurf. Funktionsinventar
+  und Beschreibung unter [Figur und Menü](docs/companion-motion-and-menu.md) pflegen;
+  Entwurf, veröffentlichte Version und installierte Version klar unterscheiden.
+
 ## Update-EXE
 
 - Der äußere Updater enthält keine Figur-Grafiken (Größengrenze 20 MB älterer Companions, Build-Prüfung in
