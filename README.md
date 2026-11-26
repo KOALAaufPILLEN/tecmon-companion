@@ -1,7 +1,10 @@
 # TecMon Companion
 
-**Arbeitsstand, 26. November 2026:** 0.51.0 ist für Review vorbereitet; noch nicht
-als Update veröffentlicht oder auf dem Nutzer-PC installiert. Prognose-Webseite
+**Merge-Stand, 26. November 2026:** Companion 0.51.0 ist mit
+[#132](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/132) gemergt
+(`4916a5d`), Windows- und Linux-Checks erfolgreich. Der Release-Workflow läuft
+separat; ein fertiges Update oder die Installation auf dem Nutzer-PC ist damit
+noch nicht nachgewiesen. Prognose-Webseite
 [#211](https://github.com/KOALAaufPILLEN/tecmon/pull/211) ist gemergt und produktiv.
 
 ## Neu in 0.51.0 · Metallfigur, Bewegungsmodi und sichtbare Sprechblasen
