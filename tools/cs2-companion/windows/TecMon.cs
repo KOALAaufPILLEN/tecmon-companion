@@ -154,12 +154,12 @@ static class TecMon {
     if(launch) Process.Start(new ProcessStartInfo(Path.Combine(target,"TecMon Companion.exe")){WorkingDirectory=target,UseShellExecute=false});
   }
   public static void WriteUpdateResult(string target,string status,string message) {
-    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.51.0",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
+    try {File.WriteAllText(Path.Combine(target,"update-result.json"),Json.Serialize(new { status=status,message=message,version="0.51.1",time=DateTime.UtcNow.ToString("o") }),new UTF8Encoding(false));} catch {}
   }
   public static void UpdateRegistration(string target) {
     using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion",true)) {
       if(key==null || !String.Equals(Convert.ToString(key.GetValue("InstallLocation","")),target,StringComparison.OrdinalIgnoreCase))return;
-      key.SetValue("DisplayVersion","0.51.0");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
+      key.SetValue("DisplayVersion","0.51.1");key.SetValue("DisplayIcon",Path.Combine(target,"TecMon Companion.exe"));
     }
     foreach(var file in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"TecMon Companion.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"TecMon","TecMon Companion.lnk")})
       if(File.Exists(file))Shortcut(file,Path.Combine(target,"TecMon Companion.exe"));
@@ -174,7 +174,7 @@ static class TecMon {
     var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "TecMon"); Directory.CreateDirectory(programs);
     Shortcut(Path.Combine(programs, "TecMon Companion.lnk"), app);
     using(var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) {
-      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.51.0"); key.SetValue("Publisher", "TecMon");
+      key.SetValue("DisplayName", "TecMon Companion"); key.SetValue("DisplayVersion", "0.51.1"); key.SetValue("Publisher", "TecMon");
       key.SetValue("InstallLocation", target); key.SetValue("DisplayIcon", app); key.SetValue("UninstallString", Q(app) + " --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
     }
   }
@@ -317,7 +317,7 @@ static class TecMon {
         string target=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),@"Programs\TecMon Companion");
         using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\TecMonCompanion")) if(key!=null) target=Convert.ToString(key.GetValue("InstallLocation",target));
         if(!File.Exists(Path.Combine(target,"installation.json"))) using(var dialog=new FolderBrowserDialog { Description="Bestehenden TecMon-Programmordner wählen",SelectedPath=target }) {if(dialog.ShowDialog()!=DialogResult.OK)return 0;target=dialog.SelectedPath;}
-        if(MessageBox.Show("TecMon Companion auf 0.51.0 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
+        if(MessageBox.Show("TecMon Companion auf 0.51.1 aktualisieren?\n\nVorher den Companion schließen. Nur Programmdateien werden ersetzt. Tools, Demos, Videos und Einstellungen bleiben erhalten.","TecMon Update",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes) ApplyUpdate(target,"");
         return 0;
       }
       if(Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("TecMonPayload")) { Application.Run(new SetupWindow()); return 0; }
@@ -1595,7 +1595,8 @@ class DesktopPet : Form {
     MouseEnter+=(s,e)=>hover=true;MouseLeave+=(s,e)=>hover=false;
     MouseDown+=(s,e)=>{if(e.Button!=MouseButtons.Left)return;dragging=true;flightDistance=-1;moved=false;dragStart=Cursor.Position;start=Location;Capture=true;};
     MouseMove+=(s,e)=>{if(!dragging)return;var delta=new Size(Cursor.Position.X-dragStart.X,Cursor.Position.Y-dragStart.Y);if(Math.Abs(delta.Width)+Math.Abs(delta.Height)>5)moved=true;if(moved){var bounds=Screen.FromPoint(Cursor.Position).WorkingArea;Location=Fit(new Point(start.X+delta.Width,start.Y+delta.Height),bounds,Size);x=Left;y=Top;if(panel!=null&&panel.Visible)AnchorPanel();}};
-    MouseUp+=(s,e)=>{if(e.Button!=MouseButtons.Left||!dragging)return;dragging=false;Capture=false;if(!moved)Toggle();};
+    MouseUp+=(s,e)=>{if(e.Button!=MouseButtons.Left||!dragging)return;bool open=!moved;ReleaseDrag();if(open)Toggle();};
+    MouseCaptureChanged+=(s,e)=>{if(dragging&&!Capture)ReleaseDrag();};
     KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&panel!=null)panel.Hide();else if(e.KeyCode==Keys.Enter||e.KeyCode==Keys.Space)Toggle();};
     /* Etwa 60 Bilder pro Sekunde; Bewegung nach vergangener Zeit statt pro Takt, damit sie gleichmäßig bleibt. */
     animation.Interval=15;animation.Tick+=(s,e)=>Tick();
@@ -1606,7 +1607,8 @@ class DesktopPet : Form {
       if(openOnStart||firstTour)Toggle();};
     FormClosed+=(s,e)=>{animation.Stop();poll.Stop();if(panel!=null)panel.Dispose();if(tip!=null)tip.Dispose();if(overlay!=null)overlay.Dispose();if(chatOverlay!=null)chatOverlay.Dispose();if(chatTip!=null)chatTip.Dispose();if(tray!=null)tray.Dispose();if(sheet!=null)sheet.Dispose();if(model!=null)model.Dispose();if(cells!=null)foreach(var cell in cells)cell.Dispose();if(canvas!=null)canvas.Dispose();if(figure!=null)figure.Dispose();if(figureFrame!=null)figureFrame.Dispose();if(owns)singleton.ReleaseMutex();if(singleton!=null)singleton.Dispose();if(openSignal!=null)openSignal.Dispose();animation.Dispose();poll.Dispose();};
   }
-  Bitmap model,canvas;Bitmap[] cells;double yaw,yawVel,clockLast,talkUntil,happyUntil,blinkAt=3,blinkUntil,pendingSince,frontSince=-1,moodAt=10,moodUntil,activeAt;int mood=-1,afterTalk=-1,forced=-1;double busyFrame;bool watching;Action pendingTip;
+  Bitmap model,canvas;Bitmap[] cells;double yaw,yawVel,clockLast,talkUntil,happyUntil,blinkAt=3,blinkUntil,pendingSince,frontSince=-1,moodAt=10,moodUntil,activeAt,releaseUntil;int mood=-1,afterTalk=-1,forced=-1;double busyFrame;bool watching;Action pendingTip;
+  void ReleaseDrag(){dragging=false;Capture=false;x=Left;y=Top;flightDistance=-1;vx=0;vy=0;releaseUntil=clock.Elapsed.TotalSeconds+1.25;}
   readonly Stopwatch clock=Stopwatch.StartNew();readonly Random random=new Random();/* Bogen: 72 Drehwinkel in 5°-Schritten, danach die LED-Ausdrücke (Reihenfolge wie FACES in scripts/figure-3d/faces.py). */
   const int CellW=200,CellH=130,Cols=8,Turns=72,Blink=72,Happy=73,TalkA=74,TalkB=75,FocusFace=76,Busy=77,Wink=78,Surprised=79,Dizzy=80,Laugh=81,Love=82,Kiss=83,Angry=84,Sleepy=85,Tongue=86,Sad=87,Cool=88,Star=89,Confused=90,Busy2=91,Busy3=92,Busy4=93,LookL=94,LookR=95,Faces=96;
   const double Step=360.0/Turns,SleepAfter=180;
@@ -1614,6 +1616,8 @@ class DesktopPet : Form {
   void Tick(){
     double now=clock.Elapsed.TotalSeconds,dt=Math.Min(0.1,Math.Max(0,now-clockLast));clockLast=now;
     if(!Visible)return;
+    if(dragging&&(Control.MouseButtons&MouseButtons.Left)==0)ReleaseDrag();
+    hover=Bounds.Contains(Cursor.Position)&&now>=releaseUntil;
     if(tip!=null&&!tip.IsDisposed&&tip.Visible)tip.Relayout(FollowTipAnchor());
     if(chatTip!=null&&!chatTip.IsDisposed&&chatTip.Visible)chatTip.Relayout(FollowTipAnchor());
     /* Während der Aufnahme sichtbar bleiben und sanft schweben, aber sparsam: etwa 20 Bilder pro Sekunde, kein Umherfliegen. */
@@ -1634,10 +1638,10 @@ class DesktopPet : Form {
       var bounds=Screen.FromRectangle(Bounds).WorkingArea;var route=DesktopMotion.Route(bounds,Size);var edge=DesktopMotion.Edge(Location,route);
       double dx=edge.X-x,dy=edge.Y-y,len=Math.Sqrt(dx*dx+dy*dy);docking=len>2;
       Point next;
-      if(docking){flightDistance=-1;double k=Math.Min(1,dt*620/Math.Max(1,len));x+=dx*k;y+=dy*k;next=new Point((int)Math.Round(x),(int)Math.Round(y));}
-      else{double speed=motionMode=="hyper"?100:20;var previous=Location;if(flightDistance<0||flightRoute!=route){flightDistance=DesktopMotion.Distance(previous,route);flightRoute=route;}flightDistance+=dt*speed;next=DesktopMotion.Along(flightDistance,route);vx=next.X-previous.X;vy=next.Y-previous.Y;x=next.X;y=next.Y;}
+      if(docking){flightDistance=-1;double k=Math.Min(1,dt*620/Math.Max(1,len));vx=dx/Math.Max(1,len);vy=dy/Math.Max(1,len);x+=dx*k;y+=dy*k;next=new Point((int)Math.Round(x),(int)Math.Round(y));}
+      else{double speed=motionMode=="hyper"?100:20;var previous=Location;if(flightDistance<0||flightRoute!=route){flightDistance=DesktopMotion.Distance(previous,route);flightRoute=route;}flightDistance+=dt*speed;next=DesktopMotion.Along(flightDistance,route);var ahead=DesktopMotion.Along(flightDistance+2,route);vx=(ahead.X-next.X)/2.0;vy=(ahead.Y-next.Y)/2.0;x=next.X;y=next.Y;}
       Location=Fit(next,bounds,Size);
-    }else docking=false;
+    }else{docking=false;vx=0;vy=0;}
     if(animate&&motionMode!="still"&&idle&&!readable&&!gameSession&&!watching&&!busy&&now>nextTrick){
       nextTrick=now+(motionMode=="hyper"?12+random.NextDouble()*14:65+random.NextDouble()*55);
       trickKind=random.Next(4);trickAt=now;spinLeft=trickKind<2?(trickKind==1?720:360):0;mood=Moods[random.Next(Moods.Length)];moodUntil=now+2.5;
@@ -1646,7 +1650,7 @@ class DesktopPet : Form {
       /* Gedämpfte Feder: weiches Anlaufen und Abbremsen beim Drehen. */
       /* Trick: eine schnelle ganze Drehung, danach federt die Figur wieder nach vorn. */
       if(spinLeft>0){double step=Math.Min(spinLeft,(motionMode=="hyper"?900:480)*dt);spinLeft-=step;yaw=(yaw+step)%360;yawVel=0;}
-      else{double diff=Turn(Target(now));yawVel+=(diff*70-yawVel*16.7)*dt;yaw=((yaw+yawVel*dt)%360+360)%360;}
+      else{double step=Turn(Target(now))*(1-Math.Exp(-7*dt));yawVel=dt>0?step/dt:0;yaw=((yaw+step)%360+360)%360;}
       if(now>blinkAt){blinkUntil=now+0.14;blinkAt=now+2.5+random.NextDouble()*4;}
     }else if(model!=null){yaw=0;yawVel=0;}
     Render();
@@ -1658,8 +1662,8 @@ class DesktopPet : Form {
     if(pendingTip!=null||Talking(now)||now<happyUntil)return 0;
     if(watching)return 180;
     if(dragging||hover||(panel!=null&&panel.Visible)||MenuOpen()||!wandering)return 0;
-    if(docking)return vx>0?65:-65;
-    return Math.Sin(now*0.31)>0.45?0:(vx>0?32:-32);
+    if(Math.Abs(vx)>0.1)return vx>0?45:-45;
+    return 0;
   }
   /* Welcher LED-Ausdruck gerade gilt; -1 = normales Drehbild. */
   int FaceIndex(double now){
@@ -1683,7 +1687,7 @@ class DesktopPet : Form {
     double now=clock.Elapsed.TotalSeconds;bool live=animate&&motionMode!="still";
     int face=FaceIndex(now);
     /* Schweben, leichtes Wiegen und Neigen in die Drehung; Teilpixel, damit nichts ruckelt. */
-    float bob=live?(float)(Math.Sin(now*2.1)*5):0,roll=live?(float)(Math.Sin(now*1.4)*2.5+Math.Max(-7,Math.Min(7,yawVel*0.02))+Math.Max(-3,Math.Min(3,vx*4))+(docking?10:0)):0;
+    float bob=live?(float)(Math.Sin(now*1.4)*(motionMode=="hyper"?1.8:0.8)):0,roll=live?(float)(Math.Max(-1.2,Math.Min(1.2,yawVel*0.006))):0;
     double trickTime=now-trickAt;bool playingTrick=live&&trickTime>=0&&trickTime<1.8;
     if(playingTrick&&trickKind>=2){bob-=(float)(Math.Abs(Math.Sin(trickTime*Math.PI*2))*10);roll+=(float)(Math.Sin(trickTime*Math.PI*3)*(trickKind==2?17:7));}
     if(live&&Talking(now))bob-=(float)Math.Abs(Math.Sin(now*9))*1.6f;
@@ -2132,7 +2136,7 @@ class DesktopPet : Form {
     if(panel.Visible){panel.Hide();return;}
     panel.TopMost=OnTop();PopPanel();panel.Show(this);panel.Activate();
   }
-  public Bitmap Frame(){if(model!=null)return Frame3D();var bitmap=new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format32bppArgb);using(var g=Graphics.FromImage(bitmap)){g.Clear(Color.Transparent);g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;int emotion=busy?3:new[]{0,1,2,0,6,9}[(int)(phase/12)%6];int row=emotion/3;var heights=new[]{390,340,324,411};var tops=new[]{0,390,730,1040};var target=new Rectangle(5,8+(animate?(int)(Math.Sin(phase)*5):0),134,145);if(sheet!=null)g.DrawImage(sheet,target,new Rectangle((emotion%3)*361,tops[row],361,heights[row]),GraphicsUnit.Pixel);}return bitmap;}
+  public Bitmap Frame(){if(model!=null)return Frame3D();var bitmap=new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format32bppArgb);using(var g=Graphics.FromImage(bitmap)){g.Clear(Color.Transparent);g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;int emotion=busy?3:new[]{0,1,2,0,6,9}[(int)(phase/12)%6];int row=emotion/3;var heights=new[]{390,340,324,411};var tops=new[]{0,390,730,1040};var target=new Rectangle(5,8+(animate&&motionMode!="still"?(int)Math.Round(Math.Sin(phase)*0.8):0),134,145);if(sheet!=null)g.DrawImage(sheet,target,new Rectangle((emotion%3)*361,tops[row],361,heights[row]),GraphicsUnit.Pixel);}return bitmap;}
   void Render(){
     if(!IsHandleCreated||!Visible)return;
     /* 3D-Figur: ein wiederverwendetes Bild statt etwa 60 neuer Bitmaps pro Sekunde. */

@@ -1,5 +1,15 @@
 # TecMon Companion
 
+## Vorbereitet in 0.51.1 · Ruhiger Flug und zuverlässiges Loslassen
+
+- Blickrichtung folgt der tatsächlichen Flugrichtung, auch bei langsamem Flug;
+  keine wechselnde Richtung durch gerundete 0-/1-Pixel-Schritte.
+- Ruhigere Schwebeanimation, keine Neigung aus Pixelsprüngen oder beim Andocken.
+  Drehung nähert sich ohne Federüberschwingen dem Ziel.
+- Mausfang endet auch bei verlorenem Capture oder außerhalb losgelassener Taste.
+  Nach dem Verschieben 1,25 Sekunden freie Andockphase trotz Maus über der Figur.
+- Noch nicht veröffentlicht/installiert; Änderungen und native Regressionstests im PR.
+
 **Merge-Stand, 26. November 2026:** Companion 0.51.0 ist mit
 [#132](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/132) gemergt
 (`4916a5d`), Windows- und Linux-Checks erfolgreich. Der Release-Workflow läuft

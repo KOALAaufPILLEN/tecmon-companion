@@ -9,6 +9,7 @@ class DesktopMotionSelfTest {
   static void Set(DesktopPet pet,string field,object value){typeof(DesktopPet).GetField(field,BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,value);}
   static object Get(DesktopPet pet,string field){return typeof(DesktopPet).GetField(field,BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet);}
   static void Call(DesktopPet pet,string method,params object[] values){typeof(DesktopPet).GetMethod(method,BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,values);}
+  static double Target(DesktopPet pet,double now){return (double)typeof(DesktopPet).GetMethod("Target",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{now});}
   static bool Same(Bitmap a,Bitmap b){if(a.Size!=b.Size)return false;for(int y=0;y<a.Height;y++)for(int x=0;x<a.Width;x++)if(a.GetPixel(x,y)!=b.GetPixel(x,y))return false;return true;}
   public static int Main(string[] args){
     var size=new Size(214,160);
@@ -38,6 +39,13 @@ class DesktopMotionSelfTest {
     Require(DesktopMotion.Along(42,new Rectangle(0,0,0,0))==Point.Empty,"Kleiner Monitor");
     using(var pet=new DesktopPet(true)){
       Require(pet.HasModel&&pet.LoadFigureNow(),"Metall-Ressourcen fehlen");
+      Set(pet,"happyUntil",0.0);Set(pet,"hover",false);Set(pet,"watching",false);
+      Set(pet,"vx",1.0);Require(Target(pet,1000)==45&&Target(pet,1007)==45,"Rechtsflug schaut zeitabhängig in falsche Richtung");
+      Set(pet,"vx",-1.0);Require(Target(pet,1000)==-45&&Target(pet,1007)==-45,"Linksflug schaut zeitabhängig in falsche Richtung");
+      Set(pet,"vx",0.0);Require(Target(pet,1000)==0,"Vertikalflug kippt nach links");
+      Set(pet,"dragging",true);Call(pet,"ReleaseDrag");
+      Require(!(bool)Get(pet,"dragging")&&!pet.Capture,"Loslassen hält Mausfang fest");
+      Require((double)Get(pet,"releaseUntil")>0&&((double)Get(pet,"flightDistance"))<0,"Nach Verschieben fehlt freie Andockphase");
       Set(pet,"animate",false);
       using(var preferred=pet.Preview(32.5,-1)){
         Call(pet,"SetGameSession",true);
