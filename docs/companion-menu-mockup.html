@@ -49,6 +49,7 @@
     #tm-companion-concept .tm-compact .tm-nav button{flex:1 1 100px}
     @media(max-width:850px){#tm-companion-concept .tm-layout,#tm-companion-concept .tm-compact .tm-layout{grid-template-columns:140px minmax(0,1fr)}#tm-companion-concept .tm-preview{grid-column:1/-1;border-left:0;border-top:1px solid var(--tm-line);display:grid;grid-template-columns:1fr 1fr;gap:12px}#tm-companion-concept .tm-preview h3,#tm-companion-concept .tm-preview>small{grid-column:1/-1}#tm-companion-concept .tm-preview .tm-screen{margin:0}#tm-companion-concept .tm-preview .tm-speech{margin:0}#tm-companion-concept .tm-compact .tm-nav{grid-column:1/-1}}
     @media(max-width:520px){#tm-companion-concept .tm-layout,#tm-companion-concept .tm-compact .tm-layout{display:block}#tm-companion-concept .tm-nav{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--tm-line)}#tm-companion-concept .tm-nav button{flex:1 1 85px}#tm-companion-concept .tm-preview{display:block}#tm-companion-concept .tm-speech{margin-top:12px!important}#tm-companion-concept .tm-modes{grid-template-columns:1fr}#tm-companion-concept .tm-modes button{min-height:44px}#tm-companion-concept .tm-modes small{display:inline;margin-left:6px}#tm-companion-concept .tm-top{padding-right:95px}#tm-companion-concept .tm-setting{align-items:flex-start}}
+    @media(pointer:coarse){#tm-companion-concept select,#tm-companion-concept textarea,#tm-companion-concept input:not([type=checkbox]){font-size:16px}}
     @media(prefers-reduced-motion:reduce){#tm-companion-concept *{transition:none!important}}
   </style>
   <div class="viz-carousel" aria-label="Companion-Menüentwürfe" data-previous-label="Vorheriger Entwurf" data-next-label="Nächster Entwurf">
@@ -91,7 +92,7 @@
         const left=Math.max(0,bot.parentElement.clientWidth-70)+'px',top=Math.max(0,bot.parentElement.clientHeight-46)+'px';
         bot.animate(kind==='trick'?[{transform:'rotateY(0deg)'},{transform:'rotateY(180deg) translateY(-12px)'},{transform:'rotateY(360deg)'}]:[{right:'0px',bottom:'0px'},{right:'0px',bottom:top},{right:left,bottom:top},{right:left,bottom:'0px'},{right:'0px',bottom:'0px'}],{duration:kind==='hyper'?1800:kind==='trick'?1200:4200,iterations:1,easing:'ease-in-out'});
       }
-      function save(){if(window.openai?.setWidgetState)window.openai.setWidgetState({modelContent:{menu:state.group,motion:state.motion,gameEconomy:state.economy},privateContent:null}).catch(()=>{});}
+      function save(){if(window.openai?.setWidgetState)window.openai.setWidgetState({modelContent:{menu:state.group,motion:state.motion,quality:state.quality,gameEconomy:state.economy},privateContent:null}).catch(()=>{});}
       function renderControls(section,parent){
         const detail=make('details');detail.className='tm-details';detail.dataset.source=section.id;
         const summary=make('summary',names[section.id]||section.title);summary.append(make('small',section.controls.length+' Optionen'));detail.append(summary);
@@ -114,7 +115,7 @@
           const choices=make('div');choices.className='tm-modes';
           for(const [key,[title,note]] of Object.entries(modes)){const button=make('button',title);button.type='button';button.setAttribute('aria-pressed',String(state.motion===key));button.append(make('small',note));button.addEventListener('click',()=>{state.motion=key;say(title+' · '+note);show();move(key);save();});choices.append(button);}main.append(choices);
           const quality=make('div');quality.className='tm-inline';quality.setAttribute('role','group');quality.setAttribute('aria-label','Darstellung');
-          for(const [key,title] of [['high','3D in Echtzeit'],['low','Sparsame Bilder']]){const b=make('button',title);b.type='button';b.setAttribute('aria-pressed',String(state.quality===key));b.addEventListener('click',()=>{state.quality=key;show();say(title+' ausgewählt. Der Metall-Look bleibt.');});quality.append(b);}main.append(quality);
+          for(const [key,title] of [['high','3D in Echtzeit'],['low','Sparsame Bilder']]){const b=make('button',title);b.type='button';b.setAttribute('aria-pressed',String(state.quality===key));b.addEventListener('click',()=>{state.quality=key;show();say(title+' ausgewählt. Der Metall-Look bleibt.');save();});quality.append(b);}main.append(quality);
           const label=make('label');label.className='tm-setting';label.append(make('span','Beim Spielen automatisch sparsam – mit kurzer Verwandlung'));const toggle=make('input');toggle.type='checkbox';toggle.checked=state.economy;toggle.addEventListener('change',()=>{state.economy=toggle.checked;say(toggle.checked?'Spielstart: kurz verwandeln, danach sparsam.':'Deine gewählte Darstellung bleibt auch im Spiel aktiv.');save();});label.append(toggle);main.append(label);
           const actions=make('div');actions.className='tm-inline';for(const [text,run] of [['Trick zeigen',()=>{say('Gleicher Metallkopf. Neue Tricks.');move('trick');}],['Erzähl einen Witz',()=>say('Ich wollte gerade deine CPU aufwärmen. Hab dann gesehen: Du spielst schon.')]]){const b=make('button',text);b.type='button';b.addEventListener('click',run);actions.append(b);}main.append(actions);
         }
@@ -122,7 +123,9 @@
       }
       groups.forEach(group=>{const b=make('button',group.name);b.type='button';b.dataset.page=group.id;b.addEventListener('click',()=>{state.group=group.id;show();save();});nav.append(b);});
       app.querySelector('.tm-game-test').addEventListener('click',()=>{if(!state.economy){say('Automatischer Sparmodus ist aus. Deine Darstellung bleibt erhalten.');return;}say('TecMon entwickelt sich zuuuuuuu …');move('trick');timer=setTimeout(()=>{say('TecMon! Sorry, gleicher Typ. Weniger Ressourcen. Mehr FPS für dich.');},2100);});
-      const saved=window.openai?.widgetState?.modelContent;if(saved?.motion in modes)state.motion=saved.motion;
+      function restore(saved){if(!saved||typeof saved!=='object')return;if(saved.motion in modes)state.motion=saved.motion;if(groups.some(g=>g.id===saved.menu))state.group=saved.menu;if(saved.quality==='high'||saved.quality==='low')state.quality=saved.quality;if(typeof saved.gameEconomy==='boolean')state.economy=saved.gameEconomy;}
+      restore(window.openai?.widgetState?.modelContent);
+      window.addEventListener('openai:set_globals',event=>{restore(event.detail?.globals?.widgetState?.modelContent);show();});
       show();
     });
     const design={spacing:18};if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:()=>root.style.setProperty('--tm-space',design.spacing+'px')});tweak.addSlider(design,'spacing',{label:'Abstand im Menü',min:12,max:24,step:2,unit:'px'});}
