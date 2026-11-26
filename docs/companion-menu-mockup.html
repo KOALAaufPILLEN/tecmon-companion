@@ -12,10 +12,12 @@
     #tm-companion-concept button,#tm-companion-concept select,#tm-companion-concept input,#tm-companion-concept textarea{font:inherit;color:var(--tm-text);background:#23182f;border:1px solid var(--tm-line);border-radius:0;min-height:40px;padding:8px 10px;max-width:100%}
     #tm-companion-concept button{cursor:inherit;text-align:left;transition:background-color .15s,border-color .15s,transform .15s}
     #tm-companion-concept button:active{transform:scale(.97)}
-    #tm-companion-concept button[aria-pressed=true],#tm-companion-concept button[aria-current=page]{border-color:var(--tm-gold);background:#3a2b28;color:var(--tm-gold)}
+    #tm-companion-concept button[aria-pressed=true],#tm-companion-concept button[aria-current=page]{border-color:#f5d36b;background:linear-gradient(135deg,#e8c573,#c9a04a);color:#15121a;clip-path:polygon(7px 0,calc(100% - 7px) 0,100% 7px,100% calc(100% - 7px),calc(100% - 7px) 100%,7px 100%,0 calc(100% - 7px),0 7px)}
+    #tm-companion-concept button[aria-pressed=true] small{color:#35243c}
     #tm-companion-concept button:hover{background:#362344}
     #tm-companion-concept .tm-nav button{border-color:transparent;background:transparent}
-    #tm-companion-concept .tm-nav button[aria-current=page]{background:#342235;border-color:var(--tm-gold)}
+    #tm-companion-concept .tm-nav button[aria-current=page]{background:linear-gradient(135deg,#e8c573,#c9a04a);border-color:transparent;color:#15121a;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);padding-left:15px;padding-right:15px}
+    #tm-companion-concept button[aria-pressed=true]:hover{background:linear-gradient(135deg,#f5d889,#d9af58)}
     #tm-companion-concept .tm-main{padding:var(--tm-space);min-width:0}
     #tm-companion-concept h2{font-size:24px;line-height:1.2;margin:3px 0 8px;color:var(--tm-text)}
     #tm-companion-concept h3{font-size:15px;margin:20px 0 8px;color:var(--tm-purple)}
@@ -31,6 +33,7 @@
     #tm-companion-concept .tm-details{margin:10px 0;border-bottom:1px solid var(--tm-line)}
     #tm-companion-concept summary{padding:12px 3px;color:var(--tm-text);cursor:inherit;min-height:44px}
     #tm-companion-concept summary small{font-size:11px;color:var(--tm-muted);margin-left:8px}
+    #tm-companion-concept .tm-details[open]>summary{color:var(--tm-gold);background:linear-gradient(135deg,#2a2036,#17121f);padding-left:12px;padding-right:12px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);border-left:2px solid var(--tm-gold)}
     #tm-companion-concept .tm-fields{padding:0 4px 12px;display:grid;gap:10px}
     #tm-companion-concept .tm-fields label{display:grid;gap:5px;font-size:13px;min-width:0}
     #tm-companion-concept .tm-fields .tm-check{display:flex;align-items:center;gap:10px}

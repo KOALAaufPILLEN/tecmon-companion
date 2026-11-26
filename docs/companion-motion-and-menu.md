@@ -71,6 +71,10 @@ Sieben Bereiche: TecMon; Spiele & Tipps; Aufnahmen; Demos & Stats; Overlays & Ch
 Clips & Galerie; System. Figur/Sprechblase bekommen eine eigene Vorschaufläche.
 Unterpunkte werden bewusst geöffnet, immer nur einer. Die Alternative verwendet
 Themenreiter statt einer Seitennavigation.
+Aktive Navigation übernimmt das goldene Parallelogramm aus dem bestehenden
+Companion-Menü (`public/style.css`, `.panel-tabs`); ausgewählte Spiel-/Modusknöpfe
+erhalten dessen Goldverlauf mit 7-px-Eckschnitten. Offene Unterpunkte haben einen
+lila/goldenen Kopf. Inaktive Menüpunkte bleiben ruhig und die Auswahl bleibt lesbar.
 
 „Spiele & Tipps“ beginnt mit der Spielauswahl: Counter-Strike 2 (Rundentipps,
 alle Tipparten, Quiz), Dota 2 (Tipps und Tipparten), Wardogs (Scoreboard-Foto).
