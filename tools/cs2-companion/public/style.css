@@ -308,21 +308,33 @@ body.holo .tour-actions button:not(.subtle){--edge:#f5d36b;--fill:linear-gradien
 .figure-flags .figure-motion{display:grid;grid-template-columns:1fr;flex:1 1 100%;gap:6px;align-items:stretch}
 .figure-flags .figure-motion select{width:100%;min-width:0}
 /* Companion-Cockpit: echte bestehende Karten, kompakt neben der Figur oder breit. */
-.desktop-panel .companion-cockpit{display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;margin:12px 0;align-items:start}
-.desktop-panel .cockpit-nav{display:flex;flex-direction:column;gap:7px;min-width:0}
-body.desktop-panel.holo .cockpit-nav button{min-height:42px;text-align:left;white-space:normal}
-.desktop-panel .cockpit-content,.desktop-panel .cockpit-page{min-width:0}
-.desktop-panel .cockpit-page>h2{font-size:22px;color:#f1eef7;margin:0 0 12px}
-.desktop-panel .cockpit-game-picker{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 16px}
-.desktop-panel .cockpit-game-picker button{flex:1 1 130px;white-space:normal;min-height:42px}
-body.desktop-panel.holo :is(.cockpit-nav button[aria-current="page"],.cockpit-game-picker button[aria-pressed="true"]){--cut:6px;--edge:#e8c573c8;--fill:linear-gradient(#a78bfa3c,#a78bfa3c),linear-gradient(#1b1626,#0b0a11);color:#fff;box-shadow:inset 3px 0 0 #e8c573;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
-body.desktop-panel.holo .cockpit-nav button[data-pending="true"]::after{content:' · Anfrage';color:#e8c573}
-.desktop-panel .cockpit-fold{margin:0 0 10px;border-bottom:1px solid #3a2f4d}
-.desktop-panel .cockpit-fold>summary{padding:12px 9px;min-height:44px;font-size:14px}
-.desktop-panel .cockpit-fold[open]>summary{background:linear-gradient(135deg,#2a2036,#17121f);color:#e8c573;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
-.desktop-panel .cockpit-fold>.card,.desktop-panel .cockpit-legacy-panel>.card{margin:0;border:0;padding:10px 5px;min-width:0}
-.desktop-panel .cockpit-legacy-panel{display:block}
-.desktop-panel .cockpit-fold:has(>.card[hidden]){display:none}
-.desktop-panel .cockpit-fold .section-head{flex-wrap:wrap;gap:10px}
-.desktop-panel .cockpit-fold :is(input,select,textarea){max-width:100%;min-width:0}
-@media(max-width:680px){.desktop-panel .companion-cockpit{display:block}.desktop-panel .cockpit-nav{display:flex;flex-direction:row;flex-wrap:wrap;margin-bottom:18px}.desktop-panel .cockpit-nav button{flex:1 1 130px}.desktop-panel .cockpit-page>h2{font-size:20px}}
+.companion-cockpit{display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;margin:12px 0;align-items:start}
+.cockpit-nav{display:flex;flex-direction:column;gap:7px;min-width:0}
+body.holo .cockpit-nav button{min-height:42px;text-align:left;white-space:normal}
+.cockpit-content,.cockpit-page{min-width:0}
+.cockpit-page>h2{font-size:22px;color:#f1eef7;margin:0 0 12px}
+.cockpit-game-picker{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 16px}
+.cockpit-game-picker button{flex:1 1 130px;white-space:normal;min-height:42px}
+body.holo :is(.cockpit-nav button[aria-current="page"],.cockpit-game-picker button[aria-pressed="true"]){--cut:6px;--edge:#e8c573c8;--fill:linear-gradient(#a78bfa3c,#a78bfa3c),linear-gradient(#1b1626,#0b0a11);color:#fff;box-shadow:inset 3px 0 0 #e8c573;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+body.holo .cockpit-nav button[data-pending="true"]::after{content:' · Anfrage';color:#e8c573}
+.cockpit-fold{margin:0 0 10px;border-bottom:1px solid #3a2f4d}
+.cockpit-fold>summary{padding:12px 9px;min-height:44px;font-size:14px}
+.cockpit-fold[open]>summary{background:linear-gradient(135deg,#2a2036,#17121f);color:#e8c573;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.cockpit-fold>.card,.cockpit-legacy-panel>.card{margin:0;border:0;padding:10px 5px;min-width:0}
+.cockpit-legacy-panel{display:block}
+.cockpit-fold:has(>.card[hidden]){display:none}
+.cockpit-fold .section-head{flex-wrap:wrap;gap:10px}
+.cockpit-fold :is(input,select,textarea){max-width:100%;min-width:0}
+@media(max-width:680px){.companion-cockpit{display:block}.cockpit-nav{display:flex;flex-direction:row;flex-wrap:wrap;margin-bottom:18px}.cockpit-nav button{flex:1 1 130px}.cockpit-page>h2{font-size:20px}}
+
+/* Menü 0.53: sechs Bereiche, feste Kartennamen mit Zustand rechts, „Für Fortgeschrittene“ immer am Ende. */
+.companion-cockpit{display:grid;grid-template-columns:170px minmax(0,1fr);gap:16px;margin:12px 0;align-items:start}
+.cockpit-nav{display:flex;flex-direction:column;gap:7px;min-width:0}
+.cockpit-fold>summary{display:flex;align-items:center;gap:10px}
+.cockpit-fold>summary .fold-name{flex:1;min-width:0}
+.cockpit-fold>summary .fold-state{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cockpit-fold>summary .fold-state[data-on="true"]{color:var(--gold)}
+.cockpit-fold>.card h2:first-of-type{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:0;margin:0 0 6px}
+.cockpit-divider{display:flex;align-items:center;gap:10px;margin:18px 0 8px;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--violet);font-weight:700}
+.cockpit-divider::after{content:"";flex:1;height:1px;background:#3a3350}
+@media(max-width:680px){.companion-cockpit{display:block}.cockpit-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:16px}.cockpit-nav button{min-height:42px}}

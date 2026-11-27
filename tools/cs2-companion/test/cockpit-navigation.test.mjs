@@ -17,10 +17,10 @@ function setup(hash=''){
 test('Cockpit erhält jedes bestehende Eingabefeld und dessen Listener genau einmal',()=>{
   const {window,document,originals,changes}=setup();
   for(const node of originals){assert.ok(document.contains(node),node.id||node.textContent);if(node.id)assert.equal(document.querySelectorAll('[id="'+node.id+'"]').length,1,node.id);}
-  assert.equal(document.querySelectorAll('.cockpit-nav button').length,7);
-  assert.ok(document.querySelector('#external-updates').closest('[data-menu-page="system"]'));
-  assert.ok(document.querySelector('#import').closest('[data-menu-page="record"]'));
-  assert.ok(document.querySelector('#share-codes').closest('[data-menu-page="stats"]'));
+  assert.deepEqual([...document.querySelectorAll('.cockpit-nav button')].map(b=>b.textContent),['Start','Spiele','Videos','Overlays','TecMon','Einstellungen']);
+  assert.ok(document.querySelector('#external-updates').closest('[data-menu-page="start"]'));
+  assert.ok(document.querySelector('#import').closest('[data-menu-page="videos"]'));
+  assert.ok(document.querySelector('#share-codes').closest('[data-menu-page="videos"]'));
   document.getElementById('share-codes').dispatchEvent(new window.Event('input'));
   assert.equal(changes(),1,'Vor dem Umbau gebundener Listener geht verloren');
 });
@@ -38,13 +38,37 @@ test('Spielauswahl trennt Optionen und Paketverwaltung, einschließlich weiterer
 });
 test('Direkte Menüsprünge öffnen Zielseite und Spiel ohne vorhandene Eingaben zu verlieren',()=>{
   const {document,menu}=setup('#fadenkreuz');
-  assert.equal(document.querySelector('[data-menu-page="overlay"]').hidden,false);
+  assert.equal(document.querySelector('[data-menu-page="overlays"]').hidden,false);
   const input=document.getElementById('share-codes');input.value='unfertiger Entwurf';
   menu.openAdvanced('demos');
-  assert.equal(document.querySelector('[data-menu-page="stats"]').hidden,false);
+  assert.equal(document.querySelector('[data-menu-page="videos"]').hidden,false);
   assert.equal(input.value,'unfertiger Entwurf');
   menu.reveal(document.getElementById('dota-tipps'));
   assert.equal(document.querySelector('[data-menu-page="games"]').hidden,false);
   assert.equal(document.querySelector('[data-menu-game="dota2"]').hidden,false);
   assert.equal(document.querySelector('[data-pick-game="dota2"]').getAttribute('aria-pressed'),'true');
+});
+
+test('Erweitert-Karten stehen immer am Ende ihres Bereichs, Titel sind feste Namen mit Zustand rechts',()=>{
+  const {document}=setup();
+  for(const page of document.querySelectorAll('[data-menu-page]')){
+    const folds=[...page.querySelectorAll(':scope>.cockpit-fold')];const first=folds.findIndex(f=>f.hasAttribute('data-expert'));
+    if(first<0)continue;
+    assert.ok(folds.slice(first).every(f=>f.hasAttribute('data-expert')),page.dataset.menuPage+': Erweitert mitten im Bereich');
+    assert.ok(page.querySelector(':scope>.cockpit-divider[data-expert]'),page.dataset.menuPage+': Trenner fehlt');
+  }
+  const clips=document.getElementById('clips').closest('.cockpit-fold');
+  assert.equal(clips.querySelector('.fold-name').textContent,'Clip-Puffer');
+  assert.equal(clips.querySelector('.fold-state').textContent,'aus');
+  assert.equal(clips.hasAttribute('data-expert'),false,'Clip-Puffer gehört in Einfach');
+});
+test('Alte gespeicherte Bereiche landen auf den neuen sechs Bereichen',()=>{
+  const {window,document}=parseHTML(readFileSync(new URL('../public/index.html',import.meta.url),'utf8'));
+  const storage=new Map([['tecmon-cockpit',JSON.stringify({page:'system',game:'dota2'})]]);
+  const context=vm.createContext({window,document,Element:window.Element,location:{hash:''},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)}});
+  vm.runInContext(readFileSync(new URL('../public/menu.js',import.meta.url),'utf8'),context);
+  const menu=window.TecMonCockpit(document);
+  assert.equal(document.querySelector('[data-menu-page="start"]').hidden,false);
+  menu.select('gallery');
+  assert.equal(document.querySelector('[data-menu-page="videos"]').hidden,false);
 });

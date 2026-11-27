@@ -593,16 +593,16 @@ $('skins-toggle').addEventListener('click',async()=>{
   try{const r=await api('/api/skins/settings',{enabled:on,accept:on?skinState?.noticeVersion:undefined});$('skins-consent').hidden=true;showSkins(r.skins,true);if(r.message)$('notice').textContent=r.message;}
   catch(error){notice(error);}finally{button.disabled=false;}
 });
-/* Linksklick-Fenster: sieben Bereiche, Karten bleiben mit ihren Listenern erhalten. */
+/* Linksklick-Fenster und Companion-Seite im Browser: dieselben sechs Bereiche, Karten bleiben mit ihren Listenern erhalten. */
 function panelHints(state){window.companionMenu?.status(state);}
 (function desktopSections(){
-  if(document.body.classList.contains('desktop-panel'))window.TecMonCockpit(document);
+  window.TecMonCockpit(document);
 })();
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('skins-consent').hidden){$('skins-consent').hidden=true;$('skins-accept').checked=false;}});
 /* Ansicht „Einfach“/„Erweitert“ (Nutzerwunsch 25.11.2026, desktop.json `ui`). „Einfach“ zeigt nur das Nötigste mit
    kurzen Erklärungen; alles mit data-expert erscheint erst in „Erweitert“. Neue Karten für Fortgeschrittene hier eintragen. */
-const EXPERT_ONLY=['#advanced-toggle','#advanced-panel','#skin-tausch','#cfgs','#clips','#fadenkreuz','#quiz','#tips-options','#dota-tipps .tips-options','#wardogs .tips-options','#auto-note','#tips-note','#chat>p:first-of-type','.bridge-devices'];
+const EXPERT_ONLY=['#advanced-toggle','#advanced-panel','#skin-tausch','#cfgs','#tips-options','#dota-tipps .tips-options','#wardogs .tips-options','#auto-note','#tips-note','#chat>p:first-of-type','.bridge-devices'];
 const SIMPLE_HINTS=[
   ['.activity-summary','Hier siehst du, was TecMon gerade macht, zum Beispiel eine Demo laden oder ein Video aufnehmen.'],
   ['#auto-highlights','Nach deinem Match fragt TecMon, ob ein Video mit deinen besten Szenen entstehen soll. Du klickst nur „Ja“.'],

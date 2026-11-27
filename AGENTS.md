@@ -238,8 +238,30 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Entwurf, veröffentlichte Version und installierte Version klar unterscheiden.
 - Das Cockpit verschiebt vorhandene Karten statt sie zu kopieren; IDs, Werte,
   Bestätigungen und Listener erhalten. Direkte Hash-/Figurmenüsprünge müssen die
-  Zielseite und das passende Spiel öffnen. Neue Karten einem der sieben Bereiche
+  Zielseite und das passende Spiel öffnen. Neue Karten einem der sechs Bereiche
   zuordnen, Spiel-Pakete bei der Spielauswahl halten. Kompakt/groß per ↔ im Fenster.
+
+### Ein Menü überall (Nutzerentscheid 27.11.2026, ab 0.53.0)
+
+- **Ein Menübaum:** Rechtsklick, Tray, Linksklick-Fenster (klein/groß) und Companion-Seite im Browser nutzen
+  dieselben sechs Bereiche in fester Reihenfolge: Start, Spiele, Videos, Overlays, TecMon, Einstellungen
+  (`groups` in `public/menu.js`, `BuildQuick()` in `TecMon.cs`). Neue Funktionen kommen in genau einen Bereich.
+  Alte Bereichsnamen und Sprünge bildet `legacy` in `menu.js` ab.
+- **Schnellmenü:** Rechtsklick auf Figur oder Tray-Symbol zeigt dasselbe `QuickMenu`: je Bereich eine Zeile
+  (Klick öffnet den Bereich im Fenster), darunter höchstens eine Direktaktion. In „Einfach“ und „Erweitert“
+  gleich. Das alte Listenmenü (`ContextMenuStrip`) wird nicht mehr gezeigt, seine Einträge halten nur Zustände.
+- **Einfach/Erweitert sortiert nie um:** Karten nur für „Erweitert“ (dritter Wert `true` in `groups`) stehen
+  unter „Für Fortgeschrittene“ am Ende ihres Bereichs. Fehlermeldungen bleiben in beiden Ansichten sichtbar.
+- **Namen statt Zustände:** Der Kopf einer Karte trägt einen festen Namen, der Zustand steht rechts
+  (`fold-state`, „an“/„aus“ oder kurz wie „Level 4“). Die Kartenüberschrift aus `app.js` ist nur Statuszeile.
+- **Ein Bauteil je Aufgabe:** Zeile, eckiger Schalter (Raute als Knopf, Gold = an, Wort daneben), Auswahl mit
+  Goldkante, Knopf (Hauptknopf gold, Gefahr rot) und aufklappbare Unterkarte. Keine Pillen-Schalter.
+  Gefährliches (Paket entfernen, Beenden) steht am Ende.
+- **Wörter:** „Spiele“ nur für unterstützte Spiele, TecMons Spiele heißen „Minispiele“; „Videos“ umfasst
+  Highlights und Clips; „Einstellungen“ ist der ganze Bereich.
+- **Sprechblase vor Menüs:** Findet `BubbleSpot()` keinen freien Platz neben Menü/Fenster, hebt
+  `TipBubble.Raise()` die Blase ohne Aktivierung über das Menü, damit Witze und Tipps lesbar bleiben.
+  Ein Klick blendet sie aus. Kein Fokuswechsel.
 - Spieleinstellungen nach Spiel bündeln (CS2, Dota 2, Wardogs), einschließlich
   der jeweiligen Paketverwaltung. Gemeinsame Funktionen zentral erreichbar halten.
 
@@ -561,17 +583,14 @@ Gleiche Grenzen wie bei CS2, verbindlich:
   Statuspunkte als Raute, Sternenhimmel als Hintergrund (steht bei
   `prefers-reduced-motion` still). Kein Cyan-Holo-Look mehr; neue Elemente in diese
   Regeln einhängen statt eigene Farben festzulegen.
-- Rechtsklick auf die Figur öffnet `QuickMenu` (`OpenQuick()`/`BuildQuick()` in
-  `TecMon.cs`): Kacheln, Schalter, Persönlichkeit, „Alle Optionen …“ öffnet das
-  vollständige `ContextMenuStrip` (auch am Tray-Symbol). Neue häufige Funktionen
-  dort ergänzen, alles andere im vollständigen Menü. Dessen Einträge zeichnet
-  `TecMonMenu` als Buttons. Keine Windows-Standarddialoge für Fragen während
-  des Spiels.
+- Rechtsklick auf Figur und Tray-Symbol öffnet `QuickMenu` (`OpenQuick()`/`BuildQuick()` in
+  `TecMon.cs`) mit den sechs Bereichen (siehe „Ein Menü überall“); „Alles öffnen“ öffnet das Fenster.
+  Keine Windows-Standarddialoge für Fragen während des Spiels.
 - Fortschritt beim Video: `/api/state` liefert `work` aus `workState()` (`work-status.mjs`),
   nur Status, Schritt und feste Texte, keine Pfade oder Protokollzeilen. `ShowWork()` in
   `TecMon.cs` zeigt ihn als stehende Sprechblase (`Present(..., sticky)`), „Fertig“ nur für
   einen selbst gesehenen Auftrag.
-- Das Linksklick-Fenster (`?desktop=1`) zeigt sieben Bereiche im Cockpit
+- Das Linksklick-Fenster (`?desktop=1`) und die Companion-Seite im Browser zeigen sechs Bereiche im Cockpit
   (`public/menu.js`, `desktopSections()` in `public/app.js`), immer nur eine Seite
   und deren bewusst geöffnete Unterkarten. Neue Karten dort einem Bereich zuordnen.
 

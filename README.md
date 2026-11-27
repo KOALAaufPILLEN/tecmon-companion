@@ -1,5 +1,28 @@
 # TecMon Companion
 
+## Neu in 0.53.0 · Ein Menü überall (27. November 2026)
+
+Alle Menüs folgen jetzt einem Aufbau ([Konzept mit Vorher/Nachher](docs/companion-menu-konzept-0.53.html)):
+
+- **Sechs Bereiche, feste Reihenfolge:** Start, Spiele, Videos, Overlays, TecMon, Einstellungen.
+  Das gilt im Rechtsklick-Menü, am Tray-Symbol, im Linksklick-Fenster (klein und groß) und neu
+  auch auf der Companion-Seite im Browser.
+- **Neues Schnellmenü:** Rechtsklick auf Figur oder Tray zeigt je Bereich eine Zeile mit einer
+  Direktaktion (CS2-Rundentipps, Clip-Puffer, Witz/Trick/Anstupsen, Bewegung). Ein Klick auf den
+  Bereichsnamen öffnet ihn im Fenster. Die lange Windows-Liste „Alle Optionen“ entfällt.
+- **Einfach/Erweitert sortiert nicht mehr um:** Zusätzliche Karten stehen unter „Für Fortgeschrittene“
+  am Ende des Bereichs. Clip-Puffer, Fadenkreuz und Quiz sind jetzt auch in „Einfach“ sichtbar.
+- **Feste Kartennamen** mit Zustand rechts („an“, „aus“, „Level 4“) statt wechselnder Überschriften.
+- **Eckige Schalter** im TecMon-Stil statt runder Pillen, Status als Raute.
+- **Fix Sprechblase:** Witze und Tipps werden nicht mehr vom Menü verdeckt. Findet die Blase keinen
+  freien Platz, liegt sie über dem Menü (ohne Fokuswechsel) und verschwindet per Klick.
+- Behoben nebenbei: „Highlights“ im Schnellmenü führte zu den Spiel-Paketen; das alte Menü zeigte
+  Dota 2 als „geplant“.
+
+Prüfung: 245 Node-Tests, C#-5-Build mit `mcs`, nativer Bewegungs-Selbsttest (inkl. Schnellmenü-Höhe)
+unter Linux/Xvfb, Schnellmenü als Bild gerendert, Companion-Seite und Fenster im Browser geprüft.
+Auf einem Windows-PC mit installiertem Update noch nicht geprüft. Keine neue Bridge-Capability.
+
 ## Gemergt in 0.52.0 · Das echte Companion-Cockpit
 
 Der bisherige Entwurf ist jetzt im Linksklick-Fenster umgesetzt: TecMon;
