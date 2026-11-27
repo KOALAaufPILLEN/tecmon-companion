@@ -1,5 +1,27 @@
 # TecMon Companion
 
+## Neu in 0.53.1 · Chat als ganze Nachricht übersetzen (27. November 2026)
+
+Stand: lokal umgesetzt und mit der echten Bergamot-Engine auf Windows geprüft;
+noch nicht gemergt, veröffentlicht oder in den installierten Companion übernommen.
+
+- Gedehnte Wörter wie `heeeelp`, `pleeease`, `merhabaaaa` oder `даааавай` werden
+  vor Spracherkennung und Übersetzung vorsichtig aufbereitet. Echte Doppelbuchstaben,
+  mehrdeutige Wörter, Handles und Links bleiben dabei erhalten. Der Originalchat bleibt sichtbar.
+- Das Modell erhält die **gesamte Chatnachricht** einschließlich ihrer Sätze in einem Aufruf.
+  Bekannte englische Gaming-Wendungen werden davor im Satz verständlicher formuliert:
+  `Don't push alone, wait for the team.` ergibt im echten Test
+  „Nicht allein angreifen, auf das Team warten.“; `I was flashed` wird als Blendung verstanden.
+  Dieselbe Vorbereitung gilt für eigene übersetzte Antworten.
+- Bloß korrigierte Schreibweise gilt nicht als erfolgreiche Übersetzung. Smileys bleiben erhalten.
+  Alles läuft weiter lokal mit denselben geprüften Modellen, ohne zusätzliche Downloads oder Cloud-Dienst.
+
+247 Tests bestanden (darunter 22 Übersetzer-Tests), zwei bestehende Symlink-Tests
+übersprungen; Versionsprüfung erfolgreich. Echte lokale Modelltests mit synthetischen Nachrichten;
+Beispiele und verbleibende Qualitätsgrenzen stehen im
+[Prüfbericht](docs/chat-translation-check-2026-11-27.md). Die Wendungen sind eine begrenzte
+Hilfe für das vorhandene Modell, kein universelles Sprachverständnis.
+
 ## Neu in 0.53.0 · Ein Menü überall (27. November 2026)
 
 Alle Menüs folgen jetzt einem Aufbau ([Konzept mit Vorher/Nachher](docs/companion-menu-konzept-0.53.html)):

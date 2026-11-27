@@ -513,6 +513,16 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 
 ## Chat-Übersetzer für CS2 (`chat-translate.mjs`, `chat-models.mjs`)
 
+- Nutzerwunsch 27.11.2026: ganze Chatnachrichten im Satzkontext übersetzen, auch mit gedehnten Vokalen.
+  `normalizeChatText()` nur für Erkennung/Modelleingabe nutzen; Original und Absender erhalten.
+  Bekannte Schreibweisen bevorzugen, echte Doppelbuchstaben und mehrdeutige Kandidaten erhalten;
+  unbekannte Konsonantenfolgen nicht pauschal kürzen. Links und Handles nicht normalisieren.
+  Satzvorbereitung nur mit engen, geprüften Wendungen derselben Quellsprache; keine Wort-für-Wort-
+  Übersetzung, kein Verlust von Verneinungen, keine erfundenen Spielinformationen. Ganze Nachricht in
+  einem Modellaufruf lassen, auch bei mehreren Sätzen. Gibt das Modell nur die vorbereitete Eingabe
+  zurück, ist das weiter `unknown`. Bei Erweiterungen echte Engine mit vollständigen Beispielsätzen
+  und Gegenbeispielen prüfen; Grenzen dokumentieren, nicht universelle Qualität versprechen.
+
 - Nutzerwunsch vom 22.11.2026: CS2-Chat in die eigene Sprache übersetzen, Antworten in TecMon
   schreiben und in die Sprache der anderen übersetzen, Übersetzungen als Overlay über den CS2-Chat legen.
 - **Nur `console.log` lesen.** CS2 schreibt sie mit der Startoption `-condebug`

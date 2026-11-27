@@ -180,6 +180,56 @@ const WORDS = {
   vi: "tôi toi bạn ban không khong có co là la và va gì gi tại sao đâu dau thế the nào nao cảm cam ơn on tốt tot xấu xau đi di nhanh ơi oi",
 };
 const WORD_SETS = Object.fromEntries(Object.entries(WORDS).map(([k, v]) => [k, new Set(v.split(" "))]));
+// Shared spelling evidence, not a second translation dictionary. No new network resource.
+const CHAT_WORDS = {
+  en: "help hello cool look soon need too really food book shoot sorry nice please noob",
+  de: "hilfe helfen hallo tschüss tschuss schön schoen super nee",
+  tr: "kes lütfen lutfen güzel guzel",
+  ru: "да давай нет привет спасибо пожалуйста хорошо быстро помогите стой",
+  uk: "так ні привіт дякую будь ласка добре швидко допоможіть",
+};
+for (const [lang, words] of Object.entries(CHAT_WORDS)) {
+  WORD_SETS[lang] ??= new Set();
+  for (const word of words.split(" ")) WORD_SETS[lang].add(word);
+}
+const foldWord = (word) => word.normalize("NFC").toLowerCase().replace(/i\u0307/g, "i");
+const wordShape = (word) => foldWord(word).replace(/(\p{L}\p{M}*)\1+/gu, "$1");
+const SPELLINGS = new Map();
+for (const [lang, words] of Object.entries(WORD_SETS)) for (const word of words) {
+  const shape = wordShape(word);
+  const entries = SPELLINGS.get(shape) ?? [];
+  entries.push({ lang, word });
+  SPELLINGS.set(shape, entries);
+}
+const LONG_LETTER = /(\p{L}\p{M}*)(?:\1){2,}/giu;
+const VOWELS = /^[aeiouyáàâäãåāăąæéèêëēėęěíìîïīįıóòôöõøōőúùûüūůűųýÿаеиоуыэюяіїєёөүə]$/iu;
+
+/** Model input only: preserve real doubles, ambiguous spellings, handles, links and original chat. */
+export function normalizeChatText(raw, lang = "") {
+  return String(raw || "").normalize("NFC").replace(
+    /https?:\/\/\S+|www\.\S+|[^\s@]+@[^\s@]+\.[^\s@]+|@[\p{L}\p{M}\p{N}_-]+|[\p{L}\p{N}][\p{L}\p{N}-]*(?:\.[\p{L}\p{N}-]+)+(?:\/\S*)?|[\p{L}\p{M}\p{N}_]+/gu,
+    (word) => {
+      if (!/^[\p{L}\p{M}]+$/u.test(word) || !word.match(LONG_LETTER)) return word;
+      const folded = foldWord(word);
+      // A standalone scream/laugh is not a word, and a known spelling needs no correction.
+      if (/^(\p{L}\p{M}*)\1+$/u.test(folded) ||
+          [...(SPELLINGS.get(wordShape(word)) ?? [])].some(e => e.word === folded)) return word;
+      const pattern = folded.replace(/(\p{L}\p{M}*)(?:\1){2,}/gu, "($1){1,2}");
+      const compatible = new RegExp(`^${pattern}$`, "u");
+      const options = [...new Set((SPELLINGS.get(wordShape(word)) ?? [])
+        .filter(e => (!lang || e.lang === lang) && compatible.test(e.word)).map(e => e.word))];
+      let replacement;
+      if (options.length === 1) replacement = options[0];
+      else if (options.length > 1) return word; // E.g. "neee" can mean "ne" or "nee".
+      else replacement = folded.replace(/(\p{L}\p{M}*)(?:\1){2,}/gu,
+        (run, ch) => VOWELS.test(ch) ? ch + ch : run);
+      const upper = v => { try { return v.toLocaleUpperCase(lang || undefined); } catch { return v.toUpperCase(); } };
+      if (/\p{Lu}/u.test(word) && !/\p{Ll}/u.test(word)) return upper(replacement);
+      if (/^\p{Lu}/u.test(word)) return upper(replacement[0]) + replacement.slice(1);
+      return replacement;
+    },
+  );
+}
 /** Typische Buchstaben: [Sprachen, Muster, Gewicht]. Geteilte Buchstaben zählen für alle genannten Sprachen. */
 const LETTERS = [
   [["tr"], /[ışğ̇]/, 1.5], [["pl"], /[łśćźżń]/, 1.5], [["pl", "lt"], /[ąę]/, 0.5], [["de"], /[äöüß]/, 1.5],
@@ -224,7 +274,7 @@ function scriptLanguage(script, text, counts) {
 /** Sprache einer Chatnachricht (`de`, `en`, `ru` …) oder "" wenn unsicher. Kurze Rufe wie „gg“ bleiben unbekannt. */
 export function detectLanguage(raw, { assumeEnglish = true } = {}) {
   // „İ“ wird kleingeschrieben zu „i“ + Punkt (U+0307): die Markierung bleibt für LETTERS, Wörter bekommen ein „i“.
-  const text = String(raw || "").toLowerCase();
+  const text = normalizeChatText(raw).toLowerCase();
   const plain = text.replace(/i̇/g, "i");
   const latin = (text.match(/\p{Script=Latin}/gu) || []).length;
   const counts = {};
@@ -238,14 +288,19 @@ export function detectLanguage(raw, { assumeEnglish = true } = {}) {
   if (latin < 2) return "";
   const words = plain.split(/[^\p{Script=Latin}'’]+/u).filter(Boolean).map((w) => w.replace(/’/g, "'"));
   const scores = {};
-  for (const [lang, set] of Object.entries(WORD_SETS)) scores[lang] = words.filter((w) => set.has(w)).length;
+  // An actual word is stronger evidence than a shared character ("lütfen" is Turkish,
+  // although German also uses ü). Keep uncertainty when complete words still tie.
+  for (const [lang, set] of Object.entries(WORD_SETS)) scores[lang] = words.filter((w) => set.has(w)).length * 2;
   // Türkische Tastatur: „aımbot“, „cheatıng“ sind englische Wörter mit „ı“. Solche Wörter zählen für Englisch, das „ı“ nicht für Türkisch.
   const dotless = words.filter((w) => w.includes("ı") && WORD_SETS.en.has(w.replace(/ı/g, "i")));
-  scores.en += dotless.length;
+  scores.en += dotless.length * 2;
   const letters = dotless.length ? text.split(/[^\p{Script=Latin}'’\u0307]+/u).filter((w) => !dotless.includes(w)).join(" ") : text;
   for (const [langs, re, add] of LETTERS) if (re.test(letters)) for (const lang of langs) scores[lang] = (scores[lang] || 0) + add;
   const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   if (ranked[0][1] > 0 && ranked[0][1] > ranked[1][1]) return ranked[0][0];
+  // International single-word calls have the same sense in several languages. Respect the
+  // existing English-assumption switch instead of guessing arbitrary ambiguous words.
+  if (assumeEnglish && words.length === 1 && ["no", "yes", "ok", "okay", "sorry", "stop", "hello"].includes(words[0]) && scores.en > 0 && scores.en === ranked[0][1]) return "en";
   // Reiner ASCII-Text mit mehreren Wörtern ist im CS2-Chat meist Englisch.
   if (assumeEnglish && ranked[0][1] === 0 && words.length >= 3 && /^[\x20-\x7e]+$/.test(raw)) return "en";
   return "";
@@ -256,13 +311,39 @@ const SLANG = {
   tr: { naber: "ne haber", nbr: "ne haber", slm: "selam", nasilsin: "nasılsın", anani: "ananı", tsk: "teşekkürler", tşk: "teşekkürler", sagol: "sağol" },
 };
 
+// Source-language paraphrases, never translated words. The local model still receives
+// the entire message, with negation, subjects, punctuation and sentence order intact.
+// Keep these narrow: e.g. "push the button" and "save me" must retain their meaning.
+const EN_CHAT_PHRASES = [
+  [/(^|[.!?,;:]\s*)my bad(?=$|[.!?,;:]|\s+(?:i|we)\b)/giu, "$1it was my mistake"],
+  [/\b(?:don't|don’t|do not|dont) push alone\b/giu, "do not attack alone"],
+  [/\b(I|you|we|they) (am|are|was|were) flashed\b/giu, "$1 $2 blinded by a flash grenade"],
+  [/\b(he|she) (is|was) flashed\b/giu, "$1 $2 blinded by a flash grenade"],
+  [/\bsave (our|your|my|their|the) weapons\b/giu, "keep $1 weapons"],
+  [/\bI thought you were covering me\b/giu, "I thought you were protecting me"],
+];
+
+const PROTECTED_CHAT_TEXT = /https?:\/\/\S+|www\.\S+|[^\s@]+@[^\s@]+\.[^\s@]+|@[\p{L}\p{M}\p{N}_-]+|[\p{L}\p{N}][\p{L}\p{N}-]*(?:\.[\p{L}\p{N}-]+)+(?:\/\S*)?|"[^"\n]*"|“[^”\n]*”|‘[^’\n]*’/gu;
+
+function prepareChatPhrases(text, lang) {
+  if (lang !== "en") return text;
+  // Do not rewrite examples in quotes, links, email addresses or player handles.
+  let offset = 0, out = "";
+  const prepare = (part) => EN_CHAT_PHRASES.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), part);
+  for (const match of text.matchAll(PROTECTED_CHAT_TEXT)) {
+    out += prepare(text.slice(offset, match.index)) + match[0];
+    offset = match.index + match[0].length;
+  }
+  return out + prepare(text.slice(offset));
+}
+
 /**
  * Text für das Modell vorbereiten: Rufe in Großbuchstaben („AFERİN SANA“) klein schreiben, bekannte
  * Abkürzungen ausschreiben und den ersten Buchstaben groß schreiben. Klein beginnende Fragen wie
  * „nasılsın?“ ergeben sonst doppelte Ausgaben („How are you? How are“, auf dem PC geprüft 23.11.2026).
  */
 export function sourceText(text, lang) {
-  let value = String(text || "");
+  let value = normalizeChatText(text, lang);
   const lower = (v) => { try { return v.toLocaleLowerCase(lang); } catch { return v.toLowerCase(); } };
   const upper = (v) => { try { return v.toLocaleUpperCase(lang); } catch { return v.toUpperCase(); } };
   if (/\p{Lu}/u.test(value) && !/\p{Ll}/u.test(value)) value = lower(value);
@@ -276,8 +357,13 @@ export function sourceText(text, lang) {
     value = value.replace(/(ne haber)\s*$/iu, "$1?").replace(/(^|\s)([ABab]|[0-9]+)\s+(ye|ya|e|a|de|da|te|ta|den|dan|ten|tan)(?=$|[^\p{L}])/gu, "$1$2'$3");
   } else if (lang !== "az") value = value.replace(/ı/g, "i"); // Türkische Tastatur: „aımbot“ → „aimbot“
   if (lang === "en") value = value.replace(/(^|[^\p{L}'’])i(?=$|[^\p{L}'’]|['’](?:m|ll|ve|d)\b)/gu, "$1I");
+  value = prepareChatPhrases(value, lang);
   // Satzanfänge groß: auch nach „.“, „?“, „!“ (sonst bleibt der zweite Satz manchmal unübersetzt).
-  return value.replace(/(^|[.?!]\s+)(\P{L}*?)(\p{Ll})/gu, (_, start, pre, ch) => start + pre + upper(ch));
+  const protectedRanges = [...value.matchAll(PROTECTED_CHAT_TEXT)].map(m => [m.index, m.index + m[0].length]);
+  return value.replace(/(^|[.?!]\s+)(\P{L}*?)(\p{Ll})/gu, (match, start, pre, ch, offset) => {
+    const index = offset + start.length + pre.length;
+    return protectedRanges.some(([from, to]) => index >= from && index < to) ? match : start + pre + upper(ch);
+  });
 }
 
 /** Smileys am Anfang/Ende („:D“, „xD“, „<3“, Emoji) lassen die Modelle oft weg: wieder anhängen. */
@@ -618,9 +704,10 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       message.status = "pending";
       enqueue(async () => {
         try {
-          const out = keepEmotes(chat.text, await translate(sourceText(chat.text, lang), lang, settings.language));
+          const prepared = sourceText(chat.text, lang);
+          const out = keepEmotes(chat.text, await translate(prepared, lang, settings.language));
           // Gibt das Modell den Text unverändert zurück (Dialekt, Namen), ist das keine Übersetzung.
-          if (sameText(out, chat.text)) message.status = "unknown";
+          if (sameText(out, chat.text) || sameText(out, prepared)) message.status = "unknown";
           else { message.translated = out; message.status = "done"; }
         }
         catch (error) { message.status = "error"; message.error = error.message.slice(0, 160); }
@@ -727,7 +814,7 @@ export async function createChatTranslator({ dir, cacheDir, cs2Exe = "", request
       if (!source) throw new Error("Bitte erst eine Nachricht schreiben.");
       const target = to === "auto" ? lastForeign || "en" : to;
       if (!LANGUAGES[target]) throw new Error("Unbekannte Zielsprache.");
-      const translated = target === settings.language ? source : cleanSay(await enqueue(() => translate(source, settings.language, target)));
+      const translated = target === settings.language ? source : cleanSay(await enqueue(() => translate(sourceText(source, settings.language), settings.language, target)));
       let written = false;
       if (cfgDir && existsSync(cfgDir)) {
         await writeAtomic(path.join(cfgDir, team ? "tecmon_chat_team.cfg" : "tecmon_chat_all.cfg"), chatCfg(translated, team));
