@@ -51,6 +51,10 @@ Installation separat prüfen.
   Nach dem Verschieben 1,25 Sekunden freie Andockphase trotz Maus über der Figur.
 - Änderungen und native Regressionstests in #133 gemergt; lokale Installation nicht nachgewiesen.
 
+**Website-Stand, 27. November 2026:** Website [#214](https://github.com/KOALAaufPILLEN/tecmon/pull/214)
+ist gemergt (Pro-Import: einzelne falsche Maps entfernen, bekannte Kopenhagen-Fehl-Imports nicht
+werten). Keine Companion-Änderung, keine neue Capability.
+
 **Merge-Stand, 26. November 2026:** Companion 0.51.0 ist mit
 [#132](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/132) gemergt
 (`4916a5d`), Windows- und Linux-Checks erfolgreich. Der Release-Workflow läuft
