@@ -1,5 +1,18 @@
 # Figur und Menü, 26. November 2026
 
+## Ein Menü überall (0.53.0, 27. November 2026)
+
+Sechs Bereiche statt sieben: Start (Verbindung, Auftrag, Updates & Werkzeuge), Spiele (Spielauswahl;
+CS2: Rundentipps, Stats nach dem Spielen, Quiz; Dota-2-Tipps; Scoreboard-Foto; Spiel-Pakete; Erweitert:
+Configs), Videos (Highlight-Video, Clip-Puffer, Letzte Videos; Erweitert: Skins & Agenten, Aufnahme-Setup,
+Aufträge, Demos herunterladen), Overlays (Fadenkreuz, Chat-Übersetzer und Chat-Overlay), TecMon (Level und
+Persönlichkeit, Minispiele), Einstellungen (Figur, Ansicht, Autostart). Das Schnellmenü zeigt dieselben
+Bereiche; das Tray-Symbol öffnet es ebenfalls. Begründung und klickbares Vorher/Nachher:
+[companion-menu-konzept-0.53.html](companion-menu-konzept-0.53.html). Die Sprechblase hebt sich über Menüs,
+wenn kein freier Platz bleibt (`TipBubble.Raise()`, ohne Aktivierung).
+
+Die Abschnitte unten beschreiben den Stand 0.52.0 und bleiben zur Nachvollziehbarkeit stehen.
+
 ## Implementierter Menüstand 0.52.0
 
 Der Aufbau ist jetzt in `tools/cs2-companion/public/menu.js` mit den echten
