@@ -2,8 +2,10 @@
 
 ## Neu in 0.53.1 · Chat als ganze Nachricht übersetzen (27. November 2026)
 
-Stand: lokal umgesetzt und mit der echten Bergamot-Engine auf Windows geprüft;
-noch nicht gemergt, veröffentlicht oder in den installierten Companion übernommen.
+Stand: [#137](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/137) ist gemergt
+(`cb54cd5`); Windows- und Linux-Checks erfolgreich. Release-Veröffentlichung läuft
+separat; lokale Installation noch nicht bestätigt. Keine neue Bridge-Capability,
+die Capability-Tabelle bleibt unverändert.
 
 - Gedehnte Wörter wie `heeeelp`, `pleeease`, `merhabaaaa` oder `даааавай` werden
   vor Spracherkennung und Übersetzung vorsichtig aufbereitet. Echte Doppelbuchstaben,
