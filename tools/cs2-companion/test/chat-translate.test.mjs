@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, writeFile, appendFile, readFile, readdir } from "node:f
 import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import {
-  parseChatLine, detectLanguage, modelsFor, keepEmotes, sameText, MAX_LOADED_MODELS, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail, lineTime, sourceText,
+  parseChatLine, detectLanguage, normalizeChatText, modelsFor, keepEmotes, sameText, MAX_LOADED_MODELS, cleanSay, chatCfg, keysCfg, consoleLogPath, createTail, lineTime, sourceText,
   ensureEngine, ensureModel, patchEngineFile, ENGINE_PATCH, cleanLook, CHAT_LOOK_DEFAULT, createChatTranslator, LANGUAGES, CHAT_OVERLAY_NOTICE_VERSION, SAY_MAX,
 } from "../chat-translate.mjs";
 import { CHAT_MODELS } from "../chat-models.mjs";
@@ -341,6 +341,101 @@ test("Großbuchstaben-Rufe vor dem Übersetzen klein, Türkisch mit richtigem i"
   assert.equal(sourceText("chat ? i wanne test, i'm here", "en"), "Chat ? I wanne test, I'm here");
   assert.equal(sourceText("ok. ich bin da", "de"), "Ok. Ich bin da");
   assert.equal(sourceText("Nice Shot", "en"), "Nice Shot");
+});
+
+test("Gedehnte Chatwörter: gemeinsame Erkennung, echte Doppelvokale und Unicode", () => {
+  const samples = [
+    ["heeeelp", "help", "en"], ["noooo", "no", "en"],
+    ["goooood", "good", "en"], ["coooool", "cool", "en"], ["noooob", "noob", "en"],
+    ["pleeease help me", "please help me", "en"], ["helloooo", "hello", "en"],
+    ["neeeein", "nein", "de"], ["biiiitte", "bitte", "de"], ["halloooo", "hallo", "de"],
+    ["merhabaaaa", "merhaba", "tr"], ["lütfeeeen", "lütfen", "tr"],
+    ["даааавай", "давай", "ru"], ["спасииибо", "спасибо", "ru"],
+  ];
+  for (const [raw, prepared, lang] of samples) {
+    assert.equal(normalizeChatText(raw), prepared, raw);
+    assert.equal(detectLanguage(raw), lang, raw);
+  }
+  assert.equal(normalizeChatText("lu\u0308tfeeen"), "lütfen");
+  assert.equal(sourceText("GOOOOOD SHOT", "en"), "Good shot");
+  assert.equal(sourceText("İYİİİ", "tr"), "İyi");
+  assert.equal(detectLanguage("noooo", { assumeEnglish: false }), "");
+});
+
+test("Keine pauschale Buchstaben-Kürzung: echte Wörter, Links, Handles und Mehrdeutigkeit", () => {
+  for (const text of ["good cool book soon", "Schifffahrt", "Brrr", "aaaaaa", "ggggg", "neee", "@noooo", "noooo123", "noooo_123", "https://heeeelp.example/noooo", "www.heeeelp.example", "heeeelp.example/path", "noooo@example.com"])
+    assert.equal(normalizeChatText(text), text, text);
+  assert.equal(normalizeChatText("neee", "tr"), "ne");
+  assert.equal(normalizeChatText("neee", "nl"), "nee");
+  assert.equal(normalizeChatText("zzzaaaazzz"), "zzzaazzz");
+  assert.equal(parseChatLine("[ALL] Noooo\u200e: heeeelp").name, "Noooo");
+  assert.equal(parseChatLine("[ALL] Noooo\u200e: heeeelp").text, "heeeelp");
+  for (const text of ["gg", "ez", "nt", "xyz qwe"]) assert.equal(detectLanguage(text), "");
+});
+
+test("Ganze Sätze behalten Kontext; nur bekannte englische Chatwendungen umschreiben", () => {
+  const samples = [
+    ["Don't push alone, wait for the team. I need to reload!", "Do not attack alone, wait for the team. I need to reload!"],
+    ["My bad, I thought you were covering me.", "It was my mistake, I thought you were protecting me."],
+    ["I was flashed, I couldn't see anything.", "I was blinded by a flash grenade, I couldn't see anything."],
+    ["Let's save our weapons for the next round.", "Let's keep our weapons for the next round."],
+    ["Pleeease wait for me, I need to reload.", "Please wait for me, I need to reload."],
+  ];
+  for (const [raw, expected] of samples) assert.equal(sourceText(raw, "en"), expected);
+  for (const raw of [
+    "Don't push the button. Save me a seat!", "I was not flashed. You weren't covering me.",
+    "My bad connection is back.", "My badger is here.", "He saved our weapons.",
+    'He said "don\'t push alone".', 'He said “my bad”.', "@mybad is here.",
+    "https://example.com/don't push alone", "mybad@example.com", "We don't push together.",
+  ]) assert.equal(sourceText(raw, "en"), raw, raw);
+  assert.equal(sourceText("My bad, I thought you were covering me.", "de"), "My bad, I thought you were covering me.");
+});
+
+test("Normalisierte Eingabe wird übersetzt, Original erhalten; bloßes Kürzen ist keine Übersetzung", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "tecmon-elongation-"));
+  const bytes = Buffer.from("modell"), hash = createHash("sha256").update(bytes).digest("hex");
+  const original = structuredClone(CHAT_MODELS);
+  for (const part of Object.keys(CHAT_MODELS.ende)) if (part !== "config") Object.assign(CHAT_MODELS.ende[part], { size: bytes.length, sha256: hash });
+  let chat;
+  const seen = [];
+  try {
+    const loadEngine = async () => ({
+      TranslatorBacking: class { constructor() { this.models = new Map(); } },
+      BatchTranslator: class {
+        async translate({ text }) {
+          seen.push(text);
+          return { target: { text: text === "Help :D" ? "Hilfe" : text.startsWith("Do not attack alone,") ? "Nicht allein angreifen, auf das Team warten. Ich muss nachladen!" : text } };
+        }
+        delete() {}
+      },
+    });
+    chat = await createChatTranslator({ dir: path.join(root, "p"), cacheDir: path.join(root, "c"), request: async () => fakeResponse(bytes), loadEngine });
+    await chat.setSettings({ enabled: true });
+    chat.feed("[ALL] Noooo\u200e: heeeelp :D");
+    chat.feed("[ALL] Other\u200e: coooool");
+    await chat.idle();
+    const help = chat.messages().find(m => m.name === "Noooo");
+    assert.equal(help.text, "heeeelp :D");
+    assert.equal(help.status, "done");
+    assert.equal(help.translated, "Hilfe :D");
+    assert.equal(chat.messages().find(m => m.name === "Other").status, "unknown");
+    assert.deepEqual(seen, ["Help :D", "Cool"]);
+    const sentence = "Don't push alone, wait for the team. I need to reload!";
+    chat.feed(`[ALL] Sentence\u200e: ${sentence}`);
+    await chat.idle();
+    assert.equal(seen.length, 3, "Eine ganze Nachricht, kein Aufruf pro Wort oder Satz");
+    assert.equal(seen[2], "Do not attack alone, wait for the team. I need to reload!");
+    const message = chat.messages().find(m => m.name === "Sentence");
+    assert.equal(message.text, sentence);
+    assert.equal(message.status, "done");
+    assert.equal(message.translated, "Nicht allein angreifen, auf das Team warten. Ich muss nachladen!");
+    await chat.setSettings({ language: "en" });
+    await chat.reply({ text: "heeeelp", to: "de" });
+    assert.equal(seen.at(-1), "Help");
+  } finally {
+    chat?.close();
+    for (const key of Object.keys(original)) CHAT_MODELS[key] = original[key];
+  }
 });
 
 test("Türkisch und Polnisch: Modelle mit fester Prüfsumme, über Englisch nach Deutsch", () => {
