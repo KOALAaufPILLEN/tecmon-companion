@@ -739,3 +739,8 @@ eingebaut wurde, steht im Update-Protokoll dort.
 - Eigene CFG nur über bewussten CS2-Speicherknopf schreiben (CS2-Paket erforderlich),
   nie autoexec oder fremde Dateien ändern; Nutzer lädt exec selbst. Export und
   Dateiimport auch ohne installiertes Spiel möglich, keine neue Bridge-Capability.
+
+- Menüköpfe „Für Fortgeschrittene“ nur anzeigen, wenn darunter für die aktuelle
+  Spielauswahl eine sichtbare Expertenkarte bleibt; auf Paket-/Sichtbarkeitsänderungen
+  reagieren. Jeder echte Aufklapper erhält einen erkennbaren Plus-/Minus-Punkt im
+  eckigen TecMon-Stil und Tastaturfokus, ohne zusätzliche verschachtelte Buttons.

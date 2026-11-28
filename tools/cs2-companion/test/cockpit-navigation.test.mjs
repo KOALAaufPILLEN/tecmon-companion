@@ -85,3 +85,18 @@ test('CS2 native crosshair belongs to Games/CS2 with values before imports; over
  document.querySelector('[data-pick-game="dota2"]').dispatchEvent(new window.Event('click'));
  assert.equal(card.closest('[data-menu-game]').hidden,true);
 });
+
+test('Fortgeschrittene divider disappears for games without visible advanced cards',()=>{
+ const {window,document,menu}=setup();menu.select('games');
+ const page=document.querySelector('[data-menu-page="games"]'),divider=page.querySelector('.cockpit-divider');
+ assert.equal(divider.hidden,false,'CS2 has an available Configs card');
+ for(const game of ['dota2','wardogs','other']){
+   document.querySelector('[data-pick-game="'+game+'"]').dispatchEvent(new window.Event('click'));
+   assert.equal(divider.hidden,true,game+' has no advanced card');
+ }
+ document.querySelector('[data-pick-game="cs2"]').dispatchEvent(new window.Event('click'));
+ assert.equal(divider.hidden,false);
+ document.getElementById('cfgs').hidden=true;menu.filterGames();
+ assert.equal(divider.hidden,true,'hidden package-specific card must not leave an orphan heading');
+ document.getElementById('cfgs').hidden=false;menu.filterGames();assert.equal(divider.hidden,false);
+});

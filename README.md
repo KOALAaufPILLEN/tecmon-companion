@@ -4,6 +4,10 @@
 
 Stand: lokal umgesetzt, noch nicht gemergt oder veröffentlicht.
 
+Aufklappbare Bereiche haben sichtbare Plus-/Minus-Punkte im TecMon-Stil,
+Hover und Tastaturfokus. „Für Fortgeschrittene“ erscheint nur, wenn im
+gewählten Spiel tatsächlich eine sichtbare Karte darunter vorhanden ist.
+
 Unter **Spiele → Counter-Strike 2 → CS2-Fadenkreuz** stehen Vorschau und die
 Regler für Länge, Abstand, Dicke, Farbe, Punkt, T-Form und Umriss direkt oben.
 Feinabstimmung und CFG-/Code-Import sind darunter eingeklappt. CFG-Datei laden
@@ -18,7 +22,7 @@ in den gefundenen CS2-Ordner schreiben; im Spiel selbst mit `exec tecmon_crossha
 laden. Keine fremde CFG überschreiben und keine Spiel-Eingaben. Unter Overlays
 führt bei CS2 ein direkter Link zum CS2-Bereich. Keine neue Bridge-Capability.
 
-Validierung: 260 Node-Tests erfolgreich, zwei bestehende Symlink-Tests übersprungen;
+Validierung: 261 Node-Tests erfolgreich, zwei bestehende Symlink-Tests übersprungen;
 Versionen konsistent. Im Browser echten CFG-Dateiimport und CS2-Regler geprüft;
 API-Test schreibt die eigene CFG und bestätigt die Trennung zum Overlay-Profil.
 Ein echter CS2-Durchlauf und vollständiger Installer-Test stehen noch aus.
