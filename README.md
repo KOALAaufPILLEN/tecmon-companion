@@ -2,7 +2,9 @@
 
 ## Neu in 0.54.1 · Spielinternes CS2-Fadenkreuz an der richtigen Stelle (28.11.2026)
 
-Stand: lokal umgesetzt, noch nicht gemergt oder veröffentlicht.
+Stand: [#139](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/139) ist gemergt
+(`1d98fa9`); alle Windows-/Linux-Checks grün. Release-Build für 0.54.1 läuft
+separat; lokale Installation noch nicht bestätigt.
 
 **Herstellerprüfung:** Das native Einstellungsfenster bleibt beim Prüfen/Installieren
 externer Werkzeuge offen. `updates.toolsBusy` unterscheidet die Wartung von einer
@@ -716,7 +718,7 @@ Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` 
 | zusätzlich mit mitgeliefertem Rewriter (`tecmon-demo-rewriter.exe`) | `agent-swap-v1`, `chicken-v1`, `chicken-breed-v1` |
 | zusätzlich mit eingeschaltetem Skin-Tausch und mitgeliefertem Rewriter | `skin-swap-v1`, `skin-swap-v2`, `skin-side-v1`, `skin-legacy-v1`, `skin-stickers-v1` |
 
-Stand 28.11.2026 · 0.54.0 / #138: Capability-Tabelle unverändert. Spielvorlagen,
+Stand 28.11.2026 · 0.54.1 / #139: Capability-Tabelle unverändert. Spielvorlagen,
 PNG-/Pixel-Studio, Menü-Popup und TecMons eigene Sprechblasen bleiben lokal,
 ohne neue Website-Schnittstelle.
 
