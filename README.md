@@ -2,7 +2,10 @@
 
 ## Neu in 0.54.0 · Fadenkreuz-Studio und eigenes Menü-Popup (28. November 2026)
 
-Stand: lokal umgesetzt und geprüft, noch nicht gemergt, veröffentlicht oder installiert.
+Stand: [#138](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/138) ist gemergt
+(`a91a568`); alle Windows-/Linux-Checks erfolgreich. Automatischer Release-Build
+für 0.54.0 separat; lokale Installation noch nicht bestätigt. Keine neue
+Bridge-Capability, bestehende Capability-Tabelle unverändert.
 
 - **Spiele zuerst:** Spiel wählen, dann höchstens fünf sichtbare Vorlagen. 22 statische
   Vorlagen für CS2, Valorant, Apex, Fortnite, Deadlock, Gears of War und Wardogs.
@@ -678,7 +681,9 @@ Die Webseite prüft vor jeder Funktion, was der Companion unter `/bridge/state` 
 | zusätzlich mit mitgeliefertem Rewriter (`tecmon-demo-rewriter.exe`) | `agent-swap-v1`, `chicken-v1`, `chicken-breed-v1` |
 | zusätzlich mit eingeschaltetem Skin-Tausch und mitgeliefertem Rewriter | `skin-swap-v1`, `skin-swap-v2`, `skin-side-v1`, `skin-legacy-v1`, `skin-stickers-v1` |
 
-0.49.3 ändert die Capability-Tabelle nicht: externe Tool-Updates bleiben lokal, ohne neue Website-Schnittstelle.
+Stand 28.11.2026 · 0.54.0 / #138: Capability-Tabelle unverändert. Spielvorlagen,
+PNG-/Pixel-Studio, Menü-Popup und TecMons eigene Sprechblasen bleiben lokal,
+ohne neue Website-Schnittstelle.
 
 ### Tests
 
