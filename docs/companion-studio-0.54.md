@@ -4,9 +4,14 @@ Stand: lokal für 0.54.0 implementiert, noch nicht veröffentlicht oder installi
 
 ## Fadenkreuz
 
-Overlays → Fadenkreuz öffnet die klassische Gestaltung und das eigene Design.
+Overlays → Fadenkreuz öffnet zuerst „Spiele“. Spiel wählen, eine der maximal fünf
+Vorlagen anklicken und speichern. Die Spielauswahl allein ändert kein Design.
+22 eigene statische Vorlagen für sieben Shooter; alle zwölf Plattformspiele plus
+Wardogs sind auswählbar. Die sechs anderen Spiele zeigen ehrlich einen Hinweis,
+dass keine Vorlage hinterlegt ist. Kein automatischer Prozess- oder Waffenwechsel.
+„Selbst anpassen“ enthält die bisherigen Regler, „Eigenes Design“ PNG und Pixel.
 Das lokale Speichern oben übernimmt beide Erscheinungsbilder und die Bildschirmoptionen.
-Ein importiertes PNG wird direkt im Pixel-Editor weiterbearbeitet. Wechsel zu „Klassisch“
+Ein importiertes PNG wird direkt im Pixel-Editor weiterbearbeitet. Wechsel zu „Selbst anpassen“
 erhält den eigenen Entwurf; ein Standard-Reset ersetzt ihn bewusst erst im Editor.
 
 Pixel-Editor: 16/32/64er Raster, auch rechteckige PNGs; Stift, Radierer, Pipette,
@@ -27,6 +32,8 @@ keine Datei wird an einen Internetdienst geschickt. Native Anzeige benötigt kei
 Bild-Decoder und akzeptiert keine Dateipfade. Maximale native Bildausdehnung 352 px,
 damit gedrehte Designs bei hoher DPI nicht am Overlayfenster abgeschnitten werden.
 Die Browser-Vorschau passt ihre Vergrößerung an den verfügbaren Platz an.
+
+![Spiele zuerst: CS2-Vorlagen](screenshots/crosshair-games-0.54.png)
 
 ![Fadenkreuz-Studio mit importiertem PNG](screenshots/crosshair-studio-0.54.png)
 
@@ -67,3 +74,24 @@ wirksam. Übersetzter Spielerchat einschließlich seines Overlays bleibt separat
 - Kein Spiel gestartet und keine Spiel-Eingaben simuliert. Der tatsächliche
   Zwei-Monitor-CS2-Durchlauf und Escape aus einer installierten WebView2-Instanz
   sind noch nicht interaktiv geprüft. Release und Installation sind separate Schritte.
+
+## Recherche und Grenzen der Spielvorlagen
+
+Stand 28.11.2026: Plattformkatalog `tecmon/core/games/types.ts` und Companion
+`games.mjs` abgeglichen. Eigene rasterisierte Formen, keine Behauptung exakter
+Originalwerte, Waffenstreuung, Pro-Settings oder dynamischer ADS-/Heldenwechsel.
+
+- [Riot: Valorant 5.04](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-5-04/):
+  Farben und getrennte horizontale/vertikale Linien. Unsere Vorlagen sind statisch.
+- [Valve: CS2 23.09.2026](https://www.counter-strike.net/newsentry/674006995886408819)
+  und [30.09.2026](https://www.counter-strike.net/newsentry/675133527946166402):
+  überarbeitetes Fadenkreuzsystem und Quadranten. Deshalb geometrische Overlay-Vorlagen;
+  vorhandener CSGO-Decoder bleibt ausdrücklich als älteres Codeformat gekennzeichnet.
+- [Epic: Reticle-Einstellung](https://www.epicgames.com/help/c-34254770/c-33726977/a11099998?lang=th):
+  Fortnite verwaltet seine Zielmarke im Spiel. Companion zeichnet eigene statische
+  Alternativen darüber, ohne Waffen- oder Trefferfeedback auszulesen.
+
+Für Apex, Deadlock, Gears und Wardogs sind die Formen ausdrücklich neutrale eigene
+Alternativen, keine verifizierten exakten Original-Repliken. Keine Vorlage für LoL,
+Dota 2, WoW, Aion oder Path of Exile bedeutet nur, dass hier keine hinterlegt ist.
+Deren eigene Cursor, Fähigkeiten und Zielmarkierungen bleiben unverändert.

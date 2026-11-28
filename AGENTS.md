@@ -709,3 +709,17 @@ eingebaut wurde, steht im Update-Protokoll dort.
   Startwinkel `angle` bei `follow`, ohne Angabe 0).
 
 - Hersteller-Updater respektiert die Stats-only-Einrichtung: `manageMissing: false` im Server; fehlende Videotools nur nach bewusster Nachinstallation. Die Nachinstallation reserviert `active`/`externalBusy`, damit Aufnahmen und Tool-Updates nicht parallel starten.
+
+## Spielvorlagen im Fadenkreuz-Studio (28.11.2026)
+
+- Einstieg immer „Spiele“ → Spielauswahl → höchstens fünf passende visuelle Vorlagen.
+  Alle Plattformspiele plus Companion-Spiele aufführen; ohne geeignete Vorlage ehrlich
+  erklären statt native Zielmarken zu erfinden. Alle bisherigen Regler unter „Selbst
+  anpassen“, PNG/Pixel unter „Eigenes Design“ erhalten. Inventar und Mockup synchron halten.
+- `game-crosshairs.mjs` enthält eigene statische RGBA-Nachbildungen, keine Original-Assets,
+  Pro-Settings oder dynamischen Spielinformationen. Nur beim Vorlagenklick den Entwurf
+  ersetzen; reines Browsen darf das gespeicherte Design nicht verändern. Spielwahl ist
+  kein Prozessfilter und schaltet das Overlay nie ein. Keine neuen Spiel-Pakete dadurch.
+- Vorlagen über denselben geprüften lokalen RGBA-Profilpfad speichern. `gamePreset` ist
+  nur eine bekannte Katalogkennung; nach Pixelbearbeitung löschen. Neue CS2-Codeformate
+  nicht als unterstützt ausgeben, solange nur der ältere CSGO-Decoder implementiert ist.

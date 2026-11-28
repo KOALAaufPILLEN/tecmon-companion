@@ -1,6 +1,7 @@
 import { readFile, writeFile, rename, mkdir, unlink, readdir, stat } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { gameCrosshair } from "./game-crosshairs.mjs";
 
 /**
  * Fadenkreuz-Editor: erzeugt nur CS2-eigene Einstellungen (cl_crosshair*-Befehle
@@ -180,7 +181,7 @@ export const OVERLAY_NOTICE = [
   "Du nutzt das Overlay auf eigenes Risiko. TecMon haftet nicht für Sperren, Banns oder andere Folgen.",
 ];
 
-export const DEFAULT_OVERLAY = Object.freeze({ target: "foreground", monitor: 1, app: "", scale: 1, rotation: 0, offsetX: 0, offsetY: 0, shape: "cross", radius: 8, dotSize: 2, hotkey: "F9", artwork: null, imageSize: 32 });
+export const DEFAULT_OVERLAY = Object.freeze({ target: "foreground", monitor: 1, app: "", scale: 1, rotation: 0, offsetX: 0, offsetY: 0, shape: "cross", radius: 8, dotSize: 2, hotkey: "F9", artwork: null, imageSize: 32, gamePreset: "" });
 /** Only bounded RGBA pixels, never paths, URLs, SVG or an executable image decoder. */
 export function cleanArtwork(raw) {
   if (raw === null || raw === undefined) return null;
@@ -208,7 +209,7 @@ export function cleanOverlayOptions(raw) {
     scale: number("scale", 0.5, 4, 0.1), rotation: number("rotation", 0, 180, 1),
     offsetX: number("offsetX", -2000, 2000, 1), offsetY: number("offsetY", -2000, 2000, 1),
     shape: ["cross", "circle", "image"].includes(src.shape) ? src.shape : DEFAULT_OVERLAY.shape,
-    artwork, imageSize: number("imageSize", 8, 64, 1),
+    artwork, imageSize: number("imageSize", 8, 64, 1), gamePreset: gameCrosshair(src.gamePreset) ? src.gamePreset : "",
     radius: number("radius", 2, 24, 1), dotSize: number("dotSize", 1, 12, 1),
     hotkey: ["none", "F9", "F10", "F11"].includes(src.hotkey) ? src.hotkey : DEFAULT_OVERLAY.hotkey,
   };

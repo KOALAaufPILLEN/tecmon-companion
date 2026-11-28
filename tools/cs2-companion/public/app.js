@@ -276,9 +276,31 @@ loadVideos().catch(()=>{});setInterval(()=>{if(!restarting)loadVideos().catch(()
 /* Allgemeiner Fadenkreuz-Editor mit optionalem CS2-cfg-Export; statische Vorschau. */
 let crosshair=null,crosshairInfo=null,overlayDraft=null;
 let artStudio=null;
+const studioModes=['games','classic','custom'];
+function showGameCrosshairs(){
+  const select=$('crosshair-game'),list=$('crosshair-game-presets');if(!select||!list)return;
+  const game=(crosshairInfo.gamePresets||[]).find(g=>g.id===select.value);
+  $('crosshair-game-note').textContent=game?.note||'';
+  list.replaceChildren(...(game?.presets||[]).map(p=>{
+    const key=game.id+':'+p.id,b=el('button','', 'game-crosshair-choice');b.type='button';b.setAttribute('aria-pressed',String(overlayDraft.gamePreset===key));
+    const canvas=el('canvas');canvas.width=96;canvas.height=96;canvas.setAttribute('aria-hidden','true');
+    const g=canvas.getContext('2d');g.translate(48,48);globalThis.TecMonArt?.draw(g,p.artwork,72);
+    b.append(canvas,el('span',p.label));b.addEventListener('click',()=>{
+      overlayDraft.artwork={...p.artwork};overlayDraft.shape='image';overlayDraft.imageSize=p.imageSize;overlayDraft.rotation=0;overlayDraft.gamePreset=key;
+      artStudio?.load(overlayDraft.artwork);showCrosshair();showOverlayEditor();showGameCrosshairs();
+      $('crosshair-game-status').textContent=game.label+' · '+p.label+' gewählt. Zum Übernehmen Einstellungen speichern.';
+    });return b;
+  }));
+}
+function loadGameCrosshairs(){
+  const select=$('crosshair-game');if(!select)return;
+  select.replaceChildren(...(crosshairInfo.gamePresets||[]).map(g=>{const option=el('option',g.label);option.value=g.id;return option;}));
+  select.value=(overlayDraft.gamePreset||'cs2:').split(':')[0];showGameCrosshairs();
+}
+$('crosshair-game')?.addEventListener('change',()=>{showGameCrosshairs();$('crosshair-game-status').textContent='Spiel gewählt. Eine Vorlage anklicken, um sie zu übernehmen.';});
 const overlayNumeric=['radius','dotSize','scale','rotation','monitor','offsetX','offsetY','imageSize'];
 function studioMode(mode){
-  for(const key of ['classic','custom']){const active=key===mode;$('crosshair-tab-'+key)?.setAttribute('aria-selected',String(active));if($('crosshair-panel-'+key))$('crosshair-panel-'+key).hidden=!active;}
+  for(const key of studioModes){const active=key===mode;$('crosshair-tab-'+key)?.setAttribute('aria-selected',String(active));if($('crosshair-panel-'+key))$('crosshair-panel-'+key).hidden=!active;}
 }
 function crosshairControls(){
   if(!crosshair||!overlayDraft)return;
@@ -325,28 +347,28 @@ async function loadCrosshair(){
   if(!$('crosshair-preview'))return;
   try{crosshairInfo=await api('/api/crosshair');crosshair=crosshairInfo.crosshair;$('crosshair-exec').textContent=crosshairInfo.exec;
     $('crosshair-style').replaceChildren(...crosshairInfo.styles.map(s=>{const o=el('option',s.label);o.value=s.id;return o;}));
-    $('crosshair-presets').replaceChildren(...crosshairInfo.presets.map(p=>{const b=el('button',p.label,'subtle');b.type='button';b.addEventListener('click',()=>{crosshair={...p.crosshair,color:[...p.crosshair.color]};if(overlayDraft)overlayDraft.shape='cross';showCrosshair();showOverlayEditor();});return b;}));
+    $('crosshair-presets').replaceChildren(...crosshairInfo.presets.map(p=>{const b=el('button',p.label,'subtle');b.type='button';b.addEventListener('click',()=>{crosshair={...p.crosshair,color:[...p.crosshair.color]};if(overlayDraft){overlayDraft.shape='cross';overlayDraft.gamePreset='';showGameCrosshairs();}showCrosshair();showOverlayEditor();});return b;}));
     overlayDraft={...crosshairInfo.overlay};
     if(globalThis.TecMonArt&&$('art-canvas')){
-      artStudio=globalThis.TecMonArt.create({onChange:artwork=>{overlayDraft.artwork=artwork;overlayDraft.shape='image';showCrosshair();showOverlayEditor();}});
+      artStudio=globalThis.TecMonArt.create({onChange:artwork=>{overlayDraft.artwork=artwork;overlayDraft.shape='image';overlayDraft.gamePreset='';showGameCrosshairs();if($('crosshair-game-status'))$('crosshair-game-status').textContent='Eigenes Design geändert. Zum Übernehmen Einstellungen speichern.';showCrosshair();showOverlayEditor();}});
       artStudio.load(overlayDraft.artwork);
     }
-    studioMode(overlayDraft.shape==='image'?'custom':'classic');showCrosshair();showOverlayEditor();showOverlay(crosshairInfo.overlay);}catch(error){notice(error);}
+    loadGameCrosshairs();studioMode('games');showCrosshair();showOverlayEditor();showOverlay(crosshairInfo.overlay);}catch(error){notice(error);}
 }
-for(const mode of ['classic','custom'])$('crosshair-tab-'+mode)?.addEventListener('click',()=>{
+for(const mode of studioModes)$('crosshair-tab-'+mode)?.addEventListener('click',()=>{
   studioMode(mode);if(!overlayDraft)return;
-  if(mode==='classic'&&overlayDraft.shape==='image')chooseCrosshairShape('cross');
+  if(mode==='classic'&&overlayDraft.shape==='image'){overlayDraft.gamePreset='';chooseCrosshairShape('cross');showGameCrosshairs();}
   if(mode==='custom'&&overlayDraft.artwork)chooseCrosshairShape('image');
   showCrosshair();showOverlayEditor();
 });
-for(const mode of ['classic','custom'])$('crosshair-tab-'+mode)?.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?'classic':e.key==='End'?'custom':mode==='classic'?'custom':'classic';$('crosshair-tab-'+next).click();$('crosshair-tab-'+next).focus();});
+for(const mode of studioModes)$('crosshair-tab-'+mode)?.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?studioModes[0]:e.key==='End'?studioModes.at(-1):studioModes[(studioModes.indexOf(mode)+(e.key==='ArrowRight'?1:studioModes.length-1))%studioModes.length];$('crosshair-tab-'+next).click();$('crosshair-tab-'+next).focus();});
 for(const k of crossKeys)$('crosshair-'+k)?.addEventListener('input',e=>{crosshair[k]=Number(e.target.value);showCrosshair();});
 for(const k of ['outline','dot','tStyle'])$('crosshair-'+k)?.addEventListener('change',e=>{crosshair[k]=e.target.checked;if(k==='tStyle'&&e.target.checked&&overlayDraft)chooseCrosshairShape('t');showCrosshair();});
 $('crosshair-style')?.addEventListener('change',e=>{crosshair.style=Number(e.target.value);showCrosshair();});
 $('crosshair-color')?.addEventListener('input',e=>{const v=e.target.value;crosshair.color=[1,3,5].map(i=>parseInt(v.slice(i,i+2),16));showCrosshair();});
-$('crosshair-import')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/decode',{code:$('crosshair-code').value});crosshair=result.crosshair;if(overlayDraft)overlayDraft.shape='cross';showCrosshair();showOverlayEditor();notice({message:'Fadenkreuz-Code übernommen. Zum Anwenden Overlay-Einstellungen speichern.'});}catch(error){notice(error);}});
+$('crosshair-import')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/decode',{code:$('crosshair-code').value});crosshair=result.crosshair;if(overlayDraft){overlayDraft.shape='cross';overlayDraft.gamePreset='';showGameCrosshairs();}showCrosshair();showOverlayEditor();notice({message:'Fadenkreuz-Code übernommen. Zum Anwenden Overlay-Einstellungen speichern.'});}catch(error){notice(error);}});
 $('crosshair-copy')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(crossCommands(crosshair).join('; '));notice({message:'Befehle kopiert. In der CS2-Konsole einfügen.'});}catch(error){notice(error);}});
-$('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/profile',{crosshair,overlay:overlayDraft});crosshair=result.crosshair;overlayDraft={...result.overlay};artStudio?.saved();showCrosshair();showOverlayEditor();showOverlay(result.overlay);notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
+$('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/profile',{crosshair,overlay:overlayDraft});crosshair=result.crosshair;overlayDraft={...result.overlay};artStudio?.saved();if($('crosshair-game-status'))$('crosshair-game-status').textContent='Gespeichert. Die Spielauswahl filtert nur die Vorlagen; dein Fadenkreuz bleibt erhalten.';showCrosshair();showOverlayEditor();showOverlay(result.overlay);notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
 loadCrosshair();
 /* Fadenkreuz-Overlay: erst nach gelesenem und bestätigtem Hinweis. */
 function showOverlay(o){
@@ -370,7 +392,7 @@ $('overlay-toggle')?.addEventListener('click',async()=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('overlay-consent')&&!$('overlay-consent').hidden&&!(crosshairInfo&&crosshairInfo.overlay.accepted)){$('overlay-consent').hidden=true;$('overlay-accept').checked=false;showOverlay(crosshairInfo.overlay);}});
 
 for(const key of [...overlayNumeric,'shape','target','app','hotkey'])$('overlay-'+key)?.addEventListener('input',e=>{if(!overlayDraft)return;if(overlayNumeric.includes(key)&&e.target.value==='')return;if(key==='shape'){chooseCrosshairShape(e.target.value);showCrosshair();}else overlayDraft[key]=overlayNumeric.includes(key)?Number(e.target.value):e.target.value;if(e.target.nextElementSibling?.tagName==='OUTPUT')e.target.nextElementSibling.textContent=e.target.value;$('overlay-monitor').disabled=overlayDraft.target!=='monitor';drawCrosshair();});
-$('crosshair-reset')?.addEventListener('click',()=>{crosshair={...crosshairInfo.presets[0].crosshair,color:[...crosshairInfo.presets[0].crosshair.color]};overlayDraft={...crosshairInfo.overlayDefaults};artStudio?.load(null);studioMode('classic');showCrosshair();showOverlayEditor();notice({message:'Standard geladen. Zum Übernehmen speichern.'});});
+$('crosshair-reset')?.addEventListener('click',()=>{crosshair={...crosshairInfo.presets[0].crosshair,color:[...crosshairInfo.presets[0].crosshair.color]};overlayDraft={...crosshairInfo.overlayDefaults};artStudio?.load(null);loadGameCrosshairs();studioMode('games');showCrosshair();showOverlayEditor();notice({message:'Standard geladen. Zum Übernehmen speichern.'});});
 $('crosshair-cfg-save')?.addEventListener('click',()=>api('/api/crosshair/save',{crosshair}).then(notice).catch(notice));
 
 /* CFG-Sammlung: feste Einträge vom Companion, Tasten nur aus der Liste. */

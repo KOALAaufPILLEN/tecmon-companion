@@ -2,17 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import {CROSSHAIR_GAMES} from '../game-crosshairs.mjs';
 import {DEFAULT_CROSSHAIR, DEFAULT_OVERLAY, PRESETS, STYLES} from '../crosshair.mjs';
 
 // Execute the real browser event handlers; catch inconsistent shape/checkbox/draft state.
 async function editor(tStyle=false) {
   const elements=new Map(), paints=[];
   const context={createLinearGradient:()=>({addColorStop(){}}),fillRect:(...args)=>paints.push(['rect',...args]),save(){},restore(){},translate(){},rotate(){},beginPath(){},arc:()=>paints.push(['circle']),stroke(){}};
-  function element(){return {value:'',checked:false,disabled:false,hidden:true,width:200,nextElementSibling:{tagName:'OUTPUT'},classList:{toggle(){}},listeners:{},setAttribute(){},addEventListener(name,fn){this.listeners[name]=fn;},replaceChildren(...children){this.children=children;},getContext:()=>context};}
+  function element(){return {value:'',checked:false,disabled:false,hidden:true,width:200,nextElementSibling:{tagName:'OUTPUT'},classList:{toggle(){}},listeners:{},setAttribute(){},addEventListener(name,fn){this.listeners[name]=fn;},append(...children){this.children=children;},replaceChildren(...children){this.children=children;},getContext:()=>context};}
   const $=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
-  const info={crosshair:{...DEFAULT_CROSSHAIR,tStyle,color:[...DEFAULT_CROSSHAIR.color]},overlay:{...DEFAULT_OVERLAY,shape:'circle',notice:[],noticeVersion:2},overlayDefaults:DEFAULT_OVERLAY,presets:PRESETS,styles:STYLES};
+  const info={crosshair:{...DEFAULT_CROSSHAIR,tStyle,color:[...DEFAULT_CROSSHAIR.color]},overlay:{...DEFAULT_OVERLAY,shape:'circle',notice:[],noticeVersion:2},overlayDefaults:DEFAULT_OVERLAY,presets:PRESETS,styles:STYLES,gamePresets:CROSSHAIR_GAMES};
   const saves=[];
-  const api=async(url,input)=>{if(input)saves.push({url,input:structuredClone(input)});return structuredClone(info);};
+  const api=async(url,input)=>{if(input){saves.push({url,input:structuredClone(input)});if(url==='/api/crosshair/profile'){info.crosshair=structuredClone(input.crosshair);info.overlay={...info.overlay,...structuredClone(input.overlay)};}}return structuredClone(info);};
   const source=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
   const start=source.indexOf('let crosshair=null,'),end=source.indexOf('/* CFG-Sammlung:',start);
   const ctx=vm.createContext({$,el:element,api,notice(){},document:{addEventListener(){}},navigator:{},console});
@@ -55,4 +56,25 @@ test('older circle profiles with a hidden T flag load consistently and can switc
   assert.equal(e.$('overlay-shape').value,'circle');assert.equal(e.$('crosshair-tStyle').checked,false);
   await e.event('crosshair-tStyle','change',true);
   assert.equal(e.$('overlay-shape').value,'t');assert.equal(e.$('crosshair-tStyle').checked,true);
+});
+
+test('game selector filters without changing draft; a template saves bounded artwork and keeps screen settings',async()=>{
+  const e=await editor();
+  assert.equal(e.$('crosshair-panel-games').hidden,false);
+  assert.equal(e.$('crosshair-panel-classic').hidden,true);
+  assert.equal(e.$('crosshair-game').children.length,13);
+  await e.event('crosshair-game','change','valorant');
+  assert.equal(e.$('crosshair-game-presets').children.length,3);
+  await e.event('crosshair-save','click');
+  assert.equal(e.saves.at(-1).input.overlay.shape,'circle','browsing must preserve the existing crosshair');
+  await e.$('crosshair-game-presets').children[1].listeners.click();
+  await e.event('crosshair-save','click');
+  const saved=e.saves.at(-1).input.overlay;
+  assert.equal(saved.gamePreset,'valorant:dot');assert.equal(saved.shape,'image');
+  assert.equal(saved.target,e.info.overlay.target);assert.equal(saved.enabled,e.info.overlay.enabled);
+  assert.equal(saved.artwork.pixels,CROSSHAIR_GAMES.find(g=>g.id==='valorant').presets[1].artwork.pixels);
+  await e.event('crosshair-game','change','wow');
+  assert.equal(e.$('crosshair-game-presets').children.length,0);
+  assert.match(e.$('crosshair-game-note').textContent,/keine passende/);
+  await e.event('crosshair-save','click');assert.equal(e.saves.at(-1).input.overlay.gamePreset,'valorant:dot');
 });

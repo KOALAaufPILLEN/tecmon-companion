@@ -1,3 +1,4 @@
+import { CROSSHAIR_GAMES } from "./game-crosshairs.mjs";
 import http from "node:http";
 import { readFile, writeFile, mkdir, readdir, stat, open, realpath, rm } from "node:fs/promises";
 import { createReadStream, existsSync } from "node:fs";
@@ -278,7 +279,7 @@ export async function createCompanion({
   const overlay = await createOverlaySettings(installation?.profileDir || dataDir);
   const desktop = await createDesktopSettings(installation?.profileDir || dataDir);
   const cfgs = await createCfgLibrary(installation?.profileDir || dataDir);
-  const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), overlayDefaults: DEFAULT_OVERLAY, presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES, overlay: { ...overlay.get(), runtime: overlayRuntimeState(), notice: OVERLAY_NOTICE, noticeVersion: OVERLAY_NOTICE_VERSION } });
+  const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), overlayDefaults: DEFAULT_OVERLAY, gamePresets: CROSSHAIR_GAMES, presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES, overlay: { ...overlay.get(), runtime: overlayRuntimeState(), notice: OVERLAY_NOTICE, noticeVersion: OVERLAY_NOTICE_VERSION } });
   /* CS2-Anzeigemodus aus cs2_video.txt, höchstens alle 10 Sekunden gelesen und nur bei eingeschaltetem Overlay. */
   let windowMode = "unknown", windowModeAt = 0;
   let overlayRuntime = { connected: false, paused: false, hotkey: null };

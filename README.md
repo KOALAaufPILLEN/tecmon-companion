@@ -4,7 +4,11 @@
 
 Stand: lokal umgesetzt und geprüft, noch nicht gemergt, veröffentlicht oder installiert.
 
-- **Fadenkreuz-Studio:** „Klassisch“ mit allen bisherigen Optionen und „Eigenes Design“
+- **Spiele zuerst:** Spiel wählen, dann höchstens fünf sichtbare Vorlagen. 22 statische
+  Vorlagen für CS2, Valorant, Apex, Fortnite, Deadlock, Gears of War und Wardogs.
+  Die übrigen sechs Plattform-Spiele bleiben mit einem Hinweis ohne Vorlage auswählbar.
+  Spielauswahl filtert nur die Liste; Vorlage bewusst übernehmen und speichern.
+- **Fadenkreuz-Studio:** „Selbst anpassen“ mit allen bisherigen Optionen und „Eigenes Design“
   für PNG-Import oder selbst gezeichnete Pixel. Stift, Radierer, Pipette, Farbe,
   Pixel-Deckkraft, Spiegelung in beiden Achsen, Rückgängig/Wiederholen, mittiges
   Anpassen des Rasters und PNG-Export. Vorschau, Gesamtdurchsichtigkeit, Größe,
@@ -23,7 +27,7 @@ Stand: lokal umgesetzt und geprüft, noch nicht gemergt, veröffentlicht oder in
   Keine Kopie auf demselben Monitor. Sprüche/Tipps behalten ihre bisherige Dauer;
   der übersetzte Spielerchat behält seine eigenen Einstellungen.
 
-Prüfung: 252 Node-Tests erfolgreich, zwei bestehende Symlink-Tests übersprungen;
+Prüfung: 255 Node-Tests erfolgreich, zwei bestehende Symlink-Tests übersprungen;
 Windows-C#-5-Build und eigene native Tests für Pixel/Alpha, Hotkey-Konflikte,
 Popup, Sprechblasen und Fokuswechsel. Im Browser PNG importiert, gezeichnet,
 gespeichert und exportiert; Export-RGBA identisch zum Import. Kein laufendes CS2

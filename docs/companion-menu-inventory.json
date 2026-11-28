@@ -745,7 +745,7 @@
         {
           "id": "crosshair-tab-classic",
           "kind": "button",
-          "label": "Klassisch",
+          "label": "Selbst anpassen",
           "options": []
         },
         {
@@ -856,6 +856,18 @@
           "id": "overlay-imageSize",
           "kind": "input",
           "label": "Anzeigegröße (px bei 1080p)",
+          "options": []
+        },
+        {
+          "id": "crosshair-tab-games",
+          "kind": "button",
+          "label": "Spiele",
+          "options": []
+        },
+        {
+          "id": "crosshair-game",
+          "kind": "select",
+          "label": "Spiel",
           "options": []
         }
       ]

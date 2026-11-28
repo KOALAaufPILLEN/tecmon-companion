@@ -47,6 +47,14 @@ test("global overlay API works without CS2, retains auth and never writes a game
   const base = `http://127.0.0.1:${server.address().port}`;
   const headers = { "x-tecmon-token": token, "content-type": "application/json" };
   const post = (route, body) => fetch(base + route, { method: "POST", headers, body: JSON.stringify(body) });
+  const catalog=await (await fetch(base+'/api/crosshair',{headers})).json();
+  assert.equal(catalog.gamePresets.length,13);
+  const gamePreset=catalog.gamePresets.find(g=>g.id==='fortnite').presets[1];
+  const selected=await post('/api/crosshair/profile',{overlay:{shape:'image',artwork:gamePreset.artwork,gamePreset:'fortnite:brackets'}});
+  assert.equal(selected.status,200);const gameState=(await selected.json()).overlay;
+  assert.equal(gameState.gamePreset,'fortnite:brackets');assert.equal(gameState.enabled,false);
+  assert.deepEqual(gameState.artwork,gamePreset.artwork);
+
   assert.equal((await fetch(base + "/api/crosshair/profile", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).status, 401);
   assert.equal((await post("/api/crosshair/overlay", { enabled: true })).status, 400);
   const saved = await post("/api/crosshair/profile", { crosshair: { size: 4, dot: true }, overlay: { shape: "circle", target: "primary", rotation: 45 } });
