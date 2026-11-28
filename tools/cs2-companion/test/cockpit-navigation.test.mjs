@@ -72,3 +72,31 @@ test('Alte gespeicherte Bereiche landen auf den neuen sechs Bereichen',()=>{
   menu.select('gallery');
   assert.equal(document.querySelector('[data-menu-page="videos"]').hidden,false);
 });
+
+test('CS2 native crosshair belongs to Games/CS2 with values before imports; overlay stays under Overlays',()=>{
+ const {window,document}=setup('#cs2-fadenkreuz');
+ const card=document.getElementById('cs2-fadenkreuz');
+ assert.equal(card.closest('[data-menu-page]').dataset.menuPage,'games');
+ assert.equal(card.closest('[data-menu-game]').dataset.menuGame,'cs2');
+ assert.equal(card.closest('details').open,true);
+ assert.equal(document.getElementById('fadenkreuz').closest('[data-menu-page]').dataset.menuPage,'overlays');
+ const controls=[...card.querySelectorAll('input,select,textarea')].map(n=>n.id);
+ assert.ok(controls.indexOf('cs2-crosshair-size')<controls.indexOf('crosshair-cfg-text'));
+ document.querySelector('[data-pick-game="dota2"]').dispatchEvent(new window.Event('click'));
+ assert.equal(card.closest('[data-menu-game]').hidden,true);
+});
+
+test('Fortgeschrittene divider disappears for games without visible advanced cards',()=>{
+ const {window,document,menu}=setup();menu.select('games');
+ const page=document.querySelector('[data-menu-page="games"]'),divider=page.querySelector('.cockpit-divider');
+ assert.equal(divider.hidden,false,'CS2 has an available Configs card');
+ for(const game of ['dota2','wardogs','other']){
+   document.querySelector('[data-pick-game="'+game+'"]').dispatchEvent(new window.Event('click'));
+   assert.equal(divider.hidden,true,game+' has no advanced card');
+ }
+ document.querySelector('[data-pick-game="cs2"]').dispatchEvent(new window.Event('click'));
+ assert.equal(divider.hidden,false);
+ document.getElementById('cfgs').hidden=true;menu.filterGames();
+ assert.equal(divider.hidden,true,'hidden package-specific card must not leave an orphan heading');
+ document.getElementById('cfgs').hidden=false;menu.filterGames();assert.equal(divider.hidden,false);
+});

@@ -95,6 +95,37 @@ export function crosshairConfigText(input) {
     + 'echo "TecMon-Fadenkreuz geladen."\n';
 }
 
+/** Read settings only: never execute imported commands, exec, aliases or binds. */
+export function parseCrosshairConfig(text, base = DEFAULT_CROSSHAIR) {
+  if (typeof text !== "string" || Buffer.byteLength(text, "utf8") > 65536) throw new Error("CFG bitte höchstens 64 KB groß wählen.");
+  const c = cleanCrosshair(base), values = new Map(), unsupported = new Set(); let ignored = 0;
+  const specs = {
+    cl_crosshairstyle: ["style",0,5], cl_crosshairsize: ["size",0,10], cl_crosshairgap: ["gap",-5,5],
+    cl_crosshairthickness: ["thickness",0,3], cl_crosshair_outlinethickness: ["outlineThickness",0,3],
+    cl_crosshair_drawoutline: ["outline",0,1], cl_crosshairdot: ["dot",0,1], cl_crosshair_t: ["tStyle",0,1],
+    cl_crosshairalpha: ["alpha",0,255], cl_crosshairusealpha: ["usealpha",0,1],
+    cl_crosshaircolor: ["colorIndex",0,5], cl_crosshaircolor_r: ["red",0,255],
+    cl_crosshaircolor_g: ["green",0,255], cl_crosshaircolor_b: ["blue",0,255],
+  };
+  for (const statement of text.replace(/^\uFEFF/, "").replace(/\/\/[^\r\n]*/g, "").split(/[;\r\n]+/)) {
+    const line = statement.trim(); if (!line) continue;
+    const command = line.match(/^([a-zA-Z_][a-zA-Z_0-9]*)/)?.[1]?.toLowerCase();
+    if (!command || !Object.hasOwn(specs, command)) { ignored++; if(command?.startsWith("cl_crosshair")) unsupported.add(command); continue; }
+    const match = line.match(/^[a-zA-Z_][a-zA-Z_0-9]*\s+(?:"(-?\d+(?:\.\d+)?)"|(-?\d+(?:\.\d+)?))\s*$/);
+    const [key,min,max] = specs[command], n = match ? Number(match[1] ?? match[2]) : NaN;
+    const integer = ["style","outline","dot","tStyle","alpha","usealpha","colorIndex","red","green","blue"].includes(key);
+    if (!Number.isFinite(n) || n < min || n > max || (integer && !Number.isInteger(n))) throw new Error("Ungültiger oder nicht unterstützter CFG-Wert für " + command + ".");
+    values.set(key,n);
+  }
+  if (!values.size) throw new Error("Keine unterstützten Fadenkreuzwerte in der CFG gefunden.");
+  for(const [key,n] of values) if(Object.hasOwn(c,key) && key!=="color") c[key] = ["outline","dot","tStyle"].includes(key) ? n===1 : n;
+  for(const [index,key] of ["red","green","blue"].entries()) if(values.has(key)) c.color[index] = values.get(key);
+  if(values.has("colorIndex") && values.get("colorIndex") < 5) c.color=[...PRESET_COLORS[values.get("colorIndex")]];
+  if(values.get("usealpha")===0) c.alpha=255;
+  const crosshair=cleanCrosshair(c), rounded=Object.keys(c).filter(key=>typeof c[key]==="number" && c[key]!==crosshair[key]);
+  return {crosshair, imported:values.size, ignored, unsupported:[...unsupported], rounded};
+}
+
 /** cfg-Ordner aus dem Pfad zu cs2.exe (…\game\bin\win64\cs2.exe → …\game\csgo\cfg). */
 export function crosshairConfigPath(cs2Exe) {
   if (!cs2Exe || path.basename(cs2Exe).toLowerCase() !== "cs2.exe") return "";
@@ -143,9 +174,9 @@ async function writeAtomic(file, text) {
 }
 
 /** Gespeicherte Auswahl (crosshair.json im Profilordner) und Schreiben der cfg. */
-export async function createCrosshairSettings(dir) {
+export async function createCrosshairSettings(dir, initial = DEFAULT_CROSSHAIR) {
   const file = path.join(dir, "crosshair.json");
-  let current = { ...DEFAULT_CROSSHAIR };
+  let current = cleanCrosshair(initial);
   try { current = cleanCrosshair(JSON.parse(await readFile(file, "utf8"))); } catch { /* noch nichts gespeichert */ }
   return {
     get: () => current,

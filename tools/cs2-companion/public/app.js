@@ -275,12 +275,12 @@ refresh().then(()=>{if(latestState?.managed)checkUpdate(true);}).catch(notice);
 loadVideos().catch(()=>{});setInterval(()=>{if(!restarting)loadVideos().catch(()=>{});},10000);
 /* Allgemeiner Fadenkreuz-Editor mit optionalem CS2-cfg-Export; statische Vorschau. */
 let crosshair=null,crosshairInfo=null,overlayDraft=null;
-let artStudio=null;
+let artStudio=null,cs2Draft=null;
 const studioModes=['games','classic','custom'];
 function showGameCrosshairs(){
   const select=$('crosshair-game'),list=$('crosshair-game-presets');if(!select||!list)return;
   const game=(crosshairInfo.gamePresets||[]).find(g=>g.id===select.value);
-  $('crosshair-game-note').textContent=game?.note||'';
+  $('crosshair-game-note').textContent=game?.note||'';if($('crosshair-cs2-open'))$('crosshair-cs2-open').hidden=game?.id!=='cs2';
   list.replaceChildren(...(game?.presets||[]).map(p=>{
     const key=game.id+':'+p.id,b=el('button','', 'game-crosshair-choice');b.type='button';b.setAttribute('aria-pressed',String(overlayDraft.gamePreset===key));
     const canvas=el('canvas');canvas.width=96;canvas.height=96;canvas.setAttribute('aria-hidden','true');
@@ -309,7 +309,7 @@ function crosshairControls(){
   for(const key of ['size','gap'])$('crosshair-'+key).disabled=circle||image;
   for(const key of ['thickness','color','outline','dot','tStyle'])$('crosshair-'+key).disabled=image;
   if($('overlay-imageSize'))$('overlay-imageSize').disabled=!image;
-  for(const key of ['crosshair-copy','crosshair-cfg-save'])$(key).disabled=image;
+
   $('overlay-radius').disabled=!circle;
   $('overlay-dotSize').disabled=image||!crosshair.dot;
   $('crosshair-outlineThickness').disabled=image||!crosshair.outline;
@@ -322,8 +322,8 @@ function showOverlayEditor(){if(!overlayDraft)return;for(const key of [...overla
 const crossKeys=['size','gap','thickness','outlineThickness','alpha'];
 const hex=c=>'#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');
 function crossCommands(c){const b=v=>v?1:0;return [`cl_crosshairstyle ${c.style}`,`cl_crosshairsize ${c.size}`,`cl_crosshairgap ${c.gap}`,`cl_crosshairthickness ${c.thickness}`,`cl_crosshair_drawoutline ${b(c.outline)}`,`cl_crosshair_outlinethickness ${c.outlineThickness}`,'cl_crosshaircolor 5',`cl_crosshaircolor_r ${c.color[0]}`,`cl_crosshaircolor_g ${c.color[1]}`,`cl_crosshaircolor_b ${c.color[2]}`,`cl_crosshairusealpha ${b(c.alpha<255)}`,`cl_crosshairalpha ${c.alpha}`,`cl_crosshairdot ${b(c.dot)}`,`cl_crosshair_t ${b(c.tStyle)}`,'cl_crosshairgap_useweaponvalue 0'];}
-function drawCrosshair(){
-  const canvas=$('crosshair-preview');if(!canvas||!crosshair)return;const g=canvas.getContext('2d'),c=crosshair,o2=overlayDraft||{},w=canvas.width,s=Math.min(2*(o2.scale||1),(w-16)/(2*((o2.shape==='circle'?(o2.radius||8):Math.round(c.size*2)+Math.max(0,Math.round(c.gap+4)))+Math.max(3,(o2.dotSize||2),c.thickness*2)+c.outlineThickness)));
+function drawCrosshair(canvas=$('crosshair-preview'),c=crosshair,o2=overlayDraft||{}){
+  if(!canvas||!c)return;const g=canvas.getContext('2d'),w=canvas.width,s=Math.min(2*(o2.scale||1),(w-16)/(2*((o2.shape==='circle'?(o2.radius||8):Math.round(c.size*2)+Math.max(0,Math.round(c.gap+4)))+Math.max(3,(o2.dotSize||2),c.thickness*2)+c.outlineThickness)));
   const sky=g.createLinearGradient(0,0,0,w);sky.addColorStop(0,'#c9b48a');sky.addColorStop(.55,'#9c8763');sky.addColorStop(.56,'#6d5b44');sky.addColorStop(1,'#4b3e2f');g.fillStyle=sky;g.fillRect(0,0,w,w);
   if(o2.shape==='image'){
     const size=Math.min((o2.imageSize||32)*(o2.scale||1)*2,(w-20)/Math.SQRT2);
@@ -341,19 +341,19 @@ function showCrosshair(){
   if(!crosshair)return;if(overlayDraft?.shape==='circle')crosshair.tStyle=false;const c=crosshair;
   for(const k of crossKeys){const input=$('crosshair-'+k);input.value=c[k];input.nextElementSibling.textContent=c[k];}
   $('crosshair-style').value=c.style;$('crosshair-color').value=hex(c.color);for(const k of ['outline','dot','tStyle'])$('crosshair-'+k).checked=c[k];
-  $('crosshair-commands').textContent=crossCommands(c).join('\n');crosshairControls();drawCrosshair();
+  crosshairControls();drawCrosshair();
 }
 async function loadCrosshair(){
   if(!$('crosshair-preview'))return;
-  try{crosshairInfo=await api('/api/crosshair');crosshair=crosshairInfo.crosshair;$('crosshair-exec').textContent=crosshairInfo.exec;
-    $('crosshair-style').replaceChildren(...crosshairInfo.styles.map(s=>{const o=el('option',s.label);o.value=s.id;return o;}));
+  try{crosshairInfo=await api('/api/crosshair');crosshair=crosshairInfo.crosshair;cs2Draft=structuredClone(crosshairInfo.cs2Crosshair||crosshair);showCs2Crosshair();$('crosshair-exec').textContent=crosshairInfo.exec;
+    $('cs2-crosshair-style').replaceChildren(...crosshairInfo.styles.map(s=>{const o=el('option',s.label);o.value=s.id;return o;}));
     $('crosshair-presets').replaceChildren(...crosshairInfo.presets.map(p=>{const b=el('button',p.label,'subtle');b.type='button';b.addEventListener('click',()=>{crosshair={...p.crosshair,color:[...p.crosshair.color]};if(overlayDraft){overlayDraft.shape='cross';overlayDraft.gamePreset='';showGameCrosshairs();}showCrosshair();showOverlayEditor();});return b;}));
     overlayDraft={...crosshairInfo.overlay};
     if(globalThis.TecMonArt&&$('art-canvas')){
       artStudio=globalThis.TecMonArt.create({onChange:artwork=>{overlayDraft.artwork=artwork;overlayDraft.shape='image';overlayDraft.gamePreset='';showGameCrosshairs();if($('crosshair-game-status'))$('crosshair-game-status').textContent='Eigenes Design geändert. Zum Übernehmen Einstellungen speichern.';showCrosshair();showOverlayEditor();}});
       artStudio.load(overlayDraft.artwork);
     }
-    loadGameCrosshairs();studioMode('games');showCrosshair();showOverlayEditor();showOverlay(crosshairInfo.overlay);}catch(error){notice(error);}
+    loadGameCrosshairs();studioMode('games');showCs2Crosshair();showCrosshair();showOverlayEditor();showOverlay(crosshairInfo.overlay);}catch(error){notice(error);}
 }
 for(const mode of studioModes)$('crosshair-tab-'+mode)?.addEventListener('click',()=>{
   studioMode(mode);if(!overlayDraft)return;
@@ -366,8 +366,8 @@ for(const k of crossKeys)$('crosshair-'+k)?.addEventListener('input',e=>{crossha
 for(const k of ['outline','dot','tStyle'])$('crosshair-'+k)?.addEventListener('change',e=>{crosshair[k]=e.target.checked;if(k==='tStyle'&&e.target.checked&&overlayDraft)chooseCrosshairShape('t');showCrosshair();});
 $('crosshair-style')?.addEventListener('change',e=>{crosshair.style=Number(e.target.value);showCrosshair();});
 $('crosshair-color')?.addEventListener('input',e=>{const v=e.target.value;crosshair.color=[1,3,5].map(i=>parseInt(v.slice(i,i+2),16));showCrosshair();});
-$('crosshair-import')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/decode',{code:$('crosshair-code').value});crosshair=result.crosshair;if(overlayDraft){overlayDraft.shape='cross';overlayDraft.gamePreset='';showGameCrosshairs();}showCrosshair();showOverlayEditor();notice({message:'Fadenkreuz-Code übernommen. Zum Anwenden Overlay-Einstellungen speichern.'});}catch(error){notice(error);}});
-$('crosshair-copy')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(crossCommands(crosshair).join('; '));notice({message:'Befehle kopiert. In der CS2-Konsole einfügen.'});}catch(error){notice(error);}});
+$('crosshair-import')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/decode',{code:$('crosshair-code').value});cs2Draft=result.crosshair;showCs2Crosshair();$('crosshair-cfg-status').textContent='Code in den CS2-Entwurf übernommen. Noch nicht gespeichert.';}catch(error){notice(error);}});
+$('crosshair-copy')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(crossCommands(cs2Draft).join('; '));$('crosshair-cfg-status').textContent='CS2-Befehle kopiert. In der CS2-Konsole einfügen.';}catch(error){notice(error);}});
 $('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/profile',{crosshair,overlay:overlayDraft});crosshair=result.crosshair;overlayDraft={...result.overlay};artStudio?.saved();if($('crosshair-game-status'))$('crosshair-game-status').textContent='Gespeichert. Die Spielauswahl filtert nur die Vorlagen; dein Fadenkreuz bleibt erhalten.';showCrosshair();showOverlayEditor();showOverlay(result.overlay);notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
 loadCrosshair();
 /* Fadenkreuz-Overlay: erst nach gelesenem und bestätigtem Hinweis. */
@@ -392,8 +392,32 @@ $('overlay-toggle')?.addEventListener('click',async()=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('overlay-consent')&&!$('overlay-consent').hidden&&!(crosshairInfo&&crosshairInfo.overlay.accepted)){$('overlay-consent').hidden=true;$('overlay-accept').checked=false;showOverlay(crosshairInfo.overlay);}});
 
 for(const key of [...overlayNumeric,'shape','target','app','hotkey'])$('overlay-'+key)?.addEventListener('input',e=>{if(!overlayDraft)return;if(overlayNumeric.includes(key)&&e.target.value==='')return;if(key==='shape'){chooseCrosshairShape(e.target.value);showCrosshair();}else overlayDraft[key]=overlayNumeric.includes(key)?Number(e.target.value):e.target.value;if(e.target.nextElementSibling?.tagName==='OUTPUT')e.target.nextElementSibling.textContent=e.target.value;$('overlay-monitor').disabled=overlayDraft.target!=='monitor';drawCrosshair();});
-$('crosshair-reset')?.addEventListener('click',()=>{crosshair={...crosshairInfo.presets[0].crosshair,color:[...crosshairInfo.presets[0].crosshair.color]};overlayDraft={...crosshairInfo.overlayDefaults};artStudio?.load(null);loadGameCrosshairs();studioMode('games');showCrosshair();showOverlayEditor();notice({message:'Standard geladen. Zum Übernehmen speichern.'});});
-$('crosshair-cfg-save')?.addEventListener('click',()=>api('/api/crosshair/save',{crosshair}).then(notice).catch(notice));
+$('crosshair-reset')?.addEventListener('click',()=>{crosshair={...crosshairInfo.presets[0].crosshair,color:[...crosshairInfo.presets[0].crosshair.color]};overlayDraft={...crosshairInfo.overlayDefaults};artStudio?.load(null);loadGameCrosshairs();studioMode('games');showCs2Crosshair();showCrosshair();showOverlayEditor();notice({message:'Standard geladen. Zum Übernehmen speichern.'});});
+function showCs2Crosshair(){
+  if(!cs2Draft)return;
+  for(const k of ['size','gap','thickness','alpha','outlineThickness']){const n=$('cs2-crosshair-'+k);if(n){n.value=cs2Draft[k];n.nextElementSibling.textContent=cs2Draft[k];}}
+  for(const k of ['dot','tStyle','outline'])if($('cs2-crosshair-'+k))$('cs2-crosshair-'+k).checked=cs2Draft[k];
+  if($('cs2-crosshair-color'))$('cs2-crosshair-color').value=hex(cs2Draft.color);
+  if($('cs2-crosshair-style'))$('cs2-crosshair-style').value=cs2Draft.style;
+  $('crosshair-commands').textContent=crossCommands(cs2Draft).join('\n');
+  drawCrosshair($('cs2-crosshair-preview'),cs2Draft,{shape:'cross',scale:1,rotation:0,dotSize:2});
+}
+for(const k of ['size','gap','thickness','alpha','outlineThickness','style','color','dot','tStyle','outline'])$('cs2-crosshair-'+k)?.addEventListener('input',e=>{
+  if(!cs2Draft)return;
+  cs2Draft[k]=k==='color'?[1,3,5].map(i=>parseInt(e.target.value.slice(i,i+2),16)):['dot','tStyle','outline'].includes(k)?e.target.checked:Number(e.target.value);
+  showCs2Crosshair();$('crosshair-cfg-status').textContent='CS2-Entwurf geändert. Noch nicht gespeichert.';
+});
+$('crosshair-cs2-open')?.addEventListener('click',()=>{location.hash='cs2-fadenkreuz';$('cs2-fadenkreuz').scrollIntoView({block:'start',behavior:'smooth'});});
+$('crosshair-cfg-save')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/cs2-save',{crosshair:cs2Draft});cs2Draft=result.cs2Crosshair;showCs2Crosshair();$('crosshair-cfg-status').textContent=result.message;notice(result);}catch(error){notice(error);}});
+async function importCrosshairCfg(){
+  try{const result=await api('/api/crosshair/import-cfg',{text:$('crosshair-cfg-text').value,crosshair:cs2Draft});
+    cs2Draft=result.crosshair;showCs2Crosshair();
+    $('crosshair-cfg-status').textContent=result.imported+' Fadenkreuzwerte übernommen · '+result.ignored+' andere Befehle ignoriert.'+(result.unsupported.length?' Nicht unterstützte Fadenkreuzbefehle: '+result.unsupported.join(', ')+'.':'')+(result.rounded?.length?' Auf Editor-Schrittweite gerundet: '+result.rounded.join(', ')+'.':'')+' Noch nicht gespeichert. CFG herunterladen oder bewusst in CS2 speichern.';
+  }catch(error){$('crosshair-cfg-status').textContent=error.message;notice(error);}
+}
+$('crosshair-cfg-import')?.addEventListener('click',importCrosshairCfg);
+$('crosshair-cfg-file')?.addEventListener('change',async e=>{try{const file=e.target.files?.[0];if(!file)return;if(file.size>65536)throw Error('CFG bitte höchstens 64 KB groß wählen.');$('crosshair-cfg-text').value=await file.text();await importCrosshairCfg();}catch(error){$('crosshair-cfg-status').textContent=error.message;notice(error);}finally{e.target.value='';}});
+$('crosshair-cfg-download')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/export-cfg',{crosshair:cs2Draft});const url=URL.createObjectURL(new Blob([result.text],{type:'text/plain;charset=utf-8'}));const a=el('a');a.href=url;a.download='tecmon_crosshair.cfg';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);$('crosshair-cfg-status').textContent='CFG-Download gestartet. In den CS2-cfg-Ordner legen und mit exec tecmon_crosshair laden.';}catch(error){notice(error);}});
 
 /* CFG-Sammlung: feste Einträge vom Companion, Tasten nur aus der Liste. */
 const cfgOpen=new Set(['pro']);

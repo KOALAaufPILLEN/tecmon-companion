@@ -6,14 +6,14 @@ window.TecMonCockpit=function(document){
      steht dann immer am Ende des Bereichs. Kartennamen sind feste Namen, der Zustand steht rechts im Kopf. */
   const groups=[
     ['start','Start',[['.connection-summary','Verbindung zur Webseite'],['.activity-summary','Aktueller Auftrag'],['[data-panel="updates"]','Updates & Werkzeuge']]],
-    ['games','Spiele',[['#rundentipps','Rundentipps'],['#stats-backlog','Stats nach dem Spielen'],['#quiz','Quiz'],['#dota-tipps','Dota-2-Tipps'],['#wardogs','Scoreboard-Foto'],['#games','Spiel-Pakete'],['#cfgs','Fertige Configs',true]]],
+    ['games','Spiele',[['#cs2-fadenkreuz','CS2-Fadenkreuz'],['#rundentipps','Rundentipps'],['#stats-backlog','Stats nach dem Spielen'],['#quiz','Quiz'],['#dota-tipps','Dota-2-Tipps'],['#wardogs','Scoreboard-Foto'],['#games','Spiel-Pakete'],['#cfgs','Fertige Configs',true]]],
     ['videos','Videos',[['#auto-highlights','Highlight-Video nach dem Match'],['#clips','Clip-Puffer'],['#videos','Letzte Videos'],['#skin-tausch','Skins & Agenten für Videos',true],['[data-panel="setup"]','Aufnahme-Setup',true],['[data-panel="jobs"]','Aufträge & Szenen',true],['[data-panel="demos"]','Demos herunterladen',true]]],
     ['overlays','Overlays',[['#fadenkreuz','Fadenkreuz'],['#chat','Chat-Übersetzer und Chat-Overlay']]],
     ['tecmon','TecMon',[['#tecmon','Level und Persönlichkeit'],['#spiele','Minispiele']]],
     ['settings','Einstellungen',[['#figur','Figur, Ansicht und Autostart']]]
   ];
   const gameNames={cs2:'Counter-Strike 2',dota2:'Dota 2',wardogs:'Wardogs',other:'Weitere Pakete'};
-  const gameCards={'rundentipps':'cs2','stats-backlog':'cs2',quiz:'cs2',cfgs:'cs2','dota-tipps':'dota2',wardogs:'wardogs'};
+  const gameCards={'cs2-fadenkreuz':'cs2','rundentipps':'cs2','stats-backlog':'cs2',quiz:'cs2',cfgs:'cs2','dota-tipps':'dota2',wardogs:'wardogs'};
   let current='start',game='cs2';
   /* Alte gespeicherte Seiten und Sprünge auf die neuen Bereiche abbilden. */
   const legacy={buddy:'tecmon',record:'videos',stats:'videos',overlay:'overlays',gallery:'videos',system:'start'};
@@ -22,10 +22,18 @@ window.TecMonCockpit=function(document){
   document.querySelector('.minimal-hero').after(shell);
   const pages=new Map(),buttons=new Map(),states=[];
   function save(){try{localStorage.setItem('tecmon-cockpit',JSON.stringify({page:current,game}));}catch{}}
+  function syncDividers(){
+    for(const page of content.querySelectorAll('[data-menu-page]')){
+      const divider=page.querySelector(':scope>.cockpit-divider');if(!divider)continue;
+      const visible=[...page.querySelectorAll(':scope>.cockpit-fold[data-expert]')].some(fold=>!fold.hidden&&[...fold.children].some(card=>card.tagName!=='SUMMARY'&&!card.hidden));
+      if(divider.hidden===visible)divider.hidden=!visible;
+    }
+  }
   function filterGames(){
     for(const n of content.querySelectorAll('[data-menu-game]'))n.hidden=n.dataset.menuGame!==game;
     for(const row of document.querySelectorAll('#game-library [data-package]'))row.hidden=game==='other'?Object.hasOwn(gameCards,row.dataset.package)||['cs2','dota2','wardogs'].includes(row.dataset.package):row.dataset.package!==game;
     for(const b of content.querySelectorAll('[data-pick-game]'))b.setAttribute('aria-pressed',String(b.dataset.pickGame===game));
+    syncDividers();
   }
   function select(page){page=legacy[page]||page;if(!pages.has(page))return;current=page;for(const [key,node] of pages)node.hidden=key!==page;for(const [key,node] of buttons)node.setAttribute('aria-current',key===page?'page':'false');save();}
   function reveal(node){
@@ -61,9 +69,9 @@ window.TecMonCockpit=function(document){
     if(/(ist|sind) an$|: an$|^Eingeschaltet|läuft|^Live|liest mit|^Scoreboard-Foto an|^Chat-Übersetzer an/.test(t))return 'an';
     return /^Level \d|^Bereit|verbunden|^Verbindung|^Auftrag|^Download|^Aufnahme läuft|Update/i.test(t)&&t.length<=28?t:'';
   }
-  function syncStates(){for(const [card,state] of states){const h=card.querySelector('h2');const v=shortState(h&&h.textContent);if(state.textContent===v)continue;state.textContent=v;state.dataset.on=String(v==='an');}}
+  function syncStates(){syncDividers();for(const [card,state] of states){const h=card.querySelector('h2');const v=shortState(h&&h.textContent);if(state.textContent===v)continue;state.textContent=v;state.dataset.on=String(v==='an');}}
   syncStates();
-  try{new window.MutationObserver(syncStates).observe(content,{subtree:true,childList:true,characterData:true});}catch{}
+  try{new window.MutationObserver(syncStates).observe(content,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['hidden']});}catch{}
   // Der alte Erweitert-Bereich ist in Start/Videos aufgegangen; alte Sprünge bleiben gültig.
   const advanced=document.getElementById('advanced-panel');if(advanced)advanced.hidden=true;
   const oldScroll=Element.prototype.scrollIntoView;

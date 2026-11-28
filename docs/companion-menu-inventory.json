@@ -658,30 +658,6 @@
           "options": []
         },
         {
-          "id": "crosshair-code",
-          "kind": "input",
-          "label": "Fadenkreuz-Code",
-          "options": []
-        },
-        {
-          "id": "crosshair-import",
-          "kind": "button",
-          "label": "Übernehmen",
-          "options": []
-        },
-        {
-          "id": "crosshair-copy",
-          "kind": "button",
-          "label": "Befehle kopieren",
-          "options": []
-        },
-        {
-          "id": "crosshair-cfg-save",
-          "kind": "button",
-          "label": "In CS2 speichern",
-          "options": []
-        },
-        {
           "id": "CS2-Fadenkreuzstil",
           "kind": "select",
           "label": "CS2-Fadenkreuzstil",
@@ -868,6 +844,12 @@
           "id": "crosshair-game",
           "kind": "select",
           "label": "Spiel",
+          "options": []
+        },
+        {
+          "id": "crosshair-cs2-open",
+          "kind": "button",
+          "label": "Spielinternes CS2-Fadenkreuz bearbeiten →",
           "options": []
         }
       ]
@@ -2452,6 +2434,120 @@
           "id": "Video abspielen / öffnen",
           "kind": "button",
           "label": "Video abspielen / öffnen",
+          "options": []
+        }
+      ]
+    },
+    {
+      "id": "cs2-fadenkreuz",
+      "title": "CS2-Fadenkreuz",
+      "controls": [
+        {
+          "id": "crosshair-cfg-save",
+          "kind": "button",
+          "label": "In CS2 speichern",
+          "options": []
+        },
+        {
+          "id": "crosshair-copy",
+          "kind": "button",
+          "label": "Befehle kopieren",
+          "options": []
+        },
+        {
+          "id": "crosshair-code",
+          "kind": "input",
+          "label": "Fadenkreuz-Code",
+          "options": []
+        },
+        {
+          "id": "crosshair-import",
+          "kind": "button",
+          "label": "Übernehmen",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-size",
+          "kind": "input",
+          "label": "Länge",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-gap",
+          "kind": "input",
+          "label": "Abstand",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-thickness",
+          "kind": "input",
+          "label": "Dicke",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-color",
+          "kind": "input",
+          "label": "Farbe",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-dot",
+          "kind": "input",
+          "label": "Punkt",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-tStyle",
+          "kind": "input",
+          "label": "T-Form",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-outline",
+          "kind": "input",
+          "label": "Umriss",
+          "options": []
+        },
+        {
+          "id": "crosshair-cfg-download",
+          "kind": "button",
+          "label": "CFG herunterladen",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-alpha",
+          "kind": "input",
+          "label": "Deckkraft",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-outlineThickness",
+          "kind": "input",
+          "label": "Umrissdicke",
+          "options": []
+        },
+        {
+          "id": "cs2-crosshair-style",
+          "kind": "select",
+          "label": "CS2-Stil",
+          "options": []
+        },
+        {
+          "id": "crosshair-cfg-file",
+          "kind": "input",
+          "label": "CFG-Datei wählen",
+          "options": []
+        },
+        {
+          "id": "crosshair-cfg-text",
+          "kind": "textarea",
+          "label": "CFG-Befehle einfügen",
+          "options": []
+        },
+        {
+          "id": "crosshair-cfg-import",
+          "kind": "button",
+          "label": "Fadenkreuzwerte übernehmen",
           "options": []
         }
       ]
