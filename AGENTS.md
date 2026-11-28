@@ -507,9 +507,34 @@ Gleiche Grenzen wie bei CS2, verbindlich:
 - Fadenkreuz-Formauswahl und T-Häkchen synchron halten: T aktiviert das Kreuz auch
   nach einer Kreis-/Punktvorlage. Regler ohne Wirkung für die gewählte Form/Punkt/
   Umriss deaktivieren; Vorschau und nativer Renderer müssen dieselbe Wahl darstellen.
+  - Eigene Designs (28.11.2026): PNG nur im Browser dekodieren, vorab Größe (2 MB) und
+    IHDR (max. 512 je Seite) prüfen. In `overlay.artwork` ausschließlich kanonisches Base64
+    mit RGBA, 1–64 Pixel je Seite und exakt passender Bytezahl speichern. `shape: image`
+    braucht sichtbare Pixel. Native Anzeige nur aus diesen Pixeldaten, nie Pfade/URLs/SVG.
+    Transparenz, Seitenverhältnis und Nearest-Neighbor erhalten; Drehung/hohe DPI dürfen
+    das 512px-Fenster nicht abschneiden. PNG-/Pixel-Designs nicht als CS2-cfg ausgeben.
+    HTTP-Profilprüfung vor jeder Schreiboperation; Paketentfernung erhält das globale Design.
+
 - Hinweisversion bei dieser Ausweitung von 1 auf 2: vorhandene Einstellungen erhalten,
   aber erst nach erneuter Bestätigung wieder einschalten. `CrosshairSelfTest.cs` prüft das
   echte Windows-Fenster getrennt vom normalen Launcher; keine Spiel-Eingaben im Test.
+
+## Popup, Menütaste und TecMon-Sprechblase (Nutzerentscheid 28.11.2026)
+
+- Menü ist ein eigenes verschiebbares Popup, keine Sprechblase und nicht an die Figur
+  gekoppelt. Maus/Tray/alle vorhandenen Bereiche erhalten. Escape auch im WebView über
+  feste `menu-close`-Nachricht; native Seite prüft localhost:31977 als Quelle.
+- `desktop.menuKey` und `menuModifier`: keine Taste oder eine erlaubte Taste, optional
+  eine Zusatztaste (Strg/Alt/Umschalt/Windows). Ausschließlich `RegisterHotKey`, kein Hook,
+  keine Tastaturabfrage und keine Spieleingaben. Bei Wechsel/Dispose abmelden; Registrierung
+  oder Konflikt über authentifiziertes `/api/desktop/runtime` melden, nie still ignorieren.
+- `desktop.bubblePlacement`: `pet`, `game`, `both` (Standard). Gemeint ist ausdrücklich
+  TecMons eigene Sprechblase, nicht der übersetzte Spielerchat. Bei `pet`/`both` an der
+  Figur bleiben, nur bei `both` eine zusätzliche Kopie auf einem anderen CS2-Monitor;
+  gleicher Bildschirm ohne Dublette. Bei Fokus-/Monitorwechsel bestehende Meldung wieder
+  synchronisieren, beim Ausblenden und Dispose beide schließen. GSI-quiet und bestehende
+  Anzeigedauer erhalten; übersetzten Spielerchat und dessen Optionen nicht verändern.
+  Fenster-/Prozessabfrage für die Kopie höchstens alle 250 ms, kein Polling pro Frame.
 
 ## Chat-Übersetzer für CS2 (`chat-translate.mjs`, `chat-models.mjs`)
 

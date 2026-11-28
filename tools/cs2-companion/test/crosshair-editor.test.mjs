@@ -8,7 +8,7 @@ import {DEFAULT_CROSSHAIR, DEFAULT_OVERLAY, PRESETS, STYLES} from '../crosshair.
 async function editor(tStyle=false) {
   const elements=new Map(), paints=[];
   const context={createLinearGradient:()=>({addColorStop(){}}),fillRect:(...args)=>paints.push(['rect',...args]),save(){},restore(){},translate(){},rotate(){},beginPath(){},arc:()=>paints.push(['circle']),stroke(){}};
-  function element(){return {value:'',checked:false,disabled:false,hidden:true,width:200,nextElementSibling:{tagName:'OUTPUT'},classList:{toggle(){}},listeners:{},addEventListener(name,fn){this.listeners[name]=fn;},replaceChildren(...children){this.children=children;},getContext:()=>context};}
+  function element(){return {value:'',checked:false,disabled:false,hidden:true,width:200,nextElementSibling:{tagName:'OUTPUT'},classList:{toggle(){}},listeners:{},setAttribute(){},addEventListener(name,fn){this.listeners[name]=fn;},replaceChildren(...children){this.children=children;},getContext:()=>context};}
   const $=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
   const info={crosshair:{...DEFAULT_CROSSHAIR,tStyle,color:[...DEFAULT_CROSSHAIR.color]},overlay:{...DEFAULT_OVERLAY,shape:'circle',notice:[],noticeVersion:2},overlayDefaults:DEFAULT_OVERLAY,presets:PRESETS,styles:STYLES};
   const saves=[];

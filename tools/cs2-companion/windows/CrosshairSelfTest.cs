@@ -39,6 +39,24 @@ static class CrosshairSelfTest {
             image.Save(Path.Combine(output,"crosshair-"+shape+".png"));
           }
         }
+        var rgba=new byte[]{255,0,0,255,0,0,0,0,0,255,0,128,0,0,255,255};
+        options["shape"]="image";options["rotation"]=0;options["imageSize"]=8;
+        options["artwork"]=new Dictionary<string,object>{{"width",2},{"height",2},{"pixels",Convert.ToBase64String(rgba)}};
+        form.Apply(true,look,options);
+        using(var image=new Bitmap(512,512,System.Drawing.Imaging.PixelFormat.Format32bppArgb)){
+          using(var g=Graphics.FromImage(image))form.Draw(g,1);
+          Check(image.GetPixel(253,253).R==255,"Custom red pixel missing");
+          Check(image.GetPixel(258,253).A==0,"Custom transparency lost");
+          Check(Math.Abs(image.GetPixel(253,258).A-128)<=1,"Custom per-pixel alpha lost");
+          Check(image.GetPixel(258,258).B==255,"Custom blue pixel missing");
+          image.Save(Path.Combine(output,"crosshair-custom.png"));
+        }
+        options["rotation"]=45;options["imageSize"]=64;options["scale"]=4;form.Apply(true,look,options);
+        using(var image=new Bitmap(512,512,System.Drawing.Imaging.PixelFormat.Format32bppArgb)){
+          using(var g=Graphics.FromImage(image))form.Draw(g,4);
+          for(int i=0;i<512;i++)Check(image.GetPixel(0,i).A==0&&image.GetPixel(511,i).A==0&&image.GetPixel(i,0).A==0&&image.GetPixel(i,511).A==0,"Rotated custom glyph clipped at high DPI");
+        }
+        options["scale"]=1;
         // Pixel checks exercise the actual native glyph, not a copy of the geometry.
         options["shape"]="cross";options["rotation"]=0;look["dot"]=false;look["outline"]=false;
         foreach(bool tStyle in new[]{false,true}){

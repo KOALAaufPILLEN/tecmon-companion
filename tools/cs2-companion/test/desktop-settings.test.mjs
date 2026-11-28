@@ -6,7 +6,17 @@ import path from "node:path";
 import { cleanDesktopSettings, createDesktopSettings, DESKTOP_DEFAULTS, TUTORIAL_VERSION } from "../desktop-settings.mjs";
 
 test("Desktop-Einstellungen: Standard ist 3D, Umherfliegen an, Autostart aus", () => {
-  assert.deepEqual(cleanDesktopSettings(null), { quality: "high", motion: "chill", gameEconomy: true, wander: true, animate: true, foreground: true, autostart: false, chatPos: null, ui: "advanced", tutorial: TUTORIAL_VERSION });
+  assert.deepEqual(cleanDesktopSettings(null), { quality: "high", motion: "chill", gameEconomy: true, wander: true, animate: true, foreground: true, autostart: false, chatPos: null, ui: "advanced", tutorial: TUTORIAL_VERSION, bubblePlacement: "both", menuKey: "none", menuModifier: "none" });
+});
+
+test("Popup-Taste und Anzeigeorte validieren und Neustarts überstehen",async()=>{
+  const dir=await mkdtemp(path.join(tmpdir(),"tecmon-popup-")),settings=await createDesktopSettings(dir);
+  await settings.set({menuKey:"M",menuModifier:"Control",bubblePlacement:"pet"});
+  const saved=(await createDesktopSettings(dir)).get();
+  assert.equal(saved.menuKey,"M");assert.equal(saved.menuModifier,"Control");assert.equal(saved.bubblePlacement,"pet");
+  const invalid=cleanDesktopSettings({menuKey:"A+B;quit",menuModifier:"Control+Alt",bubblePlacement:"all"},saved);
+  assert.deepEqual(invalid,saved);
+  assert.equal(cleanDesktopSettings({menuKey:"F8",menuModifier:"none"},saved).menuKey,"F8");
 });
 
 test("Desktop-Einstellungen übernehmen nur bekannte Felder mit gültigen Werten", () => {

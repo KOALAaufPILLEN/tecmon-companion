@@ -73,6 +73,17 @@ html:has(.desktop-panel){background:#0e0b16;scrollbar-color:#a78bfa #1b1626}
 .crosshair-controls input[type=color]{width:48px;height:26px;padding:0;margin:0;border:0;background:none}
 .crosshair-controls select{margin:0;padding:4px 6px;font-size:12px}
 .crosshair-presets{display:flex;flex-wrap:wrap;gap:6px}.crosshair-presets button{padding:3px 10px;font-size:11px}
+.crosshair-workspace{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;margin:24px 0;align-items:start}
+.crosshair-preview-pane{position:sticky;top:16px;display:grid;gap:12px;padding:16px;background:#17111f;border:1px solid var(--line)}
+.crosshair-preview-pane canvas{width:100%;height:auto;image-rendering:pixelated;border:1px solid #5a456a}
+.crosshair-preview-pane small{color:var(--muted);font-size:10px}.crosshair-preview-pane label{display:grid;grid-template-columns:1fr auto;gap:4px}.crosshair-preview-pane input{grid-column:1/-1;width:100%;padding:0;margin:0}
+.crosshair-preview-pane output{grid-column:2;grid-row:1}.crosshair-preview-pane input{grid-row:2}
+.crosshair-design{min-width:0}.crosshair-tabs{display:flex;gap:8px;margin-bottom:18px}.crosshair-tabs [aria-selected=false]{background:#251b31;color:#c8b7db}.crosshair-tabs [aria-selected=true]{background:var(--gold);color:#17111f}
+.art-toolbar{display:flex;align-items:end;flex-wrap:wrap;gap:10px;margin:12px 0}.art-toolbar label{flex:1;min-width:90px}.art-toolbar .button{flex:none;color:#17111f;min-width:0}.art-toolbar input[type=color]{height:38px;padding:3px}.art-toolbar input[type=range]{padding:0}
+.art-checks{align-items:center}.art-checks label{display:flex;align-items:center;gap:6px;font-size:11px;min-width:150px}.art-checks input{width:auto;margin:0}
+.art-board{max-width:420px;margin:16px auto;background:#17111f;border:1px solid #6c547d;padding:8px}.art-board canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none;cursor:crosshair;max-height:none;outline-offset:4px}.art-board canvas:focus-visible{outline:2px solid var(--gold)}
+.art-size{margin-top:16px;display:grid;grid-template-columns:1fr 50px;gap:8px}.art-size input{grid-column:1/-1;padding:0;margin:0}.art-size output{grid-row:1;grid-column:2}#art-status{min-height:20px;color:var(--gold);font-size:12px}.crosshair-design small{font-size:11px;line-height:1.6;color:var(--muted)}
+@media(max-width:760px){.crosshair-workspace{grid-template-columns:1fr;gap:16px}.crosshair-preview-pane{position:sticky;top:0;z-index:2;grid-template-columns:120px 1fr;padding:12px;gap:8px 16px}.crosshair-preview-pane .eyebrow{grid-column:1/-1;grid-row:1}.crosshair-preview-pane small{display:none}.crosshair-preview-pane canvas{grid-column:1;grid-row:2/5;align-self:center}.crosshair-preview-pane label{grid-column:2}.crosshair-preview-pane label:nth-of-type(1){grid-row:2}.crosshair-preview-pane label:nth-of-type(2){grid-row:3}.crosshair-preview-pane label:nth-of-type(3){grid-row:4}.art-toolbar button{padding:9px}}
 .crosshair-checks{display:flex;gap:14px;font-size:12px}.crosshair-checks label{display:flex;gap:6px;align-items:center}.crosshair-checks input{width:auto;margin:0}
 .crosshair-import{display:flex;gap:6px}.crosshair-import input{margin:0;font-size:12px;padding:5px 8px}.crosshair-import button{white-space:nowrap}
 .crosshair-commands{font-size:11px;max-height:120px;overflow:auto;padding:8px 10px;border-radius:8px}

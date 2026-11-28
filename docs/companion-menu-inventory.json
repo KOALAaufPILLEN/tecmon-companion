@@ -741,6 +741,122 @@
           "kind": "button",
           "label": "Vorlage: Groß & gelb",
           "options": []
+        },
+        {
+          "id": "crosshair-tab-classic",
+          "kind": "button",
+          "label": "Klassisch",
+          "options": []
+        },
+        {
+          "id": "crosshair-tab-custom",
+          "kind": "button",
+          "label": "Eigenes Design",
+          "options": []
+        },
+        {
+          "id": "art-file",
+          "kind": "input",
+          "label": "PNG importieren",
+          "options": []
+        },
+        {
+          "id": "art-export",
+          "kind": "button",
+          "label": "Als PNG exportieren",
+          "options": []
+        },
+        {
+          "id": "art-tool",
+          "kind": "select",
+          "label": "WerkzeugStiftRadiererPipette",
+          "options": [
+            {
+              "value": "paint",
+              "label": "Stift"
+            },
+            {
+              "value": "erase",
+              "label": "Radierer"
+            },
+            {
+              "value": "pick",
+              "label": "Pipette"
+            }
+          ]
+        },
+        {
+          "id": "art-color",
+          "kind": "input",
+          "label": "Farbe",
+          "options": []
+        },
+        {
+          "id": "art-opacity",
+          "kind": "input",
+          "label": "Pixel-Deckkraft",
+          "options": []
+        },
+        {
+          "id": "art-mirror-x",
+          "kind": "input",
+          "label": "Links / rechts spiegeln",
+          "options": []
+        },
+        {
+          "id": "art-mirror-y",
+          "kind": "input",
+          "label": "Oben / unten spiegeln",
+          "options": []
+        },
+        {
+          "id": "art-undo",
+          "kind": "button",
+          "label": "Rückgängig",
+          "options": []
+        },
+        {
+          "id": "art-redo",
+          "kind": "button",
+          "label": "Wiederholen",
+          "options": []
+        },
+        {
+          "id": "art-clear",
+          "kind": "button",
+          "label": "Alles radieren",
+          "options": []
+        },
+        {
+          "id": "art-grid-size",
+          "kind": "select",
+          "label": "Raster16 × 1632 × 3264 × 64",
+          "options": [
+            {
+              "value": "16",
+              "label": "16 × 16"
+            },
+            {
+              "value": "32",
+              "label": "32 × 32"
+            },
+            {
+              "value": "64",
+              "label": "64 × 64"
+            }
+          ]
+        },
+        {
+          "id": "art-resize",
+          "kind": "button",
+          "label": "Mittig anpassen",
+          "options": []
+        },
+        {
+          "id": "overlay-imageSize",
+          "kind": "input",
+          "label": "Anzeigegröße (px bei 1080p)",
+          "options": []
         }
       ]
     },
@@ -826,6 +942,63 @@
           "kind": "checkbox",
           "label": "Mit Windows starten",
           "options": []
+        },
+        {
+          "id": "figure-menu-key",
+          "kind": "select",
+          "label": "MenütasteKeine Taste",
+          "options": [
+            {
+              "value": "none",
+              "label": "Keine Taste"
+            }
+          ]
+        },
+        {
+          "id": "figure-menu-modifier",
+          "kind": "select",
+          "label": "ZusatztasteKeine · einzelne TasteStrgAltUmschaltWindows",
+          "options": [
+            {
+              "value": "none",
+              "label": "Keine · einzelne Taste"
+            },
+            {
+              "value": "Control",
+              "label": "Strg"
+            },
+            {
+              "value": "Alt",
+              "label": "Alt"
+            },
+            {
+              "value": "Shift",
+              "label": "Umschalt"
+            },
+            {
+              "value": "Win",
+              "label": "Windows"
+            }
+          ]
+        },
+        {
+          "id": "figure-bubble-placement",
+          "kind": "select",
+          "label": "Sprechblasen & Chat anzeigenNeben TecMon + Kopie auf dem CS2-BildschirmNur neben TecMonNur auf dem CS2-Bildschirm (sonst neben TecMon)",
+          "options": [
+            {
+              "value": "both",
+              "label": "Neben TecMon + Kopie auf dem CS2-Bildschirm"
+            },
+            {
+              "value": "pet",
+              "label": "Nur neben TecMon"
+            },
+            {
+              "value": "game",
+              "label": "Nur auf dem CS2-Bildschirm (sonst neben TecMon)"
+            }
+          ]
         }
       ]
     },

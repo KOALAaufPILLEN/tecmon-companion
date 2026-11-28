@@ -283,6 +283,7 @@ export async function createCompanion({
   let windowMode = "unknown", windowModeAt = 0;
   let overlayRuntime = { connected: false, paused: false, hotkey: null };
   let overlayRuntimeAt = 0;
+  let desktopRuntime = { registered: null, key: "none", modifier: "none" }, desktopRuntimeAt = 0;
   const overlayRuntimeState = () => ({ ...overlayRuntime, connected: overlayRuntime.connected && Date.now() - overlayRuntimeAt < 15_000 });
   const refreshWindowMode = (force = false) => {
     if ((!force && !overlay.get().enabled) || Date.now() - windowModeAt < 10000) return;
@@ -1110,6 +1111,7 @@ export async function createCompanion({
       const assets = {
         "/": ["index.html", "text/html; charset=utf-8"],
         "/app.js": ["app.js", "text/javascript; charset=utf-8"],
+        "/crosshair-art.js": ["crosshair-art.js", "text/javascript; charset=utf-8"],
         "/menu.js": ["menu.js", "text/javascript; charset=utf-8"],
         "/style.css": ["style.css", "text/css; charset=utf-8"],
         "/logo.webp": ["logo.webp", "image/webp"],
@@ -1147,6 +1149,7 @@ export async function createCompanion({
           chat: chatOverlayState(),
           chatBubble: chatBubbleState(),
           desktop: desktop.get(),
+          desktopRuntime: { ...desktopRuntime, connected: Date.now() - desktopRuntimeAt < 15_000 },
           videoTools: installation ? { ...videoTools, installed: { ...videoTools.installed } } : null,
           downloads: [...downloads.values()],
           dataDir,
@@ -1319,6 +1322,14 @@ export async function createCompanion({
         });
       }
       if (url.pathname === "/api/desktop/settings") return json(res, 200, { desktop: await desktop.set(input) });
+      if (url.pathname === "/api/desktop/runtime") {
+        const chosen = desktop.get();
+        if (input.key === chosen.menuKey && input.modifier === chosen.menuModifier) {
+          desktopRuntime = { registered: input.registered === true, key: chosen.menuKey, modifier: chosen.menuModifier };
+          desktopRuntimeAt = Date.now();
+        }
+        return json(res, 200, { ok: true });
+      }
       if (url.pathname === "/api/pet/mode") return json(res, 200, { pet: await pet.setMode(String(input.mode || "")) });
       if (url.pathname === "/api/pet/interact") return json(res, 200, { pet: await pet.interact(String(input.action || "")) });
       if (url.pathname === "/api/pet/game") return json(res, 200, { pet: await pet.game(String(input.game || ""), { win: input.win === true, score: input.score }) });
