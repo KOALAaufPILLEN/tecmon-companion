@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
@@ -30,6 +31,16 @@ class DesktopInteractionSelfTest {
       SendMessage(handle,0x0312,new IntPtr(0x7C4),IntPtr.Zero);Application.DoEvents();var initial=pet.Location;
       var panel=(DesktopPanel)Get(pet,"panel");Check(panel!=null&&panel.Visible&&!panel.ShowInTaskbar,"Popup did not open");
       panel.Location=new Point(panel.Left+10,panel.Top+10);Check(pet.Location==initial,"Moving popup moved the figure");
+      var apply=typeof(DesktopPet).GetMethod("ApplyBusyState",BindingFlags.Instance|BindingFlags.NonPublic);
+      var activity=new Dictionary<string,object>{{"active",true},{"updates",new Dictionary<string,object>{{"toolsBusy",true}}}};
+      apply.Invoke(pet,new object[]{activity});Check(panel.Visible,"Manufacturer check hid the settings popup");
+      apply.Invoke(pet,new object[]{activity});Check(panel.Visible,"Repeated maintenance poll hid the popup");
+      activity["active"]=false;((Dictionary<string,object>)activity["updates"])["toolsBusy"]=false;
+      apply.Invoke(pet,new object[]{activity});Check(panel.Visible,"Finishing maintenance hid the popup");
+      activity["active"]=true;((Dictionary<string,object>)activity["updates"])["toolsBusy"]=true;apply.Invoke(pet,new object[]{activity});
+      ((Dictionary<string,object>)activity["updates"])["toolsBusy"]=false;apply.Invoke(pet,new object[]{activity});Check(!panel.Visible,"Media job after maintenance did not hide popup");
+      activity["active"]=false;apply.Invoke(pet,new object[]{activity});panel.Show();
+
       SendMessage(handle,0x0312,new IntPtr(0x7C4),IntPtr.Zero);Check(!panel.Visible,"Second menu press did not close popup");
       var anchor=(Rectangle)typeof(DesktopPet).GetMethod("TipAnchor",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);Check(anchor==pet.Bounds,"Default bubble detached from visible figure");
     }
@@ -42,7 +53,7 @@ class DesktopInteractionSelfTest {
       parent.MirrorAnchor=()=>new Rectangle(200,200,144,164);parent.Relayout(new Rectangle(600,400,144,164));Check(parent.Mirror.Visible,"Existing chat did not return after game focus/monitor change");
       parent.Quiet();Check(!parent.Visible&&!parent.Mirror.Visible,"Quiet did not hide both bubbles");
     }
-    if(args.Length>0)File.WriteAllText(args[0],"PASS: one/two-key mapping, actual RegisterHotKey conflict, popup open/close by own WM_HOTKEY, detached popup, pet anchor, mirrored bubble, sticky chat, quiet/disposal. No game input.");
+    if(args.Length>0)File.WriteAllText(args[0],"PASS: one/two-key mapping, actual RegisterHotKey conflict, popup retained during manufacturer checks, media transition, popup open/close by own WM_HOTKEY, detached popup, pet anchor, mirrored bubble, sticky chat, quiet/disposal. No game input.");
     return 0;
   }catch(Exception error){Console.Error.WriteLine(error);return 1;}}
 }

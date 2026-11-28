@@ -1134,7 +1134,7 @@ export async function createCompanion({
           detected,
           cs2Check,
           managed: !!installation,
-          updates: { auto: autoInstall, available: !!installation, external: external?.state() || null },
+          updates: { auto: autoInstall, available: !!installation, toolsBusy: externalBusy, external: external?.state() || null },
           active,
           work: workState(jobs),
           bridge: bridge.state(),

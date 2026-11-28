@@ -4,6 +4,12 @@
 
 Stand: lokal umgesetzt, noch nicht gemergt oder veröffentlicht.
 
+**Herstellerprüfung:** Das native Einstellungsfenster bleibt beim Prüfen/Installieren
+externer Werkzeuge offen. `updates.toolsBusy` unterscheidet die Wartung von einer
+Aufnahme; die gemeinsame Auftragssperre bleibt aktiv. Tray und Status nennen die
+Werkzeugprüfung korrekt. Nativer Windows-Test bestätigt offenes Popup während
+und nach der Prüfung sowie Ausblenden beim folgenden Aufnahmebeginn.
+
 Aufklappbare Bereiche haben geometrisch zentrierte Plus-/Minus-Punkte im TecMon-Stil,
 Hover und Tastaturfokus. „Für Fortgeschrittene“ erscheint nur, wenn im
 gewählten Spiel tatsächlich eine sichtbare Karte darunter vorhanden ist.

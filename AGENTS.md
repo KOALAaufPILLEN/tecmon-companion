@@ -744,3 +744,9 @@ eingebaut wurde, steht im Update-Protokoll dort.
   Spielauswahl eine sichtbare Expertenkarte bleibt; auf Paket-/Sichtbarkeitsänderungen
   reagieren. Jeder echte Aufklapper erhält einen erkennbaren Plus-/Minus-Punkt im
   eckigen TecMon-Stil und Tastaturfokus, ohne zusätzliche verschachtelte Buttons.
+
+- Herstellerprüfung/Nachinstallation setzt weiter die gemeinsame Aktiv-Sperre,
+  meldet aber `updates.toolsBusy` im lokalen State. Natives Menü während dieser
+  Wartung offen lassen, nicht als Aufnahmebeginn behandeln. Wechsel Wartung →
+  Aufnahme auch bei durchgehend aktivem Status erkennen; Status/Tray passend benennen.
+  Mit echtem Popup im isolierten nativen Interaction-Selftest prüfen.

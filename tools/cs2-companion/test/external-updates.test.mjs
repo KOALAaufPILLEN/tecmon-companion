@@ -80,9 +80,10 @@ test("HTTP-Start aktualisiert im Hintergrund, reserviert Jobs und bleibt authent
  const base=`http://127.0.0.1:${companion.server.address().port}`;const post=(url,body={},auth=true)=>fetch(base+url,{method:"POST",headers:{"Content-Type":"application/json",...(auth?{"x-tecmon-token":companion.token}:{})},body:JSON.stringify(body)});
  assert.equal((await post("/api/update/external/check",{},false)).status,401);
  assert.equal((await post("/api/update/external/check")).status,202);
- const state=await(await fetch(base+"/api/state",{headers:{"x-tecmon-token":companion.token}})).json();assert.equal(state.active,true);assert.equal(state.updates.external.running,true);
+ const state=await(await fetch(base+"/api/state",{headers:{"x-tecmon-token":companion.token}})).json();assert.equal(state.active,true);assert.equal(state.updates.toolsBusy,true);assert.equal(state.updates.external.running,true);
  assert.equal((await post("/api/start",{confirm:true,id:"fake"})).status,400);
  finish();await s.api.run();await new Promise(resolve=>setTimeout(resolve,10));
+ const idle=await(await fetch(base+"/api/state",{headers:{"x-tecmon-token":companion.token}})).json();assert.equal(idle.active,false);assert.equal(idle.updates.toolsBusy,false);
  assert.equal((await post("/api/update/external/auto",{auto:false})).status,200);assert.equal(s.api.state().auto,false);
 });
 
