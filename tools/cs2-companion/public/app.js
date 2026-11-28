@@ -1,3 +1,5 @@
+// Esc closes only our own native popup, never sends a key to a game.
+document.addEventListener("keydown",e=>{if(e.key==="Escape")window.chrome?.webview?.postMessage("menu-close");});
 if(new URLSearchParams(location.search).get('desktop')==='1'){
   document.body.classList.add('desktop-panel');
   document.getElementById('minimal-title').textContent='Dein Desktop-Companion';
@@ -79,6 +81,7 @@ $('tips-toggle').addEventListener('click',async()=>{const button=$('tips-toggle'
 let figureState;
 function showFigure(desktop){
   figureState=desktop;
+  for(const [id,key,fallback] of [['figure-menu-key','menuKey','none'],['figure-menu-modifier','menuModifier','none'],['figure-bubble-placement','bubblePlacement','both']])if($(id)&&!$(id).disabled)$(id).value=desktop[key]??fallback;
   if($('figure-motion'))$('figure-motion').value=desktop.motion||(desktop.wander===false?'still':'chill');
   for(const b of document.querySelectorAll('#figure-quality [data-quality]'))b.setAttribute('aria-checked',String(b.dataset.quality===desktop.quality));
   for(const box of document.querySelectorAll('.figure-flags [data-flag]'))if(!box.disabled)box.checked=!!desktop[box.dataset.flag];
@@ -93,6 +96,8 @@ async function figureSettings(change,control){
   catch(error){notice(error);if(control)control.disabled=false;if(figureState)showFigure(figureState);}
 }
 $('figure-motion')?.addEventListener('change',e=>figureSettings({motion:e.target.value},e.target));
+if($('figure-menu-key'))for(const key of [...Array.from({length:12},(_,i)=>`F${i+1}`),...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789','Home','End','Insert','PageUp','PageDown','Pause']){const option=el('option',key);option.value=key;$('figure-menu-key').append(option);}
+for(const [id,key] of [['figure-menu-key','menuKey'],['figure-menu-modifier','menuModifier'],['figure-bubble-placement','bubblePlacement']])$(id)?.addEventListener('change',e=>figureSettings({[key]:e.target.value},e.target));
 for(const b of document.querySelectorAll('#figure-quality [data-quality]'))b.addEventListener('click',()=>figureSettings({quality:b.dataset.quality}));
 for(const box of document.querySelectorAll('.figure-flags [data-flag]'))box.addEventListener('change',()=>figureSettings({[box.dataset.flag]:box.checked},box));
 async function refresh() {
@@ -118,6 +123,7 @@ async function refresh() {
     if(state.bridge?.devices?.length) container.append(connections);
   }
   if(state.desktop)showFigure(state.desktop);
+  if($('figure-menu-key-status')){const r=state.desktopRuntime,d=state.desktop;$('figure-menu-key-status').textContent=d?.menuKey==='none'?'Keine Menütaste eingerichtet. Maus und Tray funktionieren weiterhin.':!r?.connected||r.key!==d?.menuKey||r.modifier!==d?.menuModifier?'Warte auf Rückmeldung der Desktop-Figur …':r.registered?'Menütaste ist aktiv. Erneut drücken schließt das Popup.':'Diese Taste ist belegt oder von Windows reserviert. Bitte eine andere wählen.';}
   showVideoTools(state.videoTools);
   panelHints(state);
   if(crosshairInfo&&state.overlay)showOverlay({...crosshairInfo.overlay,...state.overlay});
@@ -269,18 +275,47 @@ refresh().then(()=>{if(latestState?.managed)checkUpdate(true);}).catch(notice);
 loadVideos().catch(()=>{});setInterval(()=>{if(!restarting)loadVideos().catch(()=>{});},10000);
 /* Allgemeiner Fadenkreuz-Editor mit optionalem CS2-cfg-Export; statische Vorschau. */
 let crosshair=null,crosshairInfo=null,overlayDraft=null;
-const overlayNumeric=['radius','dotSize','scale','rotation','monitor','offsetX','offsetY'];
+let artStudio=null;
+const studioModes=['games','classic','custom'];
+function showGameCrosshairs(){
+  const select=$('crosshair-game'),list=$('crosshair-game-presets');if(!select||!list)return;
+  const game=(crosshairInfo.gamePresets||[]).find(g=>g.id===select.value);
+  $('crosshair-game-note').textContent=game?.note||'';
+  list.replaceChildren(...(game?.presets||[]).map(p=>{
+    const key=game.id+':'+p.id,b=el('button','', 'game-crosshair-choice');b.type='button';b.setAttribute('aria-pressed',String(overlayDraft.gamePreset===key));
+    const canvas=el('canvas');canvas.width=96;canvas.height=96;canvas.setAttribute('aria-hidden','true');
+    const g=canvas.getContext('2d');g.translate(48,48);globalThis.TecMonArt?.draw(g,p.artwork,72);
+    b.append(canvas,el('span',p.label));b.addEventListener('click',()=>{
+      overlayDraft.artwork={...p.artwork};overlayDraft.shape='image';overlayDraft.imageSize=p.imageSize;overlayDraft.rotation=0;overlayDraft.gamePreset=key;
+      artStudio?.load(overlayDraft.artwork);showCrosshair();showOverlayEditor();showGameCrosshairs();
+      $('crosshair-game-status').textContent=game.label+' · '+p.label+' gewählt. Zum Übernehmen Einstellungen speichern.';
+    });return b;
+  }));
+}
+function loadGameCrosshairs(){
+  const select=$('crosshair-game');if(!select)return;
+  select.replaceChildren(...(crosshairInfo.gamePresets||[]).map(g=>{const option=el('option',g.label);option.value=g.id;return option;}));
+  select.value=(overlayDraft.gamePreset||'cs2:').split(':')[0];showGameCrosshairs();
+}
+$('crosshair-game')?.addEventListener('change',()=>{showGameCrosshairs();$('crosshair-game-status').textContent='Spiel gewählt. Eine Vorlage anklicken, um sie zu übernehmen.';});
+const overlayNumeric=['radius','dotSize','scale','rotation','monitor','offsetX','offsetY','imageSize'];
+function studioMode(mode){
+  for(const key of studioModes){const active=key===mode;$('crosshair-tab-'+key)?.setAttribute('aria-selected',String(active));if($('crosshair-panel-'+key))$('crosshair-panel-'+key).hidden=!active;}
+}
 function crosshairControls(){
   if(!crosshair||!overlayDraft)return;
-  const circle=overlayDraft.shape==='circle';
-  $('overlay-shape').value=circle?'circle':crosshair.tStyle?'t':'cross';
-  for(const key of ['size','gap'])$('crosshair-'+key).disabled=circle;
+  const circle=overlayDraft.shape==='circle',image=overlayDraft.shape==='image';
+  $('overlay-shape').value=image?'image':circle?'circle':crosshair.tStyle?'t':'cross';
+  for(const key of ['size','gap'])$('crosshair-'+key).disabled=circle||image;
+  for(const key of ['thickness','color','outline','dot','tStyle'])$('crosshair-'+key).disabled=image;
+  if($('overlay-imageSize'))$('overlay-imageSize').disabled=!image;
+  for(const key of ['crosshair-copy','crosshair-cfg-save'])$(key).disabled=image;
   $('overlay-radius').disabled=!circle;
-  $('overlay-dotSize').disabled=!crosshair.dot;
-  $('crosshair-outlineThickness').disabled=!crosshair.outline;
+  $('overlay-dotSize').disabled=image||!crosshair.dot;
+  $('crosshair-outlineThickness').disabled=image||!crosshair.outline;
 }
 function chooseCrosshairShape(shape){
-  overlayDraft.shape=shape==='circle'?'circle':'cross';crosshair.tStyle=shape==='t';
+  overlayDraft.shape=['circle','image'].includes(shape)?shape:'cross';crosshair.tStyle=shape==='t';
   if(shape!=='circle'&&crosshair.size===0)crosshair.size=3;
 }
 function showOverlayEditor(){if(!overlayDraft)return;for(const key of [...overlayNumeric,'shape','target','app','hotkey']){const input=$('overlay-'+key);input.value=overlayDraft[key];if(input.nextElementSibling?.tagName==='OUTPUT')input.nextElementSibling.textContent=overlayDraft[key];}$('overlay-monitor').disabled=overlayDraft.target!=='monitor';crosshairControls();drawCrosshair();}
@@ -290,6 +325,11 @@ function crossCommands(c){const b=v=>v?1:0;return [`cl_crosshairstyle ${c.style}
 function drawCrosshair(){
   const canvas=$('crosshair-preview');if(!canvas||!crosshair)return;const g=canvas.getContext('2d'),c=crosshair,o2=overlayDraft||{},w=canvas.width,s=Math.min(2*(o2.scale||1),(w-16)/(2*((o2.shape==='circle'?(o2.radius||8):Math.round(c.size*2)+Math.max(0,Math.round(c.gap+4)))+Math.max(3,(o2.dotSize||2),c.thickness*2)+c.outlineThickness)));
   const sky=g.createLinearGradient(0,0,0,w);sky.addColorStop(0,'#c9b48a');sky.addColorStop(.55,'#9c8763');sky.addColorStop(.56,'#6d5b44');sky.addColorStop(1,'#4b3e2f');g.fillStyle=sky;g.fillRect(0,0,w,w);
+  if(o2.shape==='image'){
+    const size=Math.min((o2.imageSize||32)*(o2.scale||1)*2,(w-20)/Math.SQRT2);
+    g.save();g.translate(w/2,w/2);g.rotate((o2.rotation||0)*Math.PI/180);g.globalAlpha=c.alpha/255;
+    globalThis.TecMonArt?.draw(g,o2.artwork,size);g.restore();return;
+  }
   const t=Math.max(1,Math.round(Math.max(.5,c.thickness)*2))*s,len=Math.round(c.size*2)*s,gap=Math.max(0,Math.round(c.gap+4))*s,half=Math.floor(t/2),o=c.outline&&c.outlineThickness>0?c.outlineThickness*s/2:0;
   const rects=[];if(o2.shape!=='circle'&&len>0){rects.push([gap,-half,len,t],[-gap-len,-half,len,t],[-half,gap,t,len]);if(!c.tStyle)rects.push([-half,-gap-len,t,len]);}if(c.dot){const dot=Math.max(1,Math.round((o2.dotSize||2)*s));rects.push([-Math.floor(dot/2),-Math.floor(dot/2),dot,dot]);}
   g.save();g.translate(w/2,w/2);g.rotate((o2.rotation||0)*Math.PI/180);g.globalAlpha=c.alpha/255;
@@ -307,16 +347,28 @@ async function loadCrosshair(){
   if(!$('crosshair-preview'))return;
   try{crosshairInfo=await api('/api/crosshair');crosshair=crosshairInfo.crosshair;$('crosshair-exec').textContent=crosshairInfo.exec;
     $('crosshair-style').replaceChildren(...crosshairInfo.styles.map(s=>{const o=el('option',s.label);o.value=s.id;return o;}));
-    $('crosshair-presets').replaceChildren(...crosshairInfo.presets.map(p=>{const b=el('button',p.label,'subtle');b.type='button';b.addEventListener('click',()=>{crosshair={...p.crosshair,color:[...p.crosshair.color]};if(overlayDraft)overlayDraft.shape='cross';showCrosshair();showOverlayEditor();});return b;}));
-    overlayDraft={...crosshairInfo.overlay};showCrosshair();showOverlayEditor();showOverlay(crosshairInfo.overlay);}catch(error){notice(error);}
+    $('crosshair-presets').replaceChildren(...crosshairInfo.presets.map(p=>{const b=el('button',p.label,'subtle');b.type='button';b.addEventListener('click',()=>{crosshair={...p.crosshair,color:[...p.crosshair.color]};if(overlayDraft){overlayDraft.shape='cross';overlayDraft.gamePreset='';showGameCrosshairs();}showCrosshair();showOverlayEditor();});return b;}));
+    overlayDraft={...crosshairInfo.overlay};
+    if(globalThis.TecMonArt&&$('art-canvas')){
+      artStudio=globalThis.TecMonArt.create({onChange:artwork=>{overlayDraft.artwork=artwork;overlayDraft.shape='image';overlayDraft.gamePreset='';showGameCrosshairs();if($('crosshair-game-status'))$('crosshair-game-status').textContent='Eigenes Design geändert. Zum Übernehmen Einstellungen speichern.';showCrosshair();showOverlayEditor();}});
+      artStudio.load(overlayDraft.artwork);
+    }
+    loadGameCrosshairs();studioMode('games');showCrosshair();showOverlayEditor();showOverlay(crosshairInfo.overlay);}catch(error){notice(error);}
 }
+for(const mode of studioModes)$('crosshair-tab-'+mode)?.addEventListener('click',()=>{
+  studioMode(mode);if(!overlayDraft)return;
+  if(mode==='classic'&&overlayDraft.shape==='image'){overlayDraft.gamePreset='';chooseCrosshairShape('cross');showGameCrosshairs();}
+  if(mode==='custom'&&overlayDraft.artwork)chooseCrosshairShape('image');
+  showCrosshair();showOverlayEditor();
+});
+for(const mode of studioModes)$('crosshair-tab-'+mode)?.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?studioModes[0]:e.key==='End'?studioModes.at(-1):studioModes[(studioModes.indexOf(mode)+(e.key==='ArrowRight'?1:studioModes.length-1))%studioModes.length];$('crosshair-tab-'+next).click();$('crosshair-tab-'+next).focus();});
 for(const k of crossKeys)$('crosshair-'+k)?.addEventListener('input',e=>{crosshair[k]=Number(e.target.value);showCrosshair();});
 for(const k of ['outline','dot','tStyle'])$('crosshair-'+k)?.addEventListener('change',e=>{crosshair[k]=e.target.checked;if(k==='tStyle'&&e.target.checked&&overlayDraft)chooseCrosshairShape('t');showCrosshair();});
 $('crosshair-style')?.addEventListener('change',e=>{crosshair.style=Number(e.target.value);showCrosshair();});
 $('crosshair-color')?.addEventListener('input',e=>{const v=e.target.value;crosshair.color=[1,3,5].map(i=>parseInt(v.slice(i,i+2),16));showCrosshair();});
-$('crosshair-import')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/decode',{code:$('crosshair-code').value});crosshair=result.crosshair;if(overlayDraft)overlayDraft.shape='cross';showCrosshair();showOverlayEditor();notice({message:'Fadenkreuz-Code übernommen. Zum Anwenden Overlay-Einstellungen speichern.'});}catch(error){notice(error);}});
+$('crosshair-import')?.addEventListener('click',async()=>{try{const result=await api('/api/crosshair/decode',{code:$('crosshair-code').value});crosshair=result.crosshair;if(overlayDraft){overlayDraft.shape='cross';overlayDraft.gamePreset='';showGameCrosshairs();}showCrosshair();showOverlayEditor();notice({message:'Fadenkreuz-Code übernommen. Zum Anwenden Overlay-Einstellungen speichern.'});}catch(error){notice(error);}});
 $('crosshair-copy')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(crossCommands(crosshair).join('; '));notice({message:'Befehle kopiert. In der CS2-Konsole einfügen.'});}catch(error){notice(error);}});
-$('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/profile',{crosshair,overlay:overlayDraft});crosshair=result.crosshair;overlayDraft={...result.overlay};showCrosshair();showOverlayEditor();showOverlay(result.overlay);notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
+$('crosshair-save')?.addEventListener('click',async()=>{const button=$('crosshair-save');button.disabled=true;try{const result=await api('/api/crosshair/profile',{crosshair,overlay:overlayDraft});crosshair=result.crosshair;overlayDraft={...result.overlay};artStudio?.saved();if($('crosshair-game-status'))$('crosshair-game-status').textContent='Gespeichert. Die Spielauswahl filtert nur die Vorlagen; dein Fadenkreuz bleibt erhalten.';showCrosshair();showOverlayEditor();showOverlay(result.overlay);notice({message:result.message});}catch(error){notice(error);}finally{button.disabled=false;}});
 loadCrosshair();
 /* Fadenkreuz-Overlay: erst nach gelesenem und bestätigtem Hinweis. */
 function showOverlay(o){
@@ -340,7 +392,7 @@ $('overlay-toggle')?.addEventListener('click',async()=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('overlay-consent')&&!$('overlay-consent').hidden&&!(crosshairInfo&&crosshairInfo.overlay.accepted)){$('overlay-consent').hidden=true;$('overlay-accept').checked=false;showOverlay(crosshairInfo.overlay);}});
 
 for(const key of [...overlayNumeric,'shape','target','app','hotkey'])$('overlay-'+key)?.addEventListener('input',e=>{if(!overlayDraft)return;if(overlayNumeric.includes(key)&&e.target.value==='')return;if(key==='shape'){chooseCrosshairShape(e.target.value);showCrosshair();}else overlayDraft[key]=overlayNumeric.includes(key)?Number(e.target.value):e.target.value;if(e.target.nextElementSibling?.tagName==='OUTPUT')e.target.nextElementSibling.textContent=e.target.value;$('overlay-monitor').disabled=overlayDraft.target!=='monitor';drawCrosshair();});
-$('crosshair-reset')?.addEventListener('click',()=>{crosshair={...crosshairInfo.presets[0].crosshair,color:[...crosshairInfo.presets[0].crosshair.color]};overlayDraft={...crosshairInfo.overlayDefaults};showCrosshair();showOverlayEditor();notice({message:'Standard geladen. Zum Übernehmen speichern.'});});
+$('crosshair-reset')?.addEventListener('click',()=>{crosshair={...crosshairInfo.presets[0].crosshair,color:[...crosshairInfo.presets[0].crosshair.color]};overlayDraft={...crosshairInfo.overlayDefaults};artStudio?.load(null);loadGameCrosshairs();studioMode('games');showCrosshair();showOverlayEditor();notice({message:'Standard geladen. Zum Übernehmen speichern.'});});
 $('crosshair-cfg-save')?.addEventListener('click',()=>api('/api/crosshair/save',{crosshair}).then(notice).catch(notice));
 
 /* CFG-Sammlung: feste Einträge vom Companion, Tasten nur aus der Liste. */

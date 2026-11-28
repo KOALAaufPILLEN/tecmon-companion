@@ -1,5 +1,39 @@
 # TecMon Companion
 
+## Neu in 0.54.0 · Fadenkreuz-Studio und eigenes Menü-Popup (28. November 2026)
+
+Stand: lokal umgesetzt und geprüft, noch nicht gemergt, veröffentlicht oder installiert.
+
+- **Spiele zuerst:** Spiel wählen, dann höchstens fünf sichtbare Vorlagen. 22 statische
+  Vorlagen für CS2, Valorant, Apex, Fortnite, Deadlock, Gears of War und Wardogs.
+  Die übrigen sechs Plattform-Spiele bleiben mit einem Hinweis ohne Vorlage auswählbar.
+  Spielauswahl filtert nur die Liste; Vorlage bewusst übernehmen und speichern.
+- **Fadenkreuz-Studio:** „Selbst anpassen“ mit allen bisherigen Optionen und „Eigenes Design“
+  für PNG-Import oder selbst gezeichnete Pixel. Stift, Radierer, Pipette, Farbe,
+  Pixel-Deckkraft, Spiegelung in beiden Achsen, Rückgängig/Wiederholen, mittiges
+  Anpassen des Rasters und PNG-Export. Vorschau, Gesamtdurchsichtigkeit, Größe,
+  Drehung und Bildschirmversatz; eigene Bilder sind ausschließlich für das Overlay.
+- **Lokal gespeichert:** PNGs bis 2 MB/512 × 512 werden im Browser auf höchstens
+  64 × 64 Pixel vorbereitet. Der Companion speichert nur geprüfte RGBA-Pixel im
+  Profil; native Anzeige ohne PNG-Decoder oder Dateipfade. Transparenz bleibt erhalten.
+  Klassische Form und eigenes Design bleiben beim Umschalten verfügbar.
+- **Menü als Popup:** eigenes verschiebbares Fenster ohne Sprechblasen-Spitze,
+  unabhängig von der Figur. Maus und Tray bleiben; unter „Einstellungen → Menü &
+  Sprechblasen“ lässt sich eine einzelne Taste oder Zusatztaste + Taste auswählen.
+  Windows registriert nur diese Kombination, ohne Tastatur-Hook. Belegte oder
+  reservierte Kombinationen werden sichtbar gemeldet. Erneut drücken, Esc oder × schließt.
+- **TecMons eigene Sprechblase** bleibt neben der Figur. Wählbar: nur Figur,
+  nur CS2-Bildschirm oder Figur plus Kopie auf dem anderen CS2-Bildschirm.
+  Keine Kopie auf demselben Monitor. Sprüche/Tipps behalten ihre bisherige Dauer;
+  der übersetzte Spielerchat behält seine eigenen Einstellungen.
+
+Prüfung: 255 Node-Tests erfolgreich, zwei bestehende Symlink-Tests übersprungen;
+Windows-C#-5-Build und eigene native Tests für Pixel/Alpha, Hotkey-Konflikte,
+Popup, Sprechblasen und Fokuswechsel. Im Browser PNG importiert, gezeichnet,
+gespeichert und exportiert; Export-RGBA identisch zum Import. Kein laufendes CS2
+oder echter Zwei-Monitor-Spieldurchlauf getestet. Keine neue Bridge-Capability.
+[Details und Bedienung](docs/companion-studio-0.54.md).
+
 ## Neu in 0.53.1 · Chat als ganze Nachricht übersetzen (27. November 2026)
 
 Stand: [#137](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/137) ist gemergt

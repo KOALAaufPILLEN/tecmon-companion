@@ -17,7 +17,8 @@ export const UI_MODES = ["simple", "advanced"];
 /** Stand des Einsteiger-Tutorials. Kleiner als TUTORIAL_VERSION = beim nächsten Öffnen zeigen. */
 export const TUTORIAL_VERSION = 1;
 export const MOTION_MODES = ["still", "chill", "hyper"];
-export const DESKTOP_DEFAULTS = Object.freeze({ quality: "high", motion: "chill", gameEconomy: true, wander: true, animate: true, foreground: true, autostart: false, chatPos: null, ui: "advanced", tutorial: TUTORIAL_VERSION });
+export const MENU_KEYS = ["none", ...Array.from({length:12},(_,i)=>`F${i+1}`), ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", "Home", "End", "Insert", "PageUp", "PageDown", "Pause"];
+export const DESKTOP_DEFAULTS = Object.freeze({ quality: "high", motion: "chill", gameEconomy: true, wander: true, animate: true, foreground: true, autostart: false, chatPos: null, ui: "advanced", tutorial: TUTORIAL_VERSION, bubblePlacement: "both", menuKey: "none", menuModifier: "none" });
 const FLAGS = ["animate", "foreground", "autostart", "gameEconomy"];
 
 const LIMIT = 100000;
@@ -38,6 +39,9 @@ export function cleanDesktopSettings(input, previous = DESKTOP_DEFAULTS) {
   next.wander = next.motion !== "still";
   for (const key of FLAGS) if (typeof input[key] === "boolean") next[key] = input[key];
   if (UI_MODES.includes(input.ui)) next.ui = input.ui;
+  if (["pet", "game", "both"].includes(input.bubblePlacement)) next.bubblePlacement = input.bubblePlacement;
+  if (MENU_KEYS.includes(input.menuKey)) next.menuKey = input.menuKey;
+  if (["none", "Control", "Alt", "Shift", "Win"].includes(input.menuModifier)) next.menuModifier = input.menuModifier;
   if (Number.isInteger(input.tutorial) && input.tutorial >= 0 && input.tutorial <= TUTORIAL_VERSION) next.tutorial = input.tutorial;
   // Position des Chat-Overlays (linke untere Ecke in Windows-Bildschirmkoordinaten, auch zweiter Bildschirm); null = unten mittig.
   if (input.chatPos === null) next.chatPos = null;

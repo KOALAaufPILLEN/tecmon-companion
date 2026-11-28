@@ -1,6 +1,7 @@
 import { readFile, writeFile, rename, mkdir, unlink, readdir, stat } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { gameCrosshair } from "./game-crosshairs.mjs";
 
 /**
  * Fadenkreuz-Editor: erzeugt nur CS2-eigene Einstellungen (cl_crosshair*-Befehle
@@ -180,19 +181,35 @@ export const OVERLAY_NOTICE = [
   "Du nutzt das Overlay auf eigenes Risiko. TecMon haftet nicht für Sperren, Banns oder andere Folgen.",
 ];
 
-export const DEFAULT_OVERLAY = Object.freeze({ target: "foreground", monitor: 1, app: "", scale: 1, rotation: 0, offsetX: 0, offsetY: 0, shape: "cross", radius: 8, dotSize: 2, hotkey: "F9" });
+export const DEFAULT_OVERLAY = Object.freeze({ target: "foreground", monitor: 1, app: "", scale: 1, rotation: 0, offsetX: 0, offsetY: 0, shape: "cross", radius: 8, dotSize: 2, hotkey: "F9", artwork: null, imageSize: 32, gamePreset: "" });
+/** Only bounded RGBA pixels, never paths, URLs, SVG or an executable image decoder. */
+export function cleanArtwork(raw) {
+  if (raw === null || raw === undefined) return null;
+  const { width, height, pixels } = raw;
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 64 || height > 64 ||
+      typeof pixels !== "string" || pixels.length > 21848 || !/^[A-Za-z0-9+/]*={0,2}$/.test(pixels))
+    throw new Error("Eigenes Fadenkreuz: höchstens 64 × 64 RGBA-Pixel erlaubt.");
+  const bytes = Buffer.from(pixels, "base64");
+  if (bytes.length !== width * height * 4 || bytes.toString("base64") !== pixels)
+    throw new Error("Die Pixeldaten des Fadenkreuzes sind unvollständig oder ungültig.");
+  return { width, height, pixels };
+}
 export function cleanOverlayOptions(raw) {
   const src = raw && typeof raw === "object" ? raw : {};
   if (src.app !== undefined && (typeof src.app !== "string" || !/^(?:[a-zA-Z0-9_. -]{1,104})?$/.test(src.app.trim())))
     throw new Error("Bitte nur einen Exe-Namen ohne Pfad eingeben, z. B. game.exe.");
   const number = (key, min, max, step) => clamp(src[key], min, max, step) ?? DEFAULT_OVERLAY[key];
+  const artwork = cleanArtwork(src.artwork);
+  if (src.shape === "image" && (!artwork || !Buffer.from(artwork.pixels, "base64").some((v, i) => i % 4 === 3 && v > 0)))
+    throw new Error("Bitte zuerst ein PNG laden oder sichtbare Pixel zeichnen.");
   return {
     target: ["foreground", "primary", "monitor"].includes(src.target) ? src.target : DEFAULT_OVERLAY.target,
     monitor: number("monitor", 1, 8, 1),
     app: typeof src.app === "string" ? src.app.trim().replace(/\.exe$/i, "").toLowerCase() : "",
     scale: number("scale", 0.5, 4, 0.1), rotation: number("rotation", 0, 180, 1),
     offsetX: number("offsetX", -2000, 2000, 1), offsetY: number("offsetY", -2000, 2000, 1),
-    shape: ["cross", "circle"].includes(src.shape) ? src.shape : DEFAULT_OVERLAY.shape,
+    shape: ["cross", "circle", "image"].includes(src.shape) ? src.shape : DEFAULT_OVERLAY.shape,
+    artwork, imageSize: number("imageSize", 8, 64, 1), gamePreset: gameCrosshair(src.gamePreset) ? src.gamePreset : "",
     radius: number("radius", 2, 24, 1), dotSize: number("dotSize", 1, 12, 1),
     hotkey: ["none", "F9", "F10", "F11"].includes(src.hotkey) ? src.hotkey : DEFAULT_OVERLAY.hotkey,
   };

@@ -47,6 +47,14 @@ test("global overlay API works without CS2, retains auth and never writes a game
   const base = `http://127.0.0.1:${server.address().port}`;
   const headers = { "x-tecmon-token": token, "content-type": "application/json" };
   const post = (route, body) => fetch(base + route, { method: "POST", headers, body: JSON.stringify(body) });
+  const catalog=await (await fetch(base+'/api/crosshair',{headers})).json();
+  assert.equal(catalog.gamePresets.length,13);
+  const gamePreset=catalog.gamePresets.find(g=>g.id==='fortnite').presets[1];
+  const selected=await post('/api/crosshair/profile',{overlay:{shape:'image',artwork:gamePreset.artwork,gamePreset:'fortnite:brackets'}});
+  assert.equal(selected.status,200);const gameState=(await selected.json()).overlay;
+  assert.equal(gameState.gamePreset,'fortnite:brackets');assert.equal(gameState.enabled,false);
+  assert.deepEqual(gameState.artwork,gamePreset.artwork);
+
   assert.equal((await fetch(base + "/api/crosshair/profile", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).status, 401);
   assert.equal((await post("/api/crosshair/overlay", { enabled: true })).status, 400);
   const saved = await post("/api/crosshair/profile", { crosshair: { size: 4, dot: true }, overlay: { shape: "circle", target: "primary", rotation: 45 } });
@@ -69,6 +77,17 @@ test("global overlay API works without CS2, retains auth and never writes a game
   assert.equal((await post("/api/crosshair/save", { crosshair: { size: 5 } })).status, 400, "CS2 export still requires its package");
   assert.equal((await createCrosshairSettings(dir)).get().size, 4);
   assert.equal(JSON.parse(await readFile(path.join(dir, "crosshair-overlay.json"), "utf8")).shape, "circle");
+  const artwork={width:2,height:1,pixels:Buffer.from([255,0,0,255,0,255,0,128]).toString('base64')};
+  const custom=await post('/api/crosshair/profile',{crosshair:{size:4},overlay:{shape:'image',artwork,imageSize:24}});
+  assert.equal(custom.status,200);assert.deepEqual((await custom.json()).overlay.artwork,artwork);
+  assert.equal((await post('/api/crosshair/profile',{crosshair:{size:9},overlay:{shape:'image',artwork:{...artwork,pixels:'AA=='}}})).status,400);
+  assert.equal((await createCrosshairSettings(dir)).get().size,4,'bad artwork cannot partially change the profile');
+  const artState=await (await fetch(base+'/api/state',{headers})).json();assert.deepEqual(artState.overlay.artwork,artwork);
+  await post('/api/desktop/settings',{menuKey:'M',menuModifier:'Control',bubblePlacement:'pet'});
+  await post('/api/desktop/runtime',{key:'M',modifier:'Control',registered:false});
+  const conflict=await (await fetch(base+'/api/state',{headers})).json();assert.equal(conflict.desktopRuntime.connected,true);assert.equal(conflict.desktopRuntime.registered,false);
+  await post('/api/desktop/runtime',{key:'F8',modifier:'none',registered:true});
+  const stale=await (await fetch(base+'/api/state',{headers})).json();assert.equal(stale.desktopRuntime.registered,false,'stale shortcut report must not overwrite current status');
 });
 
 test("removing CS2 preserves the universal overlay, appearance and unrelated cfgs", async (t) => {

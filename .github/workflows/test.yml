@@ -56,6 +56,12 @@ jobs:
           $crosshair=Start-Process -FilePath $crosshairTest -ArgumentList $crosshairOutput -WindowStyle Hidden -Wait -PassThru
           if($crosshair.ExitCode -ne 0) { throw 'Native crosshair test failed' }
           Get-Content -LiteralPath (Join-Path $crosshairOutput 'crosshair-native-test.txt')
+          $interactionTest=Join-Path $env:RUNNER_TEMP 'DesktopInteractionSelfTest.exe'
+          & $compiler /nologo /langversion:5 /target:exe /main:DesktopInteractionSelfTest /platform:x64 /optimize+ /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /r:Microsoft.CSharp.dll "/out:$interactionTest" $native (Resolve-Path -LiteralPath 'tools/cs2-companion/windows/DesktopInteractionSelfTest.cs').Path
+          if($LASTEXITCODE -ne 0){throw 'Desktop interaction test compilation failed'}
+          $interaction=Start-Process -FilePath $interactionTest -ArgumentList (Join-Path $env:RUNNER_TEMP 'desktop-interaction-test.txt') -WindowStyle Hidden -Wait -PassThru
+          if($interaction.ExitCode -ne 0){throw 'Popup/hotkey/bubble test failed'}
+          Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'desktop-interaction-test.txt')
           # Echtzeit-3D-Figur: Modell laden, einige Bilder zeichnen und die Zeit je Bild ausgeben.
           $preview=Join-Path $env:RUNNER_TEMP 'figure-preview'
           New-Item -ItemType Directory -Path $preview -Force | Out-Null
