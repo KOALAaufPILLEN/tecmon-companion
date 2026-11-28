@@ -4,7 +4,7 @@
 
 Stand: lokal umgesetzt, noch nicht gemergt oder veröffentlicht.
 
-Aufklappbare Bereiche haben sichtbare Plus-/Minus-Punkte im TecMon-Stil,
+Aufklappbare Bereiche haben geometrisch zentrierte Plus-/Minus-Punkte im TecMon-Stil,
 Hover und Tastaturfokus. „Für Fortgeschrittene“ erscheint nur, wenn im
 gewählten Spiel tatsächlich eine sichtbare Karte darunter vorhanden ist.
 

@@ -371,8 +371,8 @@ body.holo .game-crosshair-choice[aria-pressed="true"]{--edge:var(--gold);--fill:
 /* Echte Aufklapper: klarer anklickbarer Punkt mit Plus/Minus, nativ per Tastatur. */
 .companion-cockpit summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;min-height:44px}
 .companion-cockpit summary::-webkit-details-marker{display:none}
-.companion-cockpit summary::before{content:"+";display:inline-grid;place-items:center;flex:0 0 24px;width:24px;height:24px;box-sizing:border-box;border:1px solid var(--violet,#a78bfa);background:#a78bfa18;color:var(--violet,#a78bfa);font-size:19px;font-weight:700;line-height:1;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px)}
-.companion-cockpit details[open]>summary::before{content:"−";border-color:var(--gold);background:#e8c57322;color:var(--gold)}
+.companion-cockpit summary::before{content:"";display:inline-block;flex:0 0 24px;width:24px;height:24px;box-sizing:border-box;border:1px solid var(--violet,#a78bfa);background-color:#a78bfa18;color:var(--violet,#a78bfa);background-image:linear-gradient(currentColor,currentColor),linear-gradient(currentColor,currentColor);background-position:center;background-size:10px 2px,2px 10px;background-repeat:no-repeat;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px)}
+.companion-cockpit details[open]>summary::before{border-color:var(--gold);background-color:#e8c57322;color:var(--gold);background-image:linear-gradient(currentColor,currentColor);background-size:10px 2px}
 .companion-cockpit summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .cockpit-divider[hidden]{display:none}
 @media(hover:hover) and (pointer:fine){.companion-cockpit summary:hover{color:var(--gold);background-color:#a78bfa12}}
