@@ -47,7 +47,15 @@ test("global overlay API works without CS2, retains auth and never writes a game
   const base = `http://127.0.0.1:${server.address().port}`;
   const headers = { "x-tecmon-token": token, "content-type": "application/json" };
   const post = (route, body) => fetch(base + route, { method: "POST", headers, body: JSON.stringify(body) });
+  assert.equal((await post('/api/crosshair/cs2-save',{crosshair:{size:7}})).status,400,'native write still requires CS2 package');
   const catalog=await (await fetch(base+'/api/crosshair',{headers})).json();
+  assert.equal((await fetch(base+'/api/crosshair/import-cfg',{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).status,401);
+  const imported=await post('/api/crosshair/import-cfg',{text:'cl_crosshairsize 3; sensitivity 99'});
+  assert.equal(imported.status,200);const parsed=await imported.json();assert.equal(parsed.crosshair.size,3);assert.equal(parsed.ignored,1);
+  const afterImport=await (await fetch(base+'/api/crosshair',{headers})).json();assert.equal(afterImport.crosshair.size,catalog.crosshair.size,'import does not persist');
+  const exported=await (await post('/api/crosshair/export-cfg',{crosshair:parsed.crosshair})).json();assert.match(exported.text,/cl_crosshairsize 3/);assert.doesNotMatch(exported.text,/sensitivity/);
+  assert.equal((await post('/api/crosshair/import-cfg',{text:'cl_crosshairdot nope'})).status,400);
+
   assert.equal(catalog.gamePresets.length,13);
   const gamePreset=catalog.gamePresets.find(g=>g.id==='fortnite').presets[1];
   const selected=await post('/api/crosshair/profile',{overlay:{shape:'image',artwork:gamePreset.artwork,gamePreset:'fortnite:brackets'}});

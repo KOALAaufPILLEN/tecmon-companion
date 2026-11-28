@@ -6,14 +6,14 @@ window.TecMonCockpit=function(document){
      steht dann immer am Ende des Bereichs. Kartennamen sind feste Namen, der Zustand steht rechts im Kopf. */
   const groups=[
     ['start','Start',[['.connection-summary','Verbindung zur Webseite'],['.activity-summary','Aktueller Auftrag'],['[data-panel="updates"]','Updates & Werkzeuge']]],
-    ['games','Spiele',[['#rundentipps','Rundentipps'],['#stats-backlog','Stats nach dem Spielen'],['#quiz','Quiz'],['#dota-tipps','Dota-2-Tipps'],['#wardogs','Scoreboard-Foto'],['#games','Spiel-Pakete'],['#cfgs','Fertige Configs',true]]],
+    ['games','Spiele',[['#cs2-fadenkreuz','CS2-Fadenkreuz'],['#rundentipps','Rundentipps'],['#stats-backlog','Stats nach dem Spielen'],['#quiz','Quiz'],['#dota-tipps','Dota-2-Tipps'],['#wardogs','Scoreboard-Foto'],['#games','Spiel-Pakete'],['#cfgs','Fertige Configs',true]]],
     ['videos','Videos',[['#auto-highlights','Highlight-Video nach dem Match'],['#clips','Clip-Puffer'],['#videos','Letzte Videos'],['#skin-tausch','Skins & Agenten für Videos',true],['[data-panel="setup"]','Aufnahme-Setup',true],['[data-panel="jobs"]','Aufträge & Szenen',true],['[data-panel="demos"]','Demos herunterladen',true]]],
     ['overlays','Overlays',[['#fadenkreuz','Fadenkreuz'],['#chat','Chat-Übersetzer und Chat-Overlay']]],
     ['tecmon','TecMon',[['#tecmon','Level und Persönlichkeit'],['#spiele','Minispiele']]],
     ['settings','Einstellungen',[['#figur','Figur, Ansicht und Autostart']]]
   ];
   const gameNames={cs2:'Counter-Strike 2',dota2:'Dota 2',wardogs:'Wardogs',other:'Weitere Pakete'};
-  const gameCards={'rundentipps':'cs2','stats-backlog':'cs2',quiz:'cs2',cfgs:'cs2','dota-tipps':'dota2',wardogs:'wardogs'};
+  const gameCards={'cs2-fadenkreuz':'cs2','rundentipps':'cs2','stats-backlog':'cs2',quiz:'cs2',cfgs:'cs2','dota-tipps':'dota2',wardogs:'wardogs'};
   let current='start',game='cs2';
   /* Alte gespeicherte Seiten und Sprünge auf die neuen Bereiche abbilden. */
   const legacy={buddy:'tecmon',record:'videos',stats:'videos',overlay:'overlays',gallery:'videos',system:'start'};

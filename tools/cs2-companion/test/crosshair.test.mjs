@@ -68,4 +68,9 @@ test("Companion: Fadenkreuz speichern schreibt eigene cfg in den CS2-Ordner", as
   assert.match(cfg, /cl_crosshairdot 1\n/);
   assert.equal((await fetch(base + "/api/crosshair/decode", { method: "POST", headers, body: JSON.stringify({ code: "nein" }) })).status >= 400, true);
   assert.equal((await fetch(base + "/api/crosshair")).status >= 400, true, "ohne Sitzungstoken kein Zugriff");
+  const native=await (await fetch(base+'/api/crosshair/cs2-save',{method:'POST',headers,body:JSON.stringify({crosshair:{size:6,color:[255,200,80],tStyle:true}})})).json();
+  assert.equal(native.cs2Crosshair.size,6);assert.equal(native.crosshair.size,3,'CS2 cfg save leaves global overlay profile unchanged');
+  const nativeCfg=await readFile(path.join(game,'csgo','cfg','tecmon_crosshair.cfg'),'utf8');assert.match(nativeCfg,/cl_crosshairsize 6/);assert.match(nativeCfg,/cl_crosshair_t 1/);
+  const nativeFile=JSON.parse(await readFile(path.join(dir,'data','cs2-crosshair','crosshair.json'),'utf8'));assert.equal(nativeFile.size,6);
+
 });

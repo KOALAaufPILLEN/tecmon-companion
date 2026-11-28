@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import {CROSSHAIR_GAMES} from '../game-crosshairs.mjs';
-import {DEFAULT_CROSSHAIR, DEFAULT_OVERLAY, PRESETS, STYLES} from '../crosshair.mjs';
+import {parseCrosshairConfig, DEFAULT_CROSSHAIR, DEFAULT_OVERLAY, PRESETS, STYLES} from '../crosshair.mjs';
 
 // Execute the real browser event handlers; catch inconsistent shape/checkbox/draft state.
 async function editor(tStyle=false) {
@@ -13,10 +13,10 @@ async function editor(tStyle=false) {
   const $=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
   const info={crosshair:{...DEFAULT_CROSSHAIR,tStyle,color:[...DEFAULT_CROSSHAIR.color]},overlay:{...DEFAULT_OVERLAY,shape:'circle',notice:[],noticeVersion:2},overlayDefaults:DEFAULT_OVERLAY,presets:PRESETS,styles:STYLES,gamePresets:CROSSHAIR_GAMES};
   const saves=[];
-  const api=async(url,input)=>{if(input){saves.push({url,input:structuredClone(input)});if(url==='/api/crosshair/profile'){info.crosshair=structuredClone(input.crosshair);info.overlay={...info.overlay,...structuredClone(input.overlay)};}}return structuredClone(info);};
+  const api=async(url,input)=>{if(url==='/api/crosshair/import-cfg')return parseCrosshairConfig(input.text,input.crosshair);if(input){saves.push({url,input:structuredClone(input)});if(url==='/api/crosshair/profile'){info.crosshair=structuredClone(input.crosshair);info.overlay={...info.overlay,...structuredClone(input.overlay)};}}return structuredClone(info);};
   const source=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
   const start=source.indexOf('let crosshair=null,'),end=source.indexOf('/* CFG-Sammlung:',start);
-  const ctx=vm.createContext({$,el:element,api,notice(){},document:{addEventListener(){}},navigator:{},console});
+  const ctx=vm.createContext({$,el:element,api,notice(){},document:{addEventListener(){}},navigator:{},console,structuredClone});
   vm.runInContext(source.slice(start,end),ctx);
   await new Promise(resolve=>setImmediate(resolve));
   const event=async(id,name,value)=>{const e=$(id);if(typeof value==='boolean')e.checked=value;else if(value!==undefined)e.value=String(value);await e.listeners[name]({target:e});};
@@ -77,4 +77,17 @@ test('game selector filters without changing draft; a template saves bounded art
   assert.equal(e.$('crosshair-game-presets').children.length,0);
   assert.match(e.$('crosshair-game-note').textContent,/keine passende/);
   await e.event('crosshair-save','click');assert.equal(e.saves.at(-1).input.overlay.gamePreset,'valorant:dot');
+});
+
+test('CS2 config controls follow game selection and imported CFG becomes the editable draft',async()=>{
+ const e=await editor();assert.equal(e.$('crosshair-cs2-open').hidden,false);
+ await e.event('crosshair-game','change','valorant');assert.equal(e.$('crosshair-cs2-open').hidden,true);
+ await e.event('crosshair-game','change','cs2');assert.equal(e.$('crosshair-cs2-open').hidden,false);
+ e.$('crosshair-cfg-text').value='cl_crosshairsize 4; cl_crosshairdot 1; bind mouse1 quit';
+ await e.event('crosshair-cfg-import','click');
+ assert.equal(e.$('cs2-crosshair-size').value,4);assert.equal(e.$('cs2-crosshair-dot').checked,true);
+ assert.equal(e.$('overlay-shape').value,'circle','native CS2 edit must preserve overlay draft');
+ assert.match(e.$('crosshair-cfg-status').textContent,/1 andere Befehle ignoriert/);
+ assert.equal(e.saves.length,0,'import must not save or write game files');
+ await e.event('crosshair-save','click');assert.equal(e.saves[0].input.crosshair.size,e.info.crosshair.size,'overlay still has its own values');
 });

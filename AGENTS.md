@@ -723,3 +723,19 @@ eingebaut wurde, steht im Update-Protokoll dort.
 - Vorlagen über denselben geprüften lokalen RGBA-Profilpfad speichern. `gamePreset` ist
   nur eine bekannte Katalogkennung; nach Pixelbearbeitung löschen. Neue CS2-Codeformate
   nicht als unterstützt ausgeben, solange nur der ältere CSGO-Decoder implementiert ist.
+
+## Spielinternes CS2-Fadenkreuz (28.11.2026)
+
+- Spielinterne CS2-Regler unter Spiele → CS2 (`#cs2-fadenkreuz`), Vorschau und
+  häufige Werte zuerst, Feinabstimmung/Import darunter eingeklappt. Universelles
+  Windows-Overlay bleibt unter Overlays, mit Verweis zum CS2-Bereich.
+- CS2-Entwurf und `cs2-crosshair/crosshair.json` getrennt vom Overlay-Profil.
+  Alte klassische Auswahl nur als Ausgangspunkt verwenden, native CFG-Änderungen
+  dürfen Overlay-Aussehen, Einschaltzustand und Zustimmung nicht verändern.
+- CFG-Import liest höchstens 64 KB und ausschließlich numerische Werte aus der
+  festen Fadenkreuz-Allowlist. Keine Ausführung oder Weitergabe freier Befehle,
+  keine exec-Auflösung, keine Binds/Sensitivity übernehmen. Ungültiges ablehnen,
+  ignorierte/unsupported Befehle und Rundungen sichtbar melden. Import nur Entwurf.
+- Eigene CFG nur über bewussten CS2-Speicherknopf schreiben (CS2-Paket erforderlich),
+  nie autoexec oder fremde Dateien ändern; Nutzer lädt exec selbst. Export und
+  Dateiimport auch ohne installiertes Spiel möglich, keine neue Bridge-Capability.

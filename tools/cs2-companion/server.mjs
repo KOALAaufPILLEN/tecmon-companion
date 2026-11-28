@@ -37,7 +37,7 @@ import { renderClipBranding, clipLabels } from "./clip-branding.mjs";
 import { createGsiSettings, installGsiConfig, removeGsiConfig, gsiConfigPath } from "./gsi-config.mjs";
 import { createPet, quizQuestion } from "./personality.mjs";
 import { createCfgLibrary } from "./cfg-library.mjs";
-import { cleanOverlayOptions, DEFAULT_OVERLAY, createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, createOverlaySettings, cs2WindowMode, OVERLAY_NOTICE, OVERLAY_NOTICE_VERSION, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
+import { parseCrosshairConfig, crosshairConfigText, cleanOverlayOptions, DEFAULT_OVERLAY, createCrosshairSettings, crosshairCommands, crosshairConfigPath, decodeCrosshairCode, createOverlaySettings, cs2WindowMode, OVERLAY_NOTICE, OVERLAY_NOTICE_VERSION, CROSSHAIR_EXEC, PRESETS as CROSSHAIR_PRESETS, STYLES as CROSSHAIR_STYLES } from "./crosshair.mjs";
 import { checkUpdate, downloadUpdate, VERSION } from "./updater.mjs";
 import { verifyCs2 } from "./cs2-verify.mjs";
 import { createDemoFetch, DEMO_FETCH_CAPABILITY } from "./demo-fetch.mjs";
@@ -279,7 +279,8 @@ export async function createCompanion({
   const overlay = await createOverlaySettings(installation?.profileDir || dataDir);
   const desktop = await createDesktopSettings(installation?.profileDir || dataDir);
   const cfgs = await createCfgLibrary(installation?.profileDir || dataDir);
-  const crosshairState = () => ({ crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), overlayDefaults: DEFAULT_OVERLAY, gamePresets: CROSSHAIR_GAMES, presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES, overlay: { ...overlay.get(), runtime: overlayRuntimeState(), notice: OVERLAY_NOTICE, noticeVersion: OVERLAY_NOTICE_VERSION } });
+  const cs2Crosshair = await createCrosshairSettings(path.join(installation?.profileDir || dataDir, "cs2-crosshair"), crosshair.get());
+  const crosshairState = () => ({ cs2Crosshair: cs2Crosshair.get(), crosshair: crosshair.get(), commands: crosshairCommands(crosshair.get()), exec: CROSSHAIR_EXEC, available: Boolean(crosshairConfigPath(detected.cs2)), overlayDefaults: DEFAULT_OVERLAY, gamePresets: CROSSHAIR_GAMES, presets: CROSSHAIR_PRESETS, styles: CROSSHAIR_STYLES, overlay: { ...overlay.get(), runtime: overlayRuntimeState(), notice: OVERLAY_NOTICE, noticeVersion: OVERLAY_NOTICE_VERSION } });
   /* CS2-Anzeigemodus aus cs2_video.txt, höchstens alle 10 Sekunden gelesen und nur bei eingeschaltetem Overlay. */
   let windowMode = "unknown", windowModeAt = 0;
   let overlayRuntime = { connected: false, paused: false, hotkey: null };
@@ -1308,7 +1309,7 @@ export async function createCompanion({
         await dotaGsi.setFeatures(update);
         return json(res, 200, { dota: dotaState() });
       }
-      if (url.pathname.startsWith("/api/gsi/") || url.pathname === "/api/crosshair/save" || url.pathname.startsWith("/api/cfgs/")) {
+      if (url.pathname.startsWith("/api/gsi/") || ["/api/crosshair/save", "/api/crosshair/cs2-save"].includes(url.pathname) || url.pathname.startsWith("/api/cfgs/")) {
         if (!games.has("cs2")) throw new Error("Das CS2-Paket ist nicht installiert. Unter „Games“ installieren.");
       }
       if (url.pathname === "/api/gsi/enable") {
@@ -1344,6 +1345,12 @@ export async function createCompanion({
         overlayRuntime = { connected: true, paused: input.paused === true, hotkey: typeof input.hotkey === "boolean" ? input.hotkey : null };
         overlayRuntimeAt = Date.now();
         return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/crosshair/cs2-save") {
+        const result = await cs2Crosshair.save(input.crosshair, detected.cs2);
+        return json(res, 200, {...crosshairState(), message:result.written
+          ? `CS2-CFG gespeichert. In der CS2-Konsole laden: ${CROSSHAIR_EXEC}`
+          : "CS2-Profil gespeichert, CS2-Ordner nicht gefunden. CFG herunterladen und selbst einfügen."});
       }
       if (url.pathname === "/api/crosshair/save") {
         const result = await crosshair.save(input.crosshair, detected.cs2);
@@ -1398,6 +1405,12 @@ export async function createCompanion({
       if (url.pathname === "/api/cfgs/remove") {
         await cfgs.remove(String(input.id || "").slice(0, 40), detected.cs2);
         return json(res, 200, { ...cfgs.state(detected.cs2), message: "cfg-Datei entfernt. Schon gesetzte Werte bleiben in CS2, bis du sie änderst." });
+      }
+      if (url.pathname === "/api/crosshair/import-cfg") {
+        return json(res, 200, parseCrosshairConfig(input.text, input.crosshair));
+      }
+      if (url.pathname === "/api/crosshair/export-cfg") {
+        return json(res, 200, {text:crosshairConfigText(input.crosshair), filename:"tecmon_crosshair.cfg"});
       }
       if (url.pathname === "/api/crosshair/decode") {
         const decoded = decodeCrosshairCode(typeof input.code === "string" ? input.code.slice(0, 64) : "");

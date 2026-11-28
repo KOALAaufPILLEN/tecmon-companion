@@ -359,3 +359,11 @@ body.holo .cockpit-nav button[data-pending="true"]::after{content:' · Anfrage';
 .game-crosshair-choice[aria-pressed="true"]{border-color:var(--gold,#e4c26b);box-shadow:inset 0 0 0 1px var(--gold,#e4c26b);color:var(--gold,#e4c26b)}
 body.holo .crosshair-tabs button[aria-selected="true"]{--edge:var(--gold);--fill:linear-gradient(135deg,#e8c573,#c9a04a);color:#15121a;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%)}
 body.holo .game-crosshair-choice[aria-pressed="true"]{--edge:var(--gold);--fill:linear-gradient(135deg,#e8c57335,#a78bfa20);color:var(--gold);box-shadow:inset 3px 0 0 var(--gold)}
+
+#crosshair-cfg-text{display:block;width:100%;box-sizing:border-box;resize:vertical;min-height:100px;margin:8px 0;font-family:monospace}
+
+.cs2-crosshair-top{display:grid;grid-template-columns:200px minmax(0,1fr);gap:22px;margin:16px 0}
+#cs2-crosshair-preview{width:180px;height:180px;display:block;margin-bottom:8px}
+#cs2-fadenkreuz>.actions{flex-wrap:wrap;margin:16px 0}
+#cs2-fadenkreuz details{margin:16px 0}
+@media(max-width:760px){.cs2-crosshair-top{grid-template-columns:1fr}#cs2-crosshair-preview{width:140px;height:140px}.cs2-crosshair-top>div:first-child{display:flex;align-items:center;gap:12px}}

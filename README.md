@@ -1,5 +1,30 @@
 # TecMon Companion
 
+## Neu in 0.54.1 · Spielinternes CS2-Fadenkreuz an der richtigen Stelle (28.11.2026)
+
+Stand: lokal umgesetzt, noch nicht gemergt oder veröffentlicht.
+
+Unter **Spiele → Counter-Strike 2 → CS2-Fadenkreuz** stehen Vorschau und die
+Regler für Länge, Abstand, Dicke, Farbe, Punkt, T-Form und Umriss direkt oben.
+Feinabstimmung und CFG-/Code-Import sind darunter eingeklappt. CFG-Datei laden
+oder Befehle einfügen; nur unterstützte klassische Fadenkreuzwerte übernehmen,
+andere Befehle ignorieren und nicht ausführbare Werte melden. Maximal 64 KB,
+Rundungen auf Editor-Schrittweiten sichtbar. Neue CS2-Codeformate weiter nicht unterstützt.
+
+CS2-Entwurf und gespeichertes CS2-Profil sind vom Windows-Overlay getrennt;
+beim ersten Laden bisherige klassische Werte als Ausgangspunkt verwenden.
+CFG herunterladen, Befehle kopieren oder bewusst als `tecmon_crosshair.cfg`
+in den gefundenen CS2-Ordner schreiben; im Spiel selbst mit `exec tecmon_crosshair`
+laden. Keine fremde CFG überschreiben und keine Spiel-Eingaben. Unter Overlays
+führt bei CS2 ein direkter Link zum CS2-Bereich. Keine neue Bridge-Capability.
+
+Validierung: 260 Node-Tests erfolgreich, zwei bestehende Symlink-Tests übersprungen;
+Versionen konsistent. Im Browser echten CFG-Dateiimport und CS2-Regler geprüft;
+API-Test schreibt die eigene CFG und bestätigt die Trennung zum Overlay-Profil.
+Ein echter CS2-Durchlauf und vollständiger Installer-Test stehen noch aus.
+
+![CS2-Regler zuerst](docs/screenshots/cs2-crosshair-config-0.54.1.png)
+
 ## Neu in 0.54.0 · Fadenkreuz-Studio und eigenes Menü-Popup (28. November 2026)
 
 Stand: [#138](https://github.com/KOALAaufPILLEN/tecmon-companion/pull/138) ist gemergt

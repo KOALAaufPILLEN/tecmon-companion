@@ -72,3 +72,16 @@ test('Alte gespeicherte Bereiche landen auf den neuen sechs Bereichen',()=>{
   menu.select('gallery');
   assert.equal(document.querySelector('[data-menu-page="videos"]').hidden,false);
 });
+
+test('CS2 native crosshair belongs to Games/CS2 with values before imports; overlay stays under Overlays',()=>{
+ const {window,document}=setup('#cs2-fadenkreuz');
+ const card=document.getElementById('cs2-fadenkreuz');
+ assert.equal(card.closest('[data-menu-page]').dataset.menuPage,'games');
+ assert.equal(card.closest('[data-menu-game]').dataset.menuGame,'cs2');
+ assert.equal(card.closest('details').open,true);
+ assert.equal(document.getElementById('fadenkreuz').closest('[data-menu-page]').dataset.menuPage,'overlays');
+ const controls=[...card.querySelectorAll('input,select,textarea')].map(n=>n.id);
+ assert.ok(controls.indexOf('cs2-crosshair-size')<controls.indexOf('crosshair-cfg-text'));
+ document.querySelector('[data-pick-game="dota2"]').dispatchEvent(new window.Event('click'));
+ assert.equal(card.closest('[data-menu-game]').hidden,true);
+});
